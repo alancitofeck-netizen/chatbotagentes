@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+/*
+  Design tokens — Growth Link visual identity.
+  Full rationale, scales and usage rules: /docs/blueprint/14-design-system.md
+  ⚠️ Exact hex values are a best-effort match to the verbal brand brief
+  (deep blue primary / bright blue secondary / modern grays) — re-validate
+  against the real Growth Link logo file once provided, no logo asset exists
+  in this repo yet (public/ only has stock Next.js icons).
+*/
+
+@theme {
+  /* Primary — deep blue (brand ink) */
+  --color-primary-50: #f2f5fc;
+  --color-primary-100: #e3e9f7;
+  --color-primary-200: #c3d0ee;
+  --color-primary-300: #9ab0e0;
+  --color-primary-400: #6d8ad0;
+  --color-primary-500: #4a6bb8;
+  --color-primary-600: #34519a;
+  --color-primary-700: #253d7a;
+  --color-primary-800: #182b5c;
+  --color-primary-900: #101d42;
+  --color-primary-950: #0a122c;
+
+  /* Accent — bright blue (secondary, used for primary actions/links/focus) */
+  --color-accent-50: #eff4ff;
+  --color-accent-100: #dce7ff;
+  --color-accent-200: #bad1ff;
+  --color-accent-300: #8fb4ff;
+  --color-accent-400: #5a8cff;
+  --color-accent-500: #2e64f5;
+  --color-accent-600: #1c4cdb;
+  --color-accent-700: #163cad;
+  --color-accent-800: #132f86;
+  --color-accent-900: #12296c;
+
+  /* Neutral — cool modern gray */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f8f9fb;
+  --color-neutral-100: #f0f2f5;
+  --color-neutral-200: #e4e7ec;
+  --color-neutral-300: #d0d5dd;
+  --color-neutral-400: #98a2b3;
+  --color-neutral-500: #667085;
+  --color-neutral-600: #475467;
+  --color-neutral-700: #344054;
+  --color-neutral-800: #1d2939;
+  --color-neutral-900: #101828;
+  --color-neutral-950: #0b0f19;
+
+  /* Semantic — discreet, desaturated (never the saturated defaults) */
+  --color-success-bg: #ecf9f2;
+  --color-success: #2e9563;
+  --color-success-strong: #1e7a4c;
+  --color-warning-bg: #fbf2e3;
+  --color-warning: #b7791f;
+  --color-warning-strong: #92600f;
+  --color-error-bg: #fceeee;
+  --color-error: #c1484f;
+  --color-error-strong: #9c363d;
+
+  /* Radius — bumped up per visual reference (soft/floating card language),
+     see 14-design-system.md §5 for the reconciliation with the original brief */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Motion — theme-invariant (same in light/dark), lives here (not :root) so
+     Tailwind generates duration-fast/base/slow and ease-out/in utilities */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 240ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+:root {
+  /* Surfaces (light mode) — plain names, aliased below so dark mode can override them */
+  --background: var(--color-neutral-0);
+  --foreground: var(--color-neutral-900);
+  --surface-1: var(--color-neutral-0);
+  --surface-2: var(--color-neutral-50);
+  --surface-3: var(--color-neutral-100);
+  --border-default: var(--color-neutral-200);
+  --border-strong: var(--color-neutral-300);
+
+  /* Elevation — soft "floating card" language per visual reference (wide blur,
+     low opacity), see 14-design-system.md §6 for the reconciliation with the
+     original "muy pocas sombras" brief: still restrained/premium, just no
+     longer border-only — cards default to shadow-sm now. */
+  --elevation-xs: 0 1px 2px rgba(16, 24, 40, 0.03);
+  --elevation-sm: 0 4px 16px rgba(16, 24, 40, 0.06);
+  --elevation-md: 0 8px 24px rgba(16, 24, 40, 0.08);
+  --elevation-lg: 0 20px 48px rgba(16, 24, 40, 0.14);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --shadow-xs: var(--elevation-xs);
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Dark mode — same token names, different values. Two triggers, same rules:
+   (1) OS preference by default, (2) explicit override via [data-theme] once
+   a manual toggle component is built (not yet implemented — see 14-design-system.md). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: var(--color-neutral-950);
+    --foreground: var(--color-neutral-100);
+    --surface-1: var(--color-neutral-950);
+    --surface-2: var(--color-neutral-900);
+    --surface-3: var(--color-neutral-800);
+    --border-default: var(--color-neutral-800);
+    --border-strong: var(--color-neutral-700);
+
+    --elevation-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.34);
+    --elevation-md: 0 8px 24px rgba(0, 0, 0, 0.42);
+    --elevation-lg: 0 20px 48px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: var(--color-neutral-950);
+  --foreground: var(--color-neutral-100);
+  --surface-1: var(--color-neutral-950);
+  --surface-2: var(--color-neutral-900);
+  --surface-3: var(--color-neutral-800);
+  --border-default: var(--color-neutral-800);
+  --border-strong: var(--color-neutral-700);
+
+  --elevation-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.34);
+  --elevation-md: 0 8px 24px rgba(0, 0, 0, 0.42);
+  --elevation-lg: 0 20px 48px rgba(0, 0, 0, 0.5);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* Skeleton shimmer — src/components/ui/Skeleton.tsx */
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}

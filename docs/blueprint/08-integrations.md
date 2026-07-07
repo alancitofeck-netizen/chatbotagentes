@@ -1,0 +1,48 @@
+# 08 — Integraciones externas
+
+Patrón general: cada proveedor se implementa como **adapter** detrás de una interfaz de dominio en `src/lib/integrations/<provider>/`, de modo que `core/`, `ai/` y los módulos nunca importan el SDK del proveedor directamente:
+
+- `MessagingProvider` (implementación: YCloud) — `sendMessage`, `handleWebhookEvent`.
+- `LLMProvider` (implementación: OpenRouter) — `complete({messages, tools, modelChain})`.
+- `CRMProvider` (implementación: HighLevel) — `upsertContact`, `upsertOpportunity`, `checkAvailability`, `createBooking`, `handleWebhookEvent`.
+
+Credenciales por workspace en `integration_connections` ([02-database.md](02-database.md)), con la clave real en Supabase Vault (`credentials_vault_ref`), nunca en texto plano en la tabla ni en variables de entorno compartidas entre workspaces.
+
+---
+
+## YCloud (WhatsApp Business API)
+
+- **Auth**: header `X-API-Key` (obtenida en el dashboard de YCloud → Developers).
+- **Base URL**: `https://api.ycloud.com/v2`.
+- **Envío**: `POST /whatsapp/messages`. Body (`WhatsappMessageSendRequest`): `from` (E.164), `type` (`template|text|image|audio|video|document|sticker|location|interactive|contacts|reaction`), exactamente uno de `to` (E.164) o `recipient` (BSUID), campo de contenido según `type` (`text.body` ≤4096 chars; `template.name`+`template.language`+`components`; media con `id` o `link`), opcionales `externalId`, `context`, `category`, `ttlSeconds`, `useDirectSend`, `filterUnsubscribed`, `filterBlocked`. Respuesta: `WhatsappMessage` con `id`, `wamid`, `status` (`accepted|failed|sent|delivered|read`), pricing y timestamps.
+- **Webhooks**: sobre común `{id, type, apiVersion, createTime, <clave-específica>}`. Eventos clave: `whatsapp.inbound_message.received` (clave `whatsappInboundMessage`: `id`,`wamid`,`wabaId`,`from` (sin '+'),`fromUserId`,`to`,`sendTime`,`type`,`text.body`...), `whatsapp.message.updated` (cambios de estado), `whatsapp.template.reviewed`, `whatsapp.phone_number.quality_updated`, `whatsapp.business_account.updated/deleted`, `contact.*`.
+- **Rate limits**: `/v2/whatsapp/messages` 200 rps por número emisor; `/sendDirectly` 80 rps (o 1000 con upgrade); Management API 200 rps / 10.000 rph por cuenta. 429 con headers `Retry-After`, `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`.
+- **Multi-tenant**: una cuenta YCloud puede alojar múltiples WABAs y múltiples números — el mapeo workspace ↔ número(s) vive en `conversations.whatsapp_phone_number_id` / `integration_connections`.
+- **⚠️ Hueco de documentación**: no se encontró en la documentación pública el mecanismo de verificación de firma/secreto de webhooks. **Mitigación hasta confirmar** ([12-security-audit.md](12-security-audit.md) #5): (a) todo evento se registra primero en `webhook_events` (idempotencia por `event_id`) **solo si pasa autenticidad** — si falla, `401` sin insertar; (b) mecanismo primario: **header secreto estático** configurado en el dashboard de YCloud (si soporta headers custom por webhook), comparado con `timingSafeEqual` (no `===`, para evitar timing attacks); un secreto en header es preferible a uno en query string, que es más propenso a terminar logueado por proxies/CDN intermedios; (c) mantener además el secreto de path como defensa adicional, no única; (d) evaluar allowlist de IPs si YCloud las publica. Confirmar el mecanismo real (¿existe firma HMAC?) con soporte de YCloud antes de ir a producción — si existe, reemplaza a (b)/(c) como mecanismo primario.
+- **Reintentos y resiliencia de envío** ([12-security-audit.md](12-security-audit.md) #12, #15): el adapter reintenta con backoff exponencial + jitter (máx N intentos) ante fallo de red/5xx de YCloud. Tras agotar reintentos, el mensaje queda en `messages.status='failed'`, visible en el inbox para acción humana — nunca falla en silencio. Una caída de YCloud nunca debe traducirse en pérdida silenciosa de un mensaje saliente.
+
+## OpenRouter (gateway LLM)
+
+- **Auth**: Bearer token. **Base**: `https://openrouter.ai/api/v1/chat/completions`, compatible con el SDK de OpenAI (drop-in cambiando `baseURL`).
+- **Fallback de modelos**: parámetro `models` (array, orden de prioridad) — ante error de longitud de contexto, moderación, rate-limit o caída, OpenRouter avanza al siguiente modelo de la lista automáticamente.
+- **Routing de proveedor**: objeto `provider` — `order` (secuencia explícita, desactiva balanceo), `sort` (`price|throughput|latency`), `allow_fallbacks` (bool), `only`/`ignore`, `max_price`, `preferred_min_throughput`/`preferred_max_latency`. Default: balanceo por precio (ponderación inversa al cuadrado) filtrando proveedores con caídas recientes.
+- **Tool calling**: formato estilo OpenAI — `tools: [{type:"function", name, description, parameters}]`; el modelo devuelve `function_call` (`id`,`call_id`,`name`,`arguments`); se responde con `function_call_output` (`call_id`,`output`).
+- **Streaming**: soportado.
+- **Rate limits y costos**: gobernados **globalmente por cuenta/saldo de crédito**, no por API key ni de forma nativa por sub-cliente. **Decisión de arquitectura**: esta plataforma debe implementar su **propia capa de métering por workspace** (`usage_events`, [02-database.md](02-database.md)) para facturar y limitar abuso — OpenRouter no aísla el consumo entre los workspaces de esta plataforma.
+- **⚠️ A verificar en implementación**: nombre exacto del header de atribución de app (fuentes consistentes en `HTTP-Referer`, inconsistentes en el segundo header — verificar contra la documentación vigente al implementar, no asumir el nombre exacto sin confirmarlo).
+- **Resiliencia** ([12-security-audit.md](12-security-audit.md) #12, #15): además del fallback de `models` (nivel de modelo/proveedor LLM, ya cubierto arriba), el adapter envuelve la llamada con su propio reintento (backoff + jitter) para errores de red/timeout de OpenRouter mismo. Si se agotan todos los modelos de la cadena de fallback **y** los reintentos propios, la conversación se degrada a `pending_human` en vez de fallar sin respuesta (ver [05-ai-engine.md](05-ai-engine.md), "Degradación por fallo o cuota").
+
+## HighLevel (CRM/calendario externo, app de Marketplace)
+
+- **Auth**: Bearer JWT. Dos "user types" de token: **Sub-Account (location)** y **Agency (company)**; cada uno puede ser un Private Integration Token (estático) o un access token emitido por OAuth2.
+- **Dato clave para multi-tenancy**: existe un endpoint para **derivar un token de Location a partir de un token de Agency** ("Get Location Access Token from Agency Token"). Esto habilita dos modelos de instalación:
+  1. **Por location**: una conexión OAuth por cada sub-cuenta/cliente de HighLevel que se integra (un `integration_connections` por location).
+  2. **Por agencia**: una sola conexión OAuth a nivel agencia, derivando tokens de location bajo demanda — potencialmente reduce fricción si nuestros clientes-agencia administran muchas sub-cuentas. **A decidir con el usuario cuál modelo prioriza el producto** antes de implementar el flujo OAuth (afecta la UI de "conectar HighLevel" y la tabla `integration_connections`).
+- **Webhooks**: se configuran desde el dashboard de la app (activar evento + URL, editable en caliente). Envelope: `{type, timestamp, webhookId, data}`. Verificación de firma: header `X-GHL-Signature` (Ed25519, vigente — verificar primero si está presente) o, en transición, `X-WH-Signature` (RSA-SHA256, legacy, **deprecado el 2026-07-01**). Eventos: Contact/Opportunity/Task/Appointment/Invoice/Product/Association/Location/User (p. ej. `ContactCreate`, `ContactUpdate`).
+- **APIs de recursos** (todas `/v3`, Bearer JWT, "AIP-compliant", con alcance a una Sub-Account/location): **Contacts** (+ Tasks, Appointments, Tags, Notes, Campaigns, Workflow, Bulk, Search, Followers); **Opportunities** (por `pipelineId`/`stageId`/`contactId`, + Search, Pipelines, Lost-reason, Followers); **Calendars** (Calendar Groups, Service Bookings, Services, Service Locations, Calendar Events, Appointment Notes, Calendar Resources, Calendar Notifications, Availability/free-busy).
+- **⚠️ Hueco de documentación**: la URL exacta de autorización OAuth2, el listado completo de scopes, y el payload exacto del endpoint de intercambio/refresh de token **no pudieron confirmarse** (la documentación pública renderiza esos detalles vía JavaScript del lado cliente, inaccesible a herramientas de scraping estático). Se asume el flujo estándar OAuth2 authorization-code (`access_token`/`refresh_token`/`expires_in`/`scope`). **Antes de iniciar la implementación del conector HighLevel (Fase 5, ver [10-roadmap.md](10-roadmap.md)), es obligatorio confirmar estos detalles contra el dashboard real de la Marketplace app o la colección Postman oficial de HighLevel.**
+- **Resiliencia** ([12-security-audit.md](12-security-audit.md) #15): toda operación contra HighLevel (sync de contacto/oportunidad, booking) es **asíncrona y best-effort respecto al flujo conversacional** — una caída o timeout de HighLevel nunca bloquea la recepción/envío de un mensaje de WhatsApp ni la respuesta del motor IA. Los fallos de sync se reintentan con backoff (mismo mecanismo que YCloud) y, si se agotan, quedan visibles como pendientes de reconciliación manual, sin afectar la conversación.
+
+## Gestión de tokens/refresh
+
+Los `refresh_token` de HighLevel (y cualquier credencial de larga vida) se guardan cifrados vía Supabase Vault, referenciados desde `integration_connections.credentials_vault_ref`. Un job programado ([01-architecture.md](01-architecture.md)) refresca tokens antes de su expiración, evitando fallos en producción por token vencido.
