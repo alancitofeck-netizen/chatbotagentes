@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
-import { Inbox, Kanban, SquareUser } from "lucide-react";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { requireUser } from "@/lib/auth/session";
+import { requireUser, requireActiveWorkspace } from "@/lib/auth/session";
+import {
+  getDashboardKpis,
+  getActivitySeries,
+  getRecentConversations,
+  getPendingTasks,
+} from "@/lib/dashboard/queries";
+import { KpiCards } from "./KpiCards";
+import { ActivityChart } from "./ActivityChart";
+import { RecentConversations } from "./RecentConversations";
+import { PendingTasks } from "./PendingTasks";
 
 export const metadata: Metadata = {
   title: "Dashboard — Growth Link",
@@ -9,7 +17,15 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const user = await requireUser();
+  const { workspaceId } = await requireActiveWorkspace();
   const firstName = ((user.user_metadata?.full_name as string | undefined) ?? "").split(" ")[0];
+
+  const [kpis, activity, conversations, tasks] = await Promise.all([
+    getDashboardKpis(workspaceId),
+    getActivitySeries(workspaceId, "7d"),
+    getRecentConversations(workspaceId),
+    getPendingTasks(workspaceId),
+  ]);
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -17,27 +33,15 @@ export default async function DashboardPage() {
         <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground text-balance">
           {firstName ? `Hola, ${firstName}` : "Hola de nuevo"}
         </h1>
-        <p className="text-sm text-neutral-500">
-          Este es tu dashboard temporal — los módulos de Inbox, CRM y ATS se activan próximamente.
-        </p>
+        <p className="text-sm text-neutral-500">Esto es lo que está pasando en tu workspace hoy.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <EmptyState
-          icon={Inbox}
-          title="Inbox"
-          description="Tu bandeja de WhatsApp con IA y handoff humano llega en la próxima fase."
-        />
-        <EmptyState
-          icon={Kanban}
-          title="CRM"
-          description="Pipeline de ventas y contactos, integrado al mismo inbox."
-        />
-        <EmptyState
-          icon={SquareUser}
-          title="ATS"
-          description="Reclutamiento con IA de preclasificación, integrado al mismo inbox."
-        />
+      <KpiCards kpis={kpis} />
+      <ActivityChart initialData={activity} />
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <RecentConversations conversations={conversations} />
+        <PendingTasks tasks={tasks} />
       </div>
     </div>
   );

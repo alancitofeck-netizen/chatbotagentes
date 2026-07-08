@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveWorkspaceCookie } from "@/lib/auth/workspace-cookie";
 
 export type WorkspaceRole = "owner" | "admin" | "agent" | "viewer";
 
@@ -61,4 +62,19 @@ export async function isWorkspaceMember(userId: string, workspaceId: string) {
     .eq("workspace_id", workspaceId)
     .maybeSingle();
   return Boolean(data);
+}
+
+/**
+ * For pages under (protected)/ that need to know *which* workspace to query.
+ * The layout already redirects to /select-workspace if the cookie is missing
+ * or invalid, so this re-derives the same membership cheaply rather than
+ * threading it through React context.
+ */
+export async function requireActiveWorkspace(): Promise<WorkspaceMembership> {
+  const user = await requireUser();
+  const workspaces = await getUserWorkspaces(user.id);
+  const activeWorkspaceId = await getActiveWorkspaceCookie();
+  const active = workspaces.find((w) => w.workspaceId === activeWorkspaceId);
+  if (!active) redirect("/select-workspace");
+  return active;
 }

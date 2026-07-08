@@ -26,13 +26,19 @@ export interface NavItem {
   comingSoon?: boolean;
 }
 
-export const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Inbox", href: "#", icon: Inbox, comingSoon: true },
-  { label: "CRM", href: "#", icon: Kanban, comingSoon: true },
-  { label: "ATS", href: "#", icon: SquareUser, comingSoon: true },
-  { label: "Automatizaciones", href: "#", icon: Workflow, comingSoon: true },
-];
+/** CRM/ATS become real links once workspace_modules.enabled is true for that
+ * workspace (docs/blueprint/03-modules.md) — the (protected) layout fetches
+ * that server-side and passes it down, this is the only place that decides
+ * comingSoon vs. a real href. */
+export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
+  return [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Inbox", href: "/inbox", icon: Inbox, comingSoon: false },
+    { label: "CRM", href: "/crm", icon: Kanban, comingSoon: !enabledModules.has("crm") },
+    { label: "ATS", href: "/ats", icon: SquareUser, comingSoon: !enabledModules.has("ats") },
+    { label: "Automatizaciones", href: "#", icon: Workflow, comingSoon: true },
+  ];
+}
 
 const collapsedListeners = new Set<() => void>();
 
@@ -52,13 +58,14 @@ function getCollapsedServerSnapshot(): boolean {
   return false;
 }
 
-export function Sidebar() {
+export function Sidebar({ enabledModules }: { enabledModules: string[] }) {
   const pathname = usePathname();
   const collapsed = useSyncExternalStore(
     subscribeCollapsed,
     getCollapsedSnapshot,
     getCollapsedServerSnapshot,
   );
+  const navItems = getNavItems(new Set(enabledModules));
 
   function toggle() {
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(!collapsed));

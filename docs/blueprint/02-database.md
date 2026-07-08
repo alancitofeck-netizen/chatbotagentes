@@ -26,6 +26,9 @@ workspace_modules(
 
 contacts(
   id uuid pk, workspace_id uuid fk, name text, phone text, email text,
+  company text null,                        -- agregado con el Dashboard/CRM (2026-07-08): columna de
+                                             -- primera clase, no custom_fields, porque se filtra/muestra
+                                             -- directamente (Kanban, futura sección Contactos)
   avatar_url text, source text, custom_fields jsonb default '{}',
   whatsapp_opt_status text check in ('subscribed','unsubscribed','unknown') default 'unknown',
   created_at timestamptz, updated_at timestamptz
@@ -34,6 +37,17 @@ contacts(
 
 tags(id uuid pk, workspace_id uuid fk, name text, color text) unique(workspace_id, name)
 contact_tags(contact_id uuid fk, tag_id uuid fk) pk(contact_id, tag_id)
+-- Aplicadas en supabase/migrations/0003_inbox.sql (Inbox conversacional, 2026-07-08).
+-- contact_tags se scopea por RLS a través de su contact_id padre (mismo patrón
+-- que pipeline_stages/pipeline_items → pipeline en la migración anterior).
+
+-- public.workspace_member_names(ws_id uuid) — función SECURITY DEFINER (0003_inbox.sql)
+-- que resuelve member_id/user_id/full_name/email leyendo auth.users, porque
+-- workspace_members no guarda nombre y el cliente no tiene acceso a auth.users.
+-- Vive en `public` (no en `core`, donde están is_workspace_member/has_workspace_role)
+-- porque debe ser invocable vía supabase.rpc() — PostgREST solo expone el schema
+-- `public` por defecto; `core` queda reservado para helpers de RLS referenciados
+-- solo desde SQL (dentro de policies), nunca vía RPC.
 
 conversations(
   id uuid pk, workspace_id uuid fk, contact_id uuid fk,
@@ -103,6 +117,18 @@ bookings(
   status text check in ('scheduled','rescheduled','cancelled','completed'),
   subject text, created_at timestamptz
 )
+
+tasks(
+  id uuid pk, workspace_id uuid fk, title text,
+  related_type text null, related_id uuid null,  -- polimórfico: opportunity | contact | candidate_application (opcional)
+  assigned_to uuid fk workspace_members null,
+  due_at timestamptz null, completed_at timestamptz null,
+  created_at timestamptz
+)
+-- agregada con el Dashboard/CRM (2026-07-08): no existía ningún concepto de tarea/recordatorio.
+-- Sirve al panel "Tareas pendientes" del núcleo y para derivar "próxima actividad" en tarjetas de
+-- pipeline (la tarea incompleta más próxima con related_id = ese opportunity/candidate_application).
+-- Mismo patrón polimórfico que notes, no un sistema de proyectos — si crece, revisar entonces.
 
 automations(
   id uuid pk, workspace_id uuid fk, name text,
@@ -237,6 +263,8 @@ evaluations(
 - `pipeline_items(pipeline_id, stage_id, position)` — orden de tablero kanban.
 - `contacts(workspace_id, whatsapp_opt_status)` — chequeo rápido de opt-out antes de cada envío saliente.
 - `tool_calls(conversation_id, created_at desc)` — traza de invocaciones de tools por conversación; `idempotency_key` unique ya cubre la deduplicación.
+- `tasks(related_type, related_id, completed_at)` — resolver "próxima actividad" de una tarjeta de pipeline sin escanear toda la tabla.
+- `tasks(workspace_id, assigned_to, completed_at, due_at)` — panel "Tareas pendientes" por usuario.
 
 ## Notas de RLS
 

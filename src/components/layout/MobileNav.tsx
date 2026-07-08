@@ -7,11 +7,12 @@ import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils/cn";
-import { navItems } from "./Sidebar";
+import { getNavItems } from "./Sidebar";
 
-export function MobileNav() {
+export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const navItems = getNavItems(new Set(enabledModules));
 
   useEffect(() => {
     if (!open) return;

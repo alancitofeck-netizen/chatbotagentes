@@ -1,5 +1,7 @@
 # 07 — Módulo ATS (reclutamiento)
 
+> **Estado de implementación (2026-07-08)**: construido — listado de vacantes (alta rápida), tablero Kanban por vacante (un pipeline propio por vacante, con drag-and-drop reusando el mismo componente que el CRM), candidatos como extensión 1:1 de contactos, panel de detalle con notas (`src/app/(protected)/ats/`). **No implementado todavía**: `interviews`/`evaluations` (la decisión de `bookings.provider` por defecto para entrevistas, marcada abajo como "a confirmar con el usuario", sigue sin resolver), CV/adjuntos (necesita Supabase Storage, igual que en el Inbox), e IA de preclasificación (`extract_resume_data`/`score_candidate`, depende del Agent Engine). Esas áreas se muestran como tabs deshabilitados "Pronto" en el panel de detalle.
+
 `module_key = 'ats'` en `workspace_modules`. Vive en `src/lib/modules/ats/` + `src/app/(dashboard)/ats/`. Requisito de origen: debe estar **completamente integrado al inbox conversacional** — no es una herramienta de RR. HH. aislada, la comunicación con candidatos pasa por el mismo WhatsApp/inbox que usa el módulo CRM.
 
 ## Candidatos = extensión de Contactos

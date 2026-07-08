@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 
-type BadgeVariant = "neutral" | "accent" | "success" | "warning" | "error";
+export type BadgeVariant = "neutral" | "accent" | "success" | "warning" | "error";
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;

@@ -6,13 +6,14 @@ interface NavbarProps {
   workspaceName: string;
   userName: string;
   userEmail: string;
+  enabledModules: string[];
 }
 
-export function Navbar({ workspaceName, userName, userEmail }: NavbarProps) {
+export function Navbar({ workspaceName, userName, userEmail, enabledModules }: NavbarProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border-default bg-surface-1 px-4 sm:px-6">
       <div className="flex items-center gap-3">
-        <MobileNav />
+        <MobileNav enabledModules={enabledModules} />
         <span className="truncate text-sm font-medium text-foreground">{workspaceName}</span>
       </div>
       <div className="flex items-center gap-2">

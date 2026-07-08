@@ -2,6 +2,8 @@
 
 > Terminología: la especificación oficial del motor del agente ([13-agent-engine.md](13-agent-engine.md)) nombra el Route Handler de ingestión descrito abajo como **Ingress Normalizer**, y el mecanismo de buffer como **Buffer Inteligente** — mismos mecanismos, sin cambios de fondo, solo alineación de nombre de componente.
 
+> **Estado de implementación (2026-07-08)**: construido — lista de conversaciones (filtro por estado, búsqueda), hilo de mensajes, notas internas, asignación de responsable, etiquetas, y tiempo real vía Supabase Realtime (`src/app/(protected)/inbox/`). **No implementado todavía**: no hay credenciales de YCloud configuradas, por lo tanto tampoco hay ingestión de webhooks, Buffer Inteligente, envío real de mensajes salientes, ni los modos `ai`/`hybrid` (dependen del Agent Engine, [13-agent-engine.md](13-agent-engine.md)). El Inbox de hoy es de solo lectura/gestión sobre datos ya persistidos (seed de demostración) — el composer de envío se agrega recién cuando YCloud esté conectado, precisamente para no violar la regla de esta página de que todo envío pasa *siempre* por el adapter YCloud.
+
 ## Funcionalidades (núcleo, usadas por CRM y ATS por igual)
 
 - Lista de conversaciones (filtrable por estado, etiqueta, responsable).
