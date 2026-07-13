@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
+import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 import type { OpportunityDetail } from "@/lib/crm/queries";
 import { getOpportunityDetailAction, addOpportunityNote } from "@/lib/crm/actions";
 
@@ -18,20 +19,28 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+const PRIORITY_LABEL: Record<"high" | "medium" | "low", string> = { high: "Alta", medium: "Media", low: "Baja" };
 const COMING_SOON_TABS = ["conversaciones", "archivos", "emails", "whatsapp", "ia"];
 
 export function CardDetailSheet({
   opportunityId,
+  initialTab = "resumen",
   onClose,
+  onEdit,
 }: {
   opportunityId: string | null;
+  initialTab?: "resumen" | "notas" | "historial";
   onClose: () => void;
+  onEdit: () => void;
 }) {
   const [detail, setDetail] = useState<OpportunityDetail | null>(null);
-  const [tab, setTab] = useState("resumen");
+  const [tab, setTab] = useState(initialTab);
   const [noteBody, setNoteBody] = useState("");
   const [isPending, startTransition] = useTransition();
 
+  // The caller (CrmBoardShell) remounts this component via a `key` tied to
+  // opportunityId, so `detail`/`tab` already start fresh from their initial
+  // state on every open — no need to reset them synchronously here too.
   useEffect(() => {
     if (!opportunityId) return;
     getOpportunityDetailAction(opportunityId).then(setDetail);
@@ -60,7 +69,7 @@ export function CardDetailSheet({
       ) : (
         <div className="flex flex-col">
           <div className="px-5 pt-4">
-            <Tabs value={tab} onValueChange={setTab}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "resumen" | "notas" | "historial")}>
               <TabsList>
                 <TabsTrigger value="resumen">Resumen</TabsTrigger>
                 <TabsTrigger value="notas">Notas</TabsTrigger>
@@ -87,6 +96,26 @@ export function CardDetailSheet({
                         <Badge variant={detail.status === "won" ? "success" : "neutral"}>{detail.status}</Badge>
                       </dd>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-neutral-500">Prioridad</dt>
+                      <dd className="text-foreground">{PRIORITY_LABEL[detail.priority]}</dd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <dt className="text-neutral-500">Probabilidad de cierre</dt>
+                      <dd className="text-foreground">{detail.probability !== null ? `${detail.probability}%` : "—"}</dd>
+                    </div>
+                    {detail.tags.length > 0 && (
+                      <div className="flex items-center justify-between gap-2">
+                        <dt className="shrink-0 text-neutral-500">Etiquetas</dt>
+                        <dd className="flex flex-wrap justify-end gap-1">
+                          {detail.tags.map((tag) => (
+                            <Badge key={tag.id} variant={tagBadgeVariant(tag.color)}>
+                              {tag.name}
+                            </Badge>
+                          ))}
+                        </dd>
+                      </div>
+                    )}
                     <div className="my-1 h-px bg-border-default" />
                     <div className="flex items-center justify-between">
                       <dt className="text-neutral-500">Contacto</dt>
@@ -111,6 +140,9 @@ export function CardDetailSheet({
                       </div>
                     )}
                   </dl>
+                  <Button variant="secondary" size="sm" className="mt-4" onClick={onEdit}>
+                    Editar
+                  </Button>
                 </TabsContent>
 
                 <TabsContent value="notas">

@@ -4,7 +4,9 @@
 
 > **⚠️ Supuesto a validar**: no existe ningún archivo de logo de Growth Link en el repositorio (`public/` solo tiene los íconos por defecto de Next.js). La paleta de abajo es una interpretación fiel del brief verbal (azul profundo primario, azul brillante secundario, grises modernos, semánticos discretos) — debe cotejarse contra el logo real en cuanto exista el archivo, y ajustarse si el logo implica tonos distintos.
 
-> **Actualización de estilo (referencia visual del usuario)**: el usuario compartió dos capturas de referencia (una landing de CRM con hero oscuro y tarjetas flotantes; un dashboard con radios grandes, tarjetas suaves y una tarjeta de contraste oscuro) pidiendo explícitamente el **estilo/forma**, no el color. Esto **reconcilia y reemplaza** la dirección original de "muy pocas sombras / bordes por encima de sombra" (§1, §6 más abajo) por un lenguaje de **tarjetas flotantes con sombra suave y radios más grandes** — sigue siendo minimalista y premium (nunca skeuomorphic/neumórfico), solo con más profundidad y curvatura que el flat-Linear puro descrito inicialmente. El color (azules + grises + semánticos apagados) **no cambia** — el usuario fue explícito en que la paleta ya definida se mantiene.
+> **Actualización de estilo (referencia visual del usuario)**: el usuario compartió dos capturas de referencia (una landing de CRM con hero oscuro y tarjetas flotantes; un dashboard con radios grandes, tarjetas suaves y una tarjeta de contraste oscuro) pidiendo explícitamente el **estilo/forma**, no el color. Esto **reconcilia y reemplaza** la dirección original de "muy pocas sombras / bordes por encima de sombra" (§1, §6 más abajo) por un lenguaje de **tarjetas flotantes con sombra suave y radios más grandes** — sigue siendo minimalista y premium (nunca skeuomorphic/neumórfico), solo con más profundidad y curvatura que el flat-Linear puro descrito inicialmente.
+>
+> **Actualización de color (2026-07-09)**: la nota anterior fijaba "el color no cambia, solo la forma". El usuario volvió con una tercera referencia (dashboard SaaS con sidebar negro de íconos circulares, KPI cards con mini-gráfico) pidiendo explícitamente adoptar **violeta `#6C63FF`** como nuevo color de acción, reemplazando el azul brillante — esta vez el color sí cambia, a pedido explícito. `primary` (el azul profundo de navegación) no cambia — el sidebar oscuro de la referencia ya se logra con `neutral-950`, no con un tono "primary" nuevo. Ver §2 actualizado abajo y `src/app/globals.css` para los valores reales.
 
 ## 1. Principios
 
@@ -21,15 +23,15 @@ Reglas no negociables derivadas del brief:
 
 Dos azules con roles distintos y deliberadamente no intercambiables:
 
-- **Primary (azul profundo)** — color de marca, usado en superficies de navegación (sidebar, navbar), texto de énfasis alto, y estados activos de navegación. Transmite autoridad/confianza. **No se usa para botones de acción** — es demasiado oscuro para eso a gran escala.
-- **Accent (azul brillante)** — color de acción, usado exclusivamente para: botón primario, links, checkbox/radio marcado, focus ring, barra de progreso, elementos interactivos que piden click. Es el único color "vivo" de la interfaz.
+- **Primary (azul profundo)** — color de marca heredado, hoy usado sobre todo en avatares y la variante de contraste de `Card`; el sidebar oscuro ya no depende de este tono (ver Sidebar más abajo, ahora `neutral-950`). Transmite autoridad/confianza. **No se usa para botones de acción**.
+- **Accent (violeta `#6C63FF`)** — color de acción, usado exclusivamente para: botón primario, links, checkbox/radio marcado, focus ring, barra de progreso, elementos interactivos que piden click. Es el único color "vivo" de la interfaz. Reemplaza al azul brillante original (ver nota de 2026-07-09 arriba).
 
 ```
 Primary  50  #F2F5FC   100 #E3E9F7   200 #C3D0EE   300 #9AB0E0   400 #6D8AD0
          500 #4A6BB8   600 #34519A   700 #253D7A   800 #182B5C   900 #101D42   950 #0A122C
 
-Accent   50  #EFF4FF   100 #DCE7FF   200 #BAD1FF   300 #8FB4FF   400 #5A8CFF
-         500 #2E64F5   600 #1C4CDB   700 #163CAD   800 #132F86   900 #12296C
+Accent   50  #F1F0FF   100 #E4E2FF   200 #CBC7FF   300 #ADA5FF   400 #8D82FF
+         500 #6C63FF   600 #574DDE   700 #453DB3   800 #363089   900 #2B2870
 
 Neutral  0 #FFFFFF  50 #F8F9FB  100 #F0F2F5  200 #E4E7EC  300 #D0D5DD  400 #98A2B3
          500 #667085  600 #475467  700 #344054  800 #1D2939  900 #101828  950 #0B0F19
@@ -150,7 +152,7 @@ Agrupados por familia. Todos comparten los tokens de arriba; ninguno introduce c
 - **Tabs**: subrayado `accent-500` de 2px para el tab activo, sin fondo — patrón Linear/Notion, no "pill tabs".
 
 **Layout**
-- **Sidebar**: dock flotante de íconos circulares (64px de ancho total, con margen propio — no pegado al borde, `radius-xl`, `shadow-sm`, fondo `surface-1` o `primary-950` en variante oscura) + panel expandible (240px, fondo `surface-1`). Ítem activo: fondo `surface-2`/`primary-900` + indicador `accent-500`.
+- **Sidebar**: dock flotante de íconos circulares, permanente (64px de ancho total, con margen propio — no pegado al borde, `radius-xl`, `shadow-md`, fondo `neutral-950`) — **actualizado 2026-07-09**: ya no tiene estado expandible con texto (la referencia visual nunca muestra labels en el rail); el label solo aparece como `title` nativo en hover. Logo arriba, `UserMenu` (avatar + dropdown de cuenta) al pie. Ítem activo: fondo blanco sólido + ícono en `neutral-950`; inactivo: ícono `neutral-400`, hover `neutral-800`.
 - **Navbar**: altura fija 56px. Búsqueda como **pill completo** (`radius-full`, ícono + placeholder, fondo `surface-2`) en vez de input rectangular — patrón de la referencia. Sin borde/sombra propios (vive sobre el fondo de la página).
 - **Breadcrumbs**: `body-sm`, separador `/` en `neutral-400`, último ítem en `foreground` (resto en `neutral-500`).
 - **Card**: `surface-1`, `radius-lg`, `shadow-sm` por defecto (ver §6 — ya no es opcional), borde `border-default` opcional/sutil (la sombra ya provee la separación). Header con `h3` + acciones a la derecha. **Variante de contraste**: fondo `neutral-950`/`primary-950` + texto `neutral-50`, `shadow-lg` — para destacar un único dato clave por vista (ej. meta semanal, KPI hero), nunca más de una por pantalla.

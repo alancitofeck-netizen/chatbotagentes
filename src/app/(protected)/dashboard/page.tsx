@@ -5,11 +5,16 @@ import {
   getActivitySeries,
   getRecentConversations,
   getPendingTasks,
+  getLeadsBySource,
+  getTopOpportunities,
 } from "@/lib/dashboard/queries";
 import { KpiCards } from "./KpiCards";
 import { ActivityChart } from "./ActivityChart";
 import { RecentConversations } from "./RecentConversations";
 import { PendingTasks } from "./PendingTasks";
+import { LeadsBySourceChart } from "./LeadsBySourceChart";
+import { AiAssistantWidget } from "./AiAssistantWidget";
+import { TopDeals } from "./TopDeals";
 
 export const metadata: Metadata = {
   title: "Dashboard — Growth Link",
@@ -20,11 +25,13 @@ export default async function DashboardPage() {
   const { workspaceId } = await requireActiveWorkspace();
   const firstName = ((user.user_metadata?.full_name as string | undefined) ?? "").split(" ")[0];
 
-  const [kpis, activity, conversations, tasks] = await Promise.all([
+  const [kpis, activity, conversations, tasks, leadsBySource, topDeals] = await Promise.all([
     getDashboardKpis(workspaceId),
     getActivitySeries(workspaceId, "7d"),
     getRecentConversations(workspaceId),
     getPendingTasks(workspaceId),
+    getLeadsBySource(workspaceId),
+    getTopOpportunities(workspaceId),
   ]);
 
   return (
@@ -36,12 +43,22 @@ export default async function DashboardPage() {
         <p className="text-sm text-neutral-500">Esto es lo que está pasando en tu workspace hoy.</p>
       </div>
 
-      <KpiCards kpis={kpis} />
-      <ActivityChart initialData={activity} />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
+        <div className="flex flex-col gap-6">
+          <KpiCards kpis={kpis} activity={activity} />
+          <ActivityChart initialData={activity} />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <RecentConversations conversations={conversations} />
-        <PendingTasks tasks={tasks} />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <RecentConversations conversations={conversations} />
+            <PendingTasks tasks={tasks} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <LeadsBySourceChart sources={leadsBySource} />
+          <AiAssistantWidget />
+          <TopDeals deals={topDeals} />
+        </div>
       </div>
     </div>
   );

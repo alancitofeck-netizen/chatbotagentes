@@ -4,9 +4,9 @@
   Design tokens — Growth Link visual identity.
   Full rationale, scales and usage rules: /docs/blueprint/14-design-system.md
   ⚠️ Exact hex values are a best-effort match to the verbal brand brief
-  (deep blue primary / bright blue secondary / modern grays) — re-validate
-  against the real Growth Link logo file once provided, no logo asset exists
-  in this repo yet (public/ only has stock Next.js icons).
+  (deep blue primary / violet accent / modern grays) — re-validate against
+  the real Growth Link logo file once provided, no logo asset exists in this
+  repo yet (public/ only has stock Next.js icons).
 */
 
 @theme {
@@ -23,17 +23,20 @@
   --color-primary-900: #101d42;
   --color-primary-950: #0a122c;
 
-  /* Accent — bright blue (secondary, used for primary actions/links/focus) */
-  --color-accent-50: #eff4ff;
-  --color-accent-100: #dce7ff;
-  --color-accent-200: #bad1ff;
-  --color-accent-300: #8fb4ff;
-  --color-accent-400: #5a8cff;
-  --color-accent-500: #2e64f5;
-  --color-accent-600: #1c4cdb;
-  --color-accent-700: #163cad;
-  --color-accent-800: #132f86;
-  --color-accent-900: #12296c;
+  /* Accent — violet brand color (2026-07-09: replaces the original bright-blue
+     accent at the user's explicit request, superseding the earlier decision
+     recorded in docs/blueprint/14-design-system.md §2 to keep blue and only
+     change shape). Derived from #6C63FF at 500. */
+  --color-accent-50: #f1f0ff;
+  --color-accent-100: #e4e2ff;
+  --color-accent-200: #cbc7ff;
+  --color-accent-300: #ada5ff;
+  --color-accent-400: #8d82ff;
+  --color-accent-500: #6c63ff;
+  --color-accent-600: #574dde;
+  --color-accent-700: #453db3;
+  --color-accent-800: #363089;
+  --color-accent-900: #2b2870;
 
   /* Neutral — cool modern gray */
   --color-neutral-0: #ffffff;

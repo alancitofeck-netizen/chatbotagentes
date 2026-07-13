@@ -97,6 +97,10 @@ export interface MessageItem {
   type: string;
   status: string | null;
   createdAt: string;
+  /** Populated from content.error.message when YCloud reports a delivery
+   * failure via `whatsapp.message.updated` (src/app/api/webhooks/ycloud/route.ts's
+   * processMessageStatusUpdate) — null for every message that never failed. */
+  errorReason: string | null;
 }
 
 export interface ConversationDetail {
@@ -161,15 +165,19 @@ export async function getConversationDetail(
       company: contact.company as string | null,
       avatarUrl: contact.avatar_url as string | null,
     },
-    messages: (messages ?? []).map((m) => ({
-      id: m.id as string,
-      direction: m.direction as "inbound" | "outbound",
-      senderType: m.sender_type as string,
-      body: (m.content as { body?: string } | null)?.body ?? `[${m.type as string}]`,
-      type: m.type as string,
-      status: m.status as string | null,
-      createdAt: m.created_at as string,
-    })),
+    messages: (messages ?? []).map((m) => {
+      const content = m.content as { body?: string; error?: { message?: string } } | null;
+      return {
+        id: m.id as string,
+        direction: m.direction as "inbound" | "outbound",
+        senderType: m.sender_type as string,
+        body: content?.body ?? `[${m.type as string}]`,
+        type: m.type as string,
+        status: m.status as string | null,
+        createdAt: m.created_at as string,
+        errorReason: content?.error?.message ?? null,
+      };
+    }),
     notes: (notes ?? []).map((n) => ({
       id: n.id as string,
       body: n.body as string,

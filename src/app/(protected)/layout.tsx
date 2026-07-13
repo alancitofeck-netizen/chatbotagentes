@@ -32,15 +32,10 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   const enabledModules = (modules ?? []).map((m) => m.module_key as string);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar enabledModules={enabledModules} />
+    <div className="flex h-screen overflow-hidden bg-surface-2">
+      <Sidebar enabledModules={enabledModules} userName={userName} userEmail={user.email ?? ""} />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Navbar
-          workspaceName={activeWorkspace.name}
-          userName={userName}
-          userEmail={user.email ?? ""}
-          enabledModules={enabledModules}
-        />
+        <Navbar workspaceName={activeWorkspace.name} enabledModules={enabledModules} />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>

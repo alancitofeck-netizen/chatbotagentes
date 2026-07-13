@@ -30,6 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local diagnostic/server logs — have contained leaked credentials before
+# (a Supabase access token ended up in gcm-diagnose.log), never commit these
+gcm-*.log
+
 # env files (can opt-in for committing if needed)
 .env*
 

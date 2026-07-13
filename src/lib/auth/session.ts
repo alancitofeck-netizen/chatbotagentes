@@ -64,6 +64,15 @@ export async function isWorkspaceMember(userId: string, workspaceId: string) {
   return Boolean(data);
 }
 
+/** Redirect-free core of requireActiveWorkspace — used by Route Handlers
+ * (e.g. src/app/api/messages/send/route.ts), where a `redirect()` would be
+ * wrong (an API route must return a JSON 401/403, not an HTTP redirect). */
+export async function getActiveWorkspaceForUser(userId: string): Promise<WorkspaceMembership | null> {
+  const workspaces = await getUserWorkspaces(userId);
+  const activeWorkspaceId = await getActiveWorkspaceCookie();
+  return workspaces.find((w) => w.workspaceId === activeWorkspaceId) ?? null;
+}
+
 /**
  * For pages under (protected)/ that need to know *which* workspace to query.
  * The layout already redirects to /select-workspace if the cookie is missing
@@ -72,9 +81,7 @@ export async function isWorkspaceMember(userId: string, workspaceId: string) {
  */
 export async function requireActiveWorkspace(): Promise<WorkspaceMembership> {
   const user = await requireUser();
-  const workspaces = await getUserWorkspaces(user.id);
-  const activeWorkspaceId = await getActiveWorkspaceCookie();
-  const active = workspaces.find((w) => w.workspaceId === activeWorkspaceId);
+  const active = await getActiveWorkspaceForUser(user.id);
   if (!active) redirect("/select-workspace");
   return active;
 }

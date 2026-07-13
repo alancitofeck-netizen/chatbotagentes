@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import {
-  Area,
-  AreaChart,
+  Bar,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,13 +20,6 @@ const RANGES: { value: ChartRange; label: string }[] = [
   { value: "7d", label: "7 días" },
   { value: "30d", label: "30 días" },
   { value: "90d", label: "90 días" },
-];
-
-const SERIES = [
-  { key: "mensajes" as const, label: "Mensajes", color: "var(--color-accent-500)" },
-  { key: "leads" as const, label: "Leads", color: "var(--color-primary-500)" },
-  { key: "reuniones" as const, label: "Reuniones", color: "var(--color-success)" },
-  { key: "ventas" as const, label: "Ventas", color: "var(--color-warning)" },
 ];
 
 export function ActivityChart({ initialData }: { initialData: ActivityPoint[] }) {
@@ -45,7 +39,7 @@ export function ActivityChart({ initialData }: { initialData: ActivityPoint[] })
   return (
     <Card>
       <CardHeader
-        title="Actividad"
+        title="Revenue Analytics"
         action={
           <div role="group" aria-label="Rango de fechas" className="flex gap-1 rounded-full bg-surface-2 p-1">
             {RANGES.map((r) => (
@@ -67,14 +61,12 @@ export function ActivityChart({ initialData }: { initialData: ActivityPoint[] })
 
       <div className={`h-[280px] transition-opacity ${isPending ? "opacity-50" : "opacity-100"}`}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
             <defs>
-              {SERIES.map((s) => (
-                <linearGradient key={s.key} id={`fill-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={s.color} stopOpacity={0.35} />
-                  <stop offset="100%" stopColor={s.color} stopOpacity={0} />
-                </linearGradient>
-              ))}
+              <linearGradient id="fill-ventas" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-accent-500)" stopOpacity={0.9} />
+                <stop offset="100%" stopColor="var(--color-accent-300)" stopOpacity={0.5} />
+              </linearGradient>
             </defs>
             <CartesianGrid vertical={false} stroke="var(--border-default)" />
             <XAxis
@@ -94,28 +86,28 @@ export function ActivityChart({ initialData }: { initialData: ActivityPoint[] })
                 boxShadow: "var(--elevation-md)",
               }}
             />
-            {SERIES.map((s) => (
-              <Area
-                key={s.key}
-                type="monotone"
-                dataKey={s.key}
-                name={s.label}
-                stroke={s.color}
-                strokeWidth={2}
-                fill={`url(#fill-${s.key})`}
-              />
-            ))}
-          </AreaChart>
+            <Bar dataKey="ventas" name="Ventas" fill="url(#fill-ventas)" radius={[6, 6, 6, 6]} maxBarSize={28} />
+            <Line
+              type="monotone"
+              dataKey="leads"
+              name="Leads"
+              stroke="var(--color-primary-500)"
+              strokeWidth={2}
+              dot={false}
+            />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
       <div className="mt-2 flex flex-wrap gap-4">
-        {SERIES.map((s) => (
-          <span key={s.key} className="flex items-center gap-1.5 text-xs text-neutral-500">
-            <span className="size-2 rounded-full" style={{ background: s.color }} />
-            {s.label}
-          </span>
-        ))}
+        <span className="flex items-center gap-1.5 text-xs text-neutral-500">
+          <span className="size-2 rounded-full" style={{ background: "var(--color-accent-500)" }} />
+          Ventas
+        </span>
+        <span className="flex items-center gap-1.5 text-xs text-neutral-500">
+          <span className="size-2 rounded-full" style={{ background: "var(--color-primary-500)" }} />
+          Leads
+        </span>
       </div>
     </Card>
   );

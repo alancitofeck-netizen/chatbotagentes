@@ -3,10 +3,16 @@
 import { useRef } from "react";
 import { LogOut, User } from "lucide-react";
 import { signOut } from "@/app/(protected)/actions";
+import { cn } from "@/lib/utils/cn";
 
 interface UserMenuProps {
   name: string;
   email: string;
+  /** "navbar" (default): dropdown opens below, anchored right — original
+   * placement. "sidebar": trigger sits at the foot of the icon dock
+   * (Sidebar.tsx), dropdown opens upward and to the right instead, since
+   * there's no room below/to the left inside the dock. */
+  variant?: "navbar" | "sidebar";
 }
 
 function initialsFrom(name: string, email: string) {
@@ -19,8 +25,9 @@ function initialsFrom(name: string, email: string) {
     .join("");
 }
 
-export function UserMenu({ name, email }: UserMenuProps) {
+export function UserMenu({ name, email, variant = "navbar" }: UserMenuProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const isSidebar = variant === "sidebar";
 
   return (
     <details ref={detailsRef} className="group relative">
@@ -28,12 +35,22 @@ export function UserMenu({ name, email }: UserMenuProps) {
         className="flex cursor-pointer list-none items-center gap-2 rounded-full outline-none focus-visible:outline-2 focus-visible:outline-accent-500 focus-visible:outline-offset-2"
         aria-label="Menú de perfil"
       >
-        <span className="flex size-8 items-center justify-center rounded-full bg-primary-600 text-xs font-semibold text-white">
+        <span
+          className={cn(
+            "flex size-8 items-center justify-center rounded-full text-xs font-semibold text-white",
+            isSidebar ? "bg-accent-500" : "bg-primary-600",
+          )}
+        >
           {initialsFrom(name, email) || <User className="size-4" aria-hidden="true" />}
         </span>
       </summary>
 
-      <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-border-default bg-surface-1 p-1.5 shadow-[var(--elevation-md)]">
+      <div
+        className={cn(
+          "absolute z-20 w-56 rounded-md border border-border-default bg-surface-1 p-1.5 shadow-[var(--elevation-md)]",
+          isSidebar ? "bottom-0 left-full ml-2" : "right-0 mt-2",
+        )}
+      >
         <div className="flex flex-col px-2.5 py-2">
           <span className="truncate text-sm font-medium text-foreground">{name || "Tu cuenta"}</span>
           <span className="truncate text-xs text-neutral-500">{email}</span>

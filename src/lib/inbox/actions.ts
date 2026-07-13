@@ -94,5 +94,32 @@ export async function toggleContactTag(contactId: string, tagId: string, enabled
     await supabase.from("contact_tags").delete().eq("contact_id", contactId).eq("tag_id", tagId);
   }
 
+  // Tags are shared between Inbox/Contactos and the CRM board (they live on the
+  // contact, not a per-module table) — revalidate both consumers.
   revalidatePath("/inbox");
+  revalidatePath("/crm");
+}
+
+/** No tag-creation UI existed anywhere before the CRM board redesign — tags
+ * could only be toggled if they already existed. Shared here (not duplicated
+ * in crm/actions.ts) since tags are a core concept reused across modules. */
+export async function createWorkspaceTag(name: string, color: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (!name.trim()) throw new Error("El nombre de la etiqueta es obligatorio.");
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("tags")
+    .insert({ workspace_id: workspaceId, name: name.trim(), color })
+    .select("id, name, color")
+    .single();
+
+  if (error || !data) {
+    if (error?.code === "23505") throw new Error("Ya existe una etiqueta con ese nombre.");
+    throw new Error("No se pudo crear la etiqueta.");
+  }
+
+  revalidatePath("/inbox");
+  revalidatePath("/crm");
+  return { id: data.id as string, name: data.name as string, color: data.color as string };
 }

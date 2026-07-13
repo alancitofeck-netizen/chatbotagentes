@@ -292,3 +292,69 @@ export async function getPendingTasks(workspaceId: string, limit = 6): Promise<P
 
   return (data ?? []).map((t) => ({ id: t.id as string, title: t.title as string, dueAt: t.due_at as string | null }));
 }
+
+export interface LeadSource {
+  source: string;
+  count: number;
+}
+
+/** Same "group in JS, no new table" approach as getCompanyGroups
+ * (src/lib/contacts/queries.ts) — contacts.source is free text, no need for
+ * a dedicated aggregate query/view. */
+export async function getLeadsBySource(workspaceId: string): Promise<LeadSource[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contacts")
+    .select("source")
+    .eq("workspace_id", workspaceId)
+    .not("source", "is", null)
+    .neq("source", "");
+
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    const source = (row.source as string).trim();
+    if (!source) continue;
+    counts.set(source, (counts.get(source) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .map(([source, count]) => ({ source, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export interface TopOpportunity {
+  id: string;
+  title: string;
+  value: number;
+  currency: string;
+  contactName: string;
+  stageName: string | null;
+}
+
+export async function getTopOpportunities(workspaceId: string, limit = 5): Promise<TopOpportunity[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("opportunities")
+    .select("id, title, value, currency, contacts(name), pipeline_item_id, pipeline_items(stage_id, pipeline_stages(name))")
+    .eq("workspace_id", workspaceId)
+    .order("value", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []).map((row) => {
+    const contact = Array.isArray(row.contacts) ? row.contacts[0] : row.contacts;
+    const pipelineItem = Array.isArray(row.pipeline_items) ? row.pipeline_items[0] : row.pipeline_items;
+    const stage = pipelineItem
+      ? Array.isArray(pipelineItem.pipeline_stages)
+        ? pipelineItem.pipeline_stages[0]
+        : pipelineItem.pipeline_stages
+      : null;
+    return {
+      id: row.id as string,
+      title: row.title as string,
+      value: Number(row.value ?? 0),
+      currency: row.currency as string,
+      contactName: contact?.name ?? "Sin nombre",
+      stageName: stage?.name ?? null,
+    };
+  });
+}

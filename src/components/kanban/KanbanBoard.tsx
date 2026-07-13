@@ -7,6 +7,7 @@ import {
   DragOverlay,
   PointerSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
   useDroppable,
@@ -14,7 +15,8 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 
 export interface KanbanStage {
   id: string;
@@ -36,45 +38,140 @@ function Column<T extends KanbanCardBase>({
   cards,
   isWon,
   isLost,
+  valueLabel,
   renderCard,
   onOpenCard,
   footer,
+  width,
 }: {
   stageId: string;
   name: string;
   cards: T[];
   isWon?: boolean;
   isLost?: boolean;
+  valueLabel?: string;
   renderCard: (card: T, onOpen: () => void) => ReactNode;
   onOpenCard: (card: T) => void;
   footer?: ReactNode;
+  width?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stageId });
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="flex w-[280px] shrink-0 flex-col gap-3">
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
+    <div className={`flex ${width ?? "w-[280px]"} min-h-0 shrink-0 flex-col gap-3`}>
+      <div className="flex shrink-0 items-center justify-between px-1">
+        <div className="flex min-w-0 items-center gap-2">
           <span
-            className={`size-1.5 rounded-full ${isWon ? "bg-success" : isLost ? "bg-error" : "bg-accent-500"}`}
+            className={`size-1.5 shrink-0 rounded-full ${isWon ? "bg-success" : isLost ? "bg-error" : "bg-accent-500"}`}
           />
-          <span className="text-[13px] font-medium text-foreground">{name}</span>
-          <span className="text-xs text-neutral-400">{cards.length}</span>
+          <span className="truncate text-[13px] font-medium text-foreground">{name}</span>
+          <span className="shrink-0 text-xs text-neutral-400">{cards.length}</span>
         </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="shrink-0 text-neutral-400 hover:text-foreground"
+          title={collapsed ? "Expandir" : "Contraer"}
+        >
+          {collapsed ? <ChevronRight className="size-3.5" aria-hidden="true" /> : <ChevronDown className="size-3.5" aria-hidden="true" />}
+        </button>
       </div>
+      {valueLabel && !collapsed && <p className="shrink-0 px-1 -mt-2 font-mono text-xs text-neutral-500">{valueLabel}</p>}
       <div
         ref={setNodeRef}
-        className={`flex min-h-[120px] flex-1 flex-col gap-2 rounded-lg p-2 transition-colors ${
-          isOver ? "bg-accent-50" : "bg-surface-2"
-        }`}
+        className={
+          collapsed
+            ? "rounded-lg bg-surface-2 p-2"
+            : `min-h-0 flex-1 overflow-y-auto rounded-lg p-2 transition-colors ${isOver ? "bg-accent-50" : "bg-surface-2"}`
+        }
       >
-        <SortableContext items={cards.map((c) => c.pipelineItemId)} strategy={verticalListSortingStrategy}>
-          {cards.map((card) => (
-            <div key={card.pipelineItemId}>{renderCard(card, () => onOpenCard(card))}</div>
-          ))}
-        </SortableContext>
+        {!collapsed && (
+          <SortableContext items={cards.map((c) => c.pipelineItemId)} strategy={verticalListSortingStrategy}>
+            <div className="flex flex-col gap-2">
+              {cards.map((card) => (
+                <div key={card.pipelineItemId}>{renderCard(card, () => onOpenCard(card))}</div>
+              ))}
+            </div>
+          </SortableContext>
+        )}
       </div>
-      {footer}
+      {!collapsed && footer}
+    </div>
+  );
+}
+
+/** Same stage semantics as Column, laid out as a full-width horizontal band
+ * instead of a vertical strip — each stage stacks on top of the next (page
+ * scrolls down to see more stages) and its own cards scroll horizontally.
+ * Used by the CRM board (`orientation="rows"`) so the whole board reads
+ * top-to-bottom like the rest of the app instead of being confined to a
+ * cramped horizontally-scrolling strip. ATS keeps the original Column layout. */
+function Row<T extends KanbanCardBase>({
+  stageId,
+  name,
+  cards,
+  isWon,
+  isLost,
+  valueLabel,
+  renderCard,
+  onOpenCard,
+  footer,
+  cardWidth,
+}: {
+  stageId: string;
+  name: string;
+  cards: T[];
+  isWon?: boolean;
+  isLost?: boolean;
+  valueLabel?: string;
+  renderCard: (card: T, onOpen: () => void) => ReactNode;
+  onOpenCard: (card: T) => void;
+  footer?: ReactNode;
+  cardWidth?: string;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: stageId });
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-surface-1 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={`size-1.5 shrink-0 rounded-full ${isWon ? "bg-success" : isLost ? "bg-error" : "bg-accent-500"}`}
+          />
+          <span className="truncate text-[13px] font-medium text-foreground">{name}</span>
+          <span className="shrink-0 text-xs text-neutral-400">{cards.length}</span>
+          {valueLabel && <span className="shrink-0 font-mono text-xs text-neutral-500">· {valueLabel}</span>}
+        </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="shrink-0 text-neutral-400 hover:text-foreground"
+          title={collapsed ? "Expandir" : "Contraer"}
+        >
+          {collapsed ? <ChevronDown className="size-3.5" aria-hidden="true" /> : <ChevronUp className="size-3.5" aria-hidden="true" />}
+        </button>
+      </div>
+      {!collapsed && (
+        <div
+          ref={setNodeRef}
+          className={`flex min-h-[76px] items-center gap-3 overflow-x-auto rounded-lg p-2 transition-colors ${isOver ? "bg-accent-50" : "bg-surface-2"}`}
+        >
+          <SortableContext items={cards.map((c) => c.pipelineItemId)} strategy={horizontalListSortingStrategy}>
+            {cards.length === 0 ? (
+              <p className="p-3 text-xs text-neutral-400">Sin tarjetas en esta etapa.</p>
+            ) : (
+              cards.map((card) => (
+                <div key={card.pipelineItemId} className={`shrink-0 ${cardWidth ?? "w-[280px]"}`}>
+                  {renderCard(card, () => onOpenCard(card))}
+                </div>
+              ))
+            )}
+          </SortableContext>
+        </div>
+      )}
+      {!collapsed && footer}
     </div>
   );
 }
@@ -92,6 +189,10 @@ export function KanbanBoard<T extends KanbanCardBase>({
   onOpenCard,
   onMove,
   columnFooter,
+  columnValueLabel,
+  columnWidth,
+  orientation = "columns",
+  cardWidth,
 }: {
   stages: KanbanStage[];
   initialCardsByStage: Record<string, T[]>;
@@ -99,6 +200,14 @@ export function KanbanBoard<T extends KanbanCardBase>({
   onOpenCard: (card: T) => void;
   onMove: (pipelineItemId: string, stageId: string, position: number) => void;
   columnFooter?: (cards: T[]) => ReactNode;
+  columnValueLabel?: (cards: T[]) => string | undefined;
+  columnWidth?: string;
+  /** "columns" (default, used by ATS): stages side-by-side, board itself scrolls horizontally.
+   * "rows" (used by the CRM board): stages stacked top-to-bottom, each stage's own cards
+   * scroll horizontally — avoids confining the whole board to a small horizontally-scrolling
+   * strip; the page scrolls down naturally to reveal more stages instead. */
+  orientation?: "columns" | "rows";
+  cardWidth?: string;
 }) {
   const [columns, setColumns] = useState(initialCardsByStage);
   const [activeCard, setActiveCard] = useState<T | null>(null);
@@ -170,26 +279,53 @@ export function KanbanBoard<T extends KanbanCardBase>({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      // closestCorners compares the dragged card's corners against every droppable's
+      // corners — great for "columns" mode (each column is a tall, similarly-sized
+      // box), but unreliable in "rows" mode: an empty stage's row is a short strip
+      // next to much taller stacks, so its corners are rarely "closest" even when the
+      // pointer is directly over it. pointerWithin (literal pointer-in-rect) fixes that.
+      collisionDetection={orientation === "rows" ? pointerWithin : closestCorners}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-1 gap-4 overflow-x-auto px-4 pb-4 sm:px-6 lg:px-8">
-        {stages.map((stage) => (
-          <Column
-            key={stage.id}
-            stageId={stage.id}
-            name={stage.name}
-            cards={columns[stage.id] ?? []}
-            isWon={stage.isWon}
-            isLost={stage.isLost}
-            renderCard={renderCard}
-            onOpenCard={onOpenCard}
-            footer={columnFooter?.(columns[stage.id] ?? [])}
-          />
-        ))}
-      </div>
+      {orientation === "rows" ? (
+        <div className="flex flex-col gap-3 px-4 pb-4 sm:px-6 lg:px-8">
+          {stages.map((stage) => (
+            <Row
+              key={stage.id}
+              stageId={stage.id}
+              name={stage.name}
+              cards={columns[stage.id] ?? []}
+              isWon={stage.isWon}
+              isLost={stage.isLost}
+              renderCard={renderCard}
+              onOpenCard={onOpenCard}
+              footer={columnFooter?.(columns[stage.id] ?? [])}
+              valueLabel={columnValueLabel?.(columns[stage.id] ?? [])}
+              cardWidth={cardWidth}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex h-full min-h-0 flex-1 gap-4 overflow-x-auto px-4 pb-4 sm:px-6 lg:px-8">
+          {stages.map((stage) => (
+            <Column
+              key={stage.id}
+              stageId={stage.id}
+              name={stage.name}
+              cards={columns[stage.id] ?? []}
+              isWon={stage.isWon}
+              isLost={stage.isLost}
+              renderCard={renderCard}
+              onOpenCard={onOpenCard}
+              footer={columnFooter?.(columns[stage.id] ?? [])}
+              valueLabel={columnValueLabel?.(columns[stage.id] ?? [])}
+              width={columnWidth}
+            />
+          ))}
+        </div>
+      )}
       <DragOverlay>{activeCard && renderCard(activeCard, () => {})}</DragOverlay>
     </DndContext>
   );
