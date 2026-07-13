@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireActiveWorkspace } from "@/lib/auth/session";
+import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import {
   getConversationDetail,
   getConversationList,
@@ -12,7 +12,25 @@ import {
 
 export async function getConversationListAction(filters: { status?: string; search?: string }) {
   const { workspaceId } = await requireActiveWorkspace();
-  return getConversationList(workspaceId, filters);
+  const memberId = await getCurrentMemberId(workspaceId);
+  return getConversationList(workspaceId, filters, memberId);
+}
+
+/** Upserts this agent's own read-state row (conversation_reads,
+ * supabase/migrations/0014_conversation_reads.sql) — fire-and-forget from the
+ * client whenever a conversation is opened, so unread counts clear and stay
+ * cleared across reloads. RLS only lets an agent write their own member_id
+ * row, enforced at the DB level regardless of what's passed here. */
+export async function markConversationRead(conversationId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  if (!memberId) return;
+
+  const supabase = await createClient();
+  await supabase.from("conversation_reads").upsert(
+    { conversation_id: conversationId, workspace_id: workspaceId, member_id: memberId, last_read_at: new Date().toISOString() },
+    { onConflict: "conversation_id,member_id" },
+  );
 }
 
 export async function getConversationDetailAction(conversationId: string) {

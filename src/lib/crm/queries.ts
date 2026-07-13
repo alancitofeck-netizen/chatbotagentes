@@ -420,3 +420,25 @@ export async function getOpportunityDetail(
     })),
   };
 }
+
+export interface OpportunityOption {
+  id: string;
+  label: string;
+}
+
+/** Lightweight options for the calendar event form's "Relacionar con >
+ * Oportunidad" select — same shape/purpose as getContactOptions/
+ * getConversationOptions in src/lib/tasks/queries.ts. */
+export async function getOpportunityOptions(workspaceId: string): Promise<OpportunityOption[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("opportunities")
+    .select("id, title, contacts(name)")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((o) => {
+    const contact = Array.isArray(o.contacts) ? o.contacts[0] : o.contacts;
+    return { id: o.id as string, label: contact ? `${o.title as string} — ${contact.name as string}` : (o.title as string) };
+  });
+}

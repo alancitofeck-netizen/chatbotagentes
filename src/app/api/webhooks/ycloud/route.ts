@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { normalizeE164, resolveWorkspaceIdForYCloudAccount } from "@/lib/integrations/ycloud";
 
 /**
  * YCloud (WhatsApp Business API) webhook receiver.
@@ -83,47 +84,6 @@ interface YCloudWebhookEnvelope {
   };
 }
 
-/** contacts.phone / integration_connections.external_account_id are matched
- * as YCloud sends them (`from` is documented as "sin '+'"), but every phone
- * created elsewhere in this app (contacts UI, CRM lead form, seed data) is
- * E.164 with a leading '+' — normalize so the same real person doesn't end
- * up as two different `contacts` rows depending on which path created them. */
-function normalizePhone(raw: string): string {
-  const trimmed = raw.trim();
-  return trimmed.startsWith("+") ? trimmed : `+${trimmed}`;
-}
-
-/** Strips everything but digits so a phone-like identifier compares equal
- * regardless of a leading '+', spaces, or dashes — YCloud's docs say `to`
- * arrives without '+', but the value stored in `integration_connections` may
- * have been entered with one (e.g. copied from a dashboard). Comparing exact
- * strings would silently drop every real message on a formatting mismatch. */
-function digitsOnly(value: string): string {
-  return value.replace(/[^0-9]/g, "");
-}
-
-/**
- * Resolves the receiving workspace from `integration_connections`, keyed by
- * the RECEIVING number (`to`), never the sender (`from`) — docs/blueprint/
- * 04-inbox.md and 12-security-audit.md #1 are explicit this is the one place
- * an application bug (not RLS) could leak conversations across tenants.
- */
-async function resolveWorkspaceId(
-  supabase: ReturnType<typeof createServiceRoleClient>,
-  externalAccountId: string,
-): Promise<string | null> {
-  const { data } = await supabase
-    .from("integration_connections")
-    .select("workspace_id, external_account_id")
-    .eq("provider", "ycloud")
-    .eq("status", "active");
-
-  const target = digitsOnly(externalAccountId);
-  const match = (data ?? []).find((row) => digitsOnly(row.external_account_id as string) === target);
-
-  return (match?.workspace_id as string | undefined) ?? null;
-}
-
 async function processInboundMessage(
   supabase: ReturnType<typeof createServiceRoleClient>,
   msg: NonNullable<YCloudWebhookEnvelope["whatsappInboundMessage"]>,
@@ -133,7 +93,7 @@ async function processInboundMessage(
     return;
   }
 
-  const workspaceId = await resolveWorkspaceId(supabase, msg.to);
+  const workspaceId = await resolveWorkspaceIdForYCloudAccount(supabase, msg.to);
   if (!workspaceId) {
     console.error(
       `[ycloud-webhook] no integration_connections row for provider='ycloud', external_account_id='${msg.to}' — ` +
@@ -169,7 +129,7 @@ async function processInboundMessage(
     }
   }
 
-  const phone = normalizePhone(msg.from);
+  const phone = normalizeE164(msg.from);
   const profileName = msg.fromName?.trim() || msg.profile?.name?.trim() || msg.contact?.name?.trim();
   const messageBody = msg.text?.body ?? "";
 
@@ -305,7 +265,7 @@ async function processMessageStatusUpdate(
     return;
   }
 
-  const workspaceId = await resolveWorkspaceId(supabase, msg.from);
+  const workspaceId = await resolveWorkspaceIdForYCloudAccount(supabase, msg.from);
   if (!workspaceId) {
     console.error(
       `[ycloud-webhook] no integration_connections row for provider='ycloud', external_account_id='${msg.from}' — ` +

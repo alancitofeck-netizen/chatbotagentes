@@ -85,3 +85,21 @@ export async function requireActiveWorkspace(): Promise<WorkspaceMembership> {
   if (!active) redirect("/select-workspace");
   return active;
 }
+
+/** Resolves the current user's own workspace_members.id (distinct from
+ * auth.users.id) within a given workspace — needed anywhere RLS/ownership is
+ * scoped by member_id rather than user_id (e.g. conversation_reads). Same
+ * lookup previously done ad-hoc in src/app/api/messages/send/route.ts,
+ * centralized here since src/lib/inbox/actions.ts needs it too. */
+export async function getCurrentMemberId(workspaceId: string): Promise<string | null> {
+  const user = await getUser();
+  if (!user) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("workspace_members")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return (data?.id as string | undefined) ?? null;
+}

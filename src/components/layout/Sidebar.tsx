@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import {
   BookUser,
   CalendarDays,
+  Folder,
   Inbox,
   Kanban,
   LayoutDashboard,
-  Settings,
   ShieldCheck,
   SquareUser,
   Workflow,
@@ -34,11 +34,11 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     { label: "Inbox", href: "/inbox", icon: Inbox, comingSoon: false },
     { label: "Contactos", href: "/contacts", icon: BookUser, comingSoon: false },
     { label: "Calendario", href: "/calendar", icon: CalendarDays, comingSoon: false },
+    { label: "Documentos", href: "/documents", icon: Folder, comingSoon: false },
     { label: "CRM", href: "/crm", icon: Kanban, comingSoon: !enabledModules.has("crm") },
     { label: "ATS", href: "/ats", icon: SquareUser, comingSoon: !enabledModules.has("ats") },
     { label: "Asesores", href: "/advisors", icon: ShieldCheck, comingSoon: !enabledModules.has("advisors") },
     { label: "Automatizaciones", href: "/automations", icon: Workflow },
-    { label: "Configuración", href: "/settings", icon: Settings },
   ];
 }
 

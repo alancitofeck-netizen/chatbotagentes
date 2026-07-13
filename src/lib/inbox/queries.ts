@@ -19,13 +19,23 @@ export interface ConversationListItem {
   status: string;
   assignedMemberId: string | null;
   tags: ConversationTag[];
+  /** Count of inbound messages after this agent's own last_read_at
+   * (conversation_reads, supabase/migrations/0014_conversation_reads.sql) —
+   * or every inbound message if this agent never opened the conversation.
+   * Per-agent, not a global unread flag: each agent has their own count. */
+  unreadCount: number;
 }
 
 /** Same last-message-preview pattern as getRecentConversations (src/lib/dashboard/queries.ts),
- * extended with status/search filters, assignment, and tags for the full Inbox list. */
+ * extended with status/search filters, assignment, tags, and per-agent unread
+ * counts for the full Inbox list. `currentMemberId` is optional so existing
+ * callers that don't care about unread state (there are none today, but this
+ * keeps the function from hard-requiring it) still work — unreadCount is 0
+ * without it. */
 export async function getConversationList(
   workspaceId: string,
   filters: { status?: string; search?: string } = {},
+  currentMemberId?: string | null,
 ): Promise<ConversationListItem[]> {
   const supabase = await createClient();
 
@@ -44,7 +54,7 @@ export async function getConversationList(
   let query = supabase
     .from("conversations")
     .select(
-      "id, status, last_message_at, assigned_user_id, contact_id, contacts(id, name, phone, company, avatar_url), messages(content, created_at, type)",
+      "id, status, last_message_at, assigned_user_id, contact_id, contacts(id, name, phone, company, avatar_url), messages(direction, content, created_at, type)",
     )
     .eq("workspace_id", workspaceId)
     .order("last_message_at", { ascending: false, nullsFirst: false });
@@ -55,10 +65,20 @@ export async function getConversationList(
   const { data } = await query;
   const conversations = data ?? [];
   const contactIds = conversations.map((c) => c.contact_id as string);
+  const conversationIds = conversations.map((c) => c.id as string);
 
-  const { data: tagRows } = contactIds.length
-    ? await supabase.from("contact_tags").select("contact_id, tags(id, name, color)").in("contact_id", contactIds)
-    : { data: [] };
+  const [{ data: tagRows }, { data: readRows }] = await Promise.all([
+    contactIds.length
+      ? supabase.from("contact_tags").select("contact_id, tags(id, name, color)").in("contact_id", contactIds)
+      : Promise.resolve({ data: [] }),
+    currentMemberId && conversationIds.length
+      ? supabase
+          .from("conversation_reads")
+          .select("conversation_id, last_read_at")
+          .eq("member_id", currentMemberId)
+          .in("conversation_id", conversationIds)
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const tagsByContact = new Map<string, ConversationTag[]>();
   for (const row of tagRows ?? []) {
@@ -69,10 +89,22 @@ export async function getConversationList(
     tagsByContact.set(row.contact_id as string, list);
   }
 
+  const lastReadByConversation = new Map<string, string>();
+  for (const row of readRows ?? []) {
+    lastReadByConversation.set(row.conversation_id as string, row.last_read_at as string);
+  }
+
   return conversations.map((row) => {
     const contact = Array.isArray(row.contacts) ? row.contacts[0] : row.contacts;
-    const msgs = (row.messages ?? []) as { content: { body?: string }; created_at: string; type: string }[];
+    const msgs = (row.messages ?? []) as {
+      direction: string;
+      content: { body?: string };
+      created_at: string;
+      type: string;
+    }[];
     const last = msgs.length ? msgs.reduce((a, b) => (a.created_at > b.created_at ? a : b)) : null;
+    const lastReadAt = lastReadByConversation.get(row.id as string);
+    const unreadCount = msgs.filter((m) => m.direction === "inbound" && (!lastReadAt || m.created_at > lastReadAt)).length;
     return {
       id: row.id as string,
       contactId: row.contact_id as string,
@@ -85,6 +117,7 @@ export async function getConversationList(
       status: row.status as string,
       assignedMemberId: row.assigned_user_id as string | null,
       tags: tagsByContact.get(row.contact_id as string) ?? [],
+      unreadCount,
     };
   });
 }
@@ -114,6 +147,11 @@ export interface ConversationDetail {
     email: string | null;
     company: string | null;
     avatarUrl: string | null;
+    /** contacts.source (e.g. "whatsapp", "manual") — "de dónde vino el lead". */
+    source: string | null;
+    /** contacts.custom_fields.job_title — same field/pattern CRM's lead form
+     * already reads (src/lib/crm/queries.ts), no schema change needed. */
+    jobTitle: string | null;
   };
   messages: MessageItem[];
   notes: { id: string; body: string; createdAt: string }[];
@@ -128,7 +166,9 @@ export async function getConversationDetail(
 
   const { data: conv } = await supabase
     .from("conversations")
-    .select("id, status, assigned_user_id, contact_id, contacts(id, name, phone, email, company, avatar_url)")
+    .select(
+      "id, status, assigned_user_id, contact_id, contacts(id, name, phone, email, company, avatar_url, source, custom_fields)",
+    )
     .eq("workspace_id", workspaceId)
     .eq("id", conversationId)
     .maybeSingle();
@@ -164,6 +204,8 @@ export async function getConversationDetail(
       email: contact.email as string | null,
       company: contact.company as string | null,
       avatarUrl: contact.avatar_url as string | null,
+      source: contact.source as string | null,
+      jobTitle: ((contact.custom_fields as { job_title?: string } | null)?.job_title as string | undefined) ?? null,
     },
     messages: (messages ?? []).map((m) => {
       const content = m.content as { body?: string; error?: { message?: string } } | null;

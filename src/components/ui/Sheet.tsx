@@ -39,8 +39,14 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
         aria-modal="true"
         aria-label={typeof title === "string" ? title : undefined}
         className={cn(
-          "relative flex h-full w-full max-w-md flex-col bg-surface-1 shadow-[var(--elevation-lg)]",
-          className,
+          // `cn` here is a plain string join (no tailwind-merge in this
+          // project), so a caller-provided `className` can't reliably
+          // override a conflicting `max-w-*` already baked into the base
+          // classes — whichever utility Tailwind happens to emit later in
+          // the stylesheet would win, regardless of prop order. Only fall
+          // back to the default width when the caller didn't pass one.
+          "relative flex h-full w-full flex-col bg-surface-1 shadow-[var(--elevation-lg)]",
+          className ?? "max-w-md",
         )}
       >
         <div className="flex items-center justify-between border-b border-border-default px-5 py-4">

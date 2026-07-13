@@ -5,6 +5,7 @@ import { getActiveWorkspaceCookie } from "@/lib/auth/workspace-cookie";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
+import { ReminderWatcher } from "@/components/calendar/ReminderWatcher";
 
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -36,8 +37,9 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
       <Sidebar enabledModules={enabledModules} userName={userName} userEmail={user.email ?? ""} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar workspaceName={activeWorkspace.name} enabledModules={enabledModules} />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
       </div>
+      <ReminderWatcher />
     </div>
   );
 }

@@ -161,6 +161,18 @@ body {
   line-height: 20px;
 }
 
+/* Hide scrollbars everywhere (SaaS app-shell feel) — purely visual, never
+   removes scroll capability: wheel/trackpad/touch/keyboard scrolling and
+   programmatic scrollIntoView (e.g. Inbox's auto-scroll-to-bottom) are all
+   unaffected, this only suppresses the browser's own scrollbar chrome. */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and legacy Edge */
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, and other WebKit/Blink browsers */
+}
+
 /* Skeleton shimmer — src/components/ui/Skeleton.tsx */
 @keyframes shimmer {
   0% {

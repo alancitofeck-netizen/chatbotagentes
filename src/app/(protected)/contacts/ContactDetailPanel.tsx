@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { CalendarDays } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -10,9 +11,18 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/toast/toast";
 import type { ContactDetail } from "@/lib/contacts/queries";
 import type { WorkspaceTag } from "@/lib/inbox/queries";
+import type { CalendarEvent } from "@/lib/calendar/queries";
 import { addContactNote, updateContact } from "@/lib/contacts/actions";
 import { toggleContactTag } from "@/lib/inbox/actions";
+import { getContactEventsAction } from "@/lib/calendar/actions";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
+
+function formatEventDate(iso: string) {
+  return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
+}
+function formatEventTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+}
 
 const OPT_STATUS_OPTIONS = [
   { value: "unknown", label: "Desconocido" },
@@ -45,7 +55,17 @@ export function ContactDetailPanel({
   const [source, setSource] = useState(detail?.source ?? "");
   const [optStatus, setOptStatus] = useState(detail?.whatsappOptStatus ?? "unknown");
   const [noteBody, setNoteBody] = useState("");
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (tab !== "reuniones" || eventsLoaded || !detail) return;
+    getContactEventsAction(detail.id).then((fresh) => {
+      setEvents(fresh);
+      setEventsLoaded(true);
+    });
+  }, [tab, eventsLoaded, detail]);
 
   if (loading) {
     return (
@@ -111,6 +131,7 @@ export function ContactDetailPanel({
           <TabsList>
             <TabsTrigger value="resumen">Resumen</TabsTrigger>
             <TabsTrigger value="notas">Notas</TabsTrigger>
+            <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
             <TabsTrigger value="historial">Historial</TabsTrigger>
           </TabsList>
 
@@ -190,6 +211,33 @@ export function ContactDetailPanel({
                   </ul>
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="reuniones">
+              {!eventsLoaded ? (
+                <Skeleton className="h-16 w-full" />
+              ) : events.length === 0 ? (
+                <p className="text-sm text-neutral-500">Sin reuniones todavía.</p>
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {events.map((event) => {
+                    const isPast = new Date(event.endTime) < new Date();
+                    return (
+                      <li key={event.id} className="rounded-md bg-surface-2 p-3">
+                        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                          <CalendarDays size={14} aria-hidden="true" />
+                          {isPast ? "Reunión agendada" : "Próxima reunión"}
+                        </p>
+                        <p className="mt-1 text-sm text-foreground">{event.title}</p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          Fecha: {formatEventDate(event.startTime)} · Hora: {formatEventTime(event.startTime)}
+                          {event.assignedTo && ` · Responsable: ${event.assignedTo.fullName}`}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </TabsContent>
 
             <TabsContent value="historial">

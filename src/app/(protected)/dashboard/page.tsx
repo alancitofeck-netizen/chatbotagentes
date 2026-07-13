@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireUser, requireActiveWorkspace } from "@/lib/auth/session";
+import { getCurrentMemberId, requireUser, requireActiveWorkspace } from "@/lib/auth/session";
 import {
   getDashboardKpis,
   getActivitySeries,
@@ -8,10 +8,14 @@ import {
   getLeadsBySource,
   getTopOpportunities,
 } from "@/lib/dashboard/queries";
+import { getWorkspaceMembers } from "@/lib/inbox/queries";
+import { getContactOptions, getConversationOptions } from "@/lib/tasks/queries";
+import { getUpcomingEvents } from "@/lib/calendar/queries";
 import { KpiCards } from "./KpiCards";
 import { ActivityChart } from "./ActivityChart";
 import { RecentConversations } from "./RecentConversations";
 import { PendingTasks } from "./PendingTasks";
+import { UpcomingMeetings } from "./UpcomingMeetings";
 import { LeadsBySourceChart } from "./LeadsBySourceChart";
 import { AiAssistantWidget } from "./AiAssistantWidget";
 import { TopDeals } from "./TopDeals";
@@ -22,16 +26,33 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role } = await requireActiveWorkspace();
   const firstName = ((user.user_metadata?.full_name as string | undefined) ?? "").split(" ")[0];
 
-  const [kpis, activity, conversations, tasks, leadsBySource, topDeals] = await Promise.all([
+  const [
+    kpis,
+    activity,
+    conversations,
+    tasks,
+    leadsBySource,
+    topDeals,
+    ownMemberId,
+    members,
+    contactOptions,
+    conversationOptions,
+    upcomingEvents,
+  ] = await Promise.all([
     getDashboardKpis(workspaceId),
     getActivitySeries(workspaceId, "7d"),
     getRecentConversations(workspaceId),
     getPendingTasks(workspaceId),
     getLeadsBySource(workspaceId),
     getTopOpportunities(workspaceId),
+    getCurrentMemberId(workspaceId),
+    getWorkspaceMembers(workspaceId),
+    getContactOptions(workspaceId),
+    getConversationOptions(workspaceId),
+    getUpcomingEvents(workspaceId),
   ]);
 
   return (
@@ -50,11 +71,19 @@ export default async function DashboardPage() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <RecentConversations conversations={conversations} />
-            <PendingTasks tasks={tasks} />
+            <PendingTasks
+              tasks={tasks}
+              members={members}
+              contactOptions={contactOptions}
+              conversationOptions={conversationOptions}
+              canAssignOthers={role === "owner" || role === "admin"}
+              ownMemberId={ownMemberId}
+            />
           </div>
         </div>
 
         <div className="flex flex-col gap-6">
+          <UpcomingMeetings events={upcomingEvents} />
           <LeadsBySourceChart sources={leadsBySource} />
           <AiAssistantWidget />
           <TopDeals deals={topDeals} />

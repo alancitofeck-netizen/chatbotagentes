@@ -9,6 +9,16 @@ export function getMonday(date: Date): Date {
   return d;
 }
 
+/** Parses a "YYYY-MM-DD" string as a local-midnight Date. `new Date(str)`
+ * parses date-only strings as UTC midnight, which in negative-UTC-offset
+ * timezones (e.g. America/Argentina/Buenos_Aires, UTC-3) reads back one
+ * calendar day earlier once local getters (getDate/getMonth) are used —
+ * shifting week/month ranges off by a day. */
+export function parseLocalDate(value: string): Date {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 export function addDays(date: Date, days: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + days);

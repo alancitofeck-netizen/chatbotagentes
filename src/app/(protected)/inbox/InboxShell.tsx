@@ -4,24 +4,30 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Sheet } from "@/components/ui/Sheet";
 import type { ConversationDetail, ConversationListItem, WorkspaceMemberOption, WorkspaceTag } from "@/lib/inbox/queries";
-import { getConversationDetailAction, getConversationListAction } from "@/lib/inbox/actions";
-import { ConversationList } from "./ConversationList";
+import { getConversationDetailAction, getConversationListAction, markConversationRead } from "@/lib/inbox/actions";
+import { ConversationList, type InboxTab } from "./ConversationList";
 import { ConversationThread } from "./ConversationThread";
 import { ContactInfoPanel } from "./ContactInfoPanel";
 
 export function InboxShell({
   workspaceId,
+  currentMemberId,
   initialConversations,
   members,
   tags,
 }: {
   workspaceId: string;
+  currentMemberId: string | null;
   initialConversations: ConversationListItem[];
   members: WorkspaceMemberOption[];
   tags: WorkspaceTag[];
 }) {
   const [conversations, setConversations] = useState(initialConversations);
-  const [status, setStatus] = useState("");
+  // Tabs (Todas/No leídas/Asignadas/Cerradas) are filtered client-side over
+  // the same fetched list — only the text search still round-trips to the
+  // server (unchanged debounced pattern), since status is no longer the
+  // server-side filter dimension.
+  const [activeTab, setActiveTab] = useState<InboxTab>("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
@@ -32,12 +38,12 @@ export function InboxShell({
 
   function refetchList() {
     startTransition(async () => {
-      const fresh = await getConversationListAction({ status: status || undefined, search: search || undefined });
+      const fresh = await getConversationListAction({ search: search || undefined });
       setConversations(fresh);
     });
   }
 
-  // Re-run the list query whenever the status filter or (debounced) search changes.
+  // Re-run the list query whenever the (debounced) search changes.
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
     searchDebounce.current = setTimeout(() => {
@@ -47,7 +53,7 @@ export function InboxShell({
       if (searchDebounce.current) clearTimeout(searchDebounce.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, search]);
+  }, [search]);
 
   function loadDetail(id: string) {
     setSelectedId(id);
@@ -56,6 +62,9 @@ export function InboxShell({
       setDetail(d);
       setDetailLoading(false);
     });
+    // Optimistically clear the unread badge — don't wait for the round trip.
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)));
+    markConversationRead(id);
   }
 
   function refetchDetail() {
@@ -85,16 +94,18 @@ export function InboxShell({
   }, [workspaceId]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-surface-2">
       <ConversationList
         conversations={conversations}
         selectedId={selectedId}
         onSelect={loadDetail}
-        status={status}
-        onStatusChange={setStatus}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        currentMemberId={currentMemberId}
+        members={members}
         search={search}
         onSearchChange={setSearch}
-        className={selectedId ? "hidden w-full border-r lg:flex lg:w-[320px]" : "flex w-full border-r lg:w-[320px]"}
+        className={selectedId ? "hidden w-full border-r lg:flex lg:w-[360px]" : "flex w-full border-r lg:w-[360px]"}
       />
 
       <div className={selectedId ? "flex flex-1" : "hidden flex-1 lg:flex"}>
@@ -107,7 +118,7 @@ export function InboxShell({
         />
       </div>
 
-      <div className="hidden w-[320px] shrink-0 border-l border-border-default lg:block">
+      <div className="hidden w-[340px] shrink-0 border-l border-border-default lg:block">
         <ContactInfoPanel detail={detail} loading={detailLoading} members={members} tags={tags} onChanged={refetchDetail} />
       </div>
 

@@ -9,6 +9,7 @@ import type { ContactListItem } from "@/lib/contacts/queries";
 export interface PickedContact {
   id: string;
   name: string;
+  company?: string | null;
 }
 
 /** Lightweight search-and-pick combobox — no such primitive exists yet in
@@ -77,7 +78,7 @@ export function ContactPicker({
                   <button
                     type="button"
                     onClick={() => {
-                      onSelect({ id: c.id, name: c.name });
+                      onSelect({ id: c.id, name: c.name, company: c.company });
                       setQuery("");
                       setResults([]);
                       setOpen(false);

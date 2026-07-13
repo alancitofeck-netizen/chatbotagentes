@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getUser, getActiveWorkspaceForUser } from "@/lib/auth/session";
+import { getYCloudCredentials, normalizeE164 } from "@/lib/integrations/ycloud";
 
 /**
  * Outbound WhatsApp send, from the Inbox composer through YCloud.
@@ -14,6 +16,12 @@ import { getUser, getActiveWorkspaceForUser } from "@/lib/auth/session";
  *      here, not silently skipped — a message sent outside the 24h window
  *      without an approved template will be rejected by YCloud/WhatsApp
  *      itself for now, just not with a friendly in-app error yet.
+ *
+ * The YCloud API key is resolved per-workspace from Supabase Vault
+ * (src/lib/integrations/ycloud.ts's getYCloudCredentials) — no shared
+ * `process.env.YCLOUD_API_KEY` is read anymore. A workspace with no active
+ * `integration_connections` row for provider='ycloud' gets a clean
+ * `ycloud_not_configured` error instead of silently using someone else's key.
  *
  * Auth: this is a Route Handler, not a Server Action, so `requireActiveWorkspace()`
  * (which calls `redirect()` on failure) would be wrong here — an API route
@@ -82,20 +90,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "conversation_missing_business_number" }, { status: 422 });
   }
 
-  const apiKey = process.env.YCLOUD_API_KEY;
-  if (!apiKey) {
-    console.error("[messages/send] YCLOUD_API_KEY is not configured — cannot send.");
+  // Per-workspace credential, resolved from Supabase Vault via
+  // integration_connections (supabase/migrations/0012_whatsapp_integration_vault.sql,
+  // 0013_whatsapp_credentials_lookup.sql) — replaces the single shared
+  // `process.env.YCLOUD_API_KEY` every workspace used to read. The RPC that
+  // decrypts the secret is restricted to `service_role`, so this lookup
+  // requires the service-role client, not the request-scoped one used above
+  // for the (RLS-scoped, and therefore already workspace-safe) conversation lookup.
+  const credentials = await getYCloudCredentials(createServiceRoleClient(), active.workspaceId);
+  if (!credentials) {
+    console.error(`[messages/send] no active YCloud integration configured for workspace ${active.workspaceId}.`);
     return NextResponse.json({ error: "ycloud_not_configured" }, { status: 500 });
   }
 
-  const fromNumber = toE164(conversation.whatsapp_phone_number_id as string);
-  const toNumber = toE164(contactPhone);
+  const fromNumber = normalizeE164(conversation.whatsapp_phone_number_id as string);
+  const toNumber = normalizeE164(contactPhone);
 
   let ycloudMessage: { id?: string; wamid?: string; status?: string };
   try {
     const res = await fetch("https://api.ycloud.com/v2/whatsapp/messages", {
       method: "POST",
-      headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
+      headers: { "X-API-Key": credentials.apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({ from: fromNumber, to: toNumber, type: "text", text: { body: content } }),
     });
     const data = await res.json();
@@ -166,13 +181,4 @@ export async function POST(request: NextRequest) {
     { id: newMessage.id, createdAt: newMessage.created_at, wamid: ycloudMessage.wamid ?? null },
     { status: 200 },
   );
-}
-
-/** YCloud's send API wants E.164 (`from`/`to`, always with a leading '+'),
- * while `conversations.whatsapp_phone_number_id` was stored exactly as the
- * inbound webhook's `to` arrived (documented as without '+') — normalize
- * defensively rather than assume either side's format. */
-function toE164(raw: string): string {
-  const trimmed = raw.trim();
-  return trimmed.startsWith("+") ? trimmed : `+${trimmed}`;
 }

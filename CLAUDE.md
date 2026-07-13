@@ -31,8 +31,9 @@ The Blueprint documents several open assumptions/gaps explicitly (flagged with �
 - `npm run build` — production build
 - `npm run start` — run the production build
 - `npm run lint` — run ESLint (flat config via [eslint.config.mjs](eslint.config.mjs))
+- `npm run test` — run the Vitest unit test suite ([vitest.config.ts](vitest.config.ts))
 
-There is no test runner configured yet.
+Test coverage is still sparse (currently just `src/lib/integrations/ycloud.test.ts`) — most of the app has no tests yet.
 
 ## Environment setup
 

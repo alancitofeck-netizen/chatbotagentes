@@ -1,19 +1,8 @@
-import type { Metadata } from "next";
-import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getWorkspaceMembersList, getWorkspaceModuleStatus } from "@/lib/settings/queries";
-import { SettingsShell } from "./SettingsShell";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Configuración — Growth Link",
-};
-
-export default async function SettingsPage() {
-  const { workspaceId, role } = await requireActiveWorkspace();
-
-  const [modules, members] = await Promise.all([
-    getWorkspaceModuleStatus(workspaceId),
-    getWorkspaceMembersList(workspaceId),
-  ]);
-
-  return <SettingsShell initialModules={modules} initialMembers={members} currentRole={role} />;
+/** Configuración was consolidated into /profile (Mi perfil/Cuenta/Seguridad/
+ * Preferencias/Workspace/Integraciones/Facturación) — kept as a redirect so
+ * old bookmarks/links don't 404. */
+export default function SettingsRedirectPage() {
+  redirect("/profile?tab=workspace");
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import { LogOut, User } from "lucide-react";
+import Link from "next/link";
+import { HelpCircle, LogOut, Settings, User, UserCircle } from "lucide-react";
 import { signOut } from "@/app/(protected)/actions";
 import { cn } from "@/lib/utils/cn";
 
@@ -29,6 +30,10 @@ export function UserMenu({ name, email, variant = "navbar" }: UserMenuProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const isSidebar = variant === "sidebar";
 
+  function closeMenu() {
+    if (detailsRef.current) detailsRef.current.open = false;
+  }
+
   return (
     <details ref={detailsRef} className="group relative">
       <summary
@@ -55,6 +60,34 @@ export function UserMenu({ name, email, variant = "navbar" }: UserMenuProps) {
           <span className="truncate text-sm font-medium text-foreground">{name || "Tu cuenta"}</span>
           <span className="truncate text-xs text-neutral-500">{email}</span>
         </div>
+        <div className="my-1 h-px bg-border-default" />
+
+        <Link
+          href="/profile"
+          onClick={closeMenu}
+          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+        >
+          <UserCircle className="size-4" aria-hidden="true" />
+          Mi perfil
+        </Link>
+        <Link
+          href="/profile?tab=account"
+          onClick={closeMenu}
+          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+        >
+          <Settings className="size-4" aria-hidden="true" />
+          Configuración de cuenta
+        </Link>
+        <button
+          type="button"
+          disabled
+          title="Próximamente"
+          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-neutral-400 disabled:cursor-not-allowed"
+        >
+          <HelpCircle className="size-4" aria-hidden="true" />
+          Ayuda
+        </button>
+
         <div className="my-1 h-px bg-border-default" />
         <form action={signOut}>
           <button

@@ -1,24 +1,22 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getActivitySeries, type ChartRange } from "@/lib/dashboard/queries";
+import { getActivitySeries, getPendingTasks, type ChartRange } from "@/lib/dashboard/queries";
+import { completeTask as completeTaskShared } from "@/lib/tasks/actions";
 
 export async function getActivitySeriesAction(range: ChartRange) {
   const { workspaceId } = await requireActiveWorkspace();
   return getActivitySeries(workspaceId, range);
 }
 
-export async function completeTask(taskId: string) {
+export async function getPendingTasksAction() {
   const { workspaceId } = await requireActiveWorkspace();
-  const supabase = await createClient();
+  return getPendingTasks(workspaceId);
+}
 
-  await supabase
-    .from("tasks")
-    .update({ completed_at: new Date().toISOString() })
-    .eq("id", taskId)
-    .eq("workspace_id", workspaceId);
-
-  revalidatePath("/dashboard");
+/** Delegates to src/lib/tasks/actions.ts so the Dashboard card's quick
+ * checkbox and the full CRM > Tareas view stay in sync (same status/
+ * completed_at write, not duplicated logic). */
+export async function completeTask(taskId: string) {
+  return completeTaskShared(taskId);
 }

@@ -278,19 +278,43 @@ export interface PendingTask {
   id: string;
   title: string;
   dueAt: string | null;
+  priority: string;
+  status: string;
+  assignedToName: string | null;
 }
 
+/** Extended (priority/status/assignee) for the now-interactive Dashboard
+ * card — still filters to not-completed and orders/limits the same as
+ * before, just resolves a bit more per row. `status != 'completed'` replaces
+ * the old `completed_at is null` check now that status is the source of
+ * truth (they're kept in sync by src/lib/tasks/actions.ts on every write). */
 export async function getPendingTasks(workspaceId: string, limit = 6): Promise<PendingTask[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("tasks")
-    .select("id, title, due_at")
+    .select("id, title, due_at, priority, status, assigned_to")
     .eq("workspace_id", workspaceId)
-    .is("completed_at", null)
+    .neq("status", "completed")
     .order("due_at", { ascending: true, nullsFirst: false })
     .limit(limit);
 
-  return (data ?? []).map((t) => ({ id: t.id as string, title: t.title as string, dueAt: t.due_at as string | null }));
+  const rows = data ?? [];
+  const memberIds = [...new Set(rows.map((r) => r.assigned_to as string | null).filter((id): id is string => Boolean(id)))];
+  const { data: memberNames } = memberIds.length
+    ? await supabase.rpc("workspace_member_names", { ws_id: workspaceId })
+    : { data: [] as { member_id: string; full_name: string }[] };
+  const nameByMember = new Map<string, string>(
+    (memberNames ?? []).map((m: { member_id: string; full_name: string }) => [m.member_id, m.full_name]),
+  );
+
+  return rows.map((t) => ({
+    id: t.id as string,
+    title: t.title as string,
+    dueAt: t.due_at as string | null,
+    priority: t.priority as string,
+    status: t.status as string,
+    assignedToName: t.assigned_to ? (nameByMember.get(t.assigned_to as string) ?? null) : null,
+  }));
 }
 
 export interface LeadSource {

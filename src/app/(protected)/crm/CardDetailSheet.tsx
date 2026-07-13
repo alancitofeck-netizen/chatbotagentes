@@ -7,9 +7,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
+import { CalendarDays } from "lucide-react";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 import type { OpportunityDetail } from "@/lib/crm/queries";
+import type { CalendarEvent } from "@/lib/calendar/queries";
 import { getOpportunityDetailAction, addOpportunityNote } from "@/lib/crm/actions";
+import { getContactEventsAction } from "@/lib/calendar/actions";
 
 function formatCurrency(value: number, currency: string) {
   return new Intl.NumberFormat("es", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
@@ -17,6 +20,13 @@ function formatCurrency(value: number, currency: string) {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatEventDate(iso: string) {
+  return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
+}
+function formatEventTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
 }
 
 const PRIORITY_LABEL: Record<"high" | "medium" | "low", string> = { high: "Alta", medium: "Media", low: "Baja" };
@@ -29,13 +39,15 @@ export function CardDetailSheet({
   onEdit,
 }: {
   opportunityId: string | null;
-  initialTab?: "resumen" | "notas" | "historial";
+  initialTab?: "resumen" | "notas" | "reuniones" | "historial";
   onClose: () => void;
   onEdit: () => void;
 }) {
   const [detail, setDetail] = useState<OpportunityDetail | null>(null);
   const [tab, setTab] = useState(initialTab);
   const [noteBody, setNoteBody] = useState("");
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // The caller (CrmBoardShell) remounts this component via a `key` tied to
@@ -45,6 +57,14 @@ export function CardDetailSheet({
     if (!opportunityId) return;
     getOpportunityDetailAction(opportunityId).then(setDetail);
   }, [opportunityId]);
+
+  useEffect(() => {
+    if (tab !== "reuniones" || eventsLoaded || !detail) return;
+    getContactEventsAction(detail.contact.id).then((fresh) => {
+      setEvents(fresh);
+      setEventsLoaded(true);
+    });
+  }, [tab, eventsLoaded, detail]);
 
   function handleAddNote() {
     if (!opportunityId || !noteBody.trim()) return;
@@ -69,10 +89,11 @@ export function CardDetailSheet({
       ) : (
         <div className="flex flex-col">
           <div className="px-5 pt-4">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "resumen" | "notas" | "historial")}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "resumen" | "notas" | "reuniones" | "historial")}>
               <TabsList>
                 <TabsTrigger value="resumen">Resumen</TabsTrigger>
                 <TabsTrigger value="notas">Notas</TabsTrigger>
+                <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
                 <TabsTrigger value="historial">Historial</TabsTrigger>
                 {COMING_SOON_TABS.map((t) => (
                   <TabsTrigger key={t} value={t} disabled>
@@ -172,6 +193,33 @@ export function CardDetailSheet({
                       </ul>
                     )}
                   </div>
+                </TabsContent>
+
+                <TabsContent value="reuniones">
+                  {!eventsLoaded ? (
+                    <Skeleton className="h-16 w-full" />
+                  ) : events.length === 0 ? (
+                    <p className="text-sm text-neutral-500">Sin reuniones todavía.</p>
+                  ) : (
+                    <ul className="flex flex-col gap-3">
+                      {events.map((event) => {
+                        const isPast = new Date(event.endTime) < new Date();
+                        return (
+                          <li key={event.id} className="rounded-md bg-surface-2 p-3">
+                            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                              <CalendarDays size={14} aria-hidden="true" />
+                              {isPast ? "Reunión agendada" : "Próxima reunión"}
+                            </p>
+                            <p className="mt-1 text-sm text-foreground">{event.title}</p>
+                            <p className="mt-1 text-xs text-neutral-500">
+                              Fecha: {formatEventDate(event.startTime)} · Hora: {formatEventTime(event.startTime)}
+                              {event.assignedTo && ` · Responsable: ${event.assignedTo.fullName}`}
+                            </p>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="historial">

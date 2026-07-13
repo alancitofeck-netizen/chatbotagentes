@@ -1,7 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Menu, Building2, Phone, MessageSquare, ChevronLeft, Send, RotateCw, AlertTriangle } from "lucide-react";
+import {
+  Building2,
+  Phone,
+  MessageSquare,
+  ChevronLeft,
+  Send,
+  RotateCw,
+  AlertTriangle,
+  Paperclip,
+  Sparkles,
+  Check,
+  CheckCheck,
+  Clock,
+  Info,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -29,7 +43,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   contact_unsubscribed: "Este contacto se dio de baja de WhatsApp — no se le puede escribir.",
   contact_missing_phone: "El contacto no tiene un teléfono cargado.",
   conversation_missing_business_number: "Esta conversación no tiene un número de WhatsApp asociado.",
-  ycloud_not_configured: "YCloud no está configurado en el servidor (falta YCLOUD_API_KEY).",
+  ycloud_not_configured: "Este workspace no tiene conectada una integración de WhatsApp (Configuración → Integraciones).",
   ycloud_send_failed: "YCloud rechazó el envío del mensaje.",
   ycloud_network_error: "No se pudo contactar a YCloud. Revisá tu conexión e intentá de nuevo.",
   content_too_long: "El mensaje es demasiado largo (máximo 4096 caracteres).",
@@ -39,6 +53,28 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 function errorMessageFor(code: string | undefined): string {
   return ERROR_MESSAGES[code ?? ""] ?? "No se pudo enviar el mensaje.";
+}
+
+/** Client-only canned phrases (no backend/persistence — no templates table
+ * exists yet) inserted into the composer via the "Respuestas rápidas" popover. */
+const QUICK_REPLIES = [
+  "¡Hola! ¿En qué puedo ayudarte hoy?",
+  "Dame un momento para revisarlo.",
+  "¿Podrías darme más detalles, por favor?",
+  "Gracias por tu paciencia.",
+  "¿Hay algo más en lo que pueda ayudarte?",
+  "En breve te contactamos con más información.",
+];
+
+/** Purely visual mapping over the real `messages.status` field (already
+ * written by processMessageStatusUpdate, src/app/api/webhooks/ycloud/route.ts)
+ * — no new status values, just WhatsApp-style tick icons for outbound messages. */
+function MessageStatusIcon({ status, sending }: { status: string | null; sending: boolean }) {
+  if (sending) return <Clock className="size-3" aria-hidden="true" />;
+  if (status === "read") return <CheckCheck className="size-3.5 text-accent-200" aria-hidden="true" />;
+  if (status === "delivered") return <CheckCheck className="size-3.5" aria-hidden="true" />;
+  if (status === "sent" || status === "accepted") return <Check className="size-3.5" aria-hidden="true" />;
+  return null;
 }
 
 /** Live-appends new inbound/outbound rows via Realtime (supabase/migrations/0003_inbox.sql
@@ -58,7 +94,9 @@ export function ConversationThread({
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const quickRepliesRef = useRef<HTMLDivElement>(null);
   // A ref counter (not Date.now()/Math.random()) for temp-id generation —
   // those are impure calls the react-hooks/purity rule flags even inside an
   // event handler defined in the component body.
@@ -132,6 +170,17 @@ export function ConversationThread({
     // recreate the Realtime channel for the same conversation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.id]);
+
+  useEffect(() => {
+    if (!quickRepliesOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (quickRepliesRef.current && !quickRepliesRef.current.contains(e.target as Node)) {
+        setQuickRepliesOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [quickRepliesOpen]);
 
   function withOverride(m: MessageItem): MessageItem {
     const override = messageOverrides[m.id];
@@ -207,6 +256,11 @@ export function ConversationThread({
     sendMessage(body);
   }
 
+  function insertQuickReply(text: string) {
+    setMessageInput((prev) => (prev ? `${prev} ${text}` : text));
+    setQuickRepliesOpen(false);
+  }
+
   if (loading) {
     return (
       <div className="flex h-full flex-1 flex-col gap-3 p-6">
@@ -219,7 +273,7 @@ export function ConversationThread({
 
   if (!detail) {
     return (
-      <div className="flex h-full flex-1 items-center justify-center">
+      <div className="flex h-full flex-1 items-center justify-center bg-surface-2">
         <EmptyState
           icon={MessageSquare}
           title="Elegí una conversación"
@@ -230,8 +284,8 @@ export function ConversationThread({
   }
 
   return (
-    <div className="flex h-full flex-1 flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-border-default p-4">
+    <div className="flex h-full flex-1 flex-col bg-surface-2">
+      <div className="flex items-center justify-between gap-3 border-b border-border-default bg-surface-1 px-5 py-3.5">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -241,10 +295,10 @@ export function ConversationThread({
           >
             <ChevronLeft size={18} />
           </button>
-          <Avatar name={detail.contact.name} src={detail.contact.avatarUrl} size={40} />
+          <Avatar name={detail.contact.name} src={detail.contact.avatarUrl} size={38} />
           <div>
-            <p className="text-sm font-medium text-foreground">{detail.contact.name}</p>
-            <p className="flex items-center gap-1 text-xs text-neutral-500">
+            <p className="text-sm font-semibold text-foreground">{detail.contact.name}</p>
+            <p className="flex items-center gap-1.5 text-xs text-neutral-500">
               {detail.contact.company && (
                 <span className="flex items-center gap-1">
                   <Building2 size={12} /> {detail.contact.company}
@@ -262,20 +316,22 @@ export function ConversationThread({
         <button
           type="button"
           onClick={onOpenInfo}
+          aria-label="Ver detalles del contacto"
           className="flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2 lg:hidden"
         >
-          <Menu size={14} /> Detalles
+          <Info size={14} /> Detalles
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto px-5 py-4">
         {allMessages.length === 0 ? (
           <p className="text-sm text-neutral-500">Sin mensajes todavía.</p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
             {allMessages.map((m, i) => {
               const outbound = m.direction === "outbound";
               const showDay = i === 0 || formatDay(allMessages[i - 1].createdAt) !== formatDay(m.createdAt);
+              const prevSameSender = i > 0 && !showDay && allMessages[i - 1].direction === m.direction;
               // Two distinct failure sources rendered the same way: a client-side
               // send attempt that never reached the server (localStatus), and a
               // real message YCloud/WhatsApp rejected after accepting it
@@ -284,16 +340,20 @@ export function ConversationThread({
               return (
                 <div key={m.id}>
                   {showDay && (
-                    <div className="my-3 text-center text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-                      {formatDay(m.createdAt)}
+                    <div className="my-4 flex justify-center">
+                      <span className="rounded-full bg-surface-3 px-3 py-1 text-[11px] font-medium text-neutral-500">
+                        {formatDay(m.createdAt)}
+                      </span>
                     </div>
                   )}
-                  <div className={cn("flex", outbound ? "justify-end" : "justify-start")}>
-                    <div className="flex max-w-[75%] flex-col items-end gap-1">
+                  <div className={cn("flex", outbound ? "justify-end" : "justify-start", prevSameSender ? "mt-0.5" : "mt-2")}>
+                    <div className="flex max-w-[70%] flex-col items-end gap-1">
                       <div
                         className={cn(
-                          "rounded-lg px-3.5 py-2 text-sm",
-                          outbound ? "bg-accent-500 text-white" : "bg-surface-2 text-foreground",
+                          "px-3.5 py-2 text-sm shadow-[var(--elevation-xs)]",
+                          outbound
+                            ? "rounded-2xl rounded-br-md bg-accent-500 text-white"
+                            : "rounded-2xl rounded-bl-md bg-surface-1 text-foreground",
                           m.localStatus === "sending" && "opacity-60",
                           failed && "bg-error-bg text-error-strong",
                         )}
@@ -301,11 +361,14 @@ export function ConversationThread({
                         <p className="whitespace-pre-wrap break-words">{m.body}</p>
                         <p
                           className={cn(
-                            "mt-1 text-[10px]",
+                            "mt-1 flex items-center justify-end gap-1 text-[10px]",
                             failed ? "text-error-strong" : outbound ? "text-white/70" : "text-neutral-500",
                           )}
                         >
-                          {m.localStatus === "sending" ? "Enviando…" : formatTime(m.createdAt)}
+                          {formatTime(m.createdAt)}
+                          {outbound && !failed && (
+                            <MessageStatusIcon status={m.status} sending={m.localStatus === "sending"} />
+                          )}
                         </p>
                       </div>
                       {failed && (
@@ -332,29 +395,76 @@ export function ConversationThread({
         )}
       </div>
 
-      <div className="flex items-end gap-2 border-t border-border-default bg-surface-1 p-3">
-        <textarea
-          value={messageInput}
-          onChange={(e) => setMessageInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          placeholder="Escribí un mensaje…"
-          rows={1}
-          className="max-h-32 flex-1 resize-none rounded-md border border-border-strong bg-surface-1 px-3 py-2 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
-        />
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!messageInput.trim() || isSending}
-          aria-label="Enviar mensaje"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <Send className="size-4" aria-hidden="true" />
-        </button>
+      <div className="border-t border-border-default bg-surface-1 p-3">
+        <div className="flex items-end gap-2">
+          <button
+            type="button"
+            disabled
+            title="Próximamente — requiere Supabase Storage"
+            aria-label="Adjuntar archivo (próximamente)"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 disabled:cursor-not-allowed"
+          >
+            <Paperclip size={17} />
+          </button>
+
+          <div className="relative shrink-0" ref={quickRepliesRef}>
+            <button
+              type="button"
+              onClick={() => setQuickRepliesOpen((v) => !v)}
+              aria-label="Respuestas rápidas"
+              aria-expanded={quickRepliesOpen}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-full transition-colors",
+                quickRepliesOpen ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+              )}
+            >
+              <Sparkles size={17} />
+            </button>
+            {quickRepliesOpen && (
+              <div className="absolute bottom-11 left-0 z-10 w-72 rounded-md border border-border-default bg-surface-1 py-1.5 shadow-[var(--elevation-md)]">
+                <p className="px-3 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+                  Respuestas rápidas
+                </p>
+                <ul className="flex max-h-64 flex-col overflow-y-auto">
+                  {QUICK_REPLIES.map((text) => (
+                    <li key={text}>
+                      <button
+                        type="button"
+                        onClick={() => insertQuickReply(text)}
+                        className="w-full px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2"
+                      >
+                        {text}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <textarea
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            placeholder="Escribí un mensaje…"
+            rows={1}
+            className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
+          />
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!messageInput.trim() || isSending}
+            aria-label="Enviar mensaje"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Send className="size-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   );
