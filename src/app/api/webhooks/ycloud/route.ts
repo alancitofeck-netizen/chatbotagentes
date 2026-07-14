@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { normalizeE164, resolveWorkspaceIdForYCloudAccount } from "@/lib/integrations/ycloud";
+import { DEFAULT_BUFFER_WINDOW_SECONDS } from "@/lib/ai/bufferConfig";
 
 /**
  * YCloud (WhatsApp Business API) webhook receiver.
@@ -232,6 +233,20 @@ async function processInboundMessage(
   }
 
   console.log(`[ycloud-webhook] stored message ${newMessage.id} in conversation ${conversationId}`);
+
+  // Buffer Inteligente (docs/blueprint/04-inbox.md, Motor de IA Fase 2):
+  // push this message into conversation_buffers instead of dispatching to
+  // the AI engine directly — a scheduled flush (src/app/api/cron/flush-buffers)
+  // groups consecutive messages from the same contact into one turn.
+  const { error: bufferError } = await supabase.rpc("push_conversation_buffer_message", {
+    p_conversation_id: conversationId,
+    p_workspace_id: workspaceId,
+    p_message_id: newMessage.id,
+    p_window_seconds: DEFAULT_BUFFER_WINDOW_SECONDS,
+  });
+  if (bufferError) {
+    console.error(`[ycloud-webhook] failed to push message ${newMessage.id} into conversation_buffers:`, bufferError);
+  }
 }
 
 /**
@@ -366,7 +381,36 @@ export async function POST(request: NextRequest) {
 
   console.log("[ycloud-webhook] event received:", JSON.stringify(payload, null, 2));
 
+  const envelope = payload as YCloudWebhookEnvelope;
+  const supabase = createServiceRoleClient();
+
+  // Idempotencia real (docs/blueprint/04-inbox.md, Motor de IA Fase 2):
+  // YCloud may retry webhook delivery. `webhook_events` unique(provider,
+  // event_id) is the authoritative dedup — the lighter wamid-based check
+  // inside processInboundMessage stays as defense-in-depth, not replaced.
+  if (envelope?.id) {
+    const { error: webhookEventError } = await supabase
+      .from("webhook_events")
+      .insert({ provider: "ycloud", event_id: envelope.id, event_type: envelope.type ?? null, payload: envelope as object });
+
+    if (webhookEventError) {
+      if (webhookEventError.code === "23505") {
+        console.log(`[ycloud-webhook] event ${envelope.id} already processed, skipping.`);
+        return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+      }
+      console.error("[ycloud-webhook] failed to record webhook_events row:", webhookEventError);
+    }
+  }
+
   await processYCloudEvent(payload);
+
+  if (envelope?.id) {
+    await supabase
+      .from("webhook_events")
+      .update({ status: "processed", processed_at: new Date().toISOString() })
+      .eq("provider", "ycloud")
+      .eq("event_id", envelope.id);
+  }
 
   return NextResponse.json({ received: true }, { status: 200 });
 }

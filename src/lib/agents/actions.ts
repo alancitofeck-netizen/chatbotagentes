@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireActiveWorkspace } from "@/lib/auth/session";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { requireActiveWorkspace, requireUser, getUserWorkspaces } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { getAgentDetail, getAgentList, getTeams } from "@/lib/agents/queries";
 import { getMonday } from "@/lib/calendar/week";
@@ -118,4 +119,50 @@ export async function addAgentNote(memberId: string, body: string) {
     body: body.trim(),
   });
   revalidatePath("/crm");
+}
+
+/** "Workspaces asignados" tab. `getUserWorkspaces` (src/lib/auth/session.ts)
+ * already exists and is RLS-safe for this exact use: `workspace_members`'s
+ * own select policy is `core.is_workspace_member(workspace_id)` — it only
+ * checks that the CALLER belongs to a given row's workspace, not whose
+ * user_id the row is, so querying by an arbitrary target `userId` naturally
+ * only returns workspaces the caller also happens to share with that person.
+ * No new table/RPC needed — extends the existing model per the confirmed
+ * decision (no separate "agency" layer above workspaces). */
+export async function getAgentWorkspacesAction(userId: string) {
+  return getUserWorkspaces(userId);
+}
+
+/** Workspaces the CURRENT user can assign someone into (i.e., where they're
+ * owner/admin themselves) — populates the "Agregar a otro workspace" picker,
+ * excluding the one already active in this session. */
+export async function getMyManageableWorkspacesAction() {
+  const { workspaceId: activeWorkspaceId } = await requireActiveWorkspace();
+  const user = await requireUser();
+  const memberships = await getUserWorkspaces(user.id);
+  return memberships.filter((m) => (m.role === "owner" || m.role === "admin") && m.workspaceId !== activeWorkspaceId);
+}
+
+/** Adds an existing person (already a member of the caller's active
+ * workspace) to a DIFFERENT workspace the caller also manages. Reuses the
+ * same service-role insert pattern as inviteMember (src/lib/settings/
+ * actions.ts) — `workspace_members` has no INSERT policy at all today, so
+ * every member-creation path goes through the service role after an
+ * app-level authorization check. Here that check is explicit and scoped to
+ * the TARGET workspace (not just "is manager of whatever's active"), since
+ * the two can differ. */
+export async function assignMemberToWorkspace(userId: string, targetWorkspaceId: string, role: "owner" | "admin" | "agent" | "viewer") {
+  const caller = await requireUser();
+  const callerMemberships = await getUserWorkspaces(caller.id);
+  const callerRoleInTarget = callerMemberships.find((m) => m.workspaceId === targetWorkspaceId)?.role;
+  if (callerRoleInTarget !== "owner" && callerRoleInTarget !== "admin") {
+    throw new Error("No tenés permiso para agregar miembros a ese workspace.");
+  }
+
+  const serviceClient = createServiceRoleClient();
+  const { error } = await serviceClient.from("workspace_members").insert({ workspace_id: targetWorkspaceId, user_id: userId, role });
+  if (error) {
+    if (error.code === "23505") throw new Error("Esa persona ya es miembro de ese workspace.");
+    throw new Error("No se pudo asignar el workspace.");
+  }
 }

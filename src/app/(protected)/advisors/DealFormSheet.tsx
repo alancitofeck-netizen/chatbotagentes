@@ -86,7 +86,7 @@ export function DealFormSheet({
 
         <div className="my-1 h-px bg-border-default" />
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Póliza</p>
-        <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Seguro de vida — Acme" />
+        <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Seguro de vida — Nombre del cliente" />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Valor" type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} />
           <Select label="Moneda" value={currency} onChange={(e) => setCurrency(e.target.value)}>

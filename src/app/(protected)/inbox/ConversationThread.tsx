@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/toast/toast";
 import type { ConversationDetail, MessageItem } from "@/lib/inbox/queries";
+import { approveDraftMessage, editDraftMessage, rejectDraftMessage } from "@/lib/inbox/actions";
 import { cn } from "@/lib/utils/cn";
 
 /** Optimistic-only state, never persisted as-is — `localStatus` is distinct
@@ -49,6 +50,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   content_too_long: "El mensaje es demasiado largo (máximo 4096 caracteres).",
   conversation_not_found: "No se encontró la conversación.",
   unauthorized: "Tu sesión expiró. Volvé a iniciar sesión.",
+  draft_not_found: "Esta sugerencia ya no existe.",
+  outside_24h_window: "Pasaron más de 24h desde el último mensaje del contacto — no se puede enviar sin una plantilla aprobada.",
+  persist_failed: "El mensaje se envió pero no se pudo guardar — revisá el historial de WhatsApp.",
 };
 
 function errorMessageFor(code: string | undefined): string {
@@ -105,6 +109,53 @@ export function ConversationThread({
   const [messageOverrides, setMessageOverrides] = useState<Record<string, { status: string | null; errorReason: string | null }>>(
     {},
   );
+
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+  const [draftEditText, setDraftEditText] = useState("");
+  const [draftActionPending, setDraftActionPending] = useState<string | null>(null);
+
+  async function handleApproveDraft(messageId: string) {
+    setDraftActionPending(messageId);
+    try {
+      const result = await approveDraftMessage(messageId);
+      if (!result.ok) {
+        toast.error(errorMessageFor(result.error));
+        return;
+      }
+      toast.success("Mensaje enviado.");
+    } finally {
+      setDraftActionPending(null);
+    }
+  }
+
+  async function handleRejectDraft(messageId: string) {
+    setDraftActionPending(messageId);
+    try {
+      await rejectDraftMessage(messageId);
+      toast.success("Sugerencia rechazada.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo rechazar la sugerencia.");
+    } finally {
+      setDraftActionPending(null);
+    }
+  }
+
+  function startEditingDraft(m: MessageItem) {
+    setEditingDraftId(m.id);
+    setDraftEditText(m.body);
+  }
+
+  async function handleSaveDraftEdit(messageId: string) {
+    setDraftActionPending(messageId);
+    try {
+      await editDraftMessage(messageId, draftEditText);
+      setEditingDraftId(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo editar el borrador.");
+    } finally {
+      setDraftActionPending(null);
+    }
+  }
 
   useEffect(() => {
     if (!detail) return;
@@ -337,6 +388,7 @@ export function ConversationThread({
               // real message YCloud/WhatsApp rejected after accepting it
               // (status === "failed", reported via whatsapp.message.updated).
               const failed = m.localStatus === "error" || m.status === "failed";
+              const isDraft = m.status === "draft";
               return (
                 <div key={m.id}>
                   {showDay && (
@@ -346,6 +398,69 @@ export function ConversationThread({
                       </span>
                     </div>
                   )}
+                  {isDraft ? (
+                    <div className="mt-2 flex justify-end">
+                      <div className="flex max-w-[70%] flex-col gap-1.5 rounded-2xl rounded-br-md border border-dashed border-accent-300 bg-accent-50 px-3.5 py-2 text-sm">
+                        <p className="flex items-center gap-1 text-[11px] font-medium text-accent-700">
+                          <Sparkles className="size-3" aria-hidden="true" />
+                          Sugerencia de IA — sin enviar
+                        </p>
+                        {editingDraftId === m.id ? (
+                          <>
+                            <textarea
+                              value={draftEditText}
+                              onChange={(e) => setDraftEditText(e.target.value)}
+                              rows={3}
+                              className="w-full rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-sm text-foreground outline-none focus:border-accent-500"
+                            />
+                            <div className="flex justify-end gap-2 text-[11px] font-medium">
+                              <button type="button" onClick={() => setEditingDraftId(null)} className="text-neutral-500 hover:underline">
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                disabled={draftActionPending === m.id}
+                                onClick={() => handleSaveDraftEdit(m.id)}
+                                className="text-accent-700 hover:underline disabled:opacity-50"
+                              >
+                                Guardar
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="whitespace-pre-wrap break-words text-foreground">{m.body}</p>
+                            <div className="flex justify-end gap-3 text-[11px] font-medium">
+                              <button
+                                type="button"
+                                disabled={draftActionPending === m.id}
+                                onClick={() => handleRejectDraft(m.id)}
+                                className="text-error-strong hover:underline disabled:opacity-50"
+                              >
+                                Rechazar
+                              </button>
+                              <button
+                                type="button"
+                                disabled={draftActionPending === m.id}
+                                onClick={() => startEditingDraft(m)}
+                                className="text-neutral-600 hover:underline disabled:opacity-50"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                disabled={draftActionPending === m.id}
+                                onClick={() => handleApproveDraft(m.id)}
+                                className="text-accent-700 hover:underline disabled:opacity-50"
+                              >
+                                Aprobar y enviar
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
                   <div className={cn("flex", outbound ? "justify-end" : "justify-start", prevSameSender ? "mt-0.5" : "mt-2")}>
                     <div className="flex max-w-[70%] flex-col items-end gap-1">
                       <div
@@ -387,6 +502,7 @@ export function ConversationThread({
                       )}
                     </div>
                   </div>
+                  )}
                 </div>
               );
             })}

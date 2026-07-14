@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getMyProfile, getMySessions } from "@/lib/profile/queries";
 import { getWorkspaceMembersList, getWorkspaceModuleStatus } from "@/lib/settings/queries";
-import { getWhatsAppIntegration } from "@/lib/integrations/queries";
+import { getOpenRouterIntegration, getWhatsAppIntegration } from "@/lib/integrations/queries";
 import { getGoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
+import { getAutomationList } from "@/lib/automations/queries";
 import { ProfileShell } from "./ProfileShell";
 
 export const metadata: Metadata = {
@@ -13,13 +14,15 @@ export const metadata: Metadata = {
 export default async function ProfilePage() {
   const { workspaceId, role } = await requireActiveWorkspace();
 
-  const [profile, sessions, modules, members, whatsapp, googleCalendar] = await Promise.all([
+  const [profile, sessions, modules, members, whatsapp, googleCalendar, openRouter, automations] = await Promise.all([
     getMyProfile(),
     getMySessions(),
     getWorkspaceModuleStatus(workspaceId),
     getWorkspaceMembersList(workspaceId),
     getWhatsAppIntegration(workspaceId),
     getGoogleCalendarStatus(workspaceId),
+    getOpenRouterIntegration(workspaceId),
+    getAutomationList(workspaceId),
   ]);
 
   return (
@@ -30,6 +33,8 @@ export default async function ProfilePage() {
       initialMembers={members}
       initialWhatsApp={whatsapp}
       initialGoogleCalendar={googleCalendar}
+      initialOpenRouter={openRouter}
+      initialAutomations={automations}
       currentRole={role}
     />
   );

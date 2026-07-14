@@ -139,6 +139,9 @@ export interface MessageItem {
 export interface ConversationDetail {
   id: string;
   status: string;
+  /** human | ai | hybrid (docs/blueprint/13-agent-engine.md, Motor de IA) —
+   * decide si el Buffer Inteligente invoca al Agent Runtime al hacer flush. */
+  mode: string;
   assignedMemberId: string | null;
   contact: {
     id: string;
@@ -167,7 +170,7 @@ export async function getConversationDetail(
   const { data: conv } = await supabase
     .from("conversations")
     .select(
-      "id, status, assigned_user_id, contact_id, contacts(id, name, phone, email, company, avatar_url, source, custom_fields)",
+      "id, status, mode, assigned_user_id, contact_id, contacts(id, name, phone, email, company, avatar_url, source, custom_fields)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", conversationId)
@@ -196,6 +199,7 @@ export async function getConversationDetail(
   return {
     id: conv.id as string,
     status: conv.status as string,
+    mode: conv.mode as string,
     assignedMemberId: conv.assigned_user_id as string | null,
     contact: {
       id: contact.id as string,

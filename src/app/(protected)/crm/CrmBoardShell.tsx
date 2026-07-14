@@ -1,22 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { KanbanSquare } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { KanbanSquare, Settings } from "lucide-react";
 import { toast } from "@/components/toast/toast";
-import type { CrmBoard, OpportunityCard, OpportunityTag } from "@/lib/crm/queries";
+import type { CrmBoard, CrmPipelineOption, OpportunityCard, OpportunityTag } from "@/lib/crm/queries";
 import type { AgentListItem } from "@/lib/agents/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import {
   getCrmBoardAction,
+  getCrmPipelinesAction,
   deleteOpportunity,
   bulkMoveOpportunities,
   bulkDeleteOpportunities,
   bulkAssignOwner,
   bulkAddTag,
   exportOpportunitiesCsv,
+  ensureCrmPipelineAction,
+  createPipeline,
 } from "@/lib/crm/actions";
 import { filterAndSortBoard } from "@/lib/crm/boardFilters";
 import { BoardActionBar, EMPTY_FILTERS, type BoardFilters, type SortOption } from "./BoardActionBar";
@@ -27,6 +32,7 @@ import { OpportunityTable } from "./OpportunityTable";
 import { CardDetailSheet } from "./CardDetailSheet";
 import { LeadFormSheet } from "./LeadFormSheet";
 import { ImportLeadsSheet } from "./ImportLeadsSheet";
+import { ManagePipelineSheet } from "./ManagePipelineSheet";
 
 function downloadCsv(csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -45,16 +51,29 @@ function downloadCsv(csv: string) {
  * they never disagree on "what matches the current filters". */
 export function CrmBoardShell({
   initialBoard,
+  initialPipelines,
   members,
   agents,
   tags,
+  onBoardChange,
 }: {
   initialBoard: CrmBoard | null;
+  initialPipelines: CrmPipelineOption[];
   members: WorkspaceMemberOption[];
   agents: AgentListItem[];
   tags: OpportunityTag[];
+  /** CrmPageShell also renders Analytics from the same board — this keeps
+   * that sibling tab in sync after a client-side mutation here (e.g.
+   * creating the pipeline) without requiring a full page reload. */
+  onBoardChange?: (board: CrmBoard | null) => void;
 }) {
-  const [board, setBoard] = useState(initialBoard);
+  const [board, setBoardState] = useState(initialBoard);
+  const [pipelines, setPipelines] = useState(initialPipelines);
+  const [manageOpen, setManageOpen] = useState(false);
+  function setBoard(next: CrmBoard | null) {
+    setBoardState(next);
+    onBoardChange?.(next);
+  }
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
@@ -66,7 +85,17 @@ export function CrmBoardShell({
     null,
   );
   const [importOpen, setImportOpen] = useState(false);
+  const [isCreatingPipeline, startCreatePipeline] = useTransition();
   const mobileSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  function handleCreatePipeline() {
+    startCreatePipeline(async () => {
+      const fresh = await ensureCrmPipelineAction();
+      setBoard(fresh);
+      if (fresh) setPipelines((prev) => (prev.some((p) => p.id === fresh.pipelineId) ? prev : [...prev, { id: fresh.pipelineId, name: fresh.pipelineName }]));
+      toast.success("Pipeline de ventas creado.");
+    });
+  }
 
   const supervisorByOwnerId = useMemo(
     () => new Map(agents.map((a) => [a.memberId, a.supervisorId])),
@@ -102,8 +131,31 @@ export function CrmBoardShell({
   );
 
   async function refreshBoard() {
-    const fresh = await getCrmBoardAction();
+    const fresh = await getCrmBoardAction(board?.pipelineId);
     setBoard(fresh);
+  }
+
+  function handleSwitchPipeline(pipelineId: string) {
+    startCreatePipeline(async () => {
+      const fresh = await getCrmBoardAction(pipelineId);
+      setBoard(fresh);
+    });
+  }
+
+  function handleCreateNewPipeline() {
+    const name = window.prompt("Nombre del nuevo pipeline:");
+    if (!name || !name.trim()) return;
+    startCreatePipeline(async () => {
+      try {
+        const { id } = await createPipeline(name);
+        setPipelines((prev) => [...prev, { id, name: name.trim() }]);
+        const fresh = await getCrmBoardAction(id);
+        setBoard(fresh);
+        toast.success("Pipeline creado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo crear el pipeline.");
+      }
+    });
   }
 
   function clearSelection() {
@@ -188,13 +240,27 @@ export function CrmBoardShell({
     downloadCsv(csv);
   }
 
+  async function handlePipelineManagementChanged() {
+    const [freshBoard, freshPipelines] = await Promise.all([
+      getCrmBoardAction(board?.pipelineId),
+      getCrmPipelinesAction(),
+    ]);
+    setBoard(freshBoard);
+    setPipelines(freshPipelines);
+  }
+
   if (!board || !filtered) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
         <EmptyState
           icon={KanbanSquare}
           title="Todavía no hay un pipeline de ventas"
-          description="Se crea automáticamente con tu primera oportunidad."
+          description="Creá el pipeline para empezar a cargar oportunidades — arranca con un set de etapas estándar que después podés editar libremente."
+          action={
+            <Button onClick={handleCreatePipeline} loading={isCreatingPipeline}>
+              Crear pipeline de ventas
+            </Button>
+          }
         />
       </div>
     );
@@ -203,6 +269,38 @@ export function CrmBoardShell({
   return (
     <div className="flex flex-col gap-4 pb-4">
       <div className="flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-3">
+          {pipelines.length > 1 ? (
+            <Select
+              label="Pipeline"
+              containerClassName="w-64"
+              value={board.pipelineId}
+              onChange={(e) => (e.target.value === "__new__" ? handleCreateNewPipeline() : handleSwitchPipeline(e.target.value))}
+            >
+              {pipelines.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+              <option value="__new__">+ Nuevo pipeline…</option>
+            </Select>
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-foreground">{board.pipelineName}</p>
+              <button
+                type="button"
+                onClick={handleCreateNewPipeline}
+                className="text-xs font-medium text-accent-600 hover:underline"
+              >
+                + Nuevo pipeline
+              </button>
+            </div>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => setManageOpen(true)}>
+            <Settings size={14} aria-hidden="true" />
+            Gestionar pipeline
+          </Button>
+        </div>
         <BoardKpiHeader kpis={board.kpis} />
         <BoardActionBar
           view={view}
@@ -328,6 +426,16 @@ export function CrmBoardShell({
           onImported={() => {
             refreshBoard();
           }}
+        />
+      )}
+
+      {manageOpen && (
+        <ManagePipelineSheet
+          pipelineId={board.pipelineId}
+          pipelineName={board.pipelineName}
+          stages={board.stages}
+          onClose={() => setManageOpen(false)}
+          onChanged={handlePipelineManagementChanged}
         />
       )}
     </div>

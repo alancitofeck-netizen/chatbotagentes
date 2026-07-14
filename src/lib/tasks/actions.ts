@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import {
+  getOpportunityTasks,
   getTaskById,
   getTasks,
   type TaskFilters,
@@ -126,4 +127,9 @@ export async function getTasksAction(filters: TaskFilters = {}) {
 export async function getTaskByIdAction(taskId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getTaskById(workspaceId, taskId);
+}
+
+export async function getOpportunityTasksAction(opportunityId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getOpportunityTasks(workspaceId, opportunityId);
 }

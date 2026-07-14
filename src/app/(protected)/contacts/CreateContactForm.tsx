@@ -60,7 +60,7 @@ export function CreateContactForm({
           onChange={(e) => setEmail(e.target.value)}
           placeholder="contacto@email.com"
         />
-        <Input label="Empresa" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Ej. Acme S.A." />
+        <Input label="Empresa" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Ej. Nombre de la empresa" />
         <Input label="Origen" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Ej. WhatsApp, referido" />
         <Button onClick={handleCreate} loading={isPending}>
           Crear contacto

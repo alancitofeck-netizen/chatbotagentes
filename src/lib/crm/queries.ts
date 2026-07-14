@@ -25,6 +25,7 @@ export interface OpportunityCard {
   currency: string;
   priority: "high" | "medium" | "low";
   probability: number | null;
+  expectedCloseDate: string | null;
   contactId: string;
   contactName: string;
   contactAvatarUrl: string | null;
@@ -58,9 +59,28 @@ export interface BoardKpis {
 
 export interface CrmBoard {
   pipelineId: string;
+  pipelineName: string;
   stages: PipelineStage[];
   cardsByStage: Record<string, OpportunityCard[]>;
   kpis: BoardKpis;
+}
+
+export interface CrmPipelineOption {
+  id: string;
+  name: string;
+}
+
+/** For the pipeline switcher in CrmBoardShell — only rendered when a
+ * workspace has more than one `module_key='crm'` pipeline. */
+export async function getCrmPipelines(workspaceId: string): Promise<CrmPipelineOption[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("pipelines")
+    .select("id, name, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("module_key", "crm")
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((p) => ({ id: p.id as string, name: p.name as string }));
 }
 
 function deltaPct(current: number, previous: number): number | null {
@@ -78,18 +98,22 @@ function monthBounds(monthsAgo: number) {
   return { start, end };
 }
 
-/** The workspace's single sales pipeline (module_key='crm') — created by the seed today;
- * a future "manage pipelines" screen would let a workspace have more than one. */
-export async function getCrmBoard(workspaceId: string): Promise<CrmBoard | null> {
+/** A workspace's sales pipeline (module_key='crm'). Defaults to the oldest
+ * one when `pipelineId` isn't passed — workspaces can now have more than one
+ * (see `getCrmPipelines`/`createPipeline` in actions.ts), switched via the
+ * `?pipeline=` query param in CrmBoardShell. */
+export async function getCrmBoard(workspaceId: string, pipelineId?: string): Promise<CrmBoard | null> {
   const supabase = await createClient();
 
-  const { data: pipeline } = await supabase
+  const pipelineQuery = supabase
     .from("pipelines")
-    .select("id")
+    .select("id, name")
     .eq("workspace_id", workspaceId)
-    .eq("module_key", "crm")
-    .limit(1)
-    .maybeSingle();
+    .eq("module_key", "crm");
+
+  const { data: pipeline } = pipelineId
+    ? await pipelineQuery.eq("id", pipelineId).maybeSingle()
+    : await pipelineQuery.order("created_at", { ascending: true }).limit(1).maybeSingle();
 
   if (!pipeline) return null;
 
@@ -113,7 +137,7 @@ export async function getCrmBoard(workspaceId: string): Promise<CrmBoard | null>
     ? await supabase
         .from("opportunities")
         .select(
-          "id, title, value, currency, priority, probability, status, owner_id, created_at, updated_at, contacts(id, name, company, avatar_url, source, email, phone, custom_fields)",
+          "id, title, value, currency, priority, probability, expected_close_date, status, owner_id, created_at, updated_at, contacts(id, name, company, avatar_url, source, email, phone, custom_fields)",
         )
         .in("id", opportunityIds)
     : { data: [] };
@@ -245,6 +269,7 @@ export async function getCrmBoard(workspaceId: string): Promise<CrmBoard | null>
       currency: opp.currency as string,
       priority: (opp.priority as "high" | "medium" | "low" | null) ?? "medium",
       probability: opp.probability === null || opp.probability === undefined ? null : Number(opp.probability),
+      expectedCloseDate: (opp.expected_close_date as string | null) ?? null,
       contactId,
       contactName: contact?.name ?? "Sin nombre",
       contactAvatarUrl: contact?.avatar_url ?? null,
@@ -333,6 +358,7 @@ export async function getCrmBoard(workspaceId: string): Promise<CrmBoard | null>
 
   return {
     pipelineId: pipeline.id as string,
+    pipelineName: pipeline.name as string,
     stages: stageList,
     cardsByStage,
     kpis,
@@ -341,12 +367,14 @@ export async function getCrmBoard(workspaceId: string): Promise<CrmBoard | null>
 
 export interface OpportunityDetail {
   id: string;
+  workspaceId: string;
   title: string;
   value: number;
   currency: string;
   status: string;
   priority: "high" | "medium" | "low";
   probability: number | null;
+  expectedCloseDate: string | null;
   ownerId: string | null;
   tags: OpportunityTag[];
   contact: {
@@ -369,7 +397,7 @@ export async function getOpportunityDetail(
   const { data: opp } = await supabase
     .from("opportunities")
     .select(
-      "id, title, value, currency, status, priority, probability, owner_id, created_at, contacts(id, name, company, email, phone)",
+      "id, title, value, currency, status, priority, probability, expected_close_date, owner_id, created_at, contacts(id, name, company, email, phone)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", opportunityId)
@@ -394,12 +422,14 @@ export async function getOpportunityDetail(
 
   return {
     id: opp.id as string,
+    workspaceId,
     title: opp.title as string,
     value: Number(opp.value ?? 0),
     currency: opp.currency as string,
     status: opp.status as string,
     priority: (opp.priority as "high" | "medium" | "low" | null) ?? "medium",
     probability: opp.probability === null || opp.probability === undefined ? null : Number(opp.probability),
+    expectedCloseDate: (opp.expected_close_date as string | null) ?? null,
     ownerId: (opp.owner_id as string | null) ?? null,
     tags: (tagRows ?? [])
       .map((r) => (Array.isArray(r.tags) ? r.tags[0] : r.tags))
@@ -419,6 +449,51 @@ export async function getOpportunityDetail(
       createdAt: n.created_at as string,
     })),
   };
+}
+
+export interface OpportunityActivityEntry {
+  id: string;
+  action: string;
+  actorName: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+const ACTION_LABEL: Record<string, string> = {
+  opportunity_created: "Oportunidad creada",
+  opportunity_updated: "Oportunidad actualizada",
+  opportunity_deleted: "Oportunidad eliminada",
+  opportunity_stage_changed: "Cambió de etapa",
+};
+
+/** Feeds CardDetailSheet's "Historial" tab — reads the same `audit_log`
+ * table the AI engine already writes to (0020_agent_engine_core.sql), now
+ * that CRM mutations write to it too (see logOpportunityActivity in
+ * actions.ts). Never includes note text — the "Notas" tab already shows
+ * that, duplicating it here would just be noise. */
+export async function getOpportunityActivity(workspaceId: string, opportunityId: string): Promise<OpportunityActivityEntry[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("audit_log")
+    .select("id, action, actor_id, metadata, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("entity_type", "opportunity")
+    .eq("entity_id", opportunityId)
+    .order("created_at", { ascending: false });
+
+  const actorIds = Array.from(new Set((data ?? []).map((r) => r.actor_id as string | null).filter((id): id is string => Boolean(id))));
+  const { data: names } = actorIds.length
+    ? await supabase.rpc("workspace_member_names", { ws_id: workspaceId })
+    : { data: [] as { member_id: string; full_name: string }[] };
+  const nameByMember = new Map(((names ?? []) as { member_id: string; full_name: string }[]).map((n) => [n.member_id, n.full_name]));
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    action: ACTION_LABEL[r.action as string] ?? (r.action as string),
+    actorName: r.actor_id ? (nameByMember.get(r.actor_id as string) ?? null) : null,
+    metadata: (r.metadata as Record<string, unknown>) ?? {},
+    createdAt: r.created_at as string,
+  }));
 }
 
 export interface OpportunityOption {

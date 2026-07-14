@@ -11,7 +11,6 @@ import {
   LayoutDashboard,
   ShieldCheck,
   SquareUser,
-  Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -38,7 +37,6 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     { label: "CRM", href: "/crm", icon: Kanban, comingSoon: !enabledModules.has("crm") },
     { label: "ATS", href: "/ats", icon: SquareUser, comingSoon: !enabledModules.has("ats") },
     { label: "Asesores", href: "/advisors", icon: ShieldCheck, comingSoon: !enabledModules.has("advisors") },
-    { label: "Automatizaciones", href: "/automations", icon: Workflow },
   ];
 }
 

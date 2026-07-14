@@ -6,6 +6,7 @@ import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import {
   getDocumentById,
   getDocuments,
+  getDocumentsByRelated,
   getFolderTree,
   type DocumentView,
 } from "@/lib/documents/queries";
@@ -29,6 +30,12 @@ export async function getDocumentByIdAction(documentId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   const memberId = await getCurrentMemberId(workspaceId);
   return getDocumentById(workspaceId, documentId, memberId);
+}
+
+export async function getDocumentsByRelatedAction(relatedType: string, relatedId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  return getDocumentsByRelated(workspaceId, memberId, relatedType, relatedId);
 }
 
 export async function createFolder(name: string, parentFolderId: string | null): Promise<{ id: string }> {
@@ -105,6 +112,8 @@ export async function recordUploadedDocument(input: {
   mimeType: string;
   sizeBytes: number;
   storagePath: string;
+  relatedType?: string;
+  relatedId?: string;
 }): Promise<{ id: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const memberId = await getCurrentMemberId(workspaceId);
@@ -121,6 +130,8 @@ export async function recordUploadedDocument(input: {
       owner_id: memberId,
       last_modified_by: memberId,
       source: "upload",
+      related_type: input.relatedType ?? null,
+      related_id: input.relatedId ?? null,
     })
     .select("id")
     .single();

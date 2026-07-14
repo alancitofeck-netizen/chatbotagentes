@@ -7,7 +7,7 @@ import { toast } from "@/components/toast/toast";
 import { importOpportunitiesCsv, type ImportLeadRow } from "@/lib/crm/actions";
 
 const EXPECTED_HEADER = ["name", "phone", "email", "company", "source", "value", "priority"];
-const SAMPLE = "name,phone,email,company,source,value,priority\nMaría Gómez,+5491100000000,maria@acme.com,Acme Inc.,LinkedIn,5000,high";
+const SAMPLE = "name,phone,email,company,source,value,priority\nNombre Apellido,+5491100000000,correo@empresa.com,Nombre de la empresa,LinkedIn,5000,high";
 
 /** Minimal, hand-rolled CSV parser for this fixed column format — not a
  * generic CSV engine (no new dependency added), just quote-aware enough for

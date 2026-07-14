@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
-import { getCrmBoard } from "@/lib/crm/queries";
+import { getCrmBoard, getCrmPipelines } from "@/lib/crm/queries";
 import { getAgentList, getTeams } from "@/lib/agents/queries";
 import { getWorkspaceMembers, getWorkspaceTags } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
+import { getAiAgentList } from "@/lib/ai-agents/queries";
 import { CrmPageShell } from "./CrmPageShell";
 
 export const metadata: Metadata = {
@@ -13,17 +14,20 @@ export const metadata: Metadata = {
 export default async function CrmPage() {
   const { workspaceId, role } = await requireActiveWorkspace();
 
-  const [board, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId] = await Promise.all([
-    getCrmBoard(workspaceId),
-    getAgentList(workspaceId),
-    getTeams(workspaceId),
-    getWorkspaceMembers(workspaceId),
-    getWorkspaceTags(workspaceId),
-    getTasks(workspaceId),
-    getContactOptions(workspaceId),
-    getConversationOptions(workspaceId),
-    getCurrentMemberId(workspaceId),
-  ]);
+  const [board, pipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents] =
+    await Promise.all([
+      getCrmBoard(workspaceId),
+      getCrmPipelines(workspaceId),
+      getAgentList(workspaceId),
+      getTeams(workspaceId),
+      getWorkspaceMembers(workspaceId),
+      getWorkspaceTags(workspaceId),
+      getTasks(workspaceId),
+      getContactOptions(workspaceId),
+      getConversationOptions(workspaceId),
+      getCurrentMemberId(workspaceId),
+      getAiAgentList(workspaceId),
+    ]);
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
@@ -33,6 +37,7 @@ export default async function CrmPage() {
       </div>
       <CrmPageShell
         board={board}
+        pipelines={pipelines}
         agents={agents}
         teams={teams}
         members={members}
@@ -42,6 +47,7 @@ export default async function CrmPage() {
         conversationOptions={conversationOptions}
         canAssignOthers={role === "owner" || role === "admin"}
         ownMemberId={ownMemberId}
+        aiAgents={aiAgents}
       />
     </div>
   );

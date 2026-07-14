@@ -10,13 +10,23 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/toast/toast";
 import type { ConversationDetail, WorkspaceMemberOption, WorkspaceTag } from "@/lib/inbox/queries";
-import { updateConversationStatus, assignConversation, addConversationNote, toggleContactTag } from "@/lib/inbox/actions";
+import { updateConversationStatus, updateConversationMode, assignConversation, addConversationNote, toggleContactTag } from "@/lib/inbox/actions";
 import { tagBadgeVariant } from "./tagColor";
 
 const STATUS_OPTIONS = [
   { value: "open", label: "Abierta" },
   { value: "pending_human", label: "Esperando" },
   { value: "closed", label: "Cerrada" },
+];
+
+/** Motor de IA (docs/blueprint/13-agent-engine.md): decide si el Buffer
+ * Inteligente invoca al Agent Runtime al hacer flush de esta conversación.
+ * `mode` existía en el schema desde el core de Inbox pero nunca se leía ni
+ * escribía en ningún lado hasta este pase. */
+const MODE_OPTIONS = [
+  { value: "human", label: "Humano" },
+  { value: "ai", label: "IA" },
+  { value: "hybrid", label: "Híbrido (sugerido, no enviado)" },
 ];
 
 const COMING_SOON_TABS = ["archivos"];
@@ -67,6 +77,15 @@ export function ContactInfoPanel({
       await updateConversationStatus(detail.id, status);
       onChanged();
       toast.success("Estado actualizado.");
+    });
+  }
+
+  function handleModeChange(mode: string) {
+    if (!detail) return;
+    startTransition(async () => {
+      await updateConversationMode(detail.id, mode);
+      onChanged();
+      toast.success("Modo actualizado.");
     });
   }
 
@@ -198,6 +217,14 @@ export function ContactInfoPanel({
                   <h3 className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Conversación</h3>
                   <Select label="Estado" value={detail.status} onChange={(e) => handleStatusChange(e.target.value)} disabled={isPending}>
                     {STATUS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+
+                  <Select label="Modo" value={detail.mode} onChange={(e) => handleModeChange(e.target.value)} disabled={isPending}>
+                    {MODE_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
                       </option>

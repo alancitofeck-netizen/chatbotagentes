@@ -1,15 +1,7 @@
-import type { Metadata } from "next";
-import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getAutomationList } from "@/lib/automations/queries";
-import { AutomationsShell } from "./AutomationsShell";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Automatizaciones — Growth Link",
-};
-
-export default async function AutomationsPage() {
-  const { workspaceId } = await requireActiveWorkspace();
-  const automations = await getAutomationList(workspaceId);
-
-  return <AutomationsShell initialAutomations={automations} />;
+/** Automatizaciones was consolidated into /profile (Perfil > Automatizaciones)
+ * — kept as a redirect so old bookmarks/links don't 404. */
+export default function AutomationsRedirectPage() {
+  redirect("/profile?tab=automations");
 }

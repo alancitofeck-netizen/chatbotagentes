@@ -10,13 +10,15 @@ import {
   Plug,
   CreditCard,
   IdCard,
+  Workflow,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils/cn";
 import type { MyProfile, MySession } from "@/lib/profile/queries";
 import type { ModuleStatus, WorkspaceMember } from "@/lib/settings/queries";
-import type { WhatsAppIntegration } from "@/lib/integrations/queries";
+import type { OpenRouterIntegration, WhatsAppIntegration } from "@/lib/integrations/queries";
 import type { GoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
+import type { AutomationListItem } from "@/lib/automations/queries";
 import { getMyProfileAction, getMySessionsAction } from "@/lib/profile/actions";
 import { getWorkspaceMembersListAction, getWorkspaceModuleStatusAction } from "@/lib/settings/actions";
 import { MyProfileSection } from "./sections/MyProfileSection";
@@ -24,6 +26,7 @@ import { AccountSection } from "./sections/AccountSection";
 import { SecuritySection } from "./sections/SecuritySection";
 import { PreferencesSection } from "./sections/PreferencesSection";
 import { WorkspaceSection } from "./sections/WorkspaceSection";
+import { AutomationsSection } from "./sections/AutomationsSection";
 import { IntegrationsSection } from "./sections/IntegrationsSection";
 import { BillingSection } from "./sections/BillingSection";
 
@@ -40,6 +43,7 @@ const TABS = [
   { key: "security", label: "Seguridad", icon: ShieldCheck },
   { key: "preferences", label: "Preferencias", icon: SlidersHorizontal },
   { key: "workspace", label: "Workspace", icon: Building2 },
+  { key: "automations", label: "Automatizaciones", icon: Workflow },
   { key: "integrations", label: "Integraciones", icon: Plug },
   { key: "billing", label: "Facturación", icon: CreditCard },
 ] as const;
@@ -57,6 +61,8 @@ export function ProfileShell({
   initialMembers,
   initialWhatsApp,
   initialGoogleCalendar,
+  initialOpenRouter,
+  initialAutomations,
   currentRole,
 }: {
   initialProfile: MyProfile;
@@ -65,6 +71,8 @@ export function ProfileShell({
   initialMembers: WorkspaceMember[];
   initialWhatsApp: WhatsAppIntegration | null;
   initialGoogleCalendar: GoogleCalendarStatus;
+  initialOpenRouter: OpenRouterIntegration | null;
+  initialAutomations: AutomationListItem[];
   currentRole: string;
 }) {
   const router = useRouter();
@@ -166,10 +174,12 @@ export function ProfileShell({
               onMembersChanged={refetchMembers}
             />
           )}
+          {activeTab === "automations" && <AutomationsSection initialAutomations={initialAutomations} />}
           {activeTab === "integrations" && (
             <IntegrationsSection
               initialWhatsApp={initialWhatsApp}
               initialGoogleCalendar={initialGoogleCalendar}
+              initialOpenRouter={initialOpenRouter}
               currentRole={currentRole}
             />
           )}

@@ -3,11 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type TaskStatus = "pending" | "in_progress" | "completed";
-/** Free text on the table (no CHECK constraint) — these are the two values
- * app code recognizes. 'candidate_application' (ATS) is a third documented
- * value in docs/blueprint/02-database.md but this pass only wires up the
- * two the user asked to relate tasks to. */
-export type TaskRelatedType = "contact" | "conversation";
+/** Free text on the table (no CHECK constraint) — these are the values app
+ * code recognizes. 'candidate_application' (ATS) is a fourth documented
+ * value in docs/blueprint/02-database.md, not wired up here. 'opportunity'
+ * added so a CRM deal can have its own related tasks (CardDetailSheet's
+ * "Tareas" tab). */
+export type TaskRelatedType = "contact" | "conversation" | "opportunity";
 
 export interface TaskItem {
   id: string;
@@ -54,6 +55,9 @@ async function resolveRelatedLabels(
   const conversationIds = rows
     .filter((r) => r.related_type === "conversation" && r.related_id)
     .map((r) => r.related_id as string);
+  const opportunityIds = rows
+    .filter((r) => r.related_type === "opportunity" && r.related_id)
+    .map((r) => r.related_id as string);
 
   const labelById = new Map<string, string>();
 
@@ -78,6 +82,17 @@ async function resolveRelatedLabels(
     for (const row of data ?? []) {
       const contact = Array.isArray(row.contacts) ? row.contacts[0] : row.contacts;
       labelById.set(row.id as string, contact ? `Conversación con ${contact.name as string}` : "Conversación");
+    }
+  }
+
+  if (opportunityIds.length) {
+    const { data } = await supabase
+      .from("opportunities")
+      .select("id, title")
+      .eq("workspace_id", workspaceId)
+      .in("id", opportunityIds);
+    for (const o of data ?? []) {
+      labelById.set(o.id as string, o.title as string);
     }
   }
 
@@ -166,6 +181,24 @@ export async function getTaskById(workspaceId: string, taskId: string): Promise<
   if (!data) return null;
   const [item] = await mapTaskRows(supabase, workspaceId, [data as TaskRow]);
   return item;
+}
+
+/** Scoped list for CardDetailSheet's "Tareas" tab — same row shape as
+ * getTasks, just pre-filtered instead of reusing the general list + a
+ * client-side filter (this tab is opened often, keep it a light query). */
+export async function getOpportunityTasks(workspaceId: string, opportunityId: string): Promise<TaskItem[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select(
+      "id, title, description, priority, status, due_at, assigned_to, created_by, related_type, related_id, created_at, updated_at, completed_at",
+    )
+    .eq("workspace_id", workspaceId)
+    .eq("related_type", "opportunity")
+    .eq("related_id", opportunityId)
+    .order("due_at", { ascending: true, nullsFirst: false });
+
+  return mapTaskRows(supabase, workspaceId, (data ?? []) as TaskRow[]);
 }
 
 export interface TaskOption {

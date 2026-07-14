@@ -44,6 +44,7 @@ export function LeadFormSheet({
   const [currency, setCurrency] = useState(card?.currency ?? "USD");
   const [priority, setPriority] = useState<"high" | "medium" | "low">(card?.priority ?? "medium");
   const [probability, setProbability] = useState(card?.probability !== null && card?.probability !== undefined ? String(card.probability) : "");
+  const [expectedCloseDate, setExpectedCloseDate] = useState(card?.expectedCloseDate ?? "");
   const [ownerId, setOwnerId] = useState(card?.ownerId ?? "");
   const [stageId, setStageId] = useState(defaultStageId ?? stages[0]?.id ?? "");
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set(card?.tags.map((t) => t.id) ?? []));
@@ -71,6 +72,7 @@ export function LeadFormSheet({
       currency,
       priority,
       probability: probability.trim() ? Number(probability) : null,
+      expectedCloseDate: expectedCloseDate.trim() || null,
       ownerId: ownerId || null,
     };
 
@@ -121,7 +123,7 @@ export function LeadFormSheet({
 
         <div className="my-1 h-px bg-border-default" />
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Oportunidad</p>
-        <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Plan premium — Acme Inc." />
+        <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Plan premium — Nombre del cliente" />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Valor" type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} />
           <Select label="Moneda" value={currency} onChange={(e) => setCurrency(e.target.value)}>
@@ -147,6 +149,12 @@ export function LeadFormSheet({
             onChange={(e) => setProbability(e.target.value)}
           />
         </div>
+        <Input
+          label="Fecha de cierre estimada"
+          type="date"
+          value={expectedCloseDate}
+          onChange={(e) => setExpectedCloseDate(e.target.value)}
+        />
         {!isEdit && (
           <Select label="Etapa inicial" value={stageId} onChange={(e) => setStageId(e.target.value)}>
             {stages.map((s) => (

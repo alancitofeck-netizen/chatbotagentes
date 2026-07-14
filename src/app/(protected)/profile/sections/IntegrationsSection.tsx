@@ -2,41 +2,49 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MessageCircle, CalendarDays, RefreshCw } from "lucide-react";
+import { MessageCircle, CalendarDays, RefreshCw, Bot } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
-import type { WhatsAppIntegration } from "@/lib/integrations/queries";
+import type { OpenRouterIntegration, WhatsAppIntegration } from "@/lib/integrations/queries";
 import type { GoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
 import {
   disconnectWhatsAppIntegration,
   getWhatsAppIntegrationAction,
   disconnectGoogleCalendarAction,
   syncGoogleCalendarNowAction,
+  getOpenRouterIntegrationAction,
+  disconnectOpenRouterIntegration,
 } from "@/lib/integrations/actions";
 import { WhatsAppIntegrationSheet } from "./WhatsAppIntegrationSheet";
+import { OpenRouterIntegrationSheet } from "./OpenRouterIntegrationSheet";
 
 /** Moved from the old standalone /settings/integrations page into the
  * Perfil > Integraciones tab — same components/actions, no logic changes. */
 export function IntegrationsSection({
   initialWhatsApp,
   initialGoogleCalendar,
+  initialOpenRouter,
   currentRole,
 }: {
   initialWhatsApp: WhatsAppIntegration | null;
   initialGoogleCalendar: GoogleCalendarStatus;
+  initialOpenRouter: OpenRouterIntegration | null;
   currentRole: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [whatsapp, setWhatsapp] = useState(initialWhatsApp);
   const [googleCalendar, setGoogleCalendar] = useState(initialGoogleCalendar);
+  const [openRouter, setOpenRouter] = useState(initialOpenRouter);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [openRouterSheetOpen, setOpenRouterSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isSyncing, startSyncTransition] = useTransition();
   const canManage = currentRole === "owner" || currentRole === "admin";
   const isActive = whatsapp?.status === "active";
+  const isOpenRouterActive = openRouter?.status === "active";
 
   // The Google OAuth callback (src/app/api/integrations/google-calendar/callback/route.ts)
   // redirects back here with a result flag in the query string — surface it
@@ -55,6 +63,25 @@ export function IntegrationsSection({
   function refetch() {
     startTransition(async () => {
       setWhatsapp(await getWhatsAppIntegrationAction());
+    });
+  }
+
+  function refetchOpenRouter() {
+    startTransition(async () => {
+      setOpenRouter(await getOpenRouterIntegrationAction());
+    });
+  }
+
+  function handleDisconnectOpenRouter() {
+    if (!window.confirm("¿Desconectar la integración de OpenRouter de este workspace?")) return;
+    startTransition(async () => {
+      try {
+        await disconnectOpenRouterIntegration();
+        refetchOpenRouter();
+        toast.success("Integración desconectada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo desconectar.");
+      }
     });
   }
 
@@ -204,8 +231,42 @@ export function IntegrationsSection({
       </Card>
 
       <Card>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-full bg-accent-100 text-accent-700">
+              <Bot className="size-4" aria-hidden="true" />
+            </span>
+            <h3 className="text-[15px] font-medium text-foreground">OpenRouter (Motor de IA)</h3>
+          </div>
+          <Badge variant={isOpenRouterActive ? "success" : "neutral"}>{isOpenRouterActive ? "Conectado" : "No conectado"}</Badge>
+        </div>
+
+        {openRouter ? (
+          <div className="flex flex-col gap-1 text-sm text-neutral-600">
+            {openRouter.displayName && <p className="font-medium text-foreground">{openRouter.displayName}</p>}
+            <p>API Key: {openRouter.hasCredentials ? "configurada ✓" : "sin configurar"}</p>
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-500">
+            Conectá tu cuenta de OpenRouter para que el motor de IA pueda responder conversaciones de WhatsApp.
+          </p>
+        )}
+
+        <div className="mt-4 flex gap-2">
+          <Button size="sm" variant="secondary" disabled={!canManage} onClick={() => setOpenRouterSheetOpen(true)}>
+            {openRouter ? "Editar" : "Conectar"}
+          </Button>
+          {isOpenRouterActive && (
+            <Button size="sm" variant="destructive" disabled={!canManage || isPending} onClick={handleDisconnectOpenRouter}>
+              Desconectar
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <Card>
         <h3 className="mb-1 text-[15px] font-medium text-foreground">Otros proveedores</h3>
-        <p className="text-sm text-neutral-500">OpenRouter, HighLevel — próximamente.</p>
+        <p className="text-sm text-neutral-500">HighLevel — próximamente.</p>
       </Card>
 
       {sheetOpen && (
@@ -215,6 +276,17 @@ export function IntegrationsSection({
           onSaved={() => {
             setSheetOpen(false);
             refetch();
+          }}
+        />
+      )}
+
+      {openRouterSheetOpen && (
+        <OpenRouterIntegrationSheet
+          onClose={() => setOpenRouterSheetOpen(false)}
+          current={openRouter}
+          onSaved={() => {
+            setOpenRouterSheetOpen(false);
+            refetchOpenRouter();
           }}
         />
       )}

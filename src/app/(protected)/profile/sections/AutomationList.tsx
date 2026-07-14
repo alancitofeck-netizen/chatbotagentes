@@ -52,7 +52,7 @@ export function AutomationList({
   return (
     <ul className="flex flex-col">
       {automations.map((a) => (
-        <li key={a.id} className="flex items-center gap-3 border-b border-border-default px-6 py-3 hover:bg-surface-2">
+        <li key={a.id} className="flex items-center gap-3 border-b border-border-default px-4 py-3 last:border-b-0 hover:bg-surface-2">
           <button
             type="button"
             onClick={() => onSelect(a)}

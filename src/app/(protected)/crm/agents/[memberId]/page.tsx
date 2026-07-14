@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getAgentDetail } from "@/lib/agents/queries";
+import { getWorkspaceMembers } from "@/lib/inbox/queries";
+import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
 import { AgentProfileView } from "./AgentProfileView";
 
 export const metadata: Metadata = {
@@ -12,8 +14,15 @@ export const metadata: Metadata = {
 
 export default async function AgentProfilePage({ params }: { params: Promise<{ memberId: string }> }) {
   const { memberId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
-  const agent = await getAgentDetail(workspaceId, memberId);
+  const { workspaceId, role } = await requireActiveWorkspace();
+
+  const [agent, members, contactOptions, conversationOptions, tasks] = await Promise.all([
+    getAgentDetail(workspaceId, memberId),
+    getWorkspaceMembers(workspaceId),
+    getContactOptions(workspaceId),
+    getConversationOptions(workspaceId),
+    getTasks(workspaceId, { assignedMemberId: memberId }),
+  ]);
 
   if (!agent) notFound();
 
@@ -28,7 +37,15 @@ export default async function AgentProfilePage({ params }: { params: Promise<{ m
         </h1>
         <p className="text-sm text-neutral-500">{agent.title || "Sin cargo"}</p>
       </div>
-      <AgentProfileView agent={agent} />
+      <AgentProfileView
+        agent={agent}
+        initialTasks={tasks}
+        members={members}
+        contactOptions={contactOptions}
+        conversationOptions={conversationOptions}
+        canAssignOthers={role === "owner" || role === "admin"}
+        canManageWorkspaces={role === "owner" || role === "admin"}
+      />
     </div>
   );
 }

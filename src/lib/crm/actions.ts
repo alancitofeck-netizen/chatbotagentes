@@ -2,17 +2,240 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getCrmBoard, getOpportunityDetail } from "@/lib/crm/queries";
+import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
+import { getCrmBoard, getCrmPipelines, getOpportunityActivity, getOpportunityDetail } from "@/lib/crm/queries";
+import { getCrmAnalyticsRangeData, resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
 
-export async function getCrmBoardAction() {
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/** Feeds CardDetailSheet's "Historial" tab — `audit_log` already existed
+ * (0020_agent_engine_core.sql, built for the AI engine) but no CRM mutation
+ * ever wrote to it, so an opportunity's history tab was always just a stub. */
+async function logOpportunityActivity(
+  supabase: SupabaseServerClient,
+  workspaceId: string,
+  opportunityId: string,
+  action: string,
+  metadata: Record<string, unknown> = {},
+) {
+  const memberId = await getCurrentMemberId(workspaceId);
+  await supabase.from("audit_log").insert({
+    workspace_id: workspaceId,
+    actor_type: "user",
+    actor_id: memberId,
+    action,
+    entity_type: "opportunity",
+    entity_id: opportunityId,
+    metadata,
+  });
+}
+
+export async function getCrmBoardAction(pipelineId?: string) {
   const { workspaceId } = await requireActiveWorkspace();
+  return getCrmBoard(workspaceId, pipelineId);
+}
+
+export async function getCrmPipelinesAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getCrmPipelines(workspaceId);
+}
+
+export async function getCrmAnalyticsRangeAction(preset: DateRangePreset, customStart?: string, customEnd?: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const range = resolveDateRange(preset, customStart, customEnd);
+  return getCrmAnalyticsRangeData(workspaceId, range);
+}
+
+const DEFAULT_CRM_STAGES = [
+  { name: "Nuevo", isWon: false, isLost: false },
+  { name: "Contactado", isWon: false, isLost: false },
+  { name: "Calificado", isWon: false, isLost: false },
+  { name: "Propuesta", isWon: false, isLost: false },
+  { name: "Negociación", isWon: false, isLost: false },
+  { name: "Ganado", isWon: true, isLost: false },
+  { name: "Perdido", isWon: false, isLost: true },
+];
+
+/** Same pattern as Asesores' ensurePipeline() (src/lib/advisors/actions.ts):
+ * a workspace has no self-serve "create workspace" flow that seeds a CRM
+ * pipeline yet, so the first opportunity created for a workspace provisions
+ * it instead of throwing "todavía no tiene un pipeline de ventas". Exported
+ * so the Tablero empty state can also call it directly (no opportunity
+ * required to get a usable board). */
+export async function ensureCrmPipeline(workspaceId: string): Promise<string> {
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("pipelines")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("module_key", "crm")
+    .limit(1)
+    .maybeSingle();
+  if (existing) return existing.id as string;
+
+  const { data: pipeline, error } = await supabase
+    .from("pipelines")
+    .insert({ workspace_id: workspaceId, module_key: "crm", name: "Pipeline de ventas" })
+    .select("id")
+    .single();
+  if (error || !pipeline) throw new Error("No se pudo crear el pipeline de ventas.");
+
+  await supabase.from("pipeline_stages").insert(
+    DEFAULT_CRM_STAGES.map((s, i) => ({
+      pipeline_id: pipeline.id,
+      name: s.name,
+      position: i,
+      is_won: s.isWon,
+      is_lost: s.isLost,
+    })),
+  );
+
+  return pipeline.id as string;
+}
+
+export async function ensureCrmPipelineAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  await ensureCrmPipeline(workspaceId);
+  revalidatePath("/crm");
   return getCrmBoard(workspaceId);
 }
 
 export async function getOpportunityDetailAction(opportunityId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getOpportunityDetail(workspaceId, opportunityId);
+}
+
+export async function getOpportunityActivityAction(opportunityId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getOpportunityActivity(workspaceId, opportunityId);
+}
+
+/** Pipeline management (múltiples pipelines + columnas editables) — the
+ * Blueprint (06-crm.md) explicitly allows more than one CRM pipeline per
+ * workspace, but no UI ever existed for it before this. */
+export async function createPipeline(name: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (!name.trim()) throw new Error("El nombre es obligatorio.");
+  const supabase = await createClient();
+
+  const { data: pipeline, error } = await supabase
+    .from("pipelines")
+    .insert({ workspace_id: workspaceId, module_key: "crm", name: name.trim() })
+    .select("id")
+    .single();
+  if (error || !pipeline) throw new Error("No se pudo crear el pipeline.");
+
+  await supabase.from("pipeline_stages").insert(
+    DEFAULT_CRM_STAGES.map((s, i) => ({
+      pipeline_id: pipeline.id,
+      name: s.name,
+      position: i,
+      is_won: s.isWon,
+      is_lost: s.isLost,
+    })),
+  );
+
+  revalidatePath("/crm");
+  return { id: pipeline.id as string };
+}
+
+export async function renamePipeline(pipelineId: string, name: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (!name.trim()) throw new Error("El nombre es obligatorio.");
+  const supabase = await createClient();
+
+  await supabase.from("pipelines").update({ name: name.trim() }).eq("id", pipelineId).eq("workspace_id", workspaceId);
+  revalidatePath("/crm");
+}
+
+/** Blocked if it still has opportunities on it (the app enforces this, not
+ * just a UI nicety — `pipeline_items`/`pipeline_stages` cascade-delete at the
+ * DB level, which would silently orphan those opportunities). */
+export async function deletePipeline(pipelineId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from("pipeline_items")
+    .select("id", { count: "exact", head: true })
+    .eq("pipeline_id", pipelineId)
+    .eq("item_type", "opportunity");
+  if (count && count > 0) {
+    throw new Error("Este pipeline todavía tiene oportunidades. Movélas o eliminalas antes de borrar el pipeline.");
+  }
+
+  await supabase.from("pipelines").delete().eq("id", pipelineId).eq("workspace_id", workspaceId);
+  revalidatePath("/crm");
+}
+
+export async function createPipelineStage(pipelineId: string, name: string) {
+  if (!name.trim()) throw new Error("El nombre de la etapa es obligatorio.");
+  await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from("pipeline_stages")
+    .select("id", { count: "exact", head: true })
+    .eq("pipeline_id", pipelineId);
+
+  await supabase.from("pipeline_stages").insert({
+    pipeline_id: pipelineId,
+    name: name.trim(),
+    position: count ?? 0,
+  });
+
+  revalidatePath("/crm");
+}
+
+export async function updatePipelineStage(
+  stageId: string,
+  input: { name: string; isWon: boolean; isLost: boolean },
+) {
+  if (!input.name.trim()) throw new Error("El nombre de la etapa es obligatorio.");
+  await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  await supabase
+    .from("pipeline_stages")
+    .update({ name: input.name.trim(), is_won: input.isWon, is_lost: input.isLost })
+    .eq("id", stageId);
+
+  revalidatePath("/crm");
+}
+
+/** Blocked if the stage still has cards on it — same reasoning as
+ * deletePipeline (cascade would silently orphan those opportunities). */
+export async function deletePipelineStage(stageId: string) {
+  await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from("pipeline_items")
+    .select("id", { count: "exact", head: true })
+    .eq("stage_id", stageId)
+    .eq("item_type", "opportunity");
+  if (count && count > 0) {
+    throw new Error("Esta etapa todavía tiene oportunidades. Movélas antes de eliminarla.");
+  }
+
+  await supabase.from("pipeline_stages").delete().eq("id", stageId);
+  revalidatePath("/crm");
+}
+
+/** Persists a drag-reorder of the stage columns themselves (distinct from
+ * moveOpportunityCard, which reorders cards within/across stages). */
+export async function reorderPipelineStages(stageIdsInOrder: string[]) {
+  await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  await Promise.all(
+    stageIdsInOrder.map((stageId, index) =>
+      supabase.from("pipeline_stages").update({ position: index }).eq("id", stageId),
+    ),
+  );
+
+  revalidatePath("/crm");
 }
 
 /** Persists a Kanban drag: the client already moved the card optimistically. */
@@ -25,7 +248,7 @@ export async function moveOpportunityCard(pipelineItemId: string, stageId: strin
   // RLS alone for a cross-tenant id someone could pass in (defense in depth).
   const { data: item } = await supabase
     .from("pipeline_items")
-    .select("id, item_id, pipelines(workspace_id)")
+    .select("id, item_id, stage_id, pipelines(workspace_id)")
     .eq("id", pipelineItemId)
     .maybeSingle();
 
@@ -34,17 +257,16 @@ export async function moveOpportunityCard(pipelineItemId: string, stageId: strin
     throw new Error("Tarjeta no encontrada en este workspace.");
   }
 
+  const [{ data: originStage }, { data: destinationStage }] = await Promise.all([
+    supabase.from("pipeline_stages").select("name").eq("id", item.stage_id).maybeSingle(),
+    supabase.from("pipeline_stages").select("name, is_won, is_lost").eq("id", stageId).maybeSingle(),
+  ]);
+
   await supabase.from("pipeline_items").update({ stage_id: stageId, position }).eq("id", pipelineItemId);
 
   // Keep opportunities.status in sync with the destination stage — nothing
   // wrote to it before this fix, so Dashboard's "Ventas del mes"/"% conversión"
   // KPIs (which filter status === 'won') never reflected real drag activity.
-  const { data: destinationStage } = await supabase
-    .from("pipeline_stages")
-    .select("is_won, is_lost")
-    .eq("id", stageId)
-    .maybeSingle();
-
   const status = destinationStage?.is_won ? "won" : destinationStage?.is_lost ? "lost" : "open";
   // `updated_at` is stamped explicitly here (no DB trigger keeps it current) —
   // the board KPI header (src/lib/crm/queries.ts) buckets "Ventas cerradas"/
@@ -55,6 +277,13 @@ export async function moveOpportunityCard(pipelineItemId: string, stageId: strin
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", item.item_id)
     .eq("workspace_id", workspaceId);
+
+  if (item.stage_id !== stageId) {
+    await logOpportunityActivity(supabase, workspaceId, item.item_id as string, "opportunity_stage_changed", {
+      from_stage: originStage?.name ?? null,
+      to_stage: destinationStage?.name ?? null,
+    });
+  }
 
   revalidatePath("/crm");
   revalidatePath("/dashboard");
@@ -87,6 +316,7 @@ export interface LeadFormInput {
   currency: string;
   priority: "high" | "medium" | "low";
   probability: number | null;
+  expectedCloseDate: string | null;
   ownerId: string | null;
 }
 
@@ -101,21 +331,14 @@ export async function createOpportunity(input: LeadFormInput, stageId?: string) 
   if (!input.title.trim()) throw new Error("El título de la oportunidad es obligatorio.");
   const supabase = await createClient();
 
-  const { data: pipeline } = await supabase
-    .from("pipelines")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("module_key", "crm")
-    .limit(1)
-    .maybeSingle();
-  if (!pipeline) throw new Error("Este workspace todavía no tiene un pipeline de ventas.");
+  const pipelineId = await ensureCrmPipeline(workspaceId);
 
   let targetStageId = stageId;
   if (!targetStageId) {
     const { data: firstStage } = await supabase
       .from("pipeline_stages")
       .select("id")
-      .eq("pipeline_id", pipeline.id)
+      .eq("pipeline_id", pipelineId)
       .order("position", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -152,6 +375,7 @@ export async function createOpportunity(input: LeadFormInput, stageId?: string) 
       currency: input.currency,
       priority: input.priority,
       probability: input.probability,
+      expected_close_date: input.expectedCloseDate,
       owner_id: input.ownerId,
     })
     .select("id")
@@ -161,7 +385,7 @@ export async function createOpportunity(input: LeadFormInput, stageId?: string) 
   const { data: pipelineItem, error: pipelineItemError } = await supabase
     .from("pipeline_items")
     .insert({
-      pipeline_id: pipeline.id,
+      pipeline_id: pipelineId,
       stage_id: targetStageId,
       item_type: "opportunity",
       item_id: opportunity.id,
@@ -172,6 +396,10 @@ export async function createOpportunity(input: LeadFormInput, stageId?: string) 
   if (pipelineItemError || !pipelineItem) throw new Error("No se pudo agregar el lead al tablero.");
 
   await supabase.from("opportunities").update({ pipeline_item_id: pipelineItem.id }).eq("id", opportunity.id);
+
+  await logOpportunityActivity(supabase, workspaceId, opportunity.id as string, "opportunity_created", {
+    title: input.title.trim(),
+  });
 
   revalidatePath("/crm");
   revalidatePath("/dashboard");
@@ -209,10 +437,15 @@ export async function updateOpportunity(opportunityId: string, contactId: string
       currency: input.currency,
       priority: input.priority,
       probability: input.probability,
+      expected_close_date: input.expectedCloseDate,
       owner_id: input.ownerId,
     })
     .eq("id", opportunityId)
     .eq("workspace_id", workspaceId);
+
+  await logOpportunityActivity(supabase, workspaceId, opportunityId, "opportunity_updated", {
+    title: input.title.trim(),
+  });
 
   revalidatePath("/crm");
 }
@@ -220,6 +453,8 @@ export async function updateOpportunity(opportunityId: string, contactId: string
 export async function deleteOpportunity(opportunityId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   const supabase = await createClient();
+
+  await logOpportunityActivity(supabase, workspaceId, opportunityId, "opportunity_deleted");
 
   await supabase.from("pipeline_items").delete().eq("item_type", "opportunity").eq("item_id", opportunityId);
   await supabase.from("notes").delete().eq("workspace_id", workspaceId).eq("notable_type", "opportunity").eq("notable_id", opportunityId);
@@ -409,6 +644,7 @@ export async function importOpportunitiesCsv(rows: ImportLeadRow[]) {
         currency: "USD",
         priority,
         probability: null,
+        expectedCloseDate: null,
         ownerId: null,
       });
       results.imported += 1;

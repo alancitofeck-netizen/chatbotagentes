@@ -114,12 +114,12 @@ export function WorkspaceSection({
               <Sparkles className="size-[18px]" aria-hidden="true" />
             </span>
             <div>
-              <p className="text-sm font-medium text-foreground">Prompt Builder</p>
-              <p className="text-[13px] text-neutral-500">Prompts de sistema y tools por módulo.</p>
+              <p className="text-sm font-medium text-foreground">Agentes IA</p>
+              <p className="text-[13px] text-neutral-500">Asistentes de IA especializados, prompts y herramientas.</p>
             </div>
           </div>
           <Link
-            href="/settings/ai"
+            href="/crm?tab=agentes-ia"
             className="flex items-center gap-1 text-sm font-medium text-accent-600 hover:underline"
           >
             Abrir <ArrowRight className="size-3.5" aria-hidden="true" />

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
-import { getWhatsAppIntegration } from "@/lib/integrations/queries";
+import { getOpenRouterIntegration, getWhatsAppIntegration } from "@/lib/integrations/queries";
 import { disconnectGoogleCalendar, getGoogleCalendarStatus, importGoogleEvents } from "@/lib/integrations/googleCalendar";
 
 export async function getWhatsAppIntegrationAction() {
@@ -61,6 +61,49 @@ export async function disconnectWhatsAppIntegration() {
   const supabase = await createClient();
   const { error } = await supabase.rpc("disconnect_whatsapp_integration", { p_workspace_id: workspaceId });
   if (error) throw new Error("No se pudo desconectar la integración de WhatsApp.");
+
+  revalidatePath("/profile");
+}
+
+export async function getOpenRouterIntegrationAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getOpenRouterIntegration(workspaceId);
+}
+
+/** Mirrors saveWhatsAppIntegration exactly — delegates to
+ * public.upsert_openrouter_integration (0021_openrouter_integration_vault.sql),
+ * same SECURITY DEFINER/Vault reasoning, no external_account_id input (it's
+ * derived server-side as workspace_id::text, see that migration). */
+export async function saveOpenRouterIntegration(input: { apiKey: string; displayName?: string }) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+
+  const apiKey = input.apiKey.trim();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("upsert_openrouter_integration", {
+    p_workspace_id: workspaceId,
+    p_api_key: apiKey || null,
+    p_display_name: input.displayName?.trim() || null,
+  });
+
+  if (error) {
+    throw new Error(
+      apiKey || undefined
+        ? "No se pudo guardar la integración de OpenRouter."
+        : "No se pudo guardar — si es la primera vez que conectás este workspace, la API Key es obligatoria.",
+    );
+  }
+
+  revalidatePath("/profile");
+}
+
+export async function disconnectOpenRouterIntegration() {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("disconnect_openrouter_integration", { p_workspace_id: workspaceId });
+  if (error) throw new Error("No se pudo desconectar la integración de OpenRouter.");
 
   revalidatePath("/profile");
 }

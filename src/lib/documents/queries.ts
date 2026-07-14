@@ -139,6 +139,29 @@ export async function getDocuments(
   return items;
 }
 
+/** Scoped list for CardDetailSheet's "Archivos" tab — reuses the
+ * `documents.related_type`/`related_id` polymorphic columns anticipated by
+ * 0019_documents_module.sql's own comment ("recognized values are an app-code
+ * convention... when this gets wired to a CRM 'Archivos' tab"). */
+export async function getDocumentsByRelated(
+  workspaceId: string,
+  currentMemberId: string | null,
+  relatedType: string,
+  relatedId: string,
+): Promise<DocumentItem[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("documents")
+    .select(DOCUMENT_SELECT)
+    .eq("workspace_id", workspaceId)
+    .eq("related_type", relatedType)
+    .eq("related_id", relatedId)
+    .eq("is_trashed", false)
+    .order("created_at", { ascending: false });
+
+  return mapDocumentRows(supabase, workspaceId, currentMemberId, (data ?? []) as DocumentRow[]);
+}
+
 export async function getDocumentById(workspaceId: string, documentId: string, currentMemberId: string | null): Promise<DocumentItem | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("documents").select(DOCUMENT_SELECT).eq("workspace_id", workspaceId).eq("id", documentId).maybeSingle();

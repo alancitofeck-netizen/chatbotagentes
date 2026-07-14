@@ -9,6 +9,7 @@ import {
   getWorkspaceMembers,
   getWorkspaceTags,
 } from "@/lib/inbox/queries";
+import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
 
 export async function getConversationListAction(filters: { status?: string; search?: string }) {
   const { workspaceId } = await requireActiveWorkspace();
@@ -57,6 +58,100 @@ export async function updateConversationStatus(conversationId: string, status: s
     .update({ status })
     .eq("id", conversationId)
     .eq("workspace_id", workspaceId);
+
+  revalidatePath("/inbox");
+}
+
+/** Mirrors updateConversationStatus exactly — `mode` (human/ai/hybrid,
+ * docs/blueprint/13-agent-engine.md) was schema-only until the Motor de IA
+ * pass: the Buffer Inteligente flush reads it to decide whether to invoke
+ * the Agent Runtime at all (src/lib/ai/decisionEngine.ts). */
+export async function updateConversationMode(conversationId: string, mode: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  await supabase
+    .from("conversations")
+    .update({ mode })
+    .eq("id", conversationId)
+    .eq("workspace_id", workspaceId);
+
+  revalidatePath("/inbox");
+}
+
+/**
+ * Draft-approval workflow (modo asistido, Agentes IA) — `messages.status`
+ * has no CHECK constraint (confirmed), so 'draft'/'approved'/'rejected' are
+ * fully additive. Never deletes a draft row on approve/reject — same
+ * "a real message's own row is never rewritten/erased" rule already
+ * followed for the failed-send retry flow in ConversationThread.tsx, and it
+ * feeds the future Métricas "derivaciones/rechazos" stat for free.
+ *
+ * Discriminated result instead of throw — this calls `sendOutboundWhatsAppMessage`
+ * (an external YCloud call), the exact failure mode this session's established
+ * rule targets (thrown errors from a Server Action doing an external call get
+ * redacted to a generic message in production builds, confirmed empirically).
+ */
+export async function approveDraftMessage(messageId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+
+  const { data: draft } = await supabase
+    .from("messages")
+    .select("id, conversation_id, content")
+    .eq("id", messageId)
+    .eq("workspace_id", workspaceId)
+    .eq("status", "draft")
+    .maybeSingle();
+  if (!draft) return { ok: false, error: "draft_not_found" };
+
+  const body = (draft.content as { body?: string } | null)?.body ?? "";
+  // Re-validates opt-out/24h-window at THIS moment — deliberately not
+  // checked when the draft was created, since time may have passed between
+  // the AI drafting it and a human approving it (agentRuntime.ts).
+  const result = await sendOutboundWhatsAppMessage({
+    supabase,
+    workspaceId,
+    conversationId: draft.conversation_id as string,
+    content: body,
+    senderType: "agent",
+    senderId: memberId,
+  });
+  if (!result.ok) return { ok: false, error: result.error };
+
+  await supabase.from("messages").update({ status: "approved" }).eq("id", messageId);
+  revalidatePath("/inbox");
+  return { ok: true };
+}
+
+export async function editDraftMessage(messageId: string, newContent: string): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (!newContent.trim()) throw new Error("El mensaje no puede estar vacío.");
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("messages")
+    .update({ content: { body: newContent.trim() } })
+    .eq("id", messageId)
+    .eq("workspace_id", workspaceId)
+    .eq("status", "draft");
+  if (error) throw new Error("No se pudo editar el borrador.");
+
+  revalidatePath("/inbox");
+}
+
+export async function rejectDraftMessage(messageId: string): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("messages")
+    .update({ status: "rejected" })
+    .eq("id", messageId)
+    .eq("workspace_id", workspaceId)
+    .eq("status", "draft");
+  if (error) throw new Error("No se pudo rechazar la sugerencia.");
 
   revalidatePath("/inbox");
 }

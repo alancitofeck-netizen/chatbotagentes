@@ -36,6 +36,7 @@ export async function getTeams(workspaceId: string): Promise<Team[]> {
 
 export interface AgentListItem {
   memberId: string;
+  userId: string;
   fullName: string;
   email: string;
   role: string;
@@ -243,6 +244,7 @@ export async function getAgentList(
 
     return {
       memberId,
+      userId: m.user_id as string,
       fullName: identity?.fullName ?? "Sin nombre",
       email: identity?.email ?? "",
       role: m.role as string,
