@@ -5,22 +5,20 @@ import { processClaimedBuffer, type ConversationBufferRow } from "@/lib/ai/buffe
 export const maxDuration = 60;
 
 /**
- * Buffer Inteligente flush — Vercel Cron entrypoint (Diseño B del plan del
- * Motor de IA). pg_cron/pg_net availability on this Supabase project was
- * unconfirmed (MCP tooling was down during this build), so this pass ships
- * the zero-new-extension fallback: Vercel Cron (`vercel.json`, 1-minute
- * floor — no sub-minute tier exists on Vercel at any plan) calls this route,
- * which claims + processes buffers in the same invocation. Worst-case
- * first-reply latency is the buffer window (8-15s) + up to ~60s cron
- * latency, not the spec's 3-5s target — a real UX trade-off, flagged, not
- * silent. If pg_cron+pg_net are ever confirmed available, this route stays
- * as-is; only the trigger mechanism changes (pg_net calling an equivalent
- * internal endpoint), since `processClaimedBuffer` is the single shared
- * entry point either design calls.
+ * Buffer Inteligente flush entrypoint. Primary trigger since 2026-07-14 is
+ * pg_cron + pg_net inside Supabase (`supabase/migrations/
+ * 0029_pgcron_buffer_flush.sql`, every 15s — matches docs/blueprint/
+ * 04-inbox.md's original "Diseño A" design), because Vercel's Hobby plan
+ * only allows Cron Jobs to run once a day, which would make the flush
+ * effectively once-daily if Vercel Cron stayed the only trigger. `vercel.json`
+ * still calls this same route, now only as a once-a-day safety net (Hobby-
+ * compatible) in case pg_net ever fails to reach it. `processClaimedBuffer`
+ * doesn't care which trigger fired it — both send the exact same request.
  *
- * Auth: Vercel automatically sends `Authorization: Bearer $CRON_SECRET` to
- * its own Cron-triggered requests when a `CRON_SECRET` env var is set —
- * standard Vercel Cron protection, no custom header scheme invented here.
+ * Auth: pg_net sends `Authorization: Bearer <secret>` reading the secret from
+ * Supabase Vault (never stored in the migration file itself). Vercel's own
+ * Cron trigger sends the same header automatically from the `CRON_SECRET`
+ * env var — both must hold the same value for either trigger to work.
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");

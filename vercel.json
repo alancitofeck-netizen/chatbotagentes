@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/flush-buffers",
-      "schedule": "* * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }

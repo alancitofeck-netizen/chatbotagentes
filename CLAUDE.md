@@ -71,4 +71,6 @@ Do not read/write Supabase auth cookies manually outside these helpers — the s
 
 ### Deployment
 
-Deploy target is Vercel; no project-specific `vercel.json` exists — standard Next.js zero-config deployment applies. Remember to set the same Supabase env vars in the Vercel project settings.
+Deploy target is Vercel, currently on the **Hobby** plan — [vercel.json](vercel.json) exists solely to configure a Cron Job, and its schedule must stay at daily-or-coarser (Hobby only allows Cron Jobs to run once a day; anything more frequent blocks deployment). Remember to set the same Supabase env vars in the Vercel project settings.
+
+The Buffer Inteligente's real flush cadence does **not** come from that Vercel Cron Job — it runs via **pg_cron + pg_net inside Supabase** (`supabase/migrations/0029_pgcron_buffer_flush.sql`), which isn't subject to Vercel plan limits at all. The Vercel Cron entry is a once-daily safety net only. If/when this project moves to Vercel Pro, the Vercel Cron schedule *could* be tightened again, but there's no need to — pg_cron already covers the near-real-time requirement independent of plan.
