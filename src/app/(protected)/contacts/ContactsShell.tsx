@@ -85,20 +85,34 @@ export function ContactsShell({
   // — supabase/migrations/0005_contacts_realtime.sql adds `contacts` to the publication.
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`contacts-${workspaceId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "contacts", filter: `workspace_id=eq.${workspaceId}` },
-        () => {
-          refetchList();
-          refetchCompanies();
-        },
-      )
-      .subscribe();
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    // `createBrowserClient` (@supabase/ssr) hydrates the session from cookies
+    // asynchronously — subscribing immediately joins the Realtime socket
+    // before the user's JWT is attached, so Postgres RLS sees an anonymous
+    // connection and silently filters out every change (join still succeeds,
+    // "Subscribed to PostgreSQL" still fires, but no event ever arrives).
+    // Explicitly awaiting the session + setAuth before subscribing fixes it.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled || !session) return;
+      supabase.realtime.setAuth(session.access_token);
+      channel = supabase
+        .channel(`contacts-${workspaceId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "contacts", filter: `workspace_id=eq.${workspaceId}` },
+          () => {
+            refetchList();
+            refetchCompanies();
+          },
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);

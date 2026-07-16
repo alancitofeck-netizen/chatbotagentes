@@ -160,6 +160,8 @@ export function ConversationThread({
   useEffect(() => {
     if (!detail) return;
     const supabase = createClient();
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     type MessageRow = {
       id: string;
       direction: string;
@@ -169,52 +171,66 @@ export function ConversationThread({
       status: string | null;
       created_at: string;
     };
-    const channel = supabase
-      .channel(`messages-${detail.id}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${detail.id}` },
-        (payload) => {
-          const row = payload.new as MessageRow;
-          setLiveMessages((prev) =>
-            prev.some((m) => m.id === row.id)
-              ? prev
-              : [
-                  ...prev,
-                  {
-                    id: row.id,
-                    direction: row.direction as "inbound" | "outbound",
-                    senderType: row.sender_type,
-                    body: row.content?.body ?? `[${row.type}]`,
-                    type: row.type,
-                    status: row.status,
-                    createdAt: row.created_at,
-                    errorReason: row.content?.error?.message ?? null,
-                  },
-                ],
-          );
-        },
-      )
-      .on(
-        // Status transitions for a message THIS app already sent (sent →
-        // delivered/read/failed), pushed by processMessageStatusUpdate in
-        // src/app/api/webhooks/ycloud/route.ts. Stored as an overlay (not
-        // merged into liveMessages) since the row being updated usually
-        // already lives in `detail.messages` (fetched on open), not here.
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${detail.id}` },
-        (payload) => {
-          const row = payload.new as MessageRow;
-          setMessageOverrides((prev) => ({
-            ...prev,
-            [row.id]: { status: row.status, errorReason: row.content?.error?.message ?? null },
-          }));
-        },
-      )
-      .subscribe();
+
+    // `createBrowserClient` (@supabase/ssr) hydrates the session from cookies
+    // asynchronously — subscribing immediately joins the Realtime socket
+    // before the user's JWT is attached, so Postgres RLS sees an anonymous
+    // connection and silently filters out every change (join still succeeds,
+    // "Subscribed to PostgreSQL" still fires, but no event ever arrives).
+    // Explicitly awaiting the session + setAuth before subscribing fixes it
+    // (confirmed live via WS-frame instrumentation — see the same fix in
+    // src/app/(protected)/contacts/ContactsShell.tsx).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled || !session) return;
+      supabase.realtime.setAuth(session.access_token);
+      channel = supabase
+        .channel(`messages-${detail.id}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${detail.id}` },
+          (payload) => {
+            const row = payload.new as MessageRow;
+            setLiveMessages((prev) =>
+              prev.some((m) => m.id === row.id)
+                ? prev
+                : [
+                    ...prev,
+                    {
+                      id: row.id,
+                      direction: row.direction as "inbound" | "outbound",
+                      senderType: row.sender_type,
+                      body: row.content?.body ?? `[${row.type}]`,
+                      type: row.type,
+                      status: row.status,
+                      createdAt: row.created_at,
+                      errorReason: row.content?.error?.message ?? null,
+                    },
+                  ],
+            );
+          },
+        )
+        .on(
+          // Status transitions for a message THIS app already sent (sent →
+          // delivered/read/failed), pushed by processMessageStatusUpdate in
+          // src/app/api/webhooks/ycloud/route.ts. Stored as an overlay (not
+          // merged into liveMessages) since the row being updated usually
+          // already lives in `detail.messages` (fetched on open), not here.
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${detail.id}` },
+          (payload) => {
+            const row = payload.new as MessageRow;
+            setMessageOverrides((prev) => ({
+              ...prev,
+              [row.id]: { status: row.status, errorReason: row.content?.error?.message ?? null },
+            }));
+          },
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
     // Deliberately keyed only on the id: `detail` also changes reference after
     // refetchDetail() (note/tag/status edits), which shouldn't tear down and
