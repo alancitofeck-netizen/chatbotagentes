@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MessageCircle, CalendarDays, RefreshCw, Bot } from "lucide-react";
+import { MessageCircle, CalendarDays, RefreshCw, Bot, Table2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import type { OpenRouterIntegration, WhatsAppIntegration } from "@/lib/integrations/queries";
 import type { GoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
+import type { GoogleSheetsAccountStatus } from "@/lib/integrations/googleSheets";
 import {
   disconnectWhatsAppIntegration,
   getWhatsAppIntegrationAction,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/integrations/actions";
 import { WhatsAppIntegrationSheet } from "./WhatsAppIntegrationSheet";
 import { OpenRouterIntegrationSheet } from "./OpenRouterIntegrationSheet";
+import { KpiSettersManager } from "./KpiSettersManager";
 
 /** Moved from the old standalone /settings/integrations page into the
  * Perfil > Integraciones tab — same components/actions, no logic changes. */
@@ -26,11 +28,13 @@ export function IntegrationsSection({
   initialWhatsApp,
   initialGoogleCalendar,
   initialOpenRouter,
+  initialGoogleSheets,
   currentRole,
 }: {
   initialWhatsApp: WhatsAppIntegration | null;
   initialGoogleCalendar: GoogleCalendarStatus;
   initialOpenRouter: OpenRouterIntegration | null;
+  initialGoogleSheets: GoogleSheetsAccountStatus;
   currentRole: string;
 }) {
   const router = useRouter();
@@ -38,6 +42,7 @@ export function IntegrationsSection({
   const [whatsapp, setWhatsapp] = useState(initialWhatsApp);
   const [googleCalendar, setGoogleCalendar] = useState(initialGoogleCalendar);
   const [openRouter, setOpenRouter] = useState(initialOpenRouter);
+  const [googleSheets] = useState(initialGoogleSheets);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [openRouterSheetOpen, setOpenRouterSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -55,6 +60,16 @@ export function IntegrationsSection({
       router.replace("/profile?tab=integrations", { scroll: false });
     } else if (searchParams.get("google_calendar_error")) {
       toast.error("No se pudo conectar Google Calendar.");
+      router.replace("/profile?tab=integrations", { scroll: false });
+    } else if (searchParams.get("google_sheets_connected")) {
+      // No setGoogleSheets here — the OAuth callback route does a real HTTP
+      // redirect (not a client transition), so this whole page re-runs
+      // server-side first and initialGoogleSheets already reflects
+      // connected:true by the time this component mounts.
+      toast.success("Cuenta de Google conectada — ahora agregá tus setters abajo.");
+      router.replace("/profile?tab=integrations", { scroll: false });
+    } else if (searchParams.get("google_sheets_error")) {
+      toast.error("No se pudo conectar la cuenta de Google para KPIs.");
       router.replace("/profile?tab=integrations", { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,6 +217,37 @@ export function IntegrationsSection({
             </Button>
           )}
         </div>
+      </Card>
+
+      <Card>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-full bg-success-bg text-success-strong">
+              <Table2 className="size-4" aria-hidden="true" />
+            </span>
+            <h3 className="text-[15px] font-medium text-foreground">Google Sheets (KPIs)</h3>
+          </div>
+          <Badge variant={googleSheets.connected ? "success" : "neutral"}>
+            {googleSheets.connected ? "🟢 Conectado" : "No conectado"}
+          </Badge>
+        </div>
+
+        {googleSheets.connected ? (
+          <p className="text-sm text-neutral-600">Cuenta de Google: {googleSheets.email}</p>
+        ) : (
+          <p className="text-sm text-neutral-500">
+            Conectá una cuenta de Google para ver los KPIs de tus setters directamente en el CRM — cada setter comparte su
+            propia hoja (permiso de lectura) con esta cuenta, no hace falta que cada uno haga su propio login.
+          </p>
+        )}
+
+        {!googleSheets.connected && (
+          <Button size="sm" disabled={!canManage} className="mt-4" onClick={() => (window.location.href = "/api/integrations/google-sheets/connect")}>
+            Conectar Google Sheets
+          </Button>
+        )}
+
+        <KpiSettersManager canManage={canManage} accountConnected={googleSheets.connected} />
       </Card>
 
       <Card>

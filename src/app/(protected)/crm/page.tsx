@@ -5,6 +5,8 @@ import { getAgentList, getTeams } from "@/lib/agents/queries";
 import { getWorkspaceMembers, getWorkspaceTags } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
 import { getAiAgentList } from "@/lib/ai-agents/queries";
+import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
+import { hasAnyKpiSetterSheet } from "@/lib/kpis/queries";
 import { CrmPageShell } from "./CrmPageShell";
 
 export const metadata: Metadata = {
@@ -14,7 +16,7 @@ export const metadata: Metadata = {
 export default async function CrmPage() {
   const { workspaceId, role } = await requireActiveWorkspace();
 
-  const [board, pipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents] =
+  const [board, pipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents, moduleStatus, hasKpiSheet] =
     await Promise.all([
       getCrmBoard(workspaceId),
       getCrmPipelines(workspaceId),
@@ -27,7 +29,10 @@ export default async function CrmPage() {
       getConversationOptions(workspaceId),
       getCurrentMemberId(workspaceId),
       getAiAgentList(workspaceId),
+      getWorkspaceModuleStatus(workspaceId),
+      hasAnyKpiSetterSheet(workspaceId),
     ]);
+  const atsEnabled = moduleStatus.some((m) => m.moduleKey === "ats" && m.enabled);
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
@@ -48,6 +53,8 @@ export default async function CrmPage() {
         canAssignOthers={role === "owner" || role === "admin"}
         ownMemberId={ownMemberId}
         aiAgents={aiAgents}
+        atsEnabled={atsEnabled}
+        hasKpiConnection={hasKpiSheet}
       />
     </div>
   );

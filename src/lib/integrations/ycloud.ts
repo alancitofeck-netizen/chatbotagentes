@@ -78,3 +78,65 @@ export async function getYCloudCredentials(
 
   return { apiKey: row.api_key, externalAccountId: row.external_account_id };
 }
+
+export interface YCloudTemplateComponent {
+  type: "HEADER" | "BODY" | "FOOTER" | "BUTTONS";
+  format?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT";
+  text?: string;
+  buttons?: Array<{ type: string; text: string; url?: string; phoneNumber?: string }>;
+}
+
+export interface CreateYCloudTemplateInput {
+  wabaId: string;
+  name: string;
+  language: string;
+  category: "AUTHENTICATION" | "MARKETING" | "UTILITY";
+  components: YCloudTemplateComponent[];
+}
+
+export interface YCloudTemplateResult {
+  id: string;
+  status: string;
+  rejectedReason?: string;
+}
+
+/** POST /v2/whatsapp/templates — submits a template to Meta for review via
+ * YCloud. The response's `status` is normally "PENDING" right after
+ * creation; the final approved/rejected outcome arrives later via the
+ * `whatsapp.template.reviewed` webhook (src/app/api/webhooks/ycloud/route.ts),
+ * not synchronously here. */
+export async function createYCloudTemplate(
+  credentials: YCloudCredentials,
+  input: CreateYCloudTemplateInput,
+): Promise<YCloudTemplateResult> {
+  const res = await fetch("https://api.ycloud.com/v2/whatsapp/templates", {
+    method: "POST",
+    headers: { "X-API-Key": credentials.apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    console.error("[ycloud] template creation rejected:", res.status, data);
+    throw new Error((data?.message as string | undefined) ?? "YCloud rechazó la creación de la plantilla.");
+  }
+  return {
+    id: data.id as string,
+    status: (data.status as string | undefined) ?? "PENDING",
+    rejectedReason: data.rejectedReason as string | undefined,
+  };
+}
+
+/** DELETE /v2/whatsapp/templates/{id} — 404 is treated as already-deleted
+ * (idempotent), not an error, since the local row may be out of sync with
+ * YCloud (e.g. deleted from the YCloud dashboard directly). */
+export async function deleteYCloudTemplate(credentials: YCloudCredentials, ycloudTemplateId: string): Promise<void> {
+  const res = await fetch(`https://api.ycloud.com/v2/whatsapp/templates/${ycloudTemplateId}`, {
+    method: "DELETE",
+    headers: { "X-API-Key": credentials.apiKey },
+  });
+  if (!res.ok && res.status !== 404) {
+    const data = await res.json().catch(() => null);
+    console.error("[ycloud] template deletion rejected:", res.status, data);
+    throw new Error((data?.message as string | undefined) ?? "YCloud rechazó la eliminación de la plantilla.");
+  }
+}

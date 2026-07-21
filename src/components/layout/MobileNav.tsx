@@ -7,7 +7,7 @@ import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils/cn";
-import { getNavItems } from "./Sidebar";
+import { getNavItems, isNavItemActive } from "./Sidebar";
 
 export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
   const [open, setOpen] = useState(false);
@@ -55,7 +55,7 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
             </div>
             <nav className="flex flex-col gap-1">
               {navItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = isNavItemActive(pathname, item.href);
                 const Icon = item.icon;
                 return (
                   <Link

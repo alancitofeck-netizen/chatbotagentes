@@ -56,7 +56,7 @@ export async function createContact(input: {
     : await supabase.from("contacts").insert(payload).select("id").single();
 
   if (error || !contact) throw new Error("No se pudo crear el contacto.");
-  revalidatePath("/contacts");
+  revalidatePath("/inbox/contactos");
   return { id: contact.id as string };
 }
 
@@ -92,7 +92,7 @@ export async function updateContact(
     if (error.code === "23505") throw new Error("Ya existe un contacto con ese teléfono.");
     throw new Error("No se pudo actualizar el contacto.");
   }
-  revalidatePath("/contacts");
+  revalidatePath("/inbox/contactos");
 }
 
 export async function addContactNote(contactId: string, body: string) {
@@ -107,5 +107,5 @@ export async function addContactNote(contactId: string, body: string) {
     body: body.trim(),
   });
 
-  revalidatePath("/contacts");
+  revalidatePath("/inbox/contactos");
 }

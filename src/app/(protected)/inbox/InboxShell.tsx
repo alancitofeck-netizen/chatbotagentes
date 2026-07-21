@@ -88,7 +88,7 @@ export function InboxShell({
     // "Subscribed to PostgreSQL" still fires, but no event ever arrives).
     // Explicitly awaiting the session + setAuth before subscribing fixes it
     // (confirmed live via WS-frame instrumentation — see the same fix in
-    // src/app/(protected)/contacts/ContactsShell.tsx).
+    // src/app/(protected)/inbox/contactos/ContactsShell.tsx).
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled || !session) return;
       supabase.realtime.setAuth(session.access_token);

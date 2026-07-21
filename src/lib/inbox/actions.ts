@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
+import { requireManagerRole } from "@/lib/auth/roles";
 import {
   getConversationDetail,
   getConversationList,
   getWorkspaceMembers,
   getWorkspaceTags,
+  getWorkspaceTagsWithUsage,
 } from "@/lib/inbox/queries";
 import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
 
@@ -208,14 +210,19 @@ export async function toggleContactTag(contactId: string, tagId: string, enabled
   }
 
   // Tags are shared between Inbox/Contactos and the CRM board (they live on the
-  // contact, not a per-module table) — revalidate both consumers.
+  // contact, not a per-module table) — revalidate all consumers.
   revalidatePath("/inbox");
+  revalidatePath("/inbox/contactos");
   revalidatePath("/crm");
 }
 
 /** No tag-creation UI existed anywhere before the CRM board redesign — tags
  * could only be toggled if they already existed. Shared here (not duplicated
- * in crm/actions.ts) since tags are a core concept reused across modules. */
+ * in crm/actions.ts) since tags are a core concept reused across modules.
+ * No requireManagerRole gate here on purpose — the tags_insert RLS policy
+ * (supabase/migrations/0003_inbox.sql) already allows owner/admin/agent, and
+ * agents create tags today via the CRM board; gating this would regress
+ * that existing capability. */
 export async function createWorkspaceTag(name: string, color: string) {
   const { workspaceId } = await requireActiveWorkspace();
   if (!name.trim()) throw new Error("El nombre de la etiqueta es obligatorio.");
@@ -233,6 +240,55 @@ export async function createWorkspaceTag(name: string, color: string) {
   }
 
   revalidatePath("/inbox");
+  revalidatePath("/inbox/contactos");
+  revalidatePath("/inbox/etiquetas");
   revalidatePath("/crm");
   return { id: data.id as string, name: data.name as string, color: data.color as string };
+}
+
+export async function getWorkspaceTagsWithUsageAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getWorkspaceTagsWithUsage(workspaceId);
+}
+
+/** Same permission posture as createWorkspaceTag — matches the tags_update
+ * RLS policy (owner/admin/agent), no extra gate here. */
+export async function renameWorkspaceTag(tagId: string, name: string, color: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (!name.trim()) throw new Error("El nombre de la etiqueta es obligatorio.");
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("tags")
+    .update({ name: name.trim(), color })
+    .eq("id", tagId)
+    .eq("workspace_id", workspaceId);
+
+  if (error) {
+    if (error.code === "23505") throw new Error("Ya existe una etiqueta con ese nombre.");
+    throw new Error("No se pudo renombrar la etiqueta.");
+  }
+
+  revalidatePath("/inbox");
+  revalidatePath("/inbox/contactos");
+  revalidatePath("/inbox/etiquetas");
+  revalidatePath("/crm");
+}
+
+/** Gated (unlike create/rename above) — matches the tags_delete RLS policy
+ * (owner/admin only, supabase/migrations/0003_inbox.sql), since removing a
+ * tag entirely (vs. just assigning/renaming) is the more disruptive action.
+ * contact_tags.tag_id has `on delete cascade`, so no manual cleanup needed. */
+export async function deleteWorkspaceTag(tagId: string) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("tags").delete().eq("id", tagId).eq("workspace_id", workspaceId);
+  if (error) throw new Error("No se pudo eliminar la etiqueta.");
+
+  revalidatePath("/inbox");
+  revalidatePath("/inbox/contactos");
+  revalidatePath("/inbox/etiquetas");
+  revalidatePath("/crm");
 }

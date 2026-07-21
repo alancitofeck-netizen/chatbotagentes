@@ -11,14 +11,16 @@ Navegación lateral condicionada por módulos activos del workspace ([03-modules
 │  Sidebar   │  Inbox (siempre visible)                     │
 │  - Inbox    │  ┌─────────────┬───────────────┬───────────┐ │
 │  - CRM*     │  │ Lista de     │ Hilo de        │ Panel     │ │
-│  - ATS*     │  │ conversac.   │ mensajes       │ contextual│ │
-│  - Config   │  │ (buscar,     │ (WhatsApp-like,│ (contacto,│ │
+│  - Config   │  │ conversac.   │ mensajes       │ contextual│ │
+│             │  │ (buscar,     │ (WhatsApp-like,│ (contacto,│ │
 │             │  │ filtros,     │ notas internas,│ CRM/ATS,  │ │
 │             │  │ etiquetas)   │ adjuntos)      │ tools IA) │ │
 │             │  └─────────────┴───────────────┴───────────┘ │
 └───────────┴─────────────────────────────────────────────┘
   * solo si workspace_modules.<key>.enabled
 ```
+
+**Actualizado**: ATS ya no es un ítem propio del sidebar — se navega a él como una pestaña más dentro de CRM ("ATS", junto a "Tareas"), aunque conserva su propia ruta (`/ats`, no anidada bajo `/crm`) precisamente para no debilitar su activación independiente vía `workspace_modules`. Contactos tampoco es un ítem propio — vive como pestaña dentro de Inbox (`/inbox/contactos`).
 
 Inspirado en WhatsApp Web (3 columnas), consistente con el requisito de producto ([00-product.md](00-product.md)).
 
@@ -34,7 +36,7 @@ Cambia según qué módulos estén activos y a qué esté asociado el contacto d
 
 Tablero kanban por pipeline (columnas = `pipeline_stages`, tarjetas = `opportunities`), reutilizando el mismo componente de tablero que ATS ([03-modules.md](03-modules.md)). Vista de lista de contactos con filtros por etapa/etiqueta/responsable.
 
-## Vista ATS (`/ats`)
+## Vista ATS (`/ats`, pestaña "ATS" dentro de CRM)
 
 - Lista de vacantes (con conteo de candidatos por etapa).
 - Tablero kanban por vacante (mismo componente que CRM, parametrizado por `pipeline_id` de esa vacante).

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { KanbanSquare } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import type { CrmBoard, CrmPipelineOption, OpportunityTag } from "@/lib/crm/queries";
@@ -17,9 +16,11 @@ import { CrmAnalytics } from "./CrmAnalytics";
 import { AgentsList } from "./AgentsList";
 import { TasksSection } from "./TasksSection";
 import { AiAgentsSection } from "./AiAgentsSection";
+import { CrmAtsTabStrip } from "./CrmAtsTabStrip";
+import { KpisSection } from "./kpis/KpisSection";
 
-type View = "board" | "analytics" | "agents" | "agentes-ia" | "tasks";
-const VALID_VIEWS: View[] = ["board", "analytics", "agents", "agentes-ia", "tasks"];
+type View = "board" | "analytics" | "agents" | "agentes-ia" | "tasks" | "kpis";
+const VALID_VIEWS: View[] = ["board", "analytics", "agents", "agentes-ia", "tasks", "kpis"];
 
 export function CrmPageShell({
   board: initialBoard,
@@ -34,6 +35,8 @@ export function CrmPageShell({
   canAssignOthers,
   ownMemberId,
   aiAgents,
+  atsEnabled,
+  hasKpiConnection,
 }: {
   board: CrmBoard | null;
   pipelines: CrmPipelineOption[];
@@ -47,10 +50,11 @@ export function CrmPageShell({
   canAssignOthers: boolean;
   ownMemberId: string | null;
   aiAgents: AiAgentListItem[];
+  atsEnabled: boolean;
+  hasKpiConnection: boolean;
 }) {
   const [board, setBoard] = useState(initialBoard);
   const [isCreatingPipeline, startCreatePipeline] = useTransition();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   function handleCreatePipeline() {
@@ -67,22 +71,10 @@ export function CrmPageShell({
   const requestedView = searchParams.get("tab");
   const view: View = VALID_VIEWS.includes(requestedView as View) ? (requestedView as View) : "board";
 
-  function setView(next: View) {
-    router.replace(`/crm?tab=${next}`, { scroll: false });
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <div className="px-4 sm:px-6 lg:px-8">
-        <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-          <TabsList>
-            <TabsTrigger value="board">Tablero</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="agents">Agentes</TabsTrigger>
-            <TabsTrigger value="agentes-ia">Agentes IA</TabsTrigger>
-            <TabsTrigger value="tasks">Tareas</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <CrmAtsTabStrip atsEnabled={atsEnabled} />
       </div>
 
       {view === "board" && (
@@ -138,6 +130,12 @@ export function CrmPageShell({
             canAssignOthers={canAssignOthers}
             ownMemberId={ownMemberId}
           />
+        </div>
+      )}
+
+      {view === "kpis" && (
+        <div className="flex-1 overflow-y-auto">
+          <KpisSection hasConnection={hasKpiConnection} teams={teams} />
         </div>
       )}
     </div>

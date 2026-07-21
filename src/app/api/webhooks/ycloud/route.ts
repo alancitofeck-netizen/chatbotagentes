@@ -83,6 +83,19 @@ interface YCloudWebhookEnvelope {
     errorMessage?: string;
     updateTime?: string;
   };
+  // whatsapp.template.reviewed — no `id` field on this object (confirmed
+  // against YCloud's docs), so matching against our own whatsapp_templates
+  // row uses the (wabaId, name, language) composite key instead, same fields
+  // this object actually carries.
+  whatsappTemplate?: {
+    wabaId?: string;
+    name?: string;
+    language?: string;
+    category?: string;
+    status?: string;
+    reason?: string;
+    statusUpdateEvent?: string;
+  };
 }
 
 async function processInboundMessage(
@@ -332,10 +345,48 @@ async function processMessageStatusUpdate(
   );
 }
 
-/** Dispatches by event `type`. `whatsapp.inbound_message.received` and
- * `whatsapp.message.updated` are handled — template review, quality updates,
- * contact events, etc. are still logged and ignored (docs/blueprint/
- * 08-integrations.md lists them, none are wired up yet). */
+/** Handles `whatsapp.template.reviewed` — syncs local whatsapp_templates
+ * status (0032_whatsapp_templates.sql) with Meta's review outcome. Matched
+ * by (wabaId, name, language), the only identifying fields this webhook
+ * payload carries (no template id) — deliberately NOT reusing
+ * resolveWorkspaceIdForYCloudAccount (that matches by phone-number id, not
+ * wabaId, and would never hit here); the target row already has its own
+ * workspace_id from creation time, so no cross-tenant resolution is needed. */
+async function processTemplateReviewed(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  tpl: NonNullable<YCloudWebhookEnvelope["whatsappTemplate"]>,
+): Promise<void> {
+  if (!tpl.wabaId || !tpl.name || !tpl.language || !tpl.status) {
+    console.error("[ycloud-webhook] template.reviewed missing required fields:", tpl);
+    return;
+  }
+
+  const status = tpl.status.toUpperCase() === "APPROVED" ? "approved" : tpl.status.toUpperCase() === "REJECTED" ? "rejected" : "pending";
+
+  const { data, error } = await supabase
+    .from("whatsapp_templates")
+    .update({ status, rejection_reason: tpl.reason ?? null, updated_at: new Date().toISOString() })
+    .eq("waba_id", tpl.wabaId)
+    .eq("name", tpl.name)
+    .eq("language", tpl.language)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[ycloud-webhook] failed to update template status:", error);
+    return;
+  }
+  if (!data) {
+    console.warn(`[ycloud-webhook] no local template matched (waba=${tpl.wabaId}, name=${tpl.name}, lang=${tpl.language}) — ignoring.`);
+    return;
+  }
+  console.log(`[ycloud-webhook] template ${tpl.name}/${tpl.language} → status="${status}"`);
+}
+
+/** Dispatches by event `type`. `whatsapp.inbound_message.received`,
+ * `whatsapp.message.updated`, and `whatsapp.template.reviewed` are handled —
+ * quality updates, contact events, etc. are still logged and ignored
+ * (docs/blueprint/08-integrations.md lists them, none are wired up yet). */
 async function processYCloudEvent(payload: unknown): Promise<void> {
   const event = payload as YCloudWebhookEnvelope;
   const supabase = createServiceRoleClient();
@@ -357,6 +408,16 @@ async function processYCloudEvent(payload: unknown): Promise<void> {
       return;
     }
     await processMessageStatusUpdate(supabase, msg);
+    return;
+  }
+
+  if (event?.type === "whatsapp.template.reviewed") {
+    const tpl = event.whatsappTemplate;
+    if (!tpl) {
+      console.error('[ycloud-webhook] type is "whatsapp.template.reviewed" but whatsappTemplate is missing:', event);
+      return;
+    }
+    await processTemplateReviewed(supabase, tpl);
     return;
   }
 

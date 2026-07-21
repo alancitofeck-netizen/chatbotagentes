@@ -24,7 +24,7 @@ async function resolveAssignedTo(role: string, requestedMemberId: string, ownMem
 function revalidateEventPaths() {
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
-  revalidatePath("/contacts");
+  revalidatePath("/inbox/contactos");
   revalidatePath("/crm");
 }
 

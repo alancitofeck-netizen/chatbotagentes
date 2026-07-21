@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
   // means it's just `require()`d normally from node_modules, where its
   // internal relative paths resolve correctly.
   serverExternalPackages: ["pdfkit"],
+
+  // Contactos moved from its own top-level route into Inbox's secondary nav
+  // (src/app/(protected)/inbox/contactos/) — keeps old bookmarks/links alive.
+  async redirects() {
+    return [{ source: "/contacts", destination: "/inbox/contactos", permanent: false }];
+  },
 };
 
 export default nextConfig;

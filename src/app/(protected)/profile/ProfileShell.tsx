@@ -18,6 +18,7 @@ import type { MyProfile, MySession } from "@/lib/profile/queries";
 import type { ModuleStatus, WorkspaceMember } from "@/lib/settings/queries";
 import type { OpenRouterIntegration, WhatsAppIntegration } from "@/lib/integrations/queries";
 import type { GoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
+import type { GoogleSheetsAccountStatus } from "@/lib/integrations/googleSheets";
 import type { AutomationListItem } from "@/lib/automations/queries";
 import { getMyProfileAction, getMySessionsAction } from "@/lib/profile/actions";
 import { getWorkspaceMembersListAction, getWorkspaceModuleStatusAction } from "@/lib/settings/actions";
@@ -63,6 +64,7 @@ export function ProfileShell({
   initialGoogleCalendar,
   initialOpenRouter,
   initialAutomations,
+  initialGoogleSheets,
   currentRole,
 }: {
   initialProfile: MyProfile;
@@ -73,6 +75,7 @@ export function ProfileShell({
   initialGoogleCalendar: GoogleCalendarStatus;
   initialOpenRouter: OpenRouterIntegration | null;
   initialAutomations: AutomationListItem[];
+  initialGoogleSheets: GoogleSheetsAccountStatus;
   currentRole: string;
 }) {
   const router = useRouter();
@@ -180,6 +183,7 @@ export function ProfileShell({
               initialWhatsApp={initialWhatsApp}
               initialGoogleCalendar={initialGoogleCalendar}
               initialOpenRouter={initialOpenRouter}
+              initialGoogleSheets={initialGoogleSheets}
               currentRole={currentRole}
             />
           )}

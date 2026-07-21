@@ -269,3 +269,33 @@ export async function getWorkspaceTags(workspaceId: string): Promise<WorkspaceTa
     .order("name", { ascending: true });
   return (data ?? []).map((t) => ({ id: t.id as string, name: t.name as string, color: t.color as string }));
 }
+
+export interface WorkspaceTagWithUsage extends WorkspaceTag {
+  contactCount: number;
+}
+
+/** For the Etiquetas management screen (src/app/(protected)/inbox/etiquetas).
+ * contact_tags has no workspace_id of its own, but every tag_id it can
+ * reference already belongs to exactly one workspace (tags.workspace_id +
+ * the FK), so counting rows per tag_id needs no extra contacts join. */
+export async function getWorkspaceTagsWithUsage(workspaceId: string): Promise<WorkspaceTagWithUsage[]> {
+  const supabase = await createClient();
+  const tags = await getWorkspaceTags(workspaceId);
+  if (tags.length === 0) return [];
+
+  const { data: assignments } = await supabase
+    .from("contact_tags")
+    .select("tag_id")
+    .in(
+      "tag_id",
+      tags.map((t) => t.id),
+    );
+
+  const counts = new Map<string, number>();
+  for (const row of assignments ?? []) {
+    const tagId = row.tag_id as string;
+    counts.set(tagId, (counts.get(tagId) ?? 0) + 1);
+  }
+
+  return tags.map((tag) => ({ ...tag, contactCount: counts.get(tag.id) ?? 0 }));
+}
