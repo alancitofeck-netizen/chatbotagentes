@@ -8,7 +8,11 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
 const GOOGLE_CALENDAR_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
-const SCOPE = "https://www.googleapis.com/auth/calendar";
+// userinfo.email is included alongside calendar — without it, getGoogleAccountEmail's
+// call to GOOGLE_USERINFO_URL below fails ("No se pudo resolver la cuenta de Google
+// conectada.") because a token scoped only to a resource API lacks the identity
+// scope userinfo requires (same fix already applied in googleSheets.ts's SCOPE).
+const SCOPE = "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email";
 
 interface GoogleTokenBundle {
   accessToken: string;
