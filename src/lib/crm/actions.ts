@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { getCrmBoard, getCrmPipelines, getOpportunityActivity, getOpportunityDetail } from "@/lib/crm/queries";
 import { getCrmAnalyticsRangeData, resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
+import { syncCloseDateEvent, updateCloseEventStatus, deleteCloseDateEvent } from "@/lib/crm/calendarSync";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -28,6 +29,21 @@ async function logOpportunityActivity(
     entity_id: opportunityId,
     metadata,
   });
+}
+
+async function getStageInfo(
+  supabase: SupabaseServerClient,
+  stageId: string,
+): Promise<{ name: string; isWon: boolean; isLost: boolean }> {
+  const { data } = await supabase.from("pipeline_stages").select("name, is_won, is_lost").eq("id", stageId).maybeSingle();
+  return { name: (data?.name as string) ?? "—", isWon: Boolean(data?.is_won), isLost: Boolean(data?.is_lost) };
+}
+
+async function getOwnerName(supabase: SupabaseServerClient, workspaceId: string, ownerId: string | null): Promise<string | null> {
+  if (!ownerId) return null;
+  const { data } = await supabase.rpc("workspace_member_names", { ws_id: workspaceId });
+  const match = ((data ?? []) as { member_id: string; full_name: string }[]).find((m) => m.member_id === ownerId);
+  return match?.full_name ?? null;
 }
 
 export async function getCrmBoardAction(pipelineId?: string) {
@@ -285,8 +301,17 @@ export async function moveOpportunityCard(pipelineItemId: string, stageId: strin
     });
   }
 
+  // The card stays linked to its close-date event across any stage move
+  // (nothing here touches related_id) — only its status needs to follow
+  // won/lost, so this is the lightweight patch, not a full syncCloseDateEvent.
+  const { data: opp } = await supabase.from("opportunities").select("calendar_event_id").eq("id", item.item_id).maybeSingle();
+  if (opp?.calendar_event_id) {
+    await updateCloseEventStatus(workspaceId, opp.calendar_event_id as string, Boolean(destinationStage?.is_won), Boolean(destinationStage?.is_lost));
+  }
+
   revalidatePath("/crm");
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
 }
 
 export async function addOpportunityNote(opportunityId: string, body: string) {
@@ -401,8 +426,34 @@ export async function createOpportunity(input: LeadFormInput, stageId?: string) 
     title: input.title.trim(),
   });
 
+  if (input.expectedCloseDate) {
+    const [stageInfo, ownerName] = await Promise.all([
+      getStageInfo(supabase, targetStageId),
+      getOwnerName(supabase, workspaceId, input.ownerId),
+    ]);
+    await syncCloseDateEvent({
+      workspaceId,
+      opportunityId: opportunity.id as string,
+      calendarEventId: null,
+      contactId: contact.id as string,
+      contactName: input.name.trim(),
+      company: input.company.trim() || null,
+      phone: input.phone.trim() || null,
+      email: input.email.trim() || null,
+      stageName: stageInfo.name,
+      value: input.value,
+      currency: input.currency,
+      ownerId: input.ownerId,
+      ownerName,
+      expectedCloseDate: input.expectedCloseDate,
+      isWon: stageInfo.isWon,
+      isLost: stageInfo.isLost,
+    });
+  }
+
   revalidatePath("/crm");
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
   return { id: opportunity.id as string, contactId: contact.id as string };
 }
 
@@ -415,6 +466,13 @@ export async function updateOpportunity(opportunityId: string, contactId: string
   if (!input.name.trim()) throw new Error("El nombre es obligatorio.");
   if (!input.title.trim()) throw new Error("El título de la oportunidad es obligatorio.");
   const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("opportunities")
+    .select("calendar_event_id, pipeline_item_id")
+    .eq("id", opportunityId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
 
   await supabase
     .from("contacts")
@@ -447,7 +505,39 @@ export async function updateOpportunity(opportunityId: string, contactId: string
     title: input.title.trim(),
   });
 
+  // Keeps the dedicated close-date event (if any) in sync with this edit —
+  // creates it if a date was just set for the first time, updates it if
+  // details changed, deletes it if the date was cleared. Stage's won/lost
+  // isn't touched by this form (that only ever changes via drag/
+  // moveOpportunityCard), so it's read fresh here just to preserve whatever
+  // status the event already has.
+  let stageInfo = { name: "—", isWon: false, isLost: false };
+  if (existing?.pipeline_item_id) {
+    const { data: item } = await supabase.from("pipeline_items").select("stage_id").eq("id", existing.pipeline_item_id).maybeSingle();
+    if (item?.stage_id) stageInfo = await getStageInfo(supabase, item.stage_id as string);
+  }
+  const ownerName = await getOwnerName(supabase, workspaceId, input.ownerId);
+  await syncCloseDateEvent({
+    workspaceId,
+    opportunityId,
+    calendarEventId: (existing?.calendar_event_id as string | null) ?? null,
+    contactId,
+    contactName: input.name.trim(),
+    company: input.company.trim() || null,
+    phone: input.phone.trim() || null,
+    email: input.email.trim() || null,
+    stageName: stageInfo.name,
+    value: input.value,
+    currency: input.currency,
+    ownerId: input.ownerId,
+    ownerName,
+    expectedCloseDate: input.expectedCloseDate,
+    isWon: stageInfo.isWon,
+    isLost: stageInfo.isLost,
+  });
+
   revalidatePath("/crm");
+  revalidatePath("/calendar");
 }
 
 export async function deleteOpportunity(opportunityId: string) {
@@ -456,12 +546,25 @@ export async function deleteOpportunity(opportunityId: string) {
 
   await logOpportunityActivity(supabase, workspaceId, opportunityId, "opportunity_deleted");
 
+  const { data: opp } = await supabase
+    .from("opportunities")
+    .select("calendar_event_id")
+    .eq("id", opportunityId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+
   await supabase.from("pipeline_items").delete().eq("item_type", "opportunity").eq("item_id", opportunityId);
   await supabase.from("notes").delete().eq("workspace_id", workspaceId).eq("notable_type", "opportunity").eq("notable_id", opportunityId);
   await supabase.from("opportunities").delete().eq("id", opportunityId).eq("workspace_id", workspaceId);
 
+  // The dedicated close-date event has no reason to exist once its
+  // opportunity is gone — `calendar_event_id`'s FK is `on delete set null`,
+  // not cascade, so the booking would otherwise survive as an orphan.
+  if (opp?.calendar_event_id) await deleteCloseDateEvent(workspaceId, opp.calendar_event_id as string);
+
   revalidatePath("/crm");
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
 }
 
 export async function bulkMoveOpportunities(pipelineItemIds: string[], stageId: string) {
@@ -490,16 +593,34 @@ export async function bulkMoveOpportunities(pipelineItemIds: string[], stageId: 
       .update({ status, updated_at: new Date().toISOString() })
       .in("id", opportunityIds)
       .eq("workspace_id", workspaceId);
+
+    const { data: withEvents } = await supabase
+      .from("opportunities")
+      .select("calendar_event_id")
+      .in("id", opportunityIds)
+      .not("calendar_event_id", "is", null);
+    await Promise.all(
+      (withEvents ?? []).map((o) =>
+        updateCloseEventStatus(workspaceId, o.calendar_event_id as string, Boolean(destinationStage?.is_won), Boolean(destinationStage?.is_lost)),
+      ),
+    );
   }
 
   revalidatePath("/crm");
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
 }
 
 export async function bulkDeleteOpportunities(opportunityIds: string[]) {
   const { workspaceId } = await requireActiveWorkspace();
   if (opportunityIds.length === 0) return;
   const supabase = await createClient();
+
+  const { data: withEvents } = await supabase
+    .from("opportunities")
+    .select("calendar_event_id")
+    .in("id", opportunityIds)
+    .not("calendar_event_id", "is", null);
 
   await supabase.from("pipeline_items").delete().eq("item_type", "opportunity").in("item_id", opportunityIds);
   await supabase
@@ -510,8 +631,11 @@ export async function bulkDeleteOpportunities(opportunityIds: string[]) {
     .in("notable_id", opportunityIds);
   await supabase.from("opportunities").delete().in("id", opportunityIds).eq("workspace_id", workspaceId);
 
+  await Promise.all((withEvents ?? []).map((o) => deleteCloseDateEvent(workspaceId, o.calendar_event_id as string)));
+
   revalidatePath("/crm");
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
 }
 
 export async function bulkAssignOwner(opportunityIds: string[], ownerId: string | null) {

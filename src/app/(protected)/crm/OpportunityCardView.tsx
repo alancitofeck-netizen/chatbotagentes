@@ -2,12 +2,21 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Mail, Phone, MessageCircle, Eye, Pencil, StickyNote, CalendarClock } from "lucide-react";
+import Link from "next/link";
+import { Mail, Phone, MessageCircle, Eye, Pencil, StickyNote, CalendarClock, CalendarDays } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 import type { OpportunityCard, PipelineStage } from "@/lib/crm/queries";
 import { formatCurrency, formatRelativeTime } from "@/lib/utils/format";
+
+// Split on "-" instead of `new Date(iso)` — a bare "YYYY-MM-DD" parses as
+// UTC midnight, which can roll back a day in negative-UTC-offset zones (same
+// gotcha already documented/fixed in CardDetailSheet.tsx's formatDateOnly).
+function formatCloseDate(dateOnly: string) {
+  const [y, m, d] = dateOnly.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
+}
 
 const PRIORITY_LABEL: Record<OpportunityCard["priority"], string> = { high: "Alta", medium: "Media", low: "Baja" };
 const PRIORITY_VARIANT: Record<OpportunityCard["priority"], "error" | "warning" | "neutral"> = {
@@ -130,7 +139,7 @@ export function OpportunityCardView({
         </div>
       )}
 
-      {(card.lastContactAt || card.nextMeeting || card.daysSinceActivity !== null) && (
+      {(card.lastContactAt || card.nextMeeting || card.expectedCloseDate || card.daysSinceActivity !== null) && (
         <div className="flex flex-col gap-0.5 text-[11px] text-neutral-500">
           {card.lastContactAt && <p>Último contacto: {formatRelativeTime(card.lastContactAt)}</p>}
           {card.nextMeeting && (
@@ -138,6 +147,17 @@ export function OpportunityCardView({
               <CalendarClock className="size-3" aria-hidden="true" />
               Próxima reunión: {formatRelativeTime(card.nextMeeting.startTime)}
             </p>
+          )}
+          {card.expectedCloseDate && (
+            <Link
+              href={`/calendar?view=day&date=${card.expectedCloseDate}${card.calendarEventId ? `&event=${card.calendarEventId}` : ""}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 hover:text-accent-700 hover:underline"
+              title="Ver en calendario"
+            >
+              <CalendarDays className="size-3" aria-hidden="true" />
+              Fecha cierre: {formatCloseDate(card.expectedCloseDate)}
+            </Link>
           )}
           {card.daysSinceActivity !== null && card.daysSinceActivity > 0 && <p>{card.daysSinceActivity} días sin actividad</p>}
         </div>
@@ -200,6 +220,16 @@ export function OpportunityCardView({
         <button type="button" onClick={onNote} className="text-neutral-400 hover:text-accent-700" title="Nota">
           <StickyNote className="size-3.5" aria-hidden="true" />
         </button>
+        {card.expectedCloseDate && (
+          <Link
+            href={`/calendar?view=day&date=${card.expectedCloseDate}${card.calendarEventId ? `&event=${card.calendarEventId}` : ""}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-neutral-400 hover:text-accent-700"
+            title="Ver en calendario"
+          >
+            <CalendarDays className="size-3.5" aria-hidden="true" />
+          </Link>
+        )}
       </div>
     </div>
   );

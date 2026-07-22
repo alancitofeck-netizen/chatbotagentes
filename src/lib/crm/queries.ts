@@ -26,6 +26,7 @@ export interface OpportunityCard {
   priority: "high" | "medium" | "low";
   probability: number | null;
   expectedCloseDate: string | null;
+  calendarEventId: string | null;
   contactId: string;
   contactName: string;
   contactAvatarUrl: string | null;
@@ -137,7 +138,7 @@ export async function getCrmBoard(workspaceId: string, pipelineId?: string): Pro
     ? await supabase
         .from("opportunities")
         .select(
-          "id, title, value, currency, priority, probability, expected_close_date, status, owner_id, created_at, updated_at, contacts(id, name, company, avatar_url, source, email, phone, custom_fields)",
+          "id, title, value, currency, priority, probability, expected_close_date, calendar_event_id, status, owner_id, created_at, updated_at, contacts(id, name, company, avatar_url, source, email, phone, custom_fields)",
         )
         .in("id", opportunityIds)
     : { data: [] };
@@ -270,6 +271,7 @@ export async function getCrmBoard(workspaceId: string, pipelineId?: string): Pro
       priority: (opp.priority as "high" | "medium" | "low" | null) ?? "medium",
       probability: opp.probability === null || opp.probability === undefined ? null : Number(opp.probability),
       expectedCloseDate: (opp.expected_close_date as string | null) ?? null,
+      calendarEventId: (opp.calendar_event_id as string | null) ?? null,
       contactId,
       contactName: contact?.name ?? "Sin nombre",
       contactAvatarUrl: contact?.avatar_url ?? null,
@@ -375,6 +377,7 @@ export interface OpportunityDetail {
   priority: "high" | "medium" | "low";
   probability: number | null;
   expectedCloseDate: string | null;
+  calendarEventId: string | null;
   ownerId: string | null;
   tags: OpportunityTag[];
   contact: {
@@ -397,7 +400,7 @@ export async function getOpportunityDetail(
   const { data: opp } = await supabase
     .from("opportunities")
     .select(
-      "id, title, value, currency, status, priority, probability, expected_close_date, owner_id, created_at, contacts(id, name, company, email, phone)",
+      "id, title, value, currency, status, priority, probability, expected_close_date, calendar_event_id, owner_id, created_at, contacts(id, name, company, email, phone)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", opportunityId)
@@ -430,6 +433,7 @@ export async function getOpportunityDetail(
     priority: (opp.priority as "high" | "medium" | "low" | null) ?? "medium",
     probability: opp.probability === null || opp.probability === undefined ? null : Number(opp.probability),
     expectedCloseDate: (opp.expected_close_date as string | null) ?? null,
+    calendarEventId: (opp.calendar_event_id as string | null) ?? null,
     ownerId: (opp.owner_id as string | null) ?? null,
     tags: (tagRows ?? [])
       .map((r) => (Array.isArray(r.tags) ? r.tags[0] : r.tags))

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { Sheet } from "@/components/ui/Sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Badge } from "@/components/ui/Badge";
@@ -264,8 +265,16 @@ export function CardDetailSheet({
                     </div>
                     <div className="flex items-center justify-between">
                       <dt className="text-neutral-500">Fecha de cierre estimada</dt>
-                      <dd className="text-foreground">
+                      <dd className="flex items-center gap-2 text-foreground">
                         {detail.expectedCloseDate ? formatDateOnly(detail.expectedCloseDate) : "—"}
+                        {detail.expectedCloseDate && (
+                          <Link
+                            href={`/calendar?view=day&date=${detail.expectedCloseDate}${detail.calendarEventId ? `&event=${detail.calendarEventId}` : ""}`}
+                            className="text-[12px] text-accent-600 hover:underline"
+                          >
+                            Ver en calendario
+                          </Link>
+                        )}
                       </dd>
                     </div>
                     {detail.tags.length > 0 && (

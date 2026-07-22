@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -80,7 +81,16 @@ export function CrmBoardShell({
   const [sortBy, setSortBy] = useState<SortOption>("date_desc");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [detailState, setDetailState] = useState<{ id: string; tab: "resumen" | "notas" } | null>(null);
+  const searchParams = useSearchParams();
+  // Deep link from outside the board — e.g. the "Link al lead" embedded in a
+  // close-date calendar event's description (src/lib/crm/calendarSync.ts).
+  // Read once as the lazy initial state (not an effect — setState-in-effect
+  // is flagged by this project's lint rules, and this only ever needs to
+  // seed the initial value, never react to later URL changes).
+  const [detailState, setDetailState] = useState<{ id: string; tab: "resumen" | "notas" } | null>(() => {
+    const opportunityId = searchParams.get("opportunity");
+    return opportunityId ? { id: opportunityId, tab: "resumen" } : null;
+  });
   const [leadForm, setLeadForm] = useState<{ card: OpportunityCard | null; defaultStageId: string | null } | null>(
     null,
   );

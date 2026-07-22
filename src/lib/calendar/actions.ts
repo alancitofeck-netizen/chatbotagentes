@@ -28,6 +28,32 @@ function revalidateEventPaths() {
   revalidatePath("/crm");
 }
 
+function dateOnly(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Reverse half of the CRM<->Calendar link (src/lib/crm/calendarSync.ts owns
+ * the forward direction) — if the event being moved/edited is the dedicated
+ * close-date placeholder for some opportunity (opportunities.calendar_event_id
+ * === this event, a 1:1 link, not the more general related_id which could
+ * point at any booking), write the new date back onto that opportunity so
+ * dragging the event in Calendar keeps "fecha de cierre estimada" honest. */
+async function syncOpportunityFromEvent(workspaceId: string, eventId: string, newStartTime: string) {
+  const supabase = await createClient();
+  const { data: opp } = await supabase
+    .from("opportunities")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("calendar_event_id", eventId)
+    .maybeSingle();
+  if (!opp) return;
+  await supabase
+    .from("opportunities")
+    .update({ expected_close_date: dateOnly(newStartTime) })
+    .eq("id", opp.id);
+}
+
 export interface EventInput {
   title: string;
   description: string;
@@ -152,7 +178,7 @@ export async function updateEvent(eventId: string, input: EventInput) {
   const assignedTo = await resolveAssignedTo(role, input.assignedTo, ownMemberId);
   const supabase = await createClient();
 
-  await supabase
+  const { data: updateData, error: updateError } = await supabase
     .from("bookings")
     .update({
       contact_id: input.contactId,
@@ -171,7 +197,18 @@ export async function updateEvent(eventId: string, input: EventInput) {
       updated_at: new Date().toISOString(),
     })
     .eq("id", eventId)
-    .eq("workspace_id", workspaceId);
+    .eq("workspace_id", workspaceId)
+    .select("start_time")
+    .single();
+  if (updateError) {
+    console.error(`[calendar] updateEvent failed for ${eventId}:`, updateError);
+    throw new Error("No se pudo actualizar el evento.");
+  }
+
+  // Reads back what was actually just persisted (updateData.start_time)
+  // rather than trusting input.startTime blindly — pure defense in depth,
+  // both are the same value at this exact point in the request.
+  await syncOpportunityFromEvent(workspaceId, eventId, updateData.start_time);
 
   getEventById(workspaceId, eventId).then((event) => {
     if (event) void pushEventToGoogle(workspaceId, event);
@@ -187,11 +224,19 @@ export async function moveEvent(eventId: string, startTime: string, endTime: str
   const { workspaceId } = await requireActiveWorkspace();
   const supabase = await createClient();
 
-  await supabase
+  const { data: updateData, error: updateError } = await supabase
     .from("bookings")
     .update({ start_time: startTime, end_time: endTime, updated_at: new Date().toISOString() })
     .eq("id", eventId)
-    .eq("workspace_id", workspaceId);
+    .eq("workspace_id", workspaceId)
+    .select("start_time")
+    .single();
+  if (updateError) {
+    console.error(`[calendar] moveEvent failed for ${eventId}:`, updateError);
+    throw new Error("No se pudo mover el evento.");
+  }
+
+  await syncOpportunityFromEvent(workspaceId, eventId, updateData.start_time);
 
   getEventById(workspaceId, eventId).then((event) => {
     if (event) void pushEventToGoogle(workspaceId, event);

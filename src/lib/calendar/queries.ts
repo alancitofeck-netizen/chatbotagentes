@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-export type EventType = "call" | "meeting" | "follow_up" | "demo" | "task" | "other";
+export type EventType = "call" | "meeting" | "follow_up" | "demo" | "task" | "other" | "estimated_close";
 export type EventStatus = "scheduled" | "rescheduled" | "cancelled" | "completed";
 export type EventProvider = "internal" | "highlevel" | "google" | "calendly";
 /** Same polymorphic convention as tasks.related_type (0016_tasks_enrichment.sql)

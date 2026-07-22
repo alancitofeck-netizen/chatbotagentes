@@ -151,6 +151,19 @@ export function CalendarShell({
     setSheetState({ mode: "view", event: fresh ?? event });
   }
 
+  // Deep link from outside Calendar — e.g. a CRM card's "Ver en calendario"
+  // (src/app/(protected)/crm/OpportunityCardView.tsx) links here with
+  // `?event=<bookingId>` alongside `?view=day&date=...`. Runs once on mount,
+  // same reasoning as CrmBoardShell's `?opportunity=` reader.
+  useEffect(() => {
+    const eventId = searchParams.get("event");
+    if (!eventId) return;
+    getEventByIdAction(eventId).then((event) => {
+      if (event) setSheetState({ mode: "view", event });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function toggleCategory(key: CategoryKey) {
     setActiveCategories((prev) => {
       const next = new Set(prev);

@@ -65,6 +65,19 @@ export const EVENT_TYPE_META: Record<
     dot: "bg-error",
     solid: "bg-error",
   },
+  // System-generated placeholder for an opportunity's "fecha de cierre
+  // estimada" (src/lib/crm/calendarSync.ts) — its own color (amber, not one
+  // of the 6 design-system semantic families already claimed by the other
+  // types above) so it reads as distinct from a real scheduled meeting.
+  estimated_close: {
+    label: "Cierre estimado",
+    bar: "bg-amber-500",
+    border: "border-l-amber-500",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    dot: "bg-amber-500",
+    solid: "bg-amber-500",
+  },
 };
 
 export const EVENT_TYPE_OPTIONS: { value: EventType; label: string }[] = Object.entries(EVENT_TYPE_META).map(([value, meta]) => ({
@@ -84,7 +97,7 @@ export const CATEGORY_META: Record<CategoryKey, { label: string; solid: string }
   other: { label: "Otros", solid: EVENT_TYPE_META.other.solid },
 };
 export function categoryFor(eventType: EventType): CategoryKey {
-  if (eventType === "demo") return "meeting";
+  if (eventType === "demo" || eventType === "estimated_close") return "meeting";
   return eventType as CategoryKey;
 }
 
