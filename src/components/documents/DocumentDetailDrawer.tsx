@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Download, User, Users, Calendar, HardDrive, X } from "lucide-react";
+import { Download, User, Users, Calendar, HardDrive, X, ExternalLink, RefreshCw } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -9,8 +9,10 @@ import { Avatar } from "@/components/ui/Avatar";
 import { toast } from "@/components/toast/toast";
 import { cn } from "@/lib/utils/cn";
 import { fileTypeMetaFor, formatFileSize } from "@/components/documents/documentIcons";
+import { GoogleDriveFolderPickerDialog } from "@/components/documents/GoogleDriveFolderPickerDialog";
 import type { DocumentItem } from "@/lib/documents/queries";
 import { deleteDocumentPermanently, getDownloadUrl, renameDocument, shareDocument, trashDocument, unshareDocument } from "@/lib/documents/actions";
+import { exportDocumentToDriveAction, refreshDocumentFromDriveAction } from "@/lib/documents/googleDriveImport";
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -52,6 +54,7 @@ export function DocumentDetailDrawer({
   const Icon = meta.icon;
   const [shareMemberId, setShareMemberId] = useState("");
   const [shareRole, setShareRole] = useState<"viewer" | "editor">("viewer");
+  const [exportOpen, setExportOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const shareableMembers = members.filter(
@@ -109,6 +112,29 @@ export function DocumentDetailDrawer({
     });
   }
 
+  function handleRefreshFromDrive() {
+    startTransition(async () => {
+      try {
+        await refreshDocumentFromDriveAction(document.id);
+        toast.success("Actualizado desde Google Drive.");
+        onChanged();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo actualizar desde Google Drive.");
+      }
+    });
+  }
+
+  async function handleExportPicked(folderId: string | null, folderName: string) {
+    setExportOpen(false);
+    try {
+      const result = await exportDocumentToDriveAction(document.id, folderId);
+      toast.success(`Exportado a "${folderName}" en Google Drive.`);
+      if (result.webViewLink) window.open(result.webViewLink, "_blank");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo exportar a Google Drive.");
+    }
+  }
+
   return (
     <Sheet open onClose={onClose} title={document.name} className="max-w-lg">
       <div className="flex flex-col gap-5 p-5">
@@ -141,7 +167,33 @@ export function DocumentDetailDrawer({
         </Row>
 
         <Row icon={HardDrive} label="Origen">
-          {document.source === "upload" ? "Subido manualmente" : document.source}
+          {document.source === "upload" ? (
+            "Subido manualmente"
+          ) : document.source === "google_drive" ? (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span>Importado de Google Drive</span>
+                {document.externalUrl && (
+                  <a href={document.externalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12.5px] text-accent-600 hover:underline">
+                    Ver en Drive <ExternalLink size={12} aria-hidden="true" />
+                  </a>
+                )}
+              </div>
+              {document.externalMetadata?.owners && document.externalMetadata.owners.length > 0 && (
+                <p className="text-[12.5px] text-neutral-500">Propietario en Drive: {document.externalMetadata.owners.join(", ")}</p>
+              )}
+              <button
+                type="button"
+                onClick={handleRefreshFromDrive}
+                disabled={isPending}
+                className="inline-flex w-fit items-center gap-1 text-[12.5px] text-accent-600 hover:underline disabled:opacity-50"
+              >
+                <RefreshCw size={12} aria-hidden="true" /> Actualizar desde Drive
+              </button>
+            </div>
+          ) : (
+            document.source
+          )}
         </Row>
 
         <Row icon={Users} label="Compartido con">
@@ -191,12 +243,18 @@ export function DocumentDetailDrawer({
           <Button type="button" variant="secondary" onClick={handleRename} disabled={isPending}>
             Renombrar
           </Button>
+          <Button type="button" variant="secondary" onClick={() => setExportOpen(true)} disabled={isPending}>
+            <HardDrive size={14} aria-hidden="true" />
+            Exportar a Drive
+          </Button>
           <Button type="button" onClick={handleDownload} loading={isPending}>
             <Download size={14} aria-hidden="true" />
             Descargar
           </Button>
         </div>
       </div>
+
+      {exportOpen && <GoogleDriveFolderPickerDialog onClose={() => setExportOpen(false)} onPick={handleExportPicked} />}
     </Sheet>
   );
 }

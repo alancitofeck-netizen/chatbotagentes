@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Folder as FolderIcon, MoreVertical, Pencil, FolderInput, Copy, Share2, Trash2, RotateCcw, XCircle, Star } from "lucide-react";
+import { Folder as FolderIcon, MoreVertical, Pencil, FolderInput, Copy, Share2, Trash2, RotateCcw, XCircle, Star, HardDrive } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { toast } from "@/components/toast/toast";
 import { cn } from "@/lib/utils/cn";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { fileTypeMetaFor, formatFileSize } from "@/components/documents/documentIcons";
+import { GoogleDriveFolderPickerDialog } from "@/components/documents/GoogleDriveFolderPickerDialog";
 import type { DocumentItem, DocumentView, FolderNode } from "@/lib/documents/queries";
 import {
   deleteDocumentPermanently,
@@ -20,6 +21,7 @@ import {
   toggleFavorite,
   trashDocument,
 } from "@/lib/documents/actions";
+import { exportDocumentToDriveAction } from "@/lib/documents/googleDriveImport";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
@@ -172,6 +174,7 @@ function DocumentCard({
   onChanged: () => void;
 }) {
   const [moveOpen, setMoveOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const meta = fileTypeMetaFor(document.name);
   const Icon = meta.icon;
 
@@ -220,6 +223,17 @@ function DocumentCard({
     onChanged();
   }
 
+  async function handleExportPicked(folderId: string | null, folderName: string) {
+    setExportOpen(false);
+    try {
+      const result = await exportDocumentToDriveAction(document.id, folderId);
+      toast.success(`«${document.name}» exportado a "${folderName}" en Google Drive.`);
+      if (result.webViewLink) window.open(result.webViewLink, "_blank");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo exportar a Google Drive.");
+    }
+  }
+
   const menuItems =
     view === "trash"
       ? [
@@ -231,6 +245,7 @@ function DocumentCard({
           { label: "Mover", icon: <FolderInput size={14} />, onSelect: () => setMoveOpen(true) },
           { label: "Duplicar", icon: <Copy size={14} />, onSelect: handleDuplicate },
           { label: "Compartir", icon: <Share2 size={14} />, onSelect: onOpen },
+          { label: "Exportar a Google Drive", icon: <HardDrive size={14} />, onSelect: () => setExportOpen(true) },
           { label: document.isFavorite ? "Quitar de favoritos" : "Marcar favorito", icon: <Star size={14} />, onSelect: handleToggleFavorite },
           { label: "Eliminar", icon: <Trash2 size={14} />, destructive: true, onSelect: handleTrash },
         ];
@@ -263,6 +278,7 @@ function DocumentCard({
             }}
           />
         )}
+        {exportOpen && <GoogleDriveFolderPickerDialog onClose={() => setExportOpen(false)} onPick={handleExportPicked} />}
       </>
     );
   }
@@ -293,6 +309,7 @@ function DocumentCard({
           }}
         />
       )}
+      {exportOpen && <GoogleDriveFolderPickerDialog onClose={() => setExportOpen(false)} onPick={handleExportPicked} />}
     </>
   );
 }

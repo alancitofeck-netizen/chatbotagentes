@@ -6,6 +6,7 @@ import { requireActiveWorkspace } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { getOpenRouterIntegration, getWhatsAppIntegration } from "@/lib/integrations/queries";
 import { disconnectGoogleCalendar, getGoogleCalendarStatus, importGoogleEvents } from "@/lib/integrations/googleCalendar";
+import { disconnectGoogleDrive, getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
 
 export async function getWhatsAppIntegrationAction() {
   const { workspaceId } = await requireActiveWorkspace();
@@ -126,4 +127,17 @@ export async function syncGoogleCalendarNowAction() {
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
   return result;
+}
+
+export async function getGoogleDriveStatusAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getGoogleDriveStatus(workspaceId);
+}
+
+export async function disconnectGoogleDriveAction() {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  await disconnectGoogleDrive(workspaceId);
+  revalidatePath("/profile");
+  revalidatePath("/documents");
 }

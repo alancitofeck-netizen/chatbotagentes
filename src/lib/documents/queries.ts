@@ -18,6 +18,8 @@ export interface DocumentItem {
   storagePath: string;
   source: "upload" | "google_drive" | "google_docs" | "google_sheets" | "export";
   externalId: string | null;
+  externalUrl: string | null;
+  externalMetadata: { parents?: string[]; owners?: string[]; sharedWith?: string[] } | null;
   isTrashed: boolean;
   isFavorite: boolean;
   owner: { memberId: string; fullName: string } | null;
@@ -36,6 +38,8 @@ interface DocumentRow {
   storage_path: string;
   source: string;
   external_id: string | null;
+  external_url: string | null;
+  external_metadata: { parents?: string[]; owners?: string[]; sharedWith?: string[] } | null;
   is_trashed: boolean;
   owner_id: string | null;
   last_modified_by: string | null;
@@ -44,7 +48,7 @@ interface DocumentRow {
 }
 
 const DOCUMENT_SELECT =
-  "id, name, folder_id, mime_type, size_bytes, storage_path, source, external_id, is_trashed, owner_id, last_modified_by, created_at, updated_at";
+  "id, name, folder_id, mime_type, size_bytes, storage_path, source, external_id, external_url, external_metadata, is_trashed, owner_id, last_modified_by, created_at, updated_at";
 
 async function mapDocumentRows(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -86,6 +90,8 @@ async function mapDocumentRows(
     storagePath: r.storage_path,
     source: r.source as DocumentItem["source"],
     externalId: r.external_id,
+    externalUrl: r.external_url,
+    externalMetadata: r.external_metadata,
     isTrashed: r.is_trashed,
     isFavorite: favoriteIds.has(r.id),
     owner: r.owner_id ? { memberId: r.owner_id, fullName: nameByMember.get(r.owner_id) ?? "—" } : null,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Search,
   Plus,
@@ -12,10 +13,12 @@ import {
   ChevronRight,
   LayoutGrid,
   List as ListIcon,
+  HardDrive,
 } from "lucide-react";
 import { buttonClassName } from "@/components/ui/Button";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { toast } from "@/components/toast/toast";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
@@ -33,6 +36,9 @@ import { DocumentsSidebar } from "@/components/documents/DocumentsSidebar";
 import { DocumentsGrid } from "@/components/documents/DocumentsGrid";
 import { DocumentDetailDrawer } from "@/components/documents/DocumentDetailDrawer";
 import { ImportWizard } from "@/components/documents/ImportWizard";
+import { GoogleDriveBrowser } from "@/components/documents/GoogleDriveBrowser";
+
+type Section = "crm" | "drive";
 
 const VIEW_LABELS: Record<DocumentView, string> = {
   all: "Todos los documentos",
@@ -65,12 +71,14 @@ export function DocumentsShell({
   initialFolders,
   members,
   ownMemberId,
+  googleDriveConnected,
 }: {
   workspaceId: string;
   initialDocuments: DocumentItem[];
   initialFolders: FolderNode[];
   members: MemberOption[];
   ownMemberId: string | null;
+  googleDriveConnected: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -88,6 +96,7 @@ export function DocumentsShell({
   const [dragOver, setDragOver] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [section, setSection] = useState<Section>("crm");
   const [, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -206,168 +215,210 @@ export function DocumentsShell({
   }
 
   return (
-    <div
-      className="flex h-full"
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragOver(false);
-        if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
-      }}
-    >
-      <DocumentsSidebar
-        view={view}
-        folders={folders}
-        activeFolderId={view === "all" ? folderId : null}
-        onSelectView={(v) => setUrl(v, null)}
-        onSelectFolder={(id) => setUrl("all", id)}
-      />
-
-      <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-default px-6 py-4">
-          <div className="flex items-center gap-3">
-            <h1 className="text-[19px] font-semibold text-foreground">Documentos</h1>
-            <div className="relative w-64">
-              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && refetch()}
-                placeholder="Buscar documentos…"
-                className="w-full rounded-full border border-border-strong bg-surface-1 py-1.5 pl-9 pr-3 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <DropdownMenu
-              trigger={
-                <>
-                  <Download size={14} aria-hidden="true" />
-                  Exportar
-                </>
-              }
-              triggerClassName={buttonClassName({ variant: "secondary", size: "sm" })}
-              align="end"
-              items={EXPORT_ENTITIES.flatMap((entity) => [
-                ...EXPORT_FORMATS.map((f) => ({
-                  label: `${ENTITY_LABELS[entity]} — ${f.label}`,
-                  onSelect: () => window.open(`/api/documents/export?entity=${entity}&format=${f.value}`, "_blank"),
-                })),
-                {
-                  label: `${ENTITY_LABELS[entity]} — Google Sheets`,
-                  disabled: true,
-                  onSelect: () => toast.error("Conectá Google Drive primero (Perfil > Integraciones)."),
-                },
-              ])}
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => e.target.files && uploadFiles(e.target.files)}
-            />
-            <DropdownMenu
-              trigger={
-                <>
-                  <Plus size={15} aria-hidden="true" />
-                  Nuevo
-                </>
-              }
-              triggerClassName={buttonClassName({ size: "sm" })}
-              items={[
-                { label: "Nueva carpeta", icon: <FolderPlus size={14} />, onSelect: handleNewFolder },
-                { label: "Subir archivos", icon: <Upload size={14} />, onSelect: () => fileInputRef.current?.click() },
-                { label: "Importar", icon: <FileUp size={14} />, onSelect: () => setImportOpen(true) },
-              ]}
-            />
-            <div className="flex gap-1 rounded-full bg-surface-2 p-1">
-              <button
-                type="button"
-                aria-label="Vista de cuadrícula"
-                aria-pressed={layout === "grid"}
-                onClick={() => setLayout("grid")}
-                className={cn("flex size-7 items-center justify-center rounded-full", layout === "grid" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
-              >
-                <LayoutGrid size={14} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label="Vista de lista"
-                aria-pressed={layout === "list"}
-                onClick={() => setLayout("list")}
-                className={cn("flex size-7 items-center justify-center rounded-full", layout === "list" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
-              >
-                <ListIcon size={14} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 px-6 pt-3 text-[13px] text-neutral-500">
-          <button type="button" onClick={() => setUrl(view === "all" ? "all" : view, null)} className="hover:text-foreground hover:underline">
-            {VIEW_LABELS[view]}
-          </button>
-          {breadcrumbs.map((f) => (
-            <span key={f.id} className="flex items-center gap-1">
-              <ChevronRight size={13} aria-hidden="true" />
-              <button type="button" onClick={() => setUrl("all", f.id)} className="hover:text-foreground hover:underline">
-                {f.name}
-              </button>
-            </span>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-auto px-6 py-4">
-          {documents.length === 0 && visibleFolders.length === 0 ? (
-            <EmptyState
-              icon={Upload}
-              title="Sin documentos"
-              description="Arrastrá archivos acá o usá el botón «Nuevo» para empezar."
-            />
-          ) : (
-            <DocumentsGrid
-              layout={layout}
-              view={view}
-              documents={documents}
-              folders={visibleFolders}
-              onOpenFolder={(id) => setUrl("all", id)}
-              onOpenDocument={handleSelectDocument}
-              onChanged={refetch}
-            />
-          )}
-        </div>
-
-        {dragOver && (
-          <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center border-4 border-dashed border-accent-400 bg-accent-50/70">
-            <p className="text-lg font-semibold text-accent-700">Soltá los archivos para subirlos</p>
-          </div>
-        )}
-
-        {uploads.length > 0 && (
-          <div className="absolute bottom-4 right-4 z-30 flex w-72 flex-col gap-2 rounded-xl border border-border-default bg-surface-1 p-3 shadow-[var(--elevation-md)]">
-            <p className="text-[12px] font-semibold text-foreground">Subiendo archivos…</p>
-            {uploads.map((u) => (
-              <div key={u.name} className="flex items-center justify-between gap-2 text-[12px]">
-                <span className="truncate text-neutral-600">{u.name}</span>
-                <span
-                  className={cn(
-                    "shrink-0 font-medium",
-                    u.status === "done" ? "text-success-strong" : u.status === "error" ? "text-error-strong" : "text-neutral-400",
-                  )}
-                >
-                  {u.status === "done" ? "Listo" : u.status === "error" ? "Error" : "…"}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-6 border-b border-border-default px-6 pt-4">
+        <h1 className="text-[19px] font-semibold text-foreground">Documentos</h1>
+        <Tabs
+          value={section}
+          onValueChange={(v) => {
+            const next = v as Section;
+            setSection(next);
+            // Importing/favoriting a file from the Google Drive tab writes
+            // directly into the `documents` table via a server action, but
+            // this component's own `documents` state is a client-side copy
+            // fetched once on mount/view-change — nothing else re-triggers a
+            // fetch when only `section` toggles (view/folderId don't
+            // change), so a file imported while on the Drive tab wouldn't
+            // show up here until some unrelated refetch happened to fire.
+            if (next === "crm") refetch();
+          }}
+        >
+          <TabsList className="border-b-0">
+            <TabsTrigger value="crm">Archivos del CRM</TabsTrigger>
+            <TabsTrigger value="drive">Google Drive</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
+
+      {section === "drive" ? (
+        googleDriveConnected ? (
+          <GoogleDriveBrowser />
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-6">
+            <EmptyState
+              icon={HardDrive}
+              title="Google Drive no está conectado"
+              description="Conectá tu cuenta de Google Drive desde Perfil > Integraciones para ver y gestionar tus archivos acá."
+              action={
+                <Link href="/profile?tab=integrations" className={buttonClassName({ size: "sm" })}>
+                  Ir a Integraciones
+                </Link>
+              }
+            />
+          </div>
+        )
+      ) : (
+        <div
+          className="flex flex-1 overflow-hidden"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+          }}
+        >
+          <DocumentsSidebar
+            view={view}
+            folders={folders}
+            activeFolderId={view === "all" ? folderId : null}
+            onSelectView={(v) => setUrl(v, null)}
+            onSelectFolder={(id) => setUrl("all", id)}
+          />
+
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-default px-6 py-4">
+              <div className="relative w-64">
+                <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && refetch()}
+                  placeholder="Buscar documentos…"
+                  className="w-full rounded-full border border-border-strong bg-surface-1 py-1.5 pl-9 pr-3 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <DropdownMenu
+                  trigger={
+                    <>
+                      <Download size={14} aria-hidden="true" />
+                      Exportar
+                    </>
+                  }
+                  triggerClassName={buttonClassName({ variant: "secondary", size: "sm" })}
+                  align="end"
+                  items={EXPORT_ENTITIES.flatMap((entity) => [
+                    ...EXPORT_FORMATS.map((f) => ({
+                      label: `${ENTITY_LABELS[entity]} — ${f.label}`,
+                      onSelect: () => window.open(`/api/documents/export?entity=${entity}&format=${f.value}`, "_blank"),
+                    })),
+                    {
+                      label: `${ENTITY_LABELS[entity]} — Google Sheets`,
+                      disabled: true,
+                      onSelect: () => toast.error("Conectá Google Drive primero (Perfil > Integraciones)."),
+                    },
+                  ])}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+                />
+                <DropdownMenu
+                  trigger={
+                    <>
+                      <Plus size={15} aria-hidden="true" />
+                      Nuevo
+                    </>
+                  }
+                  triggerClassName={buttonClassName({ size: "sm" })}
+                  items={[
+                    { label: "Nueva carpeta", icon: <FolderPlus size={14} />, onSelect: handleNewFolder },
+                    { label: "Subir archivos", icon: <Upload size={14} />, onSelect: () => fileInputRef.current?.click() },
+                    { label: "Importar contactos", icon: <FileUp size={14} />, onSelect: () => setImportOpen(true) },
+                  ]}
+                />
+                <div className="flex gap-1 rounded-full bg-surface-2 p-1">
+                  <button
+                    type="button"
+                    aria-label="Vista de cuadrícula"
+                    aria-pressed={layout === "grid"}
+                    onClick={() => setLayout("grid")}
+                    className={cn("flex size-7 items-center justify-center rounded-full", layout === "grid" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
+                  >
+                    <LayoutGrid size={14} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Vista de lista"
+                    aria-pressed={layout === "list"}
+                    onClick={() => setLayout("list")}
+                    className={cn("flex size-7 items-center justify-center rounded-full", layout === "list" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
+                  >
+                    <ListIcon size={14} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 px-6 pt-3 text-[13px] text-neutral-500">
+              <button type="button" onClick={() => setUrl(view === "all" ? "all" : view, null)} className="hover:text-foreground hover:underline">
+                {VIEW_LABELS[view]}
+              </button>
+              {breadcrumbs.map((f) => (
+                <span key={f.id} className="flex items-center gap-1">
+                  <ChevronRight size={13} aria-hidden="true" />
+                  <button type="button" onClick={() => setUrl("all", f.id)} className="hover:text-foreground hover:underline">
+                    {f.name}
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-auto px-6 py-4">
+              {documents.length === 0 && visibleFolders.length === 0 ? (
+                <EmptyState
+                  icon={Upload}
+                  title="Sin documentos"
+                  description="Arrastrá archivos acá o usá el botón «Nuevo» para empezar."
+                />
+              ) : (
+                <DocumentsGrid
+                  layout={layout}
+                  view={view}
+                  documents={documents}
+                  folders={visibleFolders}
+                  onOpenFolder={(id) => setUrl("all", id)}
+                  onOpenDocument={handleSelectDocument}
+                  onChanged={refetch}
+                />
+              )}
+            </div>
+
+            {dragOver && (
+              <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center border-4 border-dashed border-accent-400 bg-accent-50/70">
+                <p className="text-lg font-semibold text-accent-700">Soltá los archivos para subirlos</p>
+              </div>
+            )}
+
+            {uploads.length > 0 && (
+              <div className="absolute bottom-4 right-4 z-30 flex w-72 flex-col gap-2 rounded-xl border border-border-default bg-surface-1 p-3 shadow-[var(--elevation-md)]">
+                <p className="text-[12px] font-semibold text-foreground">Subiendo archivos…</p>
+                {uploads.map((u) => (
+                  <div key={u.name} className="flex items-center justify-between gap-2 text-[12px]">
+                    <span className="truncate text-neutral-600">{u.name}</span>
+                    <span
+                      className={cn(
+                        "shrink-0 font-medium",
+                        u.status === "done" ? "text-success-strong" : u.status === "error" ? "text-error-strong" : "text-neutral-400",
+                      )}
+                    >
+                      {u.status === "done" ? "Listo" : u.status === "error" ? "Error" : "…"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {selectedDocument && (
         <DocumentDetailDrawer

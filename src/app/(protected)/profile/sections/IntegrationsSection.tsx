@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MessageCircle, CalendarDays, RefreshCw, Bot, Table2 } from "lucide-react";
+import { MessageCircle, CalendarDays, RefreshCw, Bot, Table2, HardDrive } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,11 +10,13 @@ import { toast } from "@/components/toast/toast";
 import type { OpenRouterIntegration, WhatsAppIntegration } from "@/lib/integrations/queries";
 import type { GoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
 import type { GoogleSheetsAccountStatus } from "@/lib/integrations/googleSheets";
+import type { GoogleDriveStatus } from "@/lib/integrations/googleDrive";
 import {
   disconnectWhatsAppIntegration,
   getWhatsAppIntegrationAction,
   disconnectGoogleCalendarAction,
   syncGoogleCalendarNowAction,
+  disconnectGoogleDriveAction,
   getOpenRouterIntegrationAction,
   disconnectOpenRouterIntegration,
 } from "@/lib/integrations/actions";
@@ -29,12 +31,14 @@ export function IntegrationsSection({
   initialGoogleCalendar,
   initialOpenRouter,
   initialGoogleSheets,
+  initialGoogleDrive,
   currentRole,
 }: {
   initialWhatsApp: WhatsAppIntegration | null;
   initialGoogleCalendar: GoogleCalendarStatus;
   initialOpenRouter: OpenRouterIntegration | null;
   initialGoogleSheets: GoogleSheetsAccountStatus;
+  initialGoogleDrive: GoogleDriveStatus;
   currentRole: string;
 }) {
   const router = useRouter();
@@ -43,6 +47,7 @@ export function IntegrationsSection({
   const [googleCalendar, setGoogleCalendar] = useState(initialGoogleCalendar);
   const [openRouter, setOpenRouter] = useState(initialOpenRouter);
   const [googleSheets] = useState(initialGoogleSheets);
+  const [googleDrive, setGoogleDrive] = useState(initialGoogleDrive);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [openRouterSheetOpen, setOpenRouterSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -70,6 +75,15 @@ export function IntegrationsSection({
       router.replace("/profile?tab=integrations", { scroll: false });
     } else if (searchParams.get("google_sheets_error")) {
       toast.error("No se pudo conectar la cuenta de Google para KPIs.");
+      router.replace("/profile?tab=integrations", { scroll: false });
+    } else if (searchParams.get("google_drive_connected")) {
+      // Same reasoning as google_sheets_connected above — this is a real
+      // HTTP redirect from the OAuth callback route, so initialGoogleDrive
+      // already reflects connected:true server-side by the time this mounts.
+      toast.success("Google Drive conectado.");
+      router.replace("/profile?tab=integrations", { scroll: false });
+    } else if (searchParams.get("google_drive_error")) {
+      toast.error("No se pudo conectar Google Drive.");
       router.replace("/profile?tab=integrations", { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,6 +147,19 @@ export function IntegrationsSection({
         toast.success(`Sincronizado — ${result.imported} evento(s) importado(s).`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo sincronizar.");
+      }
+    });
+  }
+
+  function handleDisconnectDrive() {
+    if (!window.confirm("¿Desconectar Google Drive de este workspace?")) return;
+    startTransition(async () => {
+      try {
+        await disconnectGoogleDriveAction();
+        setGoogleDrive({ connected: false, email: null });
+        toast.success("Google Drive desconectado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo desconectar.");
       }
     });
   }
@@ -264,16 +291,38 @@ export function IntegrationsSection({
       </Card>
 
       <Card>
-        <div className="mb-1 flex items-center justify-between gap-3">
-          <h3 className="text-[15px] font-medium text-foreground">Google Drive</h3>
-          <Badge variant="neutral">No conectado</Badge>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+              <HardDrive className="size-4" aria-hidden="true" />
+            </span>
+            <h3 className="text-[15px] font-medium text-foreground">Google Drive</h3>
+          </div>
+          <Badge variant={googleDrive.connected ? "success" : "neutral"}>
+            {googleDrive.connected ? "Conectado" : "No conectado"}
+          </Badge>
         </div>
-        <p className="text-sm text-neutral-500">
-          Próximamente — importá documentos de Drive/Docs/Sheets y exportá datos del CRM directamente ahí.
-        </p>
-        <Button size="sm" variant="secondary" disabled className="mt-4">
-          Conectar Google Drive
-        </Button>
+
+        {googleDrive.connected ? (
+          <p className="text-sm text-neutral-600">Cuenta: {googleDrive.email}</p>
+        ) : (
+          <p className="text-sm text-neutral-500">
+            Conectá tu cuenta de Google Drive para poder importar archivos (Docs, Sheets, PDFs, etc.) directamente al
+            módulo Documentos del CRM.
+          </p>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {googleDrive.connected ? (
+            <Button size="sm" variant="destructive" disabled={!canManage || isPending} onClick={handleDisconnectDrive}>
+              Desconectar
+            </Button>
+          ) : (
+            <Button size="sm" disabled={!canManage} onClick={() => (window.location.href = "/api/integrations/google-drive/connect")}>
+              Conectar Google Drive
+            </Button>
+          )}
+        </div>
       </Card>
 
       <Card>

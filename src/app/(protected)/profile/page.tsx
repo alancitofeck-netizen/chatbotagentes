@@ -5,6 +5,7 @@ import { getWorkspaceMembersList, getWorkspaceModuleStatus } from "@/lib/setting
 import { getOpenRouterIntegration, getWhatsAppIntegration } from "@/lib/integrations/queries";
 import { getGoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
 import { getGoogleSheetsAccountStatus } from "@/lib/integrations/googleSheets";
+import { getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
 import { getAutomationList } from "@/lib/automations/queries";
 import { ProfileShell } from "./ProfileShell";
 
@@ -15,17 +16,19 @@ export const metadata: Metadata = {
 export default async function ProfilePage() {
   const { workspaceId, role } = await requireActiveWorkspace();
 
-  const [profile, sessions, modules, members, whatsapp, googleCalendar, openRouter, automations, googleSheets] = await Promise.all([
-    getMyProfile(),
-    getMySessions(),
-    getWorkspaceModuleStatus(workspaceId),
-    getWorkspaceMembersList(workspaceId),
-    getWhatsAppIntegration(workspaceId),
-    getGoogleCalendarStatus(workspaceId),
-    getOpenRouterIntegration(workspaceId),
-    getAutomationList(workspaceId),
-    getGoogleSheetsAccountStatus(workspaceId),
-  ]);
+  const [profile, sessions, modules, members, whatsapp, googleCalendar, openRouter, automations, googleSheets, googleDrive] =
+    await Promise.all([
+      getMyProfile(),
+      getMySessions(),
+      getWorkspaceModuleStatus(workspaceId),
+      getWorkspaceMembersList(workspaceId),
+      getWhatsAppIntegration(workspaceId),
+      getGoogleCalendarStatus(workspaceId),
+      getOpenRouterIntegration(workspaceId),
+      getAutomationList(workspaceId),
+      getGoogleSheetsAccountStatus(workspaceId),
+      getGoogleDriveStatus(workspaceId),
+    ]);
 
   return (
     <ProfileShell
@@ -38,6 +41,7 @@ export default async function ProfilePage() {
       initialOpenRouter={openRouter}
       initialAutomations={automations}
       initialGoogleSheets={googleSheets}
+      initialGoogleDrive={googleDrive}
       currentRole={role}
     />
   );
