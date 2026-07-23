@@ -11,7 +11,7 @@ export function ResendButton({ email }: { email: string }) {
   const [state, formAction, isPending] = useActionState(resendConfirmation, initialState);
 
   useEffect(() => {
-    if (state.sent) toast.success("Te reenviamos el correo de confirmación.");
+    if (state.sent) toast.success("Te reenviamos el código.");
     if (state.error) toast.error(state.error);
   }, [state.sent, state.error]);
 
@@ -19,7 +19,7 @@ export function ResendButton({ email }: { email: string }) {
     <form action={formAction}>
       <input type="hidden" name="email" value={email} />
       <Button type="submit" variant="secondary" fullWidth loading={isPending}>
-        Reenviar correo
+        Reenviar código
       </Button>
     </form>
   );
