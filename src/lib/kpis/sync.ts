@@ -99,14 +99,34 @@ function serialDateToDate(serial: number): Date {
   return new Date(epoch + serial * 86400000);
 }
 
+// Some real sheets (confirmed live) repeat their summary/totals block
+// periodically throughout the data — not just once above the real header —
+// e.g. every ~200 rows, whenever the setter copy-pasted the template again.
+// Those rows have no real per-lead date, just plain running-total numbers
+// (e.g. 119 = "conexiones aceptadas so far"), which parseLeadDate would
+// otherwise happily convert as a Sheets serial into a bogus date near the
+// 1899-12-30 epoch — no fixed row position or column-content check can catch
+// this reliably, but a real lead submission date is never actually outside
+// this range, so anything that lands outside it is treated as not-a-date
+// (skipped) rather than silently corrupting a week bucket.
+const MIN_PLAUSIBLE_YEAR = 2015;
+const MAX_PLAUSIBLE_YEAR = 2100;
+
+function isPlausibleLeadDate(date: Date): boolean {
+  const year = date.getUTCFullYear();
+  return year >= MIN_PLAUSIBLE_YEAR && year <= MAX_PLAUSIBLE_YEAR;
+}
+
 function parseLeadDate(raw: string | undefined): Date | null {
   if (raw === undefined || raw === null || raw === "") return null;
   const asNumber = Number(raw);
   if (Number.isFinite(asNumber) && !String(raw).includes("/") && !String(raw).includes("-")) {
-    return serialDateToDate(asNumber);
+    const date = serialDateToDate(asNumber);
+    return isPlausibleLeadDate(date) ? date : null;
   }
   const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  if (Number.isNaN(parsed.getTime())) return null;
+  return isPlausibleLeadDate(parsed) ? parsed : null;
 }
 
 function periodMonthOf(date: Date): string {

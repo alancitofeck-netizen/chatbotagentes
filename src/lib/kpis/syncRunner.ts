@@ -84,7 +84,13 @@ export async function runKpiSyncForSetter(
 
     await supabase
       .from("kpi_setters")
-      .update({ last_sync_status: "ok", last_sync_error: null, row_count: values.length - 1, column_map: parsed.columnMap })
+      .update({
+        last_sync_status: "ok",
+        last_sync_error: null,
+        last_synced_at: startedAt,
+        row_count: values.length - 1,
+        column_map: parsed.columnMap,
+      })
       .eq("id", setter.id);
 
     return { setterId: setter.id, ok: true, rowsRead: values.length - 1, weeksWritten, skippedRows: parsed.skippedRows };
