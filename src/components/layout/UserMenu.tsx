@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { HelpCircle, LogOut, Settings, User, UserCircle } from "lucide-react";
+import { HelpCircle, LogOut, Settings, ShieldCheck, User, UserCircle } from "lucide-react";
 import { signOut } from "@/app/(protected)/actions";
 import { cn } from "@/lib/utils/cn";
 
@@ -14,6 +14,11 @@ interface UserMenuProps {
    * (Sidebar.tsx), dropdown opens upward and to the right instead, since
    * there's no room below/to the left inside the dock. */
   variant?: "navbar" | "sidebar";
+  /** Owner global only (public.platform_admins) — shows the cross-workspace
+   * supervision panel entry point. Resolved server-side in
+   * (protected)/layout.tsx via isPlatformAdmin(), not derivable from role
+   * (that's per-workspace; this is a separate, orthogonal flag). */
+  isPlatformAdmin?: boolean;
 }
 
 function initialsFrom(name: string, email: string) {
@@ -26,7 +31,7 @@ function initialsFrom(name: string, email: string) {
     .join("");
 }
 
-export function UserMenu({ name, email, variant = "navbar" }: UserMenuProps) {
+export function UserMenu({ name, email, variant = "navbar", isPlatformAdmin = false }: UserMenuProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const isSidebar = variant === "sidebar";
 
@@ -87,6 +92,20 @@ export function UserMenu({ name, email, variant = "navbar" }: UserMenuProps) {
           <HelpCircle className="size-4" aria-hidden="true" />
           Ayuda
         </button>
+
+        {isPlatformAdmin && (
+          <>
+            <div className="my-1 h-px bg-border-default" />
+            <Link
+              href="/admin/workspaces"
+              onClick={closeMenu}
+              className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+            >
+              <ShieldCheck className="size-4" aria-hidden="true" />
+              Panel de supervisión
+            </Link>
+          </>
+        )}
 
         <div className="my-1 h-px bg-border-default" />
         <form action={signOut}>

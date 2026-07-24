@@ -151,7 +151,7 @@ export async function getMyManageableWorkspacesAction() {
  * app-level authorization check. Here that check is explicit and scoped to
  * the TARGET workspace (not just "is manager of whatever's active"), since
  * the two can differ. */
-export async function assignMemberToWorkspace(userId: string, targetWorkspaceId: string, role: "owner" | "admin" | "agent" | "viewer") {
+export async function assignMemberToWorkspace(userId: string, targetWorkspaceId: string, role: "owner" | "admin" | "agent") {
   const caller = await requireUser();
   const callerMemberships = await getUserWorkspaces(caller.id);
   const callerRoleInTarget = callerMemberships.find((m) => m.workspaceId === targetWorkspaceId)?.role;

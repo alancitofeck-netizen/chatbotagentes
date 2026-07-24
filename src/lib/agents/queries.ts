@@ -60,6 +60,12 @@ export interface AgentListItem {
   trend: number[];
   trendDirection: "up" | "down" | "flat";
   lastActivityAt: string | null;
+  /** Persisted "last seen" from the real-time presence heartbeat
+   * (workspace_members.last_active_at, 0039/0040 migrations) — distinct
+   * from lastActivityAt above (last CRM/Inbox touch on a lead): this one is
+   * "was their session actually open", the fallback shown once the live
+   * Presence channel (useWorkspacePresence) has nobody connected. */
+  sessionLastActiveAt: string | null;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -96,7 +102,7 @@ export async function getAgentList(
 
   let memberQuery = supabase
     .from("workspace_members")
-    .select("id, user_id, role, title, status, team_id, supervisor_id, hire_date")
+    .select("id, user_id, role, title, status, team_id, supervisor_id, hire_date, last_active_at")
     .eq("workspace_id", workspaceId);
   if (filters.teamId) memberQuery = memberQuery.eq("team_id", filters.teamId);
   if (filters.supervisorId) memberQuery = memberQuery.eq("supervisor_id", filters.supervisorId);
@@ -268,6 +274,7 @@ export async function getAgentList(
       trend,
       trendDirection,
       lastActivityAt,
+      sessionLastActiveAt: m.last_active_at as string | null,
     };
   });
 

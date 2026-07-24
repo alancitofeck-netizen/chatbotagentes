@@ -36,7 +36,6 @@ const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
   admin: "Admin",
   agent: "Agente",
-  viewer: "Solo lectura",
 };
 
 const TABS = [
@@ -68,6 +67,7 @@ export function ProfileShell({
   initialGoogleSheets,
   initialGoogleDrive,
   currentRole,
+  currentMemberId,
 }: {
   initialProfile: MyProfile;
   initialSessions: MySession[];
@@ -80,6 +80,7 @@ export function ProfileShell({
   initialGoogleSheets: GoogleSheetsAccountStatus;
   initialGoogleDrive: GoogleDriveStatus;
   currentRole: string;
+  currentMemberId: string | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -175,6 +176,7 @@ export function ProfileShell({
               modules={modules}
               members={members}
               canManage={canManage}
+              ownMemberId={currentMemberId}
               onWorkspaceChanged={refetchProfile}
               onModulesChanged={refetchModules}
               onMembersChanged={refetchMembers}

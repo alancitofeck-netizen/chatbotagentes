@@ -47,7 +47,7 @@ export async function getWorkspaceMembersList(workspaceId: string): Promise<Work
       memberId: n.member_id,
       fullName: n.full_name,
       email: n.email,
-      role: roleByMemberId.get(n.member_id) ?? "viewer",
+      role: roleByMemberId.get(n.member_id) ?? "agent",
     }))
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }

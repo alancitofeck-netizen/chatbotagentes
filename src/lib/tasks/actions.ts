@@ -27,7 +27,7 @@ export interface TaskInput {
   relatedId: string | null;
 }
 
-/** Agents/viewers can only assign tasks to themselves — "si tiene permisos"
+/** Agents can only assign tasks to themselves — "si tiene permisos"
  * per the user's spec, interpreted as an app-level guard (not RLS, since
  * tasks_insert/update already allow any agent to write). Owner/admin may
  * assign to any member. Enforced server-side, not just hidden in the UI. */

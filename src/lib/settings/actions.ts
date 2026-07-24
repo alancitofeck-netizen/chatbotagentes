@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { getWorkspaceMembersList, getWorkspaceModuleStatus, type ModuleKey } from "@/lib/settings/queries";
 
-const VALID_ROLES = ["owner", "admin", "agent", "viewer"] as const;
+const VALID_ROLES = ["owner", "admin", "agent"] as const;
 type Role = (typeof VALID_ROLES)[number];
 
 export async function getWorkspaceModuleStatusAction() {
@@ -110,6 +110,11 @@ export async function updateMemberRole(memberId: string, role: Role) {
   const { workspaceId, role: actingRole } = await requireActiveWorkspace();
   requireManagerRole(actingRole);
   if (!VALID_ROLES.includes(role)) throw new Error("Rol inválido.");
+
+  const ownMemberId = await getCurrentMemberId(workspaceId);
+  if (ownMemberId && ownMemberId === memberId) {
+    throw new Error("No podés cambiar tu propio rol.");
+  }
 
   const target = await getTargetMember(workspaceId, memberId);
   if (!target) throw new Error("Miembro no encontrado en este workspace.");

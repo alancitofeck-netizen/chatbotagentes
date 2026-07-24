@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, forbidden } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 
 export default async function AgentProfilePage({ params }: { params: Promise<{ memberId: string }> }) {
   const { memberId } = await params;
-  const { workspaceId, role } = await requireActiveWorkspace();
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  if (role === "agent" && !isSupervising) forbidden();
 
   const [agent, members, contactOptions, conversationOptions, tasks] = await Promise.all([
     getAgentDetail(workspaceId, memberId),

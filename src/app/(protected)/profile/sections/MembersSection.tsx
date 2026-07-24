@@ -16,23 +16,23 @@ const ROLE_OPTIONS = [
   { value: "owner", label: "Owner" },
   { value: "admin", label: "Admin" },
   { value: "agent", label: "Agente" },
-  { value: "viewer", label: "Solo lectura" },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
   admin: "Admin",
   agent: "Agente",
-  viewer: "Solo lectura",
 };
 
 export function MembersSection({
   members,
   canManage,
+  ownMemberId,
   onChanged,
 }: {
   members: WorkspaceMember[];
   canManage: boolean;
+  ownMemberId: string | null;
   onChanged: () => void;
 }) {
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -41,7 +41,7 @@ export function MembersSection({
   function handleRoleChange(memberId: string, role: string) {
     startTransition(async () => {
       try {
-        await updateMemberRole(memberId, role as "owner" | "admin" | "agent" | "viewer");
+        await updateMemberRole(memberId, role as "owner" | "admin" | "agent");
         onChanged();
         toast.success("Rol actualizado.");
       } catch (err) {
@@ -84,7 +84,7 @@ export function MembersSection({
               <p className="truncate text-sm font-medium text-foreground">{m.fullName}</p>
               <p className="truncate text-[13px] text-neutral-500">{m.email}</p>
             </div>
-            {canManage ? (
+            {canManage && m.memberId !== ownMemberId ? (
               <Select
                 label="Rol"
                 containerClassName="w-40"

@@ -7,7 +7,7 @@ import { tabItemClassName } from "@/components/ui/Tabs";
 const CRM_TABS = [
   { key: "board", label: "Tablero", href: "/crm?tab=board" },
   { key: "analytics", label: "Analytics", href: "/crm?tab=analytics" },
-  { key: "agents", label: "Agentes", href: "/crm?tab=agents" },
+  { key: "agents", label: "Agentes", href: "/crm?tab=agents", managerOnly: true },
   { key: "agentes-ia", label: "Agentes IA", href: "/crm?tab=agentes-ia" },
   { key: "tasks", label: "Tareas", href: "/crm?tab=tasks" },
   { key: "kpis", label: "KPIs", href: "/crm?tab=kpis" },
@@ -24,15 +24,22 @@ const CRM_TABS = [
  * the previous router.replace-driven TabsTrigger — same soft client nav,
  * just via an anchor instead of an onClick handler); ATS is a real cross-route
  * link, so it can't reuse the controlled Tabs/TabsTrigger primitive as-is.
+ *
+ * "Agentes" and ATS are admin-facing surfaces — an `agent`-role user must
+ * never even see the tab, per the role-permissions spec's "el botón ni
+ * siquiera debe renderizarse" (the matching backend 403 lives in
+ * crm/page.tsx, ats/page.tsx and ats/[vacancyId]/page.tsx, since hiding the
+ * button alone doesn't stop a typed-in URL).
  */
-export function CrmAtsTabStrip({ atsEnabled }: { atsEnabled: boolean }) {
+export function CrmAtsTabStrip({ atsEnabled, isAgent }: { atsEnabled: boolean; isAgent: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeKey = pathname.startsWith("/ats") ? "ats" : (searchParams.get("tab") ?? "board");
+  const visibleTabs = CRM_TABS.filter((tab) => !("managerOnly" in tab && tab.managerOnly && isAgent));
 
   return (
     <div role="tablist" className="flex gap-5 border-b border-border-default">
-      {CRM_TABS.map((tab) => (
+      {visibleTabs.map((tab) => (
         <Link
           key={tab.key}
           href={tab.href}
@@ -43,19 +50,21 @@ export function CrmAtsTabStrip({ atsEnabled }: { atsEnabled: boolean }) {
           {tab.label}
         </Link>
       ))}
-      <Link
-        href={atsEnabled ? "/ats" : "#"}
-        role="tab"
-        aria-selected={activeKey === "ats"}
-        aria-disabled={!atsEnabled}
-        title={atsEnabled ? "ATS" : "ATS (Pronto)"}
-        onClick={(e) => {
-          if (!atsEnabled) e.preventDefault();
-        }}
-        className={tabItemClassName(activeKey === "ats", !atsEnabled)}
-      >
-        ATS
-      </Link>
+      {!isAgent && (
+        <Link
+          href={atsEnabled ? "/ats" : "#"}
+          role="tab"
+          aria-selected={activeKey === "ats"}
+          aria-disabled={!atsEnabled}
+          title={atsEnabled ? "ATS" : "ATS (Pronto)"}
+          onClick={(e) => {
+            if (!atsEnabled) e.preventDefault();
+          }}
+          className={tabItemClassName(activeKey === "ats", !atsEnabled)}
+        >
+          ATS
+        </Link>
+      )}
     </div>
   );
 }

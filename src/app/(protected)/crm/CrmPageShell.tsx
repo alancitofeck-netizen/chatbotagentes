@@ -23,6 +23,7 @@ type View = "board" | "analytics" | "agents" | "agentes-ia" | "tasks" | "kpis";
 const VALID_VIEWS: View[] = ["board", "analytics", "agents", "agentes-ia", "tasks", "kpis"];
 
 export function CrmPageShell({
+  workspaceId,
   board: initialBoard,
   pipelines,
   agents,
@@ -37,7 +38,9 @@ export function CrmPageShell({
   aiAgents,
   atsEnabled,
   hasKpiConnection,
+  isAgent,
 }: {
+  workspaceId: string;
   board: CrmBoard | null;
   pipelines: CrmPipelineOption[];
   agents: AgentListItem[];
@@ -52,6 +55,7 @@ export function CrmPageShell({
   aiAgents: AiAgentListItem[];
   atsEnabled: boolean;
   hasKpiConnection: boolean;
+  isAgent: boolean;
 }) {
   const [board, setBoard] = useState(initialBoard);
   const [isCreatingPipeline, startCreatePipeline] = useTransition();
@@ -74,7 +78,7 @@ export function CrmPageShell({
   return (
     <div className="flex flex-col gap-4">
       <div className="px-4 sm:px-6 lg:px-8">
-        <CrmAtsTabStrip atsEnabled={atsEnabled} />
+        <CrmAtsTabStrip atsEnabled={atsEnabled} isAgent={isAgent} />
       </div>
 
       {view === "board" && (
@@ -108,9 +112,9 @@ export function CrmPageShell({
           </div>
         ))}
 
-      {view === "agents" && (
+      {view === "agents" && !isAgent && (
         <div className="flex-1 overflow-y-auto pb-4 sm:pb-6 lg:pb-8">
-          <AgentsList initialAgents={agents} initialTeams={teams} />
+          <AgentsList initialAgents={agents} initialTeams={teams} workspaceId={workspaceId} />
         </div>
       )}
 

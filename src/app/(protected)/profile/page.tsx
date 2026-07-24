@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { getMyProfile, getMySessions } from "@/lib/profile/queries";
 import { getWorkspaceMembersList, getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { getOpenRouterIntegration, getWhatsAppIntegration } from "@/lib/integrations/queries";
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default async function ProfilePage() {
   const { workspaceId, role } = await requireActiveWorkspace();
 
-  const [profile, sessions, modules, members, whatsapp, googleCalendar, openRouter, automations, googleSheets, googleDrive] =
+  const [profile, sessions, modules, members, whatsapp, googleCalendar, openRouter, automations, googleSheets, googleDrive, memberId] =
     await Promise.all([
       getMyProfile(),
       getMySessions(),
@@ -28,6 +28,7 @@ export default async function ProfilePage() {
       getAutomationList(workspaceId),
       getGoogleSheetsAccountStatus(workspaceId),
       getGoogleDriveStatus(workspaceId),
+      getCurrentMemberId(workspaceId),
     ]);
 
   return (
@@ -43,6 +44,7 @@ export default async function ProfilePage() {
       initialGoogleSheets={googleSheets}
       initialGoogleDrive={googleDrive}
       currentRole={role}
+      currentMemberId={memberId}
     />
   );
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { forbidden } from "next/navigation";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getVacancies } from "@/lib/ats/queries";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
@@ -14,7 +15,13 @@ export const metadata: Metadata = {
  * area, reached now only via CRM's "ATS" tab (Sidebar.tsx no longer lists
  * ATS as its own top-level item). */
 export default async function AtsPage() {
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  // ATS is an admin-facing module (role-permissions spec) — a real agent-role
+  // user must get a real 403 for a typed-in /ats URL, not just a hidden tab.
+  // A supervising platform admin also carries role "agent" (session.ts) but
+  // must still be able to view this ("ver toda la información del Workspace").
+  if (role === "agent" && !isSupervising) forbidden();
+
   const [vacancies, moduleStatus] = await Promise.all([
     getVacancies(workspaceId),
     getWorkspaceModuleStatus(workspaceId),
@@ -24,7 +31,7 @@ export default async function AtsPage() {
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <div className="px-4 sm:px-6 lg:px-8">
-        <CrmAtsTabStrip atsEnabled={atsEnabled} />
+        <CrmAtsTabStrip atsEnabled={atsEnabled} isAgent={false} />
       </div>
       <div className="flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-1">

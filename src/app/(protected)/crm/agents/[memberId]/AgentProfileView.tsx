@@ -30,7 +30,7 @@ const ACTIVITY_ICON: Record<string, typeof Users> = {
   opportunity: Trophy,
 };
 
-const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", agent: "Agente", viewer: "Solo lectura" };
+const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", agent: "Agente" };
 
 function scoreColor(score: number): string {
   if (score >= 85) return "var(--color-success-strong)";

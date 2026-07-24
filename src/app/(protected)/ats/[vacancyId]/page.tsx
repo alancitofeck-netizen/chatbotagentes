@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, forbidden } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 
 export default async function VacancyBoardPage({ params }: { params: Promise<{ vacancyId: string }> }) {
   const { vacancyId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  if (role === "agent" && !isSupervising) forbidden();
   const board = await getVacancyBoard(workspaceId, vacancyId);
 
   if (!board) notFound();

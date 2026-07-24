@@ -12,7 +12,6 @@ const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
   admin: "Admin",
   agent: "Agente",
-  viewer: "Solo lectura",
 };
 
 function formatDate(iso: string) {

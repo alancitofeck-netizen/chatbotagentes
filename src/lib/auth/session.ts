@@ -3,13 +3,20 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveWorkspaceCookie } from "@/lib/auth/workspace-cookie";
 
-export type WorkspaceRole = "owner" | "admin" | "agent" | "viewer";
+export type WorkspaceRole = "owner" | "admin" | "agent";
 
 export interface WorkspaceMembership {
   workspaceId: string;
   name: string;
   slug: string;
   role: WorkspaceRole;
+  /** True when this membership is synthetic — a platform admin ("Owner
+   * global") viewing a workspace they don't actually belong to, resolved via
+   * the is_platform_admin() RLS carve-out rather than a real
+   * workspace_members row. Always paired with role "agent" so any
+   * role === "owner" / "admin" UI gate stays correctly locked for them —
+   * supervision is read-only by design (see 0039_role_permissions_system.sql). */
+  isSupervising?: boolean;
 }
 
 /** Returns the current Supabase user, or null if there is no session. */
@@ -64,13 +71,43 @@ export async function isWorkspaceMember(userId: string, workspaceId: string) {
   return Boolean(data);
 }
 
+/** Resolves a workspace by id for a platform admin ("Owner global") who is
+ * supervising it, not a member of it. Works with the plain (non
+ * service-role) client because 0039_role_permissions_system.sql extends
+ * core.is_workspace_member() to also return true for platform admins —
+ * "workspaces_select_own" (0001_workspaces_and_members.sql) already grants
+ * read access on that same check, so no new RLS policy was needed. Returns
+ * null (rather than throwing) for a non-admin or an unknown workspace id, so
+ * callers can fall back to the normal "not found" path. */
+async function getSupervisedWorkspace(workspaceId: string): Promise<WorkspaceMembership | null> {
+  const supabase = await createClient();
+  const { data: isPlatformAdmin } = await supabase.rpc("am_i_platform_admin");
+  if (!isPlatformAdmin) return null;
+
+  const { data: workspace } = await supabase.from("workspaces").select("id, name, slug").eq("id", workspaceId).maybeSingle();
+  if (!workspace) return null;
+
+  return {
+    workspaceId: workspace.id as string,
+    name: workspace.name as string,
+    slug: workspace.slug as string,
+    role: "agent",
+    isSupervising: true,
+  };
+}
+
 /** Redirect-free core of requireActiveWorkspace — used by Route Handlers
  * (e.g. src/app/api/messages/send/route.ts), where a `redirect()` would be
  * wrong (an API route must return a JSON 401/403, not an HTTP redirect). */
 export async function getActiveWorkspaceForUser(userId: string): Promise<WorkspaceMembership | null> {
   const workspaces = await getUserWorkspaces(userId);
   const activeWorkspaceId = await getActiveWorkspaceCookie();
-  return workspaces.find((w) => w.workspaceId === activeWorkspaceId) ?? null;
+  if (!activeWorkspaceId) return null;
+
+  const own = workspaces.find((w) => w.workspaceId === activeWorkspaceId);
+  if (own) return own;
+
+  return getSupervisedWorkspace(activeWorkspaceId);
 }
 
 /**

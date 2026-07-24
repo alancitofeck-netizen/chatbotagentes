@@ -11,7 +11,6 @@ import { inviteMember } from "@/lib/settings/actions";
 const ROLE_OPTIONS = [
   { value: "agent", label: "Agente" },
   { value: "admin", label: "Admin" },
-  { value: "viewer", label: "Solo lectura" },
   { value: "owner", label: "Owner" },
 ];
 
@@ -40,7 +39,7 @@ export function InviteMemberSheet({
     }
     startTransition(async () => {
       try {
-        await inviteMember(email, role as "owner" | "admin" | "agent" | "viewer");
+        await inviteMember(email, role as "owner" | "admin" | "agent");
         toast.success("Invitación enviada.");
         reset();
         onInvited();

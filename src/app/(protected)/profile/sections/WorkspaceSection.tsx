@@ -17,7 +17,6 @@ const ROLE_PERMISSIONS: { role: string; label: string; description: string }[] =
   { role: "owner", label: "Owner", description: "Control total — miembros, módulos, integraciones y facturación." },
   { role: "admin", label: "Admin", description: "Gestiona miembros, módulos e integraciones. No transfiere la propiedad del workspace." },
   { role: "agent", label: "Agente", description: "Trabaja en Inbox/CRM/ATS. No gestiona miembros ni configuración del workspace." },
-  { role: "viewer", label: "Solo lectura", description: "Puede ver información pero no crear, editar ni eliminar nada." },
 ];
 
 export function WorkspaceSection({
@@ -25,6 +24,7 @@ export function WorkspaceSection({
   modules,
   members,
   canManage,
+  ownMemberId,
   onWorkspaceChanged,
   onModulesChanged,
   onMembersChanged,
@@ -33,6 +33,7 @@ export function WorkspaceSection({
   modules: ModuleStatus[];
   members: WorkspaceMember[];
   canManage: boolean;
+  ownMemberId: string | null;
   onWorkspaceChanged: () => void;
   onModulesChanged: () => void;
   onMembersChanged: () => void;
@@ -92,7 +93,7 @@ export function WorkspaceSection({
 
       <ModulesSection modules={modules} canManage={canManage} onChanged={onModulesChanged} />
 
-      <MembersSection members={members} canManage={canManage} onChanged={onMembersChanged} />
+      <MembersSection members={members} canManage={canManage} ownMemberId={ownMemberId} onChanged={onMembersChanged} />
 
       <Card>
         <CardHeader title="Roles y permisos" />

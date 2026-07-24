@@ -65,10 +65,12 @@ export function Sidebar({
   enabledModules,
   userName,
   userEmail,
+  isPlatformAdmin = false,
 }: {
   enabledModules: string[];
   userName: string;
   userEmail: string;
+  isPlatformAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const navItems = getNavItems(new Set(enabledModules));
@@ -110,7 +112,7 @@ export function Sidebar({
           })}
         </nav>
 
-        <UserMenu name={userName} email={userEmail} variant="sidebar" />
+        <UserMenu name={userName} email={userEmail} variant="sidebar" isPlatformAdmin={isPlatformAdmin} />
       </div>
     </aside>
   );

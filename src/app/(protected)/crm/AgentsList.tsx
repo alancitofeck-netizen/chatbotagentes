@@ -11,9 +11,16 @@ import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { AgentListItem, Team } from "@/lib/agents/queries";
 import { getAgentListAction } from "@/lib/agents/actions";
+import { useWorkspacePresence } from "@/lib/presence/useWorkspacePresence";
 import { AgentEditSheet } from "./AgentEditSheet";
 import { AgentNoteSheet } from "./AgentNoteSheet";
 import { ManageTeamsSheet } from "./ManageTeamsSheet";
+
+const PRESENCE_LABEL: Record<"online" | "away" | "offline", { emoji: string; label: string }> = {
+  online: { emoji: "🟢", label: "Online" },
+  away: { emoji: "🟡", label: "Ausente" },
+  offline: { emoji: "🔴", label: "Offline" },
+};
 
 const STATUS_LABEL: Record<string, { label: string; variant: "success" | "warning" | "neutral" }> = {
   active: { label: "Activo", variant: "success" },
@@ -54,8 +61,17 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-export function AgentsList({ initialAgents, initialTeams }: { initialAgents: AgentListItem[]; initialTeams: Team[] }) {
+export function AgentsList({
+  initialAgents,
+  initialTeams,
+  workspaceId,
+}: {
+  initialAgents: AgentListItem[];
+  initialTeams: Team[];
+  workspaceId: string;
+}) {
   const [agents, setAgents] = useState(initialAgents);
+  const presence = useWorkspacePresence(workspaceId);
   const [teams, setTeams] = useState(initialTeams);
   const [search, setSearch] = useState("");
   const [teamId, setTeamId] = useState("");
@@ -171,6 +187,7 @@ export function AgentsList({ initialAgents, initialTeams }: { initialAgents: Age
             <thead>
               <tr className="border-b border-border-default text-xs uppercase text-neutral-500">
                 <th className="px-4 py-3 font-medium">Agente</th>
+                <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium">Score</th>
                 <th className="px-4 py-3 font-medium">Tendencia</th>
                 <th className="px-4 py-3 font-medium">Leads</th>
@@ -185,6 +202,8 @@ export function AgentsList({ initialAgents, initialTeams }: { initialAgents: Age
               {agents.map((a) => {
                 const statusInfo = STATUS_LABEL[a.status] ?? STATUS_LABEL.active;
                 const progress = a.weeklyTarget ? Math.min(100, Math.round((a.meetingsThisWeek / a.weeklyTarget) * 100)) : null;
+                const presenceStatus: "online" | "away" | "offline" = presence[a.memberId] ?? "offline";
+                const presenceInfo = PRESENCE_LABEL[presenceStatus];
                 return (
                   <tr key={a.memberId} className="border-b border-border-default last:border-b-0 hover:bg-surface-2">
                     <td className="px-4 py-3">
@@ -198,6 +217,15 @@ export function AgentsList({ initialAgents, initialTeams }: { initialAgents: Age
                           {a.teamName && <p className="truncate text-xs text-neutral-400">{a.teamName}</p>}
                         </div>
                       </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="inline-flex items-center gap-1.5 text-xs text-neutral-500"
+                        title={presenceStatus === "offline" ? formatRelative(a.sessionLastActiveAt) : undefined}
+                      >
+                        <span aria-hidden="true">{presenceInfo.emoji}</span>
+                        {presenceInfo.label}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-mono text-2xl font-semibold" style={{ color: scoreColor(a.score) }}>
