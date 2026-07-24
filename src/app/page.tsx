@@ -6,7 +6,7 @@ import { HomeLanding } from "./HomeLanding";
 export const metadata: Metadata = {
   title: "Growth Link — CRM con IA para WhatsApp",
   description:
-    "Growth Link es una plataforma SaaS de CRM impulsada por inteligencia artificial para gestionar conversaciones de WhatsApp, clientes, equipos comerciales y automatizaciones.",
+    "Growth Link es una plataforma SaaS de CRM impulsada por inteligencia artificial que ayuda a empresas, agencias y equipos comerciales a gestionar todas sus conversaciones de WhatsApp, clientes, procesos comerciales y automatizaciones desde un único lugar.",
 };
 
 /** Logged-in users keep the exact same behavior as before (straight to

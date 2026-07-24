@@ -13,13 +13,16 @@ export function PublicFooter() {
           <Logo size="sm" />
           <span>© {new Date().getFullYear()} Growth Link</span>
         </div>
-        <nav className="flex items-center gap-6">
+        <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <Link href="/privacy" className="hover:text-foreground">
             Política de Privacidad
           </Link>
           <Link href="/terms" className="hover:text-foreground">
             Términos y Condiciones
           </Link>
+          <a href="mailto:support@growthlink.uk" className="hover:text-foreground">
+            support@growthlink.uk
+          </a>
         </nav>
       </div>
     </footer>

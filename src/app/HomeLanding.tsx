@@ -5,6 +5,7 @@ import {
   Kanban,
   Bot,
   CalendarDays,
+  CalendarClock,
   HardDrive,
   Table2,
   UserSearch,
@@ -13,10 +14,13 @@ import {
   ShieldCheck,
   Lock,
   KeyRound,
+  Ban,
   Building2,
   Briefcase,
   Users,
+  Workflow,
   MessageCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { PublicFooter } from "@/components/layout/PublicFooter";
@@ -29,24 +33,69 @@ interface FeatureCard {
   description: string;
 }
 
+// Short, scannable list shown right under the hero subtitle — a reviewer (or
+// any visitor) who never scrolls past the first screen should still see the
+// full breadth of what Growth Link does within a few seconds.
+const HERO_CAPABILITIES = [
+  "CRM",
+  "WhatsApp Multiagente",
+  "Inteligencia Artificial",
+  "Automatizaciones",
+  "Calendario",
+  "Google Calendar",
+  "Google Drive",
+  "Google Sheets",
+  "ATS",
+  "Gestión documental",
+  "KPIs",
+  "Equipos de trabajo",
+];
+
+const WHAT_IS_ITEMS = [
+  "CRM",
+  "WhatsApp Multiagente",
+  "Inteligencia Artificial",
+  "Automatizaciones",
+  "Google Calendar",
+  "Google Drive",
+  "Google Sheets",
+  "ATS",
+  "Gestión documental",
+  "KPIs",
+  "Calendario",
+  "Equipos de trabajo",
+];
+
 const FEATURE_CARDS: FeatureCard[] = [
   {
     icon: Inbox,
     iconClass: "bg-success-bg text-success-strong",
-    title: "WhatsApp Inbox",
-    description: "Una bandeja unificada para atender todas tus conversaciones de WhatsApp Business en un solo lugar.",
+    title: "WhatsApp Multiagente",
+    description: "Una bandeja unificada donde todo tu equipo atiende las conversaciones de WhatsApp Business en un solo lugar.",
   },
   {
     icon: Kanban,
     iconClass: "bg-accent-100 text-accent-700",
-    title: "CRM",
+    title: "CRM Comercial",
     description: "Gestioná contactos, empresas y oportunidades de venta con un pipeline visual, de principio a fin.",
   },
   {
     icon: Bot,
     iconClass: "bg-accent-100 text-accent-700",
-    title: "IA",
+    title: "Inteligencia Artificial",
     description: "Agentes de inteligencia artificial que responden o asisten a tu equipo directamente en WhatsApp.",
+  },
+  {
+    icon: Zap,
+    iconClass: "bg-accent-100 text-accent-700",
+    title: "Automatizaciones",
+    description: "Reglas automáticas que mueven oportunidades, asignan conversaciones y notifican a tu equipo.",
+  },
+  {
+    icon: CalendarClock,
+    iconClass: "bg-primary-100 text-primary-700",
+    title: "Calendario",
+    description: "Un calendario interno para agendar reuniones y eventos, con sincronización opcional hacia Google Calendar.",
   },
   {
     icon: CalendarDays,
@@ -75,14 +124,8 @@ const FEATURE_CARDS: FeatureCard[] = [
   {
     icon: BarChart3,
     iconClass: "bg-success-bg text-success-strong",
-    title: "KPIs",
+    title: "Dashboard KPI",
     description: "Un panel de indicadores por setter y por equipo, con rankings, objetivos y gráficos.",
-  },
-  {
-    icon: Zap,
-    iconClass: "bg-accent-100 text-accent-700",
-    title: "Automatizaciones",
-    description: "Reglas automáticas que mueven oportunidades, asignan conversaciones y notifican a tu equipo.",
   },
 ];
 
@@ -91,7 +134,7 @@ const INTEGRATIONS = [
   { icon: HardDrive, iconClass: "bg-primary-100 text-primary-700", label: "Google Drive" },
   { icon: Table2, iconClass: "bg-success-bg text-success-strong", label: "Google Sheets" },
   { icon: MessageCircle, iconClass: "bg-success-bg text-success-strong", label: "WhatsApp" },
-  { icon: Bot, iconClass: "bg-accent-100 text-accent-700", label: "IA (OpenRouter)" },
+  { icon: Bot, iconClass: "bg-accent-100 text-accent-700", label: "Inteligencia Artificial" },
 ];
 
 const SECURITY_POINTS = [
@@ -112,8 +155,13 @@ const SECURITY_POINTS = [
   },
   {
     icon: KeyRound,
-    title: "Supabase Vault",
+    title: "Credenciales cifradas",
     description: "Los tokens de acceso de integraciones (incluyendo Google) se guardan siempre cifrados, nunca en texto plano.",
+  },
+  {
+    icon: Ban,
+    title: "Nunca vendemos tus datos",
+    description: "Growth Link no vende, alquila ni comercializa tus datos personales ni los de tu Workspace a terceros, bajo ninguna circunstancia.",
   },
 ];
 
@@ -122,16 +170,25 @@ const AUDIENCES = [
   { icon: Briefcase, label: "Empresas" },
   { icon: Users, label: "Equipos comerciales" },
   { icon: MessageCircle, label: "Negocios que usan WhatsApp" },
+  { icon: Workflow, label: "Organizaciones que automatizan procesos comerciales" },
 ];
 
 /** Public marketing homepage — rendered directly at "/" for anyone without a
  * session (src/app/page.tsx redirects logged-in users to /dashboard instead,
  * unchanged from before). Built specifically to satisfy Google OAuth brand
  * verification's requirement that the Homepage link clearly explain what the
- * app is and does — the previous "/" just redirected straight to /login,
- * which Google rejected as not explaining Growth Link's purpose. Uses the
- * exact name "Growth Link" (two words), matching the app's established
- * branding used everywhere else (login page, emails, etc.). */
+ * app is and does within a few seconds of landing — a first pass was still
+ * rejected as insufficiently clear, so this revision adds a scannable
+ * capability strip right under the hero (visible without scrolling), a full
+ * enumerated "¿Qué es Growth Link?" bullet list, a "Características" section
+ * (renamed from "¿Qué podés hacer...") with a card per module including a
+ * distinct internal "Calendario" card (separate from the "Google Calendar"
+ * integration card), an explicit "cada integración se autoriza
+ * individualmente mediante Google OAuth" line in Integraciones, a "nunca
+ * vendemos tus datos" point in Seguridad, and a 5th audience in "¿Para quién
+ * es?". Same visual identity/design tokens throughout — content-only
+ * expansion, no redesign. Uses "Growth Link" (two words) consistently,
+ * matching every other page/metadata title in the app. */
 export function HomeLanding() {
   return (
     <div className="flex min-h-screen flex-col bg-surface-2">
@@ -159,9 +216,22 @@ export function HomeLanding() {
             Growth Link
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-balance text-[18px] leading-8 text-neutral-600 sm:text-[20px] sm:leading-9">
-            Growth Link es una plataforma SaaS de CRM impulsada por inteligencia artificial para gestionar
-            conversaciones de WhatsApp, clientes, equipos comerciales y automatizaciones, todo desde un solo lugar.
+            Growth Link es una plataforma SaaS de CRM impulsada por inteligencia artificial que ayuda a empresas,
+            agencias y equipos comerciales a gestionar todas sus conversaciones de WhatsApp, clientes, procesos
+            comerciales y automatizaciones desde un único lugar.
           </p>
+
+          <div className="mx-auto mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-2">
+            {HERO_CAPABILITIES.map((label) => (
+              <span
+                key={label}
+                className="rounded-full border border-border-default bg-surface-1 px-3 py-1 text-xs font-medium text-neutral-600"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href="/register" className={buttonClassName({ variant: "primary", size: "lg" })}>
               Crear cuenta gratis
@@ -174,21 +244,31 @@ export function HomeLanding() {
 
         {/* Qué es Growth Link */}
         <section className="border-t border-border-default bg-surface-1">
-          <div className="mx-auto w-full max-w-4xl px-6 py-16 text-center sm:py-20">
-            <h2 className="text-[28px] font-semibold tracking-[-0.02em] text-foreground">¿Qué es Growth Link?</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-[16px] leading-7 text-neutral-600">
-              Growth Link centraliza la operación conversacional de tu negocio sobre WhatsApp: un mismo lugar donde tu
-              equipo y la inteligencia artificial atienden clientes, gestionan un pipeline de ventas, coordinan un
-              calendario, procesan reclutamiento y miden resultados — sin depender de planillas sueltas ni de
-              herramientas desconectadas entre sí. Cada empresa opera en su propio Workspace, aislado y privado.
+          <div className="mx-auto w-full max-w-4xl px-6 py-16 sm:py-20">
+            <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">
+              ¿Qué es Growth Link?
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-center text-[16px] leading-7 text-neutral-600">
+              Growth Link es una plataforma SaaS CRM impulsada por inteligencia artificial que ayuda a empresas,
+              agencias y equipos comerciales a gestionar todas sus conversaciones de WhatsApp, clientes, procesos
+              comerciales y automatizaciones desde un único lugar. Cada empresa opera en su propio Workspace,
+              aislado y privado. Growth Link ofrece:
             </p>
+            <ul className="mx-auto mt-6 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
+              {WHAT_IS_ITEMS.map((item) => (
+                <li key={item} className="flex items-center gap-2 text-[15px] text-neutral-700">
+                  <CheckCircle2 className="size-4 shrink-0 text-accent-500" aria-hidden="true" />
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
-        {/* Qué podés hacer */}
+        {/* Características */}
         <section className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20">
           <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">
-            ¿Qué podés hacer con Growth Link?
+            Características
           </h2>
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURE_CARDS.map(({ icon: Icon, iconClass, title, description }) => (
@@ -208,8 +288,10 @@ export function HomeLanding() {
           <div className="mx-auto w-full max-w-5xl px-6 py-16 sm:py-20">
             <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">Integraciones</h2>
             <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] leading-7 text-neutral-600">
-              Growth Link se conecta con las herramientas que ya usás. Todas las conexiones son opcionales: vos decidís
-              cuáles activar, y podés desconectarlas en cualquier momento desde Perfil → Integraciones.
+              Growth Link se conecta con las herramientas que ya usás. Todas las conexiones son opcionales: cada
+              integración se autoriza individualmente mediante Google OAuth, en el momento en que vos decidís
+              conectarla desde Perfil → Integraciones — nunca de forma automática ni agrupada — y podés revocar el
+              acceso cuando quieras.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               {INTEGRATIONS.map(({ icon: Icon, iconClass, label }) => (
@@ -227,12 +309,10 @@ export function HomeLanding() {
           </div>
         </section>
 
-        {/* Seguridad y privacidad */}
+        {/* Seguridad */}
         <section className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20">
-          <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">
-            Seguridad y privacidad
-          </h2>
-          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">Seguridad</h2>
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SECURITY_POINTS.map(({ icon: Icon, title, description }) => (
               <div key={title} className="rounded-lg bg-surface-1 p-5 shadow-[var(--elevation-sm)]">
                 <span className="flex size-9 items-center justify-center rounded-full bg-primary-100 text-primary-700">
@@ -248,11 +328,11 @@ export function HomeLanding() {
           </p>
         </section>
 
-        {/* Para quién está pensado */}
+        {/* Para quién es */}
         <section className="border-t border-border-default bg-surface-1">
           <div className="mx-auto w-full max-w-5xl px-6 py-16 sm:py-20">
             <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">
-              Para quién está pensado
+              ¿Para quién es?
             </h2>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               {AUDIENCES.map(({ icon: Icon, label }) => (
