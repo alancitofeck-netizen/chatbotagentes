@@ -111,9 +111,18 @@ export async function connectGoogleSheets(workspaceId: string, code: string, red
   await recordGrantedScopes(workspaceId, tokens.scope).catch(() => {});
 }
 
+/** Full disconnect (0044_disconnect_google_sheets.sql) — unlike the generic
+ * disconnect_oauth_integration (0043), this actually deletes the Vault
+ * secret (invalidates the stored tokens, not just flips a status flag) and
+ * clears every setter's spreadsheet_id/sheet_name in this workspace, since
+ * their sheet was only readable through this account's grant. All three
+ * effects run in one Postgres transaction (the RPC), so a failure partway
+ * through can't leave tokens gone but setters still pointing at a dead
+ * spreadsheet link, or vice versa. Scoped to this workspace only. */
 export async function disconnectGoogleSheets(workspaceId: string): Promise<void> {
   const supabase = await createClient();
-  await supabase.rpc("disconnect_oauth_integration", { p_workspace_id: workspaceId, p_provider: PROVIDER });
+  const { error } = await supabase.rpc("disconnect_google_sheets", { p_workspace_id: workspaceId });
+  if (error) throw new Error("No se pudo desconectar Google Sheets.");
 }
 
 export interface GoogleSheetsAccountStatus {

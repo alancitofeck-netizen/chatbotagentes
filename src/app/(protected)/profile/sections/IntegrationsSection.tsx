@@ -6,6 +6,7 @@ import { MessageCircle, CalendarDays, RefreshCw, Bot, Table2, HardDrive } from "
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/components/toast/toast";
 import type { OpenRouterIntegration, WhatsAppIntegration } from "@/lib/integrations/queries";
 import type { GoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
@@ -17,6 +18,7 @@ import {
   disconnectGoogleCalendarAction,
   syncGoogleCalendarNowAction,
   disconnectGoogleDriveAction,
+  disconnectGoogleSheetsAction,
   getOpenRouterIntegrationAction,
   disconnectOpenRouterIntegration,
 } from "@/lib/integrations/actions";
@@ -46,12 +48,14 @@ export function IntegrationsSection({
   const [whatsapp, setWhatsapp] = useState(initialWhatsApp);
   const [googleCalendar, setGoogleCalendar] = useState(initialGoogleCalendar);
   const [openRouter, setOpenRouter] = useState(initialOpenRouter);
-  const [googleSheets] = useState(initialGoogleSheets);
+  const [googleSheets, setGoogleSheets] = useState(initialGoogleSheets);
   const [googleDrive, setGoogleDrive] = useState(initialGoogleDrive);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [openRouterSheetOpen, setOpenRouterSheetOpen] = useState(false);
+  const [sheetsDisconnectOpen, setSheetsDisconnectOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isSyncing, startSyncTransition] = useTransition();
+  const [isDisconnectingSheets, startDisconnectSheets] = useTransition();
   // Every real workspace role (owner/admin/agent) can manage integrations —
   // widened in supabase/migrations/0043_google_login_and_agent_integrations.sql
   // specifically so a solo self-registered agent account (no owner/admin
@@ -172,6 +176,23 @@ export function IntegrationsSection({
     });
   }
 
+  function confirmDisconnectSheets() {
+    startDisconnectSheets(async () => {
+      try {
+        await disconnectGoogleSheetsAction();
+        // Only cleared on confirmed success — if the action throws, nothing
+        // changed server-side (disconnect_google_sheets runs as one
+        // transaction), so the UI must keep showing "Conectado" rather than
+        // claim a disconnect that didn't actually happen.
+        setGoogleSheets({ connected: false, email: null });
+        setSheetsDisconnectOpen(false);
+        toast.success("Cuenta de Google Sheets desconectada correctamente.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo desconectar Google Sheets.");
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -276,13 +297,19 @@ export function IntegrationsSection({
           </p>
         )}
 
-        {!googleSheets.connected && (
-          <Button size="sm" disabled={!canManage} className="mt-4" onClick={() => (window.location.href = "/api/integrations/google-sheets/connect")}>
-            Conectar Google Sheets
-          </Button>
-        )}
+        <div className="mt-4 flex gap-2">
+          {googleSheets.connected ? (
+            <Button size="sm" variant="destructive" disabled={!canManage} onClick={() => setSheetsDisconnectOpen(true)}>
+              Desconectar Google Sheets
+            </Button>
+          ) : (
+            <Button size="sm" disabled={!canManage} onClick={() => (window.location.href = "/api/integrations/google-sheets/connect")}>
+              Conectar Google Sheets
+            </Button>
+          )}
+        </div>
 
-        <KpiSettersManager canManage={canManage} accountConnected={googleSheets.connected} />
+        <KpiSettersManager key={String(googleSheets.connected)} canManage={canManage} accountConnected={googleSheets.connected} />
       </Card>
 
       <Card>
@@ -393,6 +420,16 @@ export function IntegrationsSection({
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={sheetsDisconnectOpen}
+        title="Desconectar Google Sheets"
+        description="Se eliminará la vinculación de este workspace con Google Sheets (incluyendo el acceso a las hojas de tus setters), pero no se eliminará la hoja de cálculo de Google — solo dejamos de poder leerla."
+        confirmLabel="Desconectar"
+        isLoading={isDisconnectingSheets}
+        onConfirm={confirmDisconnectSheets}
+        onCancel={() => setSheetsDisconnectOpen(false)}
+      />
     </div>
   );
 }
