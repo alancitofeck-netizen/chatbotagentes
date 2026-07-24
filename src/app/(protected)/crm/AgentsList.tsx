@@ -2,13 +2,13 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Line, LineChart, ResponsiveContainer } from "recharts";
 import { Minus, Pencil, Search, StickyNote, TrendingDown, TrendingUp, Trophy, Users2 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Sparkline } from "@/components/ui/Sparkline";
 import type { AgentListItem, Team } from "@/lib/agents/queries";
 import { getAgentListAction } from "@/lib/agents/actions";
 import { useWorkspacePresence } from "@/lib/presence/useWorkspacePresence";
@@ -48,18 +48,6 @@ function formatRelative(iso: string | null) {
   return `hace ${Math.round(diffH / 24)} d`;
 }
 
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const points = data.map((v, i) => ({ i, v }));
-  return (
-    <div className="h-8 w-16">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points}>
-          <Line type="monotone" dataKey="v" stroke={color} strokeWidth={2} dot={false} isAnimationActive={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
 
 export function AgentsList({
   initialAgents,

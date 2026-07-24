@@ -14,8 +14,10 @@ interface UserMenuProps {
    * (Sidebar.tsx), dropdown opens upward and to the right instead, since
    * there's no room below/to the left inside the dock. */
   variant?: "navbar" | "sidebar";
-  /** Owner global only (public.platform_admins) — shows the cross-workspace
-   * supervision panel entry point. Resolved server-side in
+  /** Owner global only (public.platform_admins) — shows a shortcut into the
+   * CRM "Agentes" tab, which doubles as the cross-workspace client list for
+   * this account (src/app/(protected)/crm/PlatformWorkspacesTable.tsx) —
+   * not a separate admin module. Resolved server-side in
    * (protected)/layout.tsx via isPlatformAdmin(), not derivable from role
    * (that's per-workspace; this is a separate, orthogonal flag). */
   isPlatformAdmin?: boolean;
@@ -97,12 +99,12 @@ export function UserMenu({ name, email, variant = "navbar", isPlatformAdmin = fa
           <>
             <div className="my-1 h-px bg-border-default" />
             <Link
-              href="/admin/workspaces"
+              href="/crm?tab=agents"
               onClick={closeMenu}
               className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
             >
               <ShieldCheck className="size-4" aria-hidden="true" />
-              Panel de supervisión
+              Workspaces de clientes
             </Link>
           </>
         )}

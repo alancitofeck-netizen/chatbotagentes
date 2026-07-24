@@ -54,10 +54,6 @@ function isRealAgentGatedPath(pathname: string, searchParams: URLSearchParams): 
   return false;
 }
 
-function isPlatformAdminOnlyPath(pathname: string): boolean {
-  return pathname === "/admin/workspaces" || pathname.startsWith("/admin/workspaces/");
-}
-
 export async function middleware(request: NextRequest) {
   const { response, user, supabase } = await updateSession(request);
   const { pathname, searchParams } = request.nextUrl;
@@ -77,26 +73,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (user && (isRealAgentGatedPath(pathname, searchParams) || isPlatformAdminOnlyPath(pathname))) {
-    const { data: isPlatformAdmin } = await supabase.rpc("am_i_platform_admin");
-
-    if (isPlatformAdminOnlyPath(pathname)) {
-      if (!isPlatformAdmin) return forbiddenResponse();
-    } else {
-      const workspaceId = request.cookies.get(ACTIVE_WORKSPACE_COOKIE)?.value;
-      if (workspaceId) {
-        const { data: membership } = await supabase
-          .from("workspace_members")
-          .select("role")
-          .eq("workspace_id", workspaceId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-        const role = membership?.role ?? null;
-        // A real "agent" member is always blocked. No real membership row at
-        // all is only legitimate for a platform admin in "modo supervisor"
-        // (session.ts) — anyone else with no row has no business here.
-        if (role === "agent" || (role === null && !isPlatformAdmin)) return forbiddenResponse();
-      }
+  if (user && isRealAgentGatedPath(pathname, searchParams)) {
+    const workspaceId = request.cookies.get(ACTIVE_WORKSPACE_COOKIE)?.value;
+    if (workspaceId) {
+      const { data: isPlatformAdmin } = await supabase.rpc("am_i_platform_admin");
+      const { data: membership } = await supabase
+        .from("workspace_members")
+        .select("role")
+        .eq("workspace_id", workspaceId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const role = membership?.role ?? null;
+      // A real "agent" member is always blocked. No real membership row at
+      // all is only legitimate for a platform admin in "modo supervisor"
+      // (session.ts) — anyone else with no row has no business here.
+      if (role === "agent" || (role === null && !isPlatformAdmin)) return forbiddenResponse();
     }
   }
 

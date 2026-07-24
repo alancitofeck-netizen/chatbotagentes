@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { forbidden } from "next/navigation";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
+import { isPlatformAdmin as checkIsPlatformAdmin } from "@/lib/auth/roles";
 import { getCrmBoard, getCrmPipelines } from "@/lib/crm/queries";
 import { getAgentList, getTeams } from "@/lib/agents/queries";
+import { getAllWorkspacesForSupervision } from "@/lib/platform/queries";
 import { getWorkspaceMembers, getWorkspaceTags } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
 import { getAiAgentList } from "@/lib/ai-agents/queries";
@@ -28,7 +30,9 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   const { tab } = await searchParams;
   if (isRealAgent && tab === "agents") forbidden();
 
-  const [board, pipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents, moduleStatus, hasKpiSheet] =
+  const isPlatformAdmin = await checkIsPlatformAdmin();
+
+  const [board, pipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents, moduleStatus, hasKpiSheet, platformWorkspaces] =
     await Promise.all([
       getCrmBoard(workspaceId),
       getCrmPipelines(workspaceId),
@@ -43,6 +47,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
       getAiAgentList(workspaceId),
       getWorkspaceModuleStatus(workspaceId),
       hasAnyKpiSetterSheet(workspaceId),
+      isPlatformAdmin ? getAllWorkspacesForSupervision() : Promise.resolve([]),
     ]);
   const atsEnabled = moduleStatus.some((m) => m.moduleKey === "ats" && m.enabled);
 
@@ -69,6 +74,8 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         atsEnabled={atsEnabled}
         hasKpiConnection={hasKpiSheet}
         isAgent={isRealAgent}
+        isPlatformAdmin={isPlatformAdmin}
+        platformWorkspaces={platformWorkspaces}
       />
     </div>
   );

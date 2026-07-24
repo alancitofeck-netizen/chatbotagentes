@@ -1,31 +1,52 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser, getUserWorkspaces } from "@/lib/auth/session";
 import { requirePlatformAdmin } from "@/lib/auth/roles";
 import { setActiveWorkspaceCookie, clearActiveWorkspaceCookie } from "@/lib/auth/workspace-cookie";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
-/** "Ver Dashboard" entry point for the Owner global's supervision panel
- * (src/app/(protected)/admin/workspaces/page.tsx) — mirrors selectWorkspace
- * (src/app/(auth)/select-workspace/actions.ts) exactly, but authorizes via
- * platform-admin status instead of real membership, since the whole point
- * is entering a workspace the caller does NOT belong to. Reuses the exact
- * same /dashboard the real owner/agent sees (session.ts's
- * getActiveWorkspaceForUser resolves the synthetic supervising membership
- * from this same cookie on every subsequent request). */
-export async function enterSupervisorMode(workspaceId: string) {
+/** "Administrar"/"Ver Dashboard"/"Ver CRM"/etc. entry points for the Owner
+ * global's cross-workspace client list
+ * (src/app/(protected)/crm/PlatformWorkspacesTable.tsx, rendered in place of
+ * the normal per-workspace Agentes roster for that account) — mirrors
+ * selectWorkspace (src/app/(auth)/select-workspace/actions.ts), but
+ * authorizes via platform-admin status instead of real membership, since
+ * the whole point is entering a workspace the caller does NOT belong to.
+ * `redirectPath` picks which page of that workspace to land on — reuses
+ * whatever page already exists there (dashboard, CRM, Configuración tabs),
+ * no dedicated admin views needed.
+ *
+ * Deliberately does NOT call redirect() itself — PlatformWorkspacesTable.tsx
+ * calls this directly (not via a <form action>), and confirmed live:
+ * redirect() thrown from a Server Action invoked that way doesn't reliably
+ * navigate (same root cause already fixed once this session for
+ * exitSupervisorMode below — a same-URL/direct-call case where Next's
+ * client-side handling of the thrown redirect wasn't picked up). The caller
+ * does `router.push(redirectPath); router.refresh();` itself after this
+ * resolves, which is what actually navigates. */
+export async function enterSupervisorMode(workspaceId: string, redirectPath: string = "/dashboard") {
   await requireUser();
   await requirePlatformAdmin();
   await setActiveWorkspaceCookie(workspaceId);
-  // Busts the client Router Cache for the whole (protected) layout subtree
-  // (Sidebar/Navbar/dashboard all depend on the active-workspace cookie) —
-  // without this, exitSupervisorMode's redirect("/dashboard") below is a
-  // same-URL redirect when clicked from the dashboard itself, and Next.js
-  // would otherwise keep serving the cached pre-exit (still-supervising)
-  // render until the next unrelated navigation or a hard reload.
-  revalidatePath("/dashboard");
-  redirect("/dashboard");
+  revalidatePath(redirectPath);
+}
+
+/** Activar/Desactivar Workspace — Owner global only. Deliberately does NOT
+ * redirect (unlike enterSupervisorMode): this is called from
+ * PlatformWorkspacesTable.tsx, which stays on /crm?tab=agents and just
+ * needs the row's badge to reflect the new status — the caller does
+ * `router.refresh()` itself after this resolves (same same-URL Router
+ * Cache staleness reason documented on exitSupervisorMode below). No
+ * deactivation *enforcement* exists yet (this only flips the display
+ * column added in 0042_workspace_status_plan.sql) — that's a deliberate,
+ * separate follow-up, not silently assumed here. */
+export async function toggleWorkspaceStatus(workspaceId: string, nextStatus: "active" | "inactive") {
+  await requireUser();
+  await requirePlatformAdmin();
+  const serviceClient = createServiceRoleClient();
+  const { error } = await serviceClient.from("workspaces").update({ status: nextStatus }).eq("id", workspaceId);
+  if (error) throw new Error("No se pudo actualizar el estado del workspace.");
 }
 
 /** Restores the platform admin's own workspace (every account, including

@@ -10,10 +10,12 @@ import type { AgentListItem, Team } from "@/lib/agents/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import type { TaskItem, TaskOption } from "@/lib/tasks/queries";
 import type { AiAgentListItem } from "@/lib/ai-agents/queries";
+import type { PlatformWorkspaceSummary } from "@/lib/platform/queries";
 import { ensureCrmPipelineAction } from "@/lib/crm/actions";
 import { CrmBoardShell } from "./CrmBoardShell";
 import { CrmAnalytics } from "./CrmAnalytics";
 import { AgentsList } from "./AgentsList";
+import { PlatformWorkspacesTable } from "./PlatformWorkspacesTable";
 import { TasksSection } from "./TasksSection";
 import { AiAgentsSection } from "./AiAgentsSection";
 import { CrmAtsTabStrip } from "./CrmAtsTabStrip";
@@ -39,6 +41,8 @@ export function CrmPageShell({
   atsEnabled,
   hasKpiConnection,
   isAgent,
+  isPlatformAdmin,
+  platformWorkspaces,
 }: {
   workspaceId: string;
   board: CrmBoard | null;
@@ -56,6 +60,8 @@ export function CrmPageShell({
   atsEnabled: boolean;
   hasKpiConnection: boolean;
   isAgent: boolean;
+  isPlatformAdmin: boolean;
+  platformWorkspaces: PlatformWorkspaceSummary[];
 }) {
   const [board, setBoard] = useState(initialBoard);
   const [isCreatingPipeline, startCreatePipeline] = useTransition();
@@ -114,7 +120,13 @@ export function CrmPageShell({
 
       {view === "agents" && !isAgent && (
         <div className="flex-1 overflow-y-auto pb-4 sm:pb-6 lg:pb-8">
-          <AgentsList initialAgents={agents} initialTeams={teams} workspaceId={workspaceId} />
+          {isPlatformAdmin ? (
+            <div className="px-4 sm:px-6 lg:px-8">
+              <PlatformWorkspacesTable workspaces={platformWorkspaces} />
+            </div>
+          ) : (
+            <AgentsList initialAgents={agents} initialTeams={teams} workspaceId={workspaceId} />
+          )}
         </div>
       )}
 
