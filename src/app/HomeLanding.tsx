@@ -309,42 +309,56 @@ export function HomeLanding() {
           </div>
         </section>
 
-        {/* Seguridad */}
-        <section className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20">
-          <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">Seguridad</h2>
-          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {SECURITY_POINTS.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="rounded-lg bg-surface-1 p-5 shadow-[var(--elevation-sm)]">
-                <span className="flex size-9 items-center justify-center rounded-full bg-primary-100 text-primary-700">
-                  <Icon className="size-[18px]" aria-hidden="true" />
-                </span>
-                <h3 className="mt-3 text-[15px] font-semibold text-foreground">{title}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-neutral-600">{description}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 text-center text-sm text-neutral-500">
-            Más detalles en nuestra <Link href="/privacy" className="font-medium text-accent-600 hover:text-accent-700">Política de Privacidad</Link>.
+        {/* Uso de las APIs de Google */}
+        <section className="mx-auto w-full max-w-4xl px-6 py-16 sm:py-20">
+          <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">
+            Uso de las APIs de Google
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-[15px] leading-7 text-neutral-600">
+            Growth Link solicita acceso a Google Calendar, Google Drive y Google Sheets únicamente cuando el usuario
+            decide conectar esas integraciones desde la sección Perfil → Integraciones. Estos permisos se utilizan
+            exclusivamente para proporcionar las funcionalidades solicitadas por el usuario, como sincronizar
+            eventos, acceder a documentos o importar datos desde hojas de cálculo. Growth Link no accede a datos de
+            Google sin autorización explícita del usuario.
           </p>
         </section>
 
-        {/* Para quién es */}
+        {/* Seguridad */}
         <section className="border-t border-border-default bg-surface-1">
-          <div className="mx-auto w-full max-w-5xl px-6 py-16 sm:py-20">
-            <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">
-              ¿Para quién es?
-            </h2>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              {AUDIENCES.map(({ icon: Icon, label }) => (
-                <div
-                  key={label}
-                  className="flex items-center gap-2.5 rounded-full border border-border-default bg-surface-2 px-4 py-2.5"
-                >
-                  <Icon className="size-4 text-neutral-600" aria-hidden="true" />
-                  <span className="text-sm font-medium text-foreground">{label}</span>
+          <div className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20">
+            <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">Seguridad</h2>
+            <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {SECURITY_POINTS.map(({ icon: Icon, title, description }) => (
+                <div key={title} className="rounded-lg bg-surface-1 p-5 shadow-[var(--elevation-sm)]">
+                  <span className="flex size-9 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+                    <Icon className="size-[18px]" aria-hidden="true" />
+                  </span>
+                  <h3 className="mt-3 text-[15px] font-semibold text-foreground">{title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-neutral-600">{description}</p>
                 </div>
               ))}
             </div>
+            <p className="mt-6 text-center text-sm text-neutral-500">
+              Más detalles en nuestra <Link href="/privacy" className="font-medium text-accent-600 hover:text-accent-700">Política de Privacidad</Link>.
+            </p>
+          </div>
+        </section>
+
+        {/* Para quién es */}
+        <section className="mx-auto w-full max-w-5xl px-6 py-16 sm:py-20">
+          <h2 className="text-center text-[28px] font-semibold tracking-[-0.02em] text-foreground">
+            ¿Para quién es?
+          </h2>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            {AUDIENCES.map(({ icon: Icon, label }) => (
+              <div
+                key={label}
+                className="flex items-center gap-2.5 rounded-full border border-border-default bg-surface-2 px-4 py-2.5"
+              >
+                <Icon className="size-4 text-neutral-600" aria-hidden="true" />
+                <span className="text-sm font-medium text-foreground">{label}</span>
+              </div>
+            ))}
           </div>
         </section>
 
