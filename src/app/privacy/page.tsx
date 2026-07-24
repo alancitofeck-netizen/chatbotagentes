@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import { LegalPageLayout } from "@/components/legal/LegalPageLayout";
 
+const TITLE = "Política de Privacidad — Growth Link";
+const DESCRIPTION =
+  "Cómo Growth Link recopila, usa, almacena y protege tus datos, incluyendo el uso de Google OAuth, Google Calendar, Google Drive y Google Sheets.";
+
 export const metadata: Metadata = {
-  title: "Política de Privacidad — Growth Link",
-  description:
-    "Cómo Growth Link recopila, usa, almacena y protege tus datos, incluyendo el uso de Google OAuth, Google Calendar, Google Drive y Google Sheets.",
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    siteName: "Growth Link",
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "https://www.growthlink.uk/privacy",
+    locale: "es_AR",
+    type: "website",
+  },
 };
 
 const LAST_UPDATED = "24 de julio de 2026";

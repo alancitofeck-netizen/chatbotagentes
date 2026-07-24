@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import { LegalPageLayout } from "@/components/legal/LegalPageLayout";
 
+const TITLE = "Términos y Condiciones — Growth Link";
+const DESCRIPTION =
+  "Condiciones de uso de Growth Link: responsabilidades del usuario, uso aceptable, integraciones con terceros, propiedad intelectual y legislación aplicable.";
+
 export const metadata: Metadata = {
-  title: "Términos y Condiciones — Growth Link",
-  description:
-    "Condiciones de uso de Growth Link: responsabilidades del usuario, uso aceptable, integraciones con terceros, propiedad intelectual y legislación aplicable.",
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    siteName: "Growth Link",
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "https://www.growthlink.uk/terms",
+    locale: "es_AR",
+    type: "website",
+  },
 };
 
 const LAST_UPDATED = "24 de julio de 2026";

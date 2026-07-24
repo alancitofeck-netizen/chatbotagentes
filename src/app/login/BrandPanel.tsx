@@ -69,7 +69,7 @@ export function BrandPanel() {
 
       <div className="relative flex max-w-md flex-col items-center gap-4 text-center">
         <h2 className="text-balance text-[32px] leading-[40px] font-semibold tracking-[-0.02em] text-white">
-          Growth Link CRM
+          Growth Link
         </h2>
         <p className="text-[17px] leading-7 text-white/85">El centro de operaciones para agencias modernas.</p>
         <ul className="mt-2 flex flex-col items-start gap-3">

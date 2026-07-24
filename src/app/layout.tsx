@@ -16,8 +16,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.growthlink.uk"),
   title: "Growth Link",
   description: "Inbox conversacional, CRM y ATS con IA sobre WhatsApp.",
+  applicationName: "Growth Link",
+  openGraph: {
+    siteName: "Growth Link",
+    title: "Growth Link",
+    description: "Inbox conversacional, CRM y ATS con IA sobre WhatsApp.",
+    url: "https://www.growthlink.uk",
+    locale: "es_AR",
+    type: "website",
+    images: ["/growth_businesss_logo.jpg"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Growth Link",
+    description: "Inbox conversacional, CRM y ATS con IA sobre WhatsApp.",
+    images: ["/growth_businesss_logo.jpg"],
+  },
 };
 
 export default function RootLayout({

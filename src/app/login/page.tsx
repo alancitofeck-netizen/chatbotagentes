@@ -6,6 +6,13 @@ import { BrandPanel } from "./BrandPanel";
 
 export const metadata: Metadata = {
   title: "Iniciar sesión — Growth Link",
+  openGraph: {
+    siteName: "Growth Link",
+    title: "Iniciar sesión — Growth Link",
+    url: "https://www.growthlink.uk/login",
+    locale: "es_AR",
+    type: "website",
+  },
 };
 
 interface LoginPageProps {

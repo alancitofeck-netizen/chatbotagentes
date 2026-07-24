@@ -215,7 +215,7 @@ export function HomeLanding() {
           <h1 className="text-balance text-[40px] leading-[48px] font-semibold tracking-[-0.02em] text-foreground sm:text-[56px] sm:leading-[64px]">
             Growth Link
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-balance text-[18px] leading-8 text-neutral-600 sm:text-[20px] sm:leading-9">
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-[18px] leading-8 text-neutral-700 sm:text-[20px] sm:leading-9">
             Growth Link es una plataforma SaaS de CRM impulsada por inteligencia artificial que ayuda a empresas,
             agencias y equipos comerciales a gestionar todas sus conversaciones de WhatsApp, clientes, procesos
             comerciales y automatizaciones desde un único lugar.
@@ -231,6 +231,11 @@ export function HomeLanding() {
               </span>
             ))}
           </div>
+
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-sm leading-6 text-neutral-600">
+            Google Calendar, Google Drive y Google Sheets son integraciones opcionales: solo se conectan cuando vos
+            decidís autorizarlas mediante Google OAuth, desde Perfil → Integraciones.
+          </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href="/register" className={buttonClassName({ variant: "primary", size: "lg" })}>
