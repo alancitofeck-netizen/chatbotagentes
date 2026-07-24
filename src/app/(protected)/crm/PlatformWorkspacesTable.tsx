@@ -15,7 +15,7 @@ import {
   Users2,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
+import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { toast } from "@/components/toast/toast";
@@ -36,6 +36,9 @@ function formatRelative(iso: string | null) {
   if (diffH < 24) return `hace ${diffH} h`;
   return `hace ${Math.round(diffH / 24)} d`;
 }
+
+const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", agent: "Agente" };
+const ROLE_BADGE: Record<string, BadgeVariant> = { owner: "accent", admin: "warning", agent: "neutral" };
 
 function StatusDot({ active, title }: { active: boolean; title: string }) {
   return (
@@ -116,7 +119,7 @@ function WorkspaceRow({ w, onlineCount }: { w: PlatformWorkspaceSummary; onlineC
         </button>
       </td>
       <td className="px-4 py-3">
-        <Badge variant="neutral">{w.plan}</Badge>
+        <Badge variant={ROLE_BADGE[w.primaryUserRole] ?? "neutral"}>{ROLE_LABEL[w.primaryUserRole] ?? w.primaryUserRole}</Badge>
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5">
@@ -211,7 +214,7 @@ export function PlatformWorkspacesTable({ workspaces }: { workspaces: PlatformWo
             <th className="px-4 py-3 font-medium">Workspace</th>
             <th className="px-4 py-3 font-medium">Usuario principal</th>
             <th className="px-4 py-3 font-medium">Estado</th>
-            <th className="px-4 py-3 font-medium">Plan</th>
+            <th className="px-4 py-3 font-medium">Rol</th>
             <th className="px-4 py-3 font-medium">Miembros</th>
             <th className="px-4 py-3 font-medium">Leads</th>
             <th className="px-4 py-3 font-medium">Conversaciones</th>
