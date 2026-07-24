@@ -5,7 +5,7 @@ interface SessionLoadingScreenProps {
   description?: string;
 }
 
-/** Shared by /auth/callback-adjacent states ("Verificando sesión") and the
+/** Shared by session-establishing states ("Verificando sesión") and the
  * (protected) layout's loading.tsx ("Cargando sesión") — same component,
  * different copy, per the approved plan. */
 export function SessionLoadingScreen({ title, description }: SessionLoadingScreenProps) {

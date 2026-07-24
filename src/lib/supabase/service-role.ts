@@ -5,8 +5,9 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
  * Service-role client — bypasses RLS. Server-only, never import from a
  * Client Component. Used for privileged operations the signed-in user's own
  * RLS-scoped session isn't allowed to do directly, e.g. provisioning the
- * first workspace on sign-up (see src/app/auth/callback/route.ts) — the
- * same pattern already documented in CLAUDE.md for webhook handlers.
+ * first workspace on sign-up (see src/lib/auth/provision-workspace.ts) or
+ * sending/verifying the custom Resend OTP codes (src/lib/email/otp-service.ts)
+ * — the same pattern already documented in CLAUDE.md for webhook handlers.
  */
 export function createServiceRoleClient() {
   return createSupabaseClient(

@@ -15,13 +15,10 @@ export default async function SelectWorkspacePage() {
   const user = await requireUser();
   let workspaces = await getUserWorkspaces(user.id);
 
-  // Provisioning normally happens in /auth/callback right after email
-  // confirmation. A user can land here with zero workspaces if that step
-  // was skipped — e.g. the confirmation link redirected somewhere other
-  // than /auth/callback because the Supabase project's Redirect URLs
-  // allowlist doesn't include it yet (Dashboard > Authentication > URL
-  // Configuration). Retry provisioning here as a safety net instead of
-  // dead-ending the user.
+  // Provisioning normally happens right after signup OTP confirmation
+  // (src/app/(auth)/confirm-email/actions.ts). A user can land here with
+  // zero workspaces if that step was skipped for any reason — retry
+  // provisioning here as a safety net instead of dead-ending the user.
   if (workspaces.length === 0 && user.email) {
     await provisionDefaultWorkspaceIfNeeded(user.id, user.email).catch(() => {});
     workspaces = await getUserWorkspaces(user.id);

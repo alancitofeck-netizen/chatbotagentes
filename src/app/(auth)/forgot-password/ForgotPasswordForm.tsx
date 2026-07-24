@@ -1,11 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { MailCheck } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { validateEmail } from "@/lib/auth/validation";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { toast } from "@/components/toast/toast";
 import { requestPasswordReset, type ForgotPasswordState } from "./actions";
 
 const initialState: ForgotPasswordState = {};
@@ -14,15 +13,9 @@ export function ForgotPasswordForm() {
   const [state, formAction, isPending] = useActionState(requestPasswordReset, initialState);
   const [fieldError, setFieldError] = useState<string>();
 
-  if (state.sent) {
-    return (
-      <EmptyState
-        icon={MailCheck}
-        title="Revisa tu correo"
-        description="Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña."
-      />
-    );
-  }
+  useEffect(() => {
+    if (state.error) toast.error(state.error);
+  }, [state.error]);
 
   function handleSubmit(formData: FormData) {
     const email = String(formData.get("email") ?? "");
@@ -44,7 +37,7 @@ export function ForgotPasswordForm() {
         required
       />
       <Button type="submit" size="lg" fullWidth loading={isPending}>
-        Enviar enlace de recuperación
+        Enviar código de recuperación
       </Button>
     </form>
   );

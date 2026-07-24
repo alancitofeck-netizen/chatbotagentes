@@ -12,9 +12,9 @@ function slugify(base: string) {
 
 /**
  * Idempotent: if the user already belongs to a workspace, does nothing.
- * Called from src/app/auth/callback/route.ts right after a sign-up
- * confirmation succeeds (docs/blueprint plan decision #2 — every user gets
- * a personal workspace automatically so the workspace-selection
+ * Called from src/app/(auth)/confirm-email/actions.ts right after a signup
+ * OTP code confirms the account (docs/blueprint plan decision #2 — every
+ * user gets a personal workspace automatically so the workspace-selection
  * architecture is exercised from day one, even with a single workspace).
  */
 export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: string) {

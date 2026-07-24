@@ -1,14 +1,19 @@
 "use server";
 
-import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { validateEmail } from "@/lib/auth/validation";
+import { createAndSendOtp, findUserIdByEmail } from "@/lib/email/otp-service";
 
 export interface ForgotPasswordState {
   error?: string;
-  sent?: boolean;
 }
 
+/** Anti-enumeration by design: whether the account exists or the OTP send
+ * was rate-limited, the caller always lands on the same /reset-password
+ * code-entry screen — surfacing a distinct error for either case would let
+ * an attacker probe which emails have accounts. The actual code (via
+ * Resend, src/lib/email/otp-service.ts) only goes out when the account
+ * really exists. */
 export async function requestPasswordReset(
   _prevState: ForgotPasswordState,
   formData: FormData,
@@ -18,15 +23,10 @@ export async function requestPasswordReset(
   const emailError = validateEmail(email);
   if (emailError) return { error: emailError };
 
-  const origin = (await headers()).get("origin") ?? "";
-  const supabase = await createClient();
+  const userId = await findUserIdByEmail(email);
+  if (userId) {
+    await createAndSendOtp({ email, purpose: "password_reset", userId });
+  }
 
-  // Supabase always resolves successfully here regardless of whether the
-  // email exists, to avoid leaking which accounts are registered — the UI
-  // shows the same "check your email" state either way.
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback`,
-  });
-
-  return { sent: true };
+  redirect(`/reset-password?email=${encodeURIComponent(email)}`);
 }

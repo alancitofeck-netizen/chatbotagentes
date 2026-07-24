@@ -9,7 +9,7 @@ import { resetPassword, type ResetPasswordState } from "./actions";
 
 const initialState: ResetPasswordState = {};
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({ email }: { email: string }) {
   const [state, formAction, isPending] = useActionState(resetPassword, initialState);
   const [fieldErrors, setFieldErrors] = useState<{ password?: string; confirmPassword?: string }>({});
 
@@ -31,6 +31,7 @@ export function ResetPasswordForm() {
 
   return (
     <form action={handleSubmit} className="flex flex-col gap-4" noValidate>
+      <input type="hidden" name="email" value={email} />
       <PasswordInput
         name="password"
         label="Nueva contraseña"
