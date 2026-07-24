@@ -196,6 +196,13 @@ export async function getValidGoogleAccountAccessToken(workspaceId: string): Pro
   const refreshed = await res.json();
   if (!res.ok) {
     console.error(`[google-account] token refresh failed for workspace ${workspaceId}:`, refreshed);
+    // invalid_grant means the refresh token itself is dead (revoked, or the
+    // 7-day refresh-token expiry Google applies to OAuth clients still in
+    // "Testing" publishing status) and will never succeed on retry — see
+    // the identical fix/comment in googleSheets.ts's getValidGoogleSheetsAccessToken.
+    if (refreshed?.error === "invalid_grant") {
+      await serviceClient.from("integration_connections").update({ status: "inactive" }).eq("workspace_id", workspaceId).eq("provider", PROVIDER);
+    }
     return null;
   }
 

@@ -166,6 +166,18 @@ export async function getValidGoogleSheetsAccessToken(workspaceId: string): Prom
   const refreshed = await res.json();
   if (!res.ok) {
     console.error(`[google-sheets] token refresh failed for workspace ${workspaceId}:`, refreshed);
+    // invalid_grant means the refresh token itself is dead (revoked, or —
+    // the most common cause for an OAuth client still in Google's "Testing"
+    // publishing status — its 7-day refresh-token expiry) and will never
+    // succeed on retry. Leaving `status: 'active'` makes
+    // getGoogleSheetsAccountStatus keep reporting "🟢 Conectado" while every
+    // real operation fails with "Conectá primero la cuenta de Google..." —
+    // confusing, since it WAS connected. Flip it to 'inactive' (same effect
+    // as disconnectGoogleSheets) so that message becomes accurate again and
+    // the UI correctly prompts reconnecting instead of silently failing forever.
+    if (refreshed?.error === "invalid_grant") {
+      await serviceClient.from("integration_connections").update({ status: "inactive" }).eq("workspace_id", workspaceId).eq("provider", PROVIDER);
+    }
     return null;
   }
 
