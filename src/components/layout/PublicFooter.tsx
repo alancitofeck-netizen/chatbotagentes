@@ -11,7 +11,7 @@ export function PublicFooter() {
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 px-6 py-8 text-sm text-neutral-500 sm:flex-row sm:justify-between">
         <div className="flex items-center gap-2">
           <Logo size="sm" />
-          <span>© {new Date().getFullYear()} GrowthLink</span>
+          <span>© {new Date().getFullYear()} Growth Link</span>
         </div>
         <nav className="flex items-center gap-6">
           <Link href="/privacy" className="hover:text-foreground">

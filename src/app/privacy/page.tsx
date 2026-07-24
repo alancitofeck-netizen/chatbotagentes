@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { LegalPageLayout } from "@/components/legal/LegalPageLayout";
 
 export const metadata: Metadata = {
-  title: "Política de Privacidad — GrowthLink",
+  title: "Política de Privacidad — Growth Link",
   description:
-    "Cómo GrowthLink recopila, usa, almacena y protege tus datos, incluyendo el uso de Google OAuth, Google Calendar, Google Drive y Google Sheets.",
+    "Cómo Growth Link recopila, usa, almacena y protege tus datos, incluyendo el uso de Google OAuth, Google Calendar, Google Drive y Google Sheets.",
 };
 
 const LAST_UPDATED = "24 de julio de 2026";
@@ -14,19 +14,19 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPageLayout title="Política de Privacidad" lastUpdated={LAST_UPDATED}>
       <p>
-        Esta Política de Privacidad describe cómo <strong>GrowthLink</strong> (“GrowthLink”, “nosotros”, “la
+        Esta Política de Privacidad describe cómo <strong>Growth Link</strong> (“Growth Link”, “nosotros”, “la
         plataforma”) recopila, utiliza, almacena y protege la información de las personas y empresas que usan el
         servicio, disponible en <a href="https://www.growthlink.uk">https://www.growthlink.uk</a>.
       </p>
 
-      <h2>1. Qué es GrowthLink</h2>
+      <h2>1. Qué es Growth Link</h2>
       <p>
-        GrowthLink es una plataforma de software como servicio (SaaS) para la gestión conversacional de negocios sobre
+        Growth Link es una plataforma de software como servicio (SaaS) para la gestión conversacional de negocios sobre
         WhatsApp. Permite a una empresa (un “Workspace”) centralizar su bandeja de conversaciones de WhatsApp,
         atenderlas con agentes humanos y con inteligencia artificial, y gestionar su operación comercial a través de
         módulos como un CRM de ventas, un módulo de reclutamiento (ATS), un calendario, un gestor de documentos y un
         panel de indicadores (KPIs). Cada Workspace es una cuenta independiente: sus datos están aislados de los de
-        cualquier otro Workspace que use GrowthLink.
+        cualquier otro Workspace que use Growth Link.
       </p>
 
       <h2>2. Qué servicios ofrece</h2>
@@ -53,10 +53,10 @@ export default function PrivacyPolicyPage() {
       <p>
         Como parte del uso normal del servicio, tu Workspace puede almacenar datos que vos mismo cargás o que se
         generan por el uso de la plataforma: contactos y números de WhatsApp de tus propios clientes, el contenido de
-        las conversaciones de WhatsApp que gestionás a través de GrowthLink, información de oportunidades comerciales,
+        las conversaciones de WhatsApp que gestionás a través de Growth Link, información de oportunidades comerciales,
         candidatos de un proceso de selección, eventos de calendario, documentos que subís o importás, y datos de
         indicadores (KPIs) que se leen desde una hoja de Google Sheets que vos conectás. Estos datos pertenecen a tu
-        Workspace y a vos como responsable de esa información, no a GrowthLink.
+        Workspace y a vos como responsable de esa información, no a Growth Link.
       </p>
       <h3>3.3 Datos técnicos</h3>
       <p>
@@ -72,20 +72,20 @@ export default function PrivacyPolicyPage() {
         Workspace. Las contraseñas se almacenan cifradas mediante el sistema de autenticación de Supabase, nunca en
         texto plano. Los tokens de acceso de integraciones externas (incluyendo Google) se almacenan cifrados mediante
         Supabase Vault, un mecanismo de cifrado dedicado para credenciales sensibles — nunca se guardan como texto
-        plano en la base de datos. Toda la comunicación entre tu navegador y GrowthLink viaja cifrada mediante HTTPS.
+        plano en la base de datos. Toda la comunicación entre tu navegador y Growth Link viaja cifrada mediante HTTPS.
       </p>
 
       <h2>5. Qué datos permanecen privados</h2>
       <p>
         Todos los datos que cargás en tu Workspace (contactos, conversaciones, oportunidades, candidatos, documentos,
         KPIs) son privados de ese Workspace. Solo pueden acceder a ellos los usuarios que vos invitaste a tu Workspace,
-        de acuerdo con el rol que les asignaste (agente, administrador o propietario). GrowthLink no expone los datos
+        de acuerdo con el rol que les asignaste (agente, administrador o propietario). Growth Link no expone los datos
         de un Workspace a otros clientes de la plataforma bajo ninguna circunstancia.
       </p>
 
       <h2>6. Nunca vendemos tus datos</h2>
       <p>
-        GrowthLink no vende, alquila ni comercializa tus datos personales ni los datos de tu Workspace a terceros, bajo
+        Growth Link no vende, alquila ni comercializa tus datos personales ni los datos de tu Workspace a terceros, bajo
         ninguna circunstancia. Los datos solo se comparten con los proveedores estrictamente necesarios para operar el
         servicio que vos mismo decidís usar (por ejemplo, YCloud para el envío de mensajes de WhatsApp, u OpenRouter
         para generar respuestas con inteligencia artificial), y únicamente en la medida necesaria para prestar esa
@@ -94,7 +94,7 @@ export default function PrivacyPolicyPage() {
 
       <h2>7. Cómo usamos las integraciones con Google</h2>
       <p>
-        GrowthLink utiliza Google OAuth 2.0 exclusivamente para dos fines, separados y solicitados en momentos
+        Growth Link utiliza Google OAuth 2.0 exclusivamente para dos fines, separados y solicitados en momentos
         distintos:
       </p>
       <h3>7.1 Inicio de sesión con Google</h3>
@@ -107,22 +107,22 @@ export default function PrivacyPolicyPage() {
       </p>
       <h3>7.2 Conexión opcional de Google Calendar, Google Drive y Google Sheets</h3>
       <p>
-        Solo si vos decidís conectarlos explícitamente desde Perfil → Integraciones, GrowthLink solicita permisos
+        Solo si vos decidís conectarlos explícitamente desde Perfil → Integraciones, Growth Link solicita permisos
         adicionales y específicos para cada servicio, en ese momento (autorización incremental) — nunca durante el
         inicio de sesión inicial:
       </p>
       <ul>
         <li>
           <strong>Google Calendar:</strong> permite importar tus eventos existentes y sincronizar hacia tu calendario
-          de Google los eventos que crees dentro del módulo Calendario de GrowthLink.
+          de Google los eventos que crees dentro del módulo Calendario de Growth Link.
         </li>
         <li>
           <strong>Google Drive:</strong> permite navegar tus archivos de Drive para importarlos al módulo Documentos
-          de GrowthLink, y exportar documentos generados en GrowthLink hacia una carpeta de tu Drive que vos elijas.
+          de Growth Link, y exportar documentos generados en Growth Link hacia una carpeta de tu Drive que vos elijas.
         </li>
         <li>
           <strong>Google Sheets:</strong> permite leer (en modo solo lectura) una hoja de cálculo que vos indiques,
-          para mostrar sus datos de indicadores (KPIs) dentro del panel correspondiente de GrowthLink.
+          para mostrar sus datos de indicadores (KPIs) dentro del panel correspondiente de Growth Link.
         </li>
       </ul>
       <p>
@@ -132,10 +132,10 @@ export default function PrivacyPolicyPage() {
       </p>
 
       <h2>8. Cómo revocar el acceso de Google en cualquier momento</h2>
-      <p>Podés revocar el acceso de GrowthLink a tu cuenta de Google en cualquier momento, de dos formas:</p>
+      <p>Podés revocar el acceso de Growth Link a tu cuenta de Google en cualquier momento, de dos formas:</p>
       <ul>
         <li>
-          Desde GrowthLink: Perfil → Integraciones → “Desconectar”, para Google Calendar, Google Drive o Google
+          Desde Growth Link: Perfil → Integraciones → “Desconectar”, para Google Calendar, Google Drive o Google
           Sheets de forma individual.
         </li>
         <li>
@@ -143,7 +143,7 @@ export default function PrivacyPolicyPage() {
           <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">
             myaccount.google.com/permissions
           </a>
-          , donde podés revocar el acceso de GrowthLink por completo.
+          , donde podés revocar el acceso de Growth Link por completo.
         </li>
       </ul>
       <p>
@@ -166,7 +166,7 @@ export default function PrivacyPolicyPage() {
         solicitar su eliminación, solicitar la portabilidad de tus datos, oponerte a determinados tratamientos y
         retirar tu consentimiento en cualquier momento. Podés ejercer cualquiera de estos derechos escribiendo a{" "}
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. El uso de tus datos se basa en la ejecución del
-        contrato de servicio con vos (los términos de uso de GrowthLink) y, en el caso de la integración con Google,
+        contrato de servicio con vos (los términos de uso de Growth Link) y, en el caso de la integración con Google,
         en tu consentimiento explícito otorgado a través de la pantalla de autorización de Google.
       </p>
 

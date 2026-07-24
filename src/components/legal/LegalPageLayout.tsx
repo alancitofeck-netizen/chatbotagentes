@@ -5,7 +5,7 @@ import { Logo } from "@/components/brand/Logo";
 import { PublicFooter } from "@/components/layout/PublicFooter";
 
 /** Shared shell for the two public legal pages (/privacy, /terms) — no auth,
- * no dashboard chrome, just enough branding to look like part of GrowthLink
+ * no dashboard chrome, just enough branding to look like part of Growth Link
  * and be safely readable by a Google OAuth verification reviewer. */
 export function LegalPageLayout({
   title,
@@ -22,7 +22,7 @@ export function LegalPageLayout({
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-5">
           <Link href="/" className="flex items-center gap-2.5">
             <Logo size="sm" />
-            <span className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">GrowthLink</span>
+            <span className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">Growth Link</span>
           </Link>
           <Link
             href="/login"

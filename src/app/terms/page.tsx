@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { LegalPageLayout } from "@/components/legal/LegalPageLayout";
 
 export const metadata: Metadata = {
-  title: "Términos y Condiciones — GrowthLink",
+  title: "Términos y Condiciones — Growth Link",
   description:
-    "Condiciones de uso de GrowthLink: responsabilidades del usuario, uso aceptable, integraciones con terceros, propiedad intelectual y legislación aplicable.",
+    "Condiciones de uso de Growth Link: responsabilidades del usuario, uso aceptable, integraciones con terceros, propiedad intelectual y legislación aplicable.",
 };
 
 const LAST_UPDATED = "24 de julio de 2026";
@@ -14,14 +14,14 @@ export default function TermsPage() {
   return (
     <LegalPageLayout title="Términos y Condiciones" lastUpdated={LAST_UPDATED}>
       <p>
-        Estos Términos y Condiciones (“Términos”) regulan el uso de <strong>GrowthLink</strong>, la plataforma
+        Estos Términos y Condiciones (“Términos”) regulan el uso de <strong>Growth Link</strong>, la plataforma
         disponible en <a href="https://www.growthlink.uk">https://www.growthlink.uk</a>. Al crear una cuenta o usar el
-        servicio, aceptás estos Términos en su totalidad. Si no estás de acuerdo, no debés usar GrowthLink.
+        servicio, aceptás estos Términos en su totalidad. Si no estás de acuerdo, no debés usar Growth Link.
       </p>
 
       <h2>1. Condiciones de uso del servicio</h2>
       <p>
-        GrowthLink es un servicio provisto bajo la modalidad de software como servicio (SaaS), organizado en
+        Growth Link es un servicio provisto bajo la modalidad de software como servicio (SaaS), organizado en
         Workspaces independientes. Cada Workspace es responsable de la información que carga y de la actividad
         realizada por los usuarios que invita a ese Workspace. El acceso al servicio requiere una cuenta válida,
         creada mediante correo y contraseña o mediante “Continuar con Google”.
@@ -30,13 +30,13 @@ export default function TermsPage() {
       <h2>2. Responsabilidades del usuario</h2>
       <ul>
         <li>Mantener la confidencialidad de tus credenciales de acceso y notificarnos ante cualquier uso no autorizado de tu cuenta.</li>
-        <li>Garantizar que la información que cargás en GrowthLink (contactos, conversaciones, candidatos, documentos) fue obtenida de forma lícita y que tenés derecho a tratarla.</li>
+        <li>Garantizar que la información que cargás en Growth Link (contactos, conversaciones, candidatos, documentos) fue obtenida de forma lícita y que tenés derecho a tratarla.</li>
         <li>Cumplir con la normativa aplicable al envío de mensajes de WhatsApp a tus propios contactos (incluyendo, cuando corresponda, contar con el consentimiento de esos contactos).</li>
-        <li>Usar las credenciales de las integraciones que conectás (Google, WhatsApp/YCloud, OpenRouter u otras) exclusivamente para los fines previstos por GrowthLink.</li>
+        <li>Usar las credenciales de las integraciones que conectás (Google, WhatsApp/YCloud, OpenRouter u otras) exclusivamente para los fines previstos por Growth Link.</li>
       </ul>
 
       <h2>3. Uso aceptable de la plataforma</h2>
-      <p>Al usar GrowthLink, te comprometés a no utilizarlo para:</p>
+      <p>Al usar Growth Link, te comprometés a no utilizarlo para:</p>
       <ul>
         <li>Enviar mensajes masivos no solicitados (spam) o contenido engañoso, fraudulento o ilegal.</li>
         <li>Vulnerar, intentar vulnerar o eludir las medidas de seguridad de la plataforma o de sus integraciones.</li>
@@ -47,25 +47,25 @@ export default function TermsPage() {
 
       <h2>4. Restricciones</h2>
       <p>
-        No está permitido revender, sublicenciar o redistribuir el acceso a GrowthLink a terceros sin autorización
+        No está permitido revender, sublicenciar o redistribuir el acceso a Growth Link a terceros sin autorización
         previa por escrito. No está permitido realizar ingeniería inversa del software, ni extraer de forma masiva
-        (scraping) datos de la plataforma más allá de las funciones de exportación que GrowthLink ofrece
+        (scraping) datos de la plataforma más allá de las funciones de exportación que Growth Link ofrece
         explícitamente.
       </p>
 
       <h2>5. Propiedad intelectual</h2>
       <p>
-        El software, el diseño, la marca “GrowthLink” y demás elementos de la plataforma son propiedad de quien opera
-        GrowthLink. Los datos que cargás en tu Workspace (contactos, conversaciones, documentos y demás contenido)
-        siguen siendo de tu propiedad o de la propiedad de quien corresponda legalmente; GrowthLink solo los aloja y
+        El software, el diseño, la marca “Growth Link” y demás elementos de la plataforma son propiedad de quien opera
+        Growth Link. Los datos que cargás en tu Workspace (contactos, conversaciones, documentos y demás contenido)
+        siguen siendo de tu propiedad o de la propiedad de quien corresponda legalmente; Growth Link solo los aloja y
         procesa en tu nombre para prestar el servicio.
       </p>
 
       <h2>6. Uso de las API de Google</h2>
       <p>
-        GrowthLink utiliza las API de Google (Google Identity/OAuth, Google Calendar, Google Drive y Google Sheets)
+        Growth Link utiliza las API de Google (Google Identity/OAuth, Google Calendar, Google Drive y Google Sheets)
         exclusivamente para las funcionalidades descritas en nuestra{" "}
-        <a href="/privacy">Política de Privacidad</a>. El uso de estas API por parte de GrowthLink cumple con las{" "}
+        <a href="/privacy">Política de Privacidad</a>. El uso de estas API por parte de Growth Link cumple con las{" "}
         <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noreferrer">
           Políticas de Datos de Usuario de los Servicios de API de Google
         </a>
@@ -75,11 +75,11 @@ export default function TermsPage() {
 
       <h2>7. Integraciones con terceros</h2>
       <p>
-        GrowthLink se integra con proveedores externos para prestar determinadas funcionalidades, entre ellos: YCloud
+        Growth Link se integra con proveedores externos para prestar determinadas funcionalidades, entre ellos: YCloud
         (envío y recepción de mensajes de WhatsApp Business), OpenRouter (generación de respuestas mediante
         inteligencia artificial) y Google (identidad, Calendar, Drive y Sheets, según lo detallado en la sección 6).
         El uso de estas integraciones está sujeto adicionalmente a los propios términos de servicio de cada proveedor.
-        GrowthLink no es responsable por interrupciones o cambios en los servicios de estos terceros que estén fuera
+        Growth Link no es responsable por interrupciones o cambios en los servicios de estos terceros que estén fuera
         de su control.
       </p>
 
@@ -94,7 +94,7 @@ export default function TermsPage() {
 
       <h2>9. Limitación de responsabilidad</h2>
       <p>
-        GrowthLink se ofrece “tal cual” (“as is”), sin garantías de disponibilidad ininterrumpida ni de ausencia total
+        Growth Link se ofrece “tal cual” (“as is”), sin garantías de disponibilidad ininterrumpida ni de ausencia total
         de errores. En la máxima medida permitida por la ley aplicable, no seremos responsables por daños indirectos,
         incidentales o consecuentes derivados del uso o la imposibilidad de uso del servicio, incluyendo pérdidas
         derivadas de fallas en integraciones de terceros (WhatsApp/YCloud, Google, proveedores de inteligencia
@@ -105,14 +105,14 @@ export default function TermsPage() {
       <p>
         Podemos modificar estos Términos ocasionalmente para reflejar cambios en el servicio o en la normativa
         aplicable. Publicaremos la versión vigente en esta misma página, actualizando la fecha de “Última
-        actualización”. El uso continuado de GrowthLink luego de una actualización implica la aceptación de los
+        actualización”. El uso continuado de Growth Link luego de una actualización implica la aceptación de los
         Términos modificados.
       </p>
 
       <h2>11. Legislación aplicable</h2>
       <p>
         Estos Términos se rigen por las leyes de la República Argentina. Cualquier controversia derivada de estos
-        Términos o del uso de GrowthLink se someterá a los tribunales competentes de la República Argentina, sin
+        Términos o del uso de Growth Link se someterá a los tribunales competentes de la República Argentina, sin
         perjuicio de los derechos de protección de datos que puedan corresponderte según tu propia jurisdicción de
         residencia (ver sección 10 de nuestra <a href="/privacy">Política de Privacidad</a>).
       </p>
