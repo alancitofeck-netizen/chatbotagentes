@@ -90,6 +90,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         atsEnabled={atsEnabled}
         hasKpiConnection={hasKpiSheet}
         isAgent={isRealAgent}
+        isOwner={role === "owner"}
         isPlatformAdmin={isPlatformAdmin}
         platformWorkspaces={platformWorkspaces}
       />

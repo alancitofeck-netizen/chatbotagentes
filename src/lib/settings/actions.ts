@@ -54,6 +54,11 @@ export async function inviteMember(email: string, role: Role) {
   const trimmedEmail = email.trim();
   if (!trimmedEmail) throw new Error("El email es obligatorio.");
   if (!VALID_ROLES.includes(role)) throw new Error("Rol inválido.");
+  // Solo existe un único Owner por workspace (nunca se transfiere ni se
+  // duplica) — mismo invariante que updateMemberRole aplica al cambiar el
+  // rol de un miembro existente, extendido acá para que invitar directo con
+  // rol Owner no sea un atajo para sortear esa regla.
+  if (role === "owner") throw new Error("No se puede invitar con el rol Owner.");
 
   const serviceClient = createServiceRoleClient();
 
@@ -106,9 +111,19 @@ async function getTargetMember(workspaceId: string, memberId: string) {
   return data;
 }
 
+/** Owner-only, and never targets/assigns "owner" — a workspace has exactly
+ * one Owner, who never changes via this action (confirmed requirement: "solo
+ * existe un único Owner del sistema"). requireManagerRole (owner OR admin)
+ * is deliberately NOT used here, unlike every other mutation in this file —
+ * role changes specifically are more sensitive (privilege escalation) than
+ * the rest of workspace management, which stays owner+admin. Used by both
+ * Perfil > Miembros (MembersSection.tsx) and the CRM Agentes tab
+ * (AgentsList.tsx's "Cambiar rol" button) — one action, one set of rules,
+ * instead of duplicating this logic per surface. */
 export async function updateMemberRole(memberId: string, role: Role) {
   const { workspaceId, role: actingRole } = await requireActiveWorkspace();
-  requireManagerRole(actingRole);
+  if (actingRole !== "owner") throw new Error("Solo el Owner puede cambiar roles.");
+  if (role === "owner") throw new Error("No se puede asignar el rol Owner.");
   if (!VALID_ROLES.includes(role)) throw new Error("Rol inválido.");
 
   const ownMemberId = await getCurrentMemberId(workspaceId);
@@ -118,14 +133,33 @@ export async function updateMemberRole(memberId: string, role: Role) {
 
   const target = await getTargetMember(workspaceId, memberId);
   if (!target) throw new Error("Miembro no encontrado en este workspace.");
-
-  if (target.role === "owner" && role !== "owner" && (await countOwners(workspaceId)) <= 1) {
-    throw new Error("No podés quitar el rol de owner al único owner del workspace.");
-  }
+  if (target.role === "owner") throw new Error("No se puede cambiar el rol del Owner.");
+  if (target.role === role) return;
 
   const supabase = await createClient();
-  await supabase.from("workspace_members").update({ role }).eq("id", memberId).eq("workspace_id", workspaceId);
+  const { error } = await supabase
+    .from("workspace_members")
+    .update({ role })
+    .eq("id", memberId)
+    .eq("workspace_id", workspaceId);
+  if (error) throw new Error("No se pudo actualizar el rol.");
+
+  // Audit trail: quién, de qué rol a cuál, y cuándo (created_at). Same
+  // insert shape as logOpportunityActivity (src/lib/crm/actions.ts) — plain
+  // client, audit_log_insert_self (0020_agent_engine_core.sql) already
+  // allows a real member to write a 'user'-attributed row for themselves.
+  await supabase.from("audit_log").insert({
+    workspace_id: workspaceId,
+    actor_type: "user",
+    actor_id: ownMemberId,
+    action: "member_role_changed",
+    entity_type: "workspace_member",
+    entity_id: memberId,
+    metadata: { from_role: target.role, to_role: role },
+  });
+
   revalidatePath("/settings");
+  revalidatePath("/crm");
 }
 
 export async function removeMember(memberId: string) {

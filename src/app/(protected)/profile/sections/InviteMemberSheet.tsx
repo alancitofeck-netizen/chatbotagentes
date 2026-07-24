@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import { inviteMember } from "@/lib/settings/actions";
 
+// "owner" deliberately excluded — un workspace tiene un único Owner, que
+// nunca se asigna por invitación (inviteMember lo rechaza igual server-side;
+// no mostrar la opción evita el intento fallido).
 const ROLE_OPTIONS = [
   { value: "agent", label: "Agente" },
   { value: "admin", label: "Admin" },
-  { value: "owner", label: "Owner" },
 ];
 
 export function InviteMemberSheet({

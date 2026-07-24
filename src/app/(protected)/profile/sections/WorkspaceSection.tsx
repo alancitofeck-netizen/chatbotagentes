@@ -93,7 +93,13 @@ export function WorkspaceSection({
 
       <ModulesSection modules={modules} canManage={canManage} onChanged={onModulesChanged} />
 
-      <MembersSection members={members} canManage={canManage} ownMemberId={ownMemberId} onChanged={onMembersChanged} />
+      <MembersSection
+        members={members}
+        canManage={canManage}
+        isOwner={profile.role === "owner"}
+        ownMemberId={ownMemberId}
+        onChanged={onMembersChanged}
+      />
 
       <Card>
         <CardHeader title="Roles y permisos" />

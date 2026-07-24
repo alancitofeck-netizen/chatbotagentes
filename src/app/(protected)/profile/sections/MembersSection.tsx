@@ -12,8 +12,10 @@ import type { WorkspaceMember } from "@/lib/settings/queries";
 import { removeMember, updateMemberRole } from "@/lib/settings/actions";
 import { InviteMemberSheet } from "./InviteMemberSheet";
 
+// "owner" deliberately excluded — solo existe un único Owner por workspace,
+// que nunca se reasigna desde acá (updateMemberRole lo rechaza server-side
+// igual; no mostrar la opción evita el intento fallido).
 const ROLE_OPTIONS = [
-  { value: "owner", label: "Owner" },
   { value: "admin", label: "Admin" },
   { value: "agent", label: "Agente" },
 ];
@@ -27,11 +29,17 @@ const ROLE_LABEL: Record<string, string> = {
 export function MembersSection({
   members,
   canManage,
+  isOwner,
   ownMemberId,
   onChanged,
 }: {
   members: WorkspaceMember[];
   canManage: boolean;
+  /** Only the Owner can change roles (updateMemberRole enforces this
+   * server-side too) — Admin still manages everything else here (invite,
+   * remove) via `canManage`, but sees a read-only role Badge instead of the
+   * dropdown. */
+  isOwner: boolean;
   ownMemberId: string | null;
   onChanged: () => void;
 }) {
@@ -84,7 +92,7 @@ export function MembersSection({
               <p className="truncate text-sm font-medium text-foreground">{m.fullName}</p>
               <p className="truncate text-[13px] text-neutral-500">{m.email}</p>
             </div>
-            {canManage && m.memberId !== ownMemberId ? (
+            {isOwner && m.role !== "owner" && m.memberId !== ownMemberId ? (
               <Select
                 label="Rol"
                 containerClassName="w-40"

@@ -2,19 +2,29 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Minus, Pencil, Search, StickyNote, TrendingDown, TrendingUp, Trophy, Users2 } from "lucide-react";
+import { Minus, Pencil, Search, ShieldCheck, StickyNote, TrendingDown, TrendingUp, Trophy, Users2 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
+import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { toast } from "@/components/toast/toast";
 import type { AgentListItem, Team } from "@/lib/agents/queries";
 import { getAgentListAction } from "@/lib/agents/actions";
+import { updateMemberRole } from "@/lib/settings/actions";
 import { useWorkspacePresence } from "@/lib/presence/useWorkspacePresence";
 import { AgentEditSheet } from "./AgentEditSheet";
 import { AgentNoteSheet } from "./AgentNoteSheet";
 import { ManageTeamsSheet } from "./ManageTeamsSheet";
+
+const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", agent: "Agente" };
+const ROLE_BADGE: Record<string, BadgeVariant> = { owner: "accent", admin: "warning", agent: "neutral" };
+/** Only Admin/Agent are ever offered as a target — "Cambiar rol" can never
+ * assign or target Owner (updateMemberRole rejects both server-side too;
+ * un workspace tiene un único Owner, que no se reasigna desde acá). */
+type AssignableRole = "admin" | "agent";
 
 const PRESENCE_LABEL: Record<"online" | "away" | "offline", { emoji: string; label: string }> = {
   online: { emoji: "🟢", label: "Online" },
@@ -53,10 +63,15 @@ export function AgentsList({
   initialAgents,
   initialTeams,
   workspaceId,
+  isOwner,
 }: {
   initialAgents: AgentListItem[];
   initialTeams: Team[];
   workspaceId: string;
+  /** Only the Owner sees "Cambiar rol" / can act on it — updateMemberRole
+   * enforces this same rule server-side (defense in depth, not just a UI
+   * gate). Admin and Agent never see the button at all. */
+  isOwner: boolean;
 }) {
   const [agents, setAgents] = useState(initialAgents);
   const presence = useWorkspacePresence(workspaceId);
@@ -67,7 +82,30 @@ export function AgentsList({
   const [editAgent, setEditAgent] = useState<AgentListItem | null>(null);
   const [noteAgent, setNoteAgent] = useState<AgentListItem | null>(null);
   const [teamsOpen, setTeamsOpen] = useState(false);
+  const [roleChangeAgent, setRoleChangeAgent] = useState<AgentListItem | null>(null);
+  const [pendingRole, setPendingRole] = useState<AssignableRole>("agent");
   const [, startTransition] = useTransition();
+  const [isChangingRole, startRoleChange] = useTransition();
+
+  function openRoleChange(agent: AgentListItem) {
+    setPendingRole(agent.role === "admin" ? "agent" : "admin");
+    setRoleChangeAgent(agent);
+  }
+
+  function confirmRoleChange() {
+    if (!roleChangeAgent) return;
+    const agent = roleChangeAgent;
+    startRoleChange(async () => {
+      try {
+        await updateMemberRole(agent.memberId, pendingRole);
+        toast.success(`Rol de ${agent.fullName} actualizado a ${ROLE_LABEL[pendingRole]}.`);
+        setRoleChangeAgent(null);
+        refetch();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo cambiar el rol.");
+      }
+    });
+  }
 
   function refetch() {
     startTransition(async () => {
@@ -175,6 +213,7 @@ export function AgentsList({
             <thead>
               <tr className="border-b border-border-default text-xs uppercase text-neutral-500">
                 <th className="px-4 py-3 font-medium">Agente</th>
+                <th className="px-4 py-3 font-medium">Rol</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium">Score</th>
                 <th className="px-4 py-3 font-medium">Tendencia</th>
@@ -205,6 +244,9 @@ export function AgentsList({
                           {a.teamName && <p className="truncate text-xs text-neutral-400">{a.teamName}</p>}
                         </div>
                       </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={ROLE_BADGE[a.role] ?? "neutral"}>{ROLE_LABEL[a.role] ?? a.role}</Badge>
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -274,6 +316,16 @@ export function AgentsList({
                         >
                           <StickyNote size={15} aria-hidden="true" />
                         </button>
+                        {isOwner && a.role !== "owner" && (
+                          <button
+                            type="button"
+                            title="Cambiar rol"
+                            onClick={() => openRoleChange(a)}
+                            className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-2 hover:text-foreground"
+                          >
+                            <ShieldCheck size={15} aria-hidden="true" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -307,6 +359,33 @@ export function AgentsList({
           refetchTeamsAndAgents();
         }}
       />
+
+      <ConfirmDialog
+        open={roleChangeAgent !== null}
+        title="Cambiar rol"
+        description={
+          roleChangeAgent && (
+            <>
+              Vas a cambiar el rol de <strong className="text-foreground">{roleChangeAgent.fullName}</strong> de{" "}
+              <Badge variant={ROLE_BADGE[roleChangeAgent.role] ?? "neutral"}>{ROLE_LABEL[roleChangeAgent.role] ?? roleChangeAgent.role}</Badge>{" "}
+              a:
+            </>
+          )
+        }
+        confirmLabel="Cambiar rol"
+        isLoading={isChangingRole}
+        onConfirm={confirmRoleChange}
+        onCancel={() => setRoleChangeAgent(null)}
+      >
+        <Select
+          label="Nuevo rol"
+          value={pendingRole}
+          onChange={(e) => setPendingRole(e.target.value as AssignableRole)}
+        >
+          <option value="admin">Admin</option>
+          <option value="agent">Agente</option>
+        </Select>
+      </ConfirmDialog>
     </div>
   );
 }

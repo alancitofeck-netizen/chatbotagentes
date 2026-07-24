@@ -42,6 +42,7 @@ export function CrmPageShell({
   atsEnabled,
   hasKpiConnection,
   isAgent,
+  isOwner,
   isPlatformAdmin,
   platformWorkspaces,
 }: {
@@ -61,6 +62,9 @@ export function CrmPageShell({
   atsEnabled: boolean;
   hasKpiConnection: boolean;
   isAgent: boolean;
+  /** Gates "Cambiar rol" in the Agentes tab (AgentsList) — only the Owner
+   * can change roles, per updateMemberRole (src/lib/settings/actions.ts). */
+  isOwner: boolean;
   isPlatformAdmin: boolean;
   platformWorkspaces: PlatformWorkspaceSummary[];
 }) {
@@ -131,7 +135,7 @@ export function CrmPageShell({
               <PlatformWorkspacesTable workspaces={platformWorkspaces} />
             </div>
           ) : (
-            <AgentsList initialAgents={agents} initialTeams={teams} workspaceId={workspaceId} />
+            <AgentsList initialAgents={agents} initialTeams={teams} workspaceId={workspaceId} isOwner={isOwner} />
           )}
         </div>
       )}
