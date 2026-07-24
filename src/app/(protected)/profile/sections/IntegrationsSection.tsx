@@ -52,7 +52,15 @@ export function IntegrationsSection({
   const [openRouterSheetOpen, setOpenRouterSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isSyncing, startSyncTransition] = useTransition();
-  const canManage = currentRole === "owner" || currentRole === "admin";
+  // Every real workspace role (owner/admin/agent) can manage integrations —
+  // widened in supabase/migrations/0043_google_login_and_agent_integrations.sql
+  // specifically so a solo self-registered agent account (no owner/admin
+  // exists in their own workspace) can still connect WhatsApp/Google/APIs.
+  // A platform admin's synthetic "supervising" membership also reports role
+  // "agent" (src/lib/auth/session.ts) but has no real workspace_members row,
+  // so has_workspace_role still blocks the write server-side even though this
+  // button renders enabled for them too.
+  const canManage = currentRole === "owner" || currentRole === "admin" || currentRole === "agent";
   const isActive = whatsapp?.status === "active";
   const isOpenRouterActive = openRouter?.status === "active";
 
