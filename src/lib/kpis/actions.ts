@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { requireManagerRole } from "@/lib/auth/roles";
+import { requireNotSupervising } from "@/lib/auth/roles";
 import { getValidGoogleSheetsAccessToken, fetchSpreadsheetMetadata, parseSpreadsheetId } from "@/lib/integrations/googleSheets";
 import { runKpiSyncForSetter } from "@/lib/kpis/syncRunner";
 import { getKpiEntries, getKpiGoals, getKpiSetterOptions, getKpiSetterSheets } from "@/lib/kpis/queries";
@@ -33,8 +33,8 @@ export async function getKpiSetterSheetsAction() {
  * via "Cambiar hoja"). Separate step because a setter can exist (e.g. to
  * pre-configure the roster) before they've actually shared their sheet. */
 export async function createKpiSetterAction(displayName: string) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
   if (!displayName.trim()) throw new Error("El nombre del setter es obligatorio.");
 
   const supabase = await createClient();
@@ -53,8 +53,8 @@ export async function createKpiSetterAction(displayName: string) {
 }
 
 export async function removeKpiSetterAction(setterId: string) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
 
   const supabase = await createClient();
   const { error } = await supabase.from("kpi_setters").delete().eq("id", setterId).eq("workspace_id", workspaceId);
@@ -70,8 +70,8 @@ export async function removeKpiSetterAction(setterId: string) {
  * for view access; no per-setter OAuth login). Validates the sheet is
  * actually reachable before saving. */
 export async function setKpiSetterSheetAction(setterId: string, input: { spreadsheetInput: string; sheetName?: string }) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
 
   const spreadsheetId = parseSpreadsheetId(input.spreadsheetInput);
   if (!spreadsheetId) throw new Error("No se pudo reconocer el link o ID de la hoja de Google Sheets.");
@@ -96,8 +96,8 @@ export async function setKpiSetterSheetAction(setterId: string, input: { spreads
 }
 
 export async function unlinkKpiSetterSheetAction(setterId: string) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -115,8 +115,8 @@ export async function unlinkKpiSetterSheetAction(setterId: string) {
  * runs (src/lib/kpis/syncRunner.ts) for every setter with a sheet linked in
  * this workspace, so the manual and automatic paths never drift apart. */
 export async function syncKpisNowAction() {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
 
   const supabase = await createClient();
   const { data: setters } = await supabase
@@ -142,8 +142,8 @@ export async function syncKpisNowAction() {
 }
 
 export async function setKpiGoalAction(periodMonth: string, metricKey: string, targetValue: number) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
   if (!Number.isFinite(targetValue) || targetValue < 0) throw new Error("La meta debe ser un número válido.");
 
   const supabase = await createClient();
@@ -156,8 +156,8 @@ export async function setKpiGoalAction(periodMonth: string, metricKey: string, t
 }
 
 export async function linkKpiSetterAction(setterId: string, memberId: string | null) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
 
   const supabase = await createClient();
   const { error } = await supabase

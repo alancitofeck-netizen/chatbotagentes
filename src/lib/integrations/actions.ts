@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { requireManagerRole } from "@/lib/auth/roles";
+import { requireManagerRole, requireNotSupervising } from "@/lib/auth/roles";
 import { getOpenRouterIntegration, getWhatsAppIntegration } from "@/lib/integrations/queries";
 import { disconnectGoogleCalendar, getGoogleCalendarStatus, importGoogleEvents } from "@/lib/integrations/googleCalendar";
 import { disconnectGoogleDrive, getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
@@ -115,9 +115,15 @@ export async function getGoogleCalendarStatusAction() {
   return getGoogleCalendarStatus(workspaceId);
 }
 
+// Google Calendar/Sheets/Drive are deliberately NOT gated by
+// requireManagerRole (owner/admin only) — each Agent administers their OWN
+// workspace's integrations (a self-service signup has no owner/admin at
+// all, per provision-workspace.ts). requireNotSupervising (src/lib/auth/roles.ts)
+// is the only thing still blocked: a platform admin's "modo supervisor"
+// session, not a real member.
 export async function disconnectGoogleCalendarAction() {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
   await disconnectGoogleCalendar(workspaceId);
   revalidatePath("/profile");
 }
@@ -136,16 +142,16 @@ export async function getGoogleDriveStatusAction() {
 }
 
 export async function disconnectGoogleDriveAction() {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
   await disconnectGoogleDrive(workspaceId);
   revalidatePath("/profile");
   revalidatePath("/documents");
 }
 
 export async function disconnectGoogleSheetsAction() {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
   await disconnectGoogleSheets(workspaceId);
   revalidatePath("/profile");
   revalidatePath("/crm");
