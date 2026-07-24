@@ -307,8 +307,14 @@ export async function getCrmBoard(workspaceId: string, pipelineId?: string): Pro
   const proposalsSent = proposalsStage ? (cardsByStage[proposalsStage.id]?.length ?? 0) : 0;
 
   const totalOpportunities = (opportunities ?? []).length;
+  // Solo suma oportunidades cuya etapa actual es exactamente "Ganado"
+  // (is_won=true) — no las etapas abiertas (Nuevo/Contactado/Propuesta/
+  // Negociación) ni "Perdido". Se recalcula desde cardsByStage (el estado
+  // actual de las etapas) en cada carga del tablero, así que mover una
+  // oportunidad hacia o fuera de "Ganado" suma/resta su valor automáticamente
+  // sin necesidad de un acumulador separado.
   const totalPipelineValue = stageList
-    .filter((s) => !s.isWon && !s.isLost)
+    .filter((s) => s.isWon)
     .reduce((sum, s) => sum + (cardsByStage[s.id] ?? []).reduce((inner, c) => inner + c.value, 0), 0);
 
   const thisMonth = monthBounds(0);
