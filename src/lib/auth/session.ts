@@ -140,3 +140,44 @@ export async function getCurrentMemberId(workspaceId: string): Promise<string | 
     .maybeSingle();
   return (data?.id as string | undefined) ?? null;
 }
+
+/** Resolves the WORKSPACE's own display name — its earliest-created
+ * workspace_members row, independent of role — never the signed-in caller's.
+ * Same "usuario principal" heuristic as getAllWorkspacesForSupervision
+ * (src/lib/platform/queries.ts): a self-service signup's registrant is
+ * always role "agent" (provision-workspace.ts), never "owner", so "the
+ * owner" doesn't reliably exist — "first member" is the only heuristic that
+ * always resolves to someone.
+ *
+ * Exists because requireUser()/getUser().user_metadata is the signed-in
+ * caller's OWN identity — correct for "my account" surfaces (Sidebar's
+ * account menu, /profile), but wrong for anything meant to reflect "whose
+ * workspace is this", which during Modo Supervisor is a different person
+ * entirely. Any screen rendering a workspace-scoped greeting/identity must
+ * call this instead of reading the caller's own user_metadata directly (see
+ * DashboardPage, the bug this was written to fix).
+ *
+ * Uses the plain RLS-scoped client, not service-role: workspace_members'
+ * select policy and workspace_member_names' SECURITY DEFINER body both key
+ * off core.is_workspace_member(), which 0039_role_permissions_system.sql
+ * extends to also allow a supervising platform admin — so this resolves
+ * correctly for both a real member viewing their own workspace and an admin
+ * supervising someone else's, with no special-casing needed here. */
+export async function getWorkspacePrimaryUserName(workspaceId: string): Promise<string> {
+  const supabase = await createClient();
+
+  const { data: earliestMember } = await supabase
+    .from("workspace_members")
+    .select("user_id")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!earliestMember) return "";
+
+  const { data: names } = await supabase.rpc("workspace_member_names", { ws_id: workspaceId });
+  const match = ((names ?? []) as { user_id: string; full_name: string }[]).find(
+    (n) => n.user_id === earliestMember.user_id,
+  );
+  return match?.full_name ?? "";
+}

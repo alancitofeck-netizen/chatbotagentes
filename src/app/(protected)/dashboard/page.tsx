@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getCurrentMemberId, requireUser, requireActiveWorkspace } from "@/lib/auth/session";
+import { getCurrentMemberId, requireActiveWorkspace, getWorkspacePrimaryUserName } from "@/lib/auth/session";
 import {
   getDashboardKpis,
   getActivitySeries,
@@ -25,9 +25,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const user = await requireUser();
   const { workspaceId, role } = await requireActiveWorkspace();
-  const firstName = ((user.user_metadata?.full_name as string | undefined) ?? "").split(" ")[0];
 
   const [
     kpis,
@@ -41,6 +39,7 @@ export default async function DashboardPage() {
     contactOptions,
     conversationOptions,
     upcomingEvents,
+    primaryUserName,
   ] = await Promise.all([
     getDashboardKpis(workspaceId),
     getActivitySeries(workspaceId, "7d"),
@@ -53,7 +52,13 @@ export default async function DashboardPage() {
     getContactOptions(workspaceId),
     getConversationOptions(workspaceId),
     getUpcomingEvents(workspaceId),
+    // The workspace's own primary user — NOT the signed-in caller — so the
+    // greeting reflects whose workspace this is. In Modo Supervisor those
+    // differ: a platform admin viewing someone else's workspace must see
+    // that workspace owner's name here, never their own.
+    getWorkspacePrimaryUserName(workspaceId),
   ]);
+  const firstName = primaryUserName.split(" ")[0];
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
