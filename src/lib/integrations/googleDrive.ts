@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { recordGrantedScopes } from "@/lib/integrations/googleAccount";
 
 const PROVIDER = "google_drive";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -64,12 +65,16 @@ export function getGoogleDriveAuthUrl(redirectUri: string, state: string): strin
     scope: SCOPE,
     access_type: "offline",
     prompt: "consent",
+    // Merges with whatever this Google account already granted elsewhere
+    // (e.g. "Continuar con Google" login) instead of narrowing the consent
+    // screen to only this scope — real incremental authorization.
+    include_granted_scopes: "true",
     state,
   });
   return `${GOOGLE_AUTH_URL}?${params.toString()}`;
 }
 
-async function exchangeCodeForTokens(code: string, redirectUri: string): Promise<GoogleTokenBundle> {
+async function exchangeCodeForTokens(code: string, redirectUri: string): Promise<GoogleTokenBundle & { scope: string }> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error("Google OAuth no está configurado (faltan GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).");
@@ -92,6 +97,7 @@ async function exchangeCodeForTokens(code: string, redirectUri: string): Promise
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     expiresAt: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+    scope: (data.scope as string | undefined) ?? "",
   };
 }
 
@@ -115,6 +121,8 @@ export async function connectGoogleDrive(workspaceId: string, code: string, redi
     p_secret_json: JSON.stringify(tokens),
   });
   if (error) throw new Error("No se pudo guardar la conexión con Google Drive.");
+
+  await recordGrantedScopes(workspaceId, tokens.scope).catch(() => {});
 }
 
 export async function disconnectGoogleDrive(workspaceId: string): Promise<void> {

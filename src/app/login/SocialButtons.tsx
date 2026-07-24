@@ -45,7 +45,9 @@ export function SocialButtons() {
     <div className="grid grid-cols-2 gap-3">
       <button
         type="button"
-        onClick={() => handleComingSoon("Google")}
+        onClick={() => {
+          window.location.href = "/api/auth/google/connect";
+        }}
         className="flex items-center justify-center gap-2 rounded-md border border-border-strong bg-surface-1 px-4 py-2.5 text-sm font-medium text-foreground transition-all duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[var(--elevation-sm)]"
       >
         <GoogleIcon />

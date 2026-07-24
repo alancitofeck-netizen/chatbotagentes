@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/validation";
 import { toast } from "@/components/toast/toast";
 import { signUp, type SignUpState } from "./actions";
+import { SocialButtons } from "@/app/login/SocialButtons";
 
 const initialState: SignUpState = {};
 
@@ -48,46 +49,56 @@ export function RegisterForm() {
   }
 
   return (
-    <form action={handleSubmit} className="flex flex-col gap-4" noValidate>
-      <Input
-        name="fullName"
-        label="Nombre completo"
-        placeholder="Sofía Reyes"
-        autoComplete="name"
-        error={fieldErrors.fullName}
-        required
-      />
-      <Input
-        name="email"
-        type="email"
-        label="Correo electrónico"
-        placeholder="tú@empresa.com"
-        autoComplete="email"
-        error={fieldErrors.email}
-        required
-      />
-      <PasswordInput
-        name="password"
-        label="Contraseña"
-        placeholder="Mínimo 8 caracteres"
-        autoComplete="new-password"
-        error={fieldErrors.password}
-        required
-      />
-      <PasswordInput
-        name="confirmPassword"
-        label="Confirmar contraseña"
-        placeholder="Repite tu contraseña"
-        autoComplete="new-password"
-        error={fieldErrors.confirmPassword}
-        required
-      />
-      <Button type="submit" size="lg" fullWidth loading={isPending}>
-        Crear cuenta
-      </Button>
-      <p className="text-center text-xs text-neutral-500">
-        Al crear tu cuenta se crea automáticamente tu workspace de Growth Link.
-      </p>
-    </form>
+    <div className="flex flex-col gap-6">
+      <SocialButtons />
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border-default" />
+        <span className="text-xs font-medium text-neutral-400">o regístrate con email</span>
+        <div className="h-px flex-1 bg-border-default" />
+      </div>
+
+      <form action={handleSubmit} className="flex flex-col gap-4" noValidate>
+        <Input
+          name="fullName"
+          label="Nombre completo"
+          placeholder="Sofía Reyes"
+          autoComplete="name"
+          error={fieldErrors.fullName}
+          required
+        />
+        <Input
+          name="email"
+          type="email"
+          label="Correo electrónico"
+          placeholder="tú@empresa.com"
+          autoComplete="email"
+          error={fieldErrors.email}
+          required
+        />
+        <PasswordInput
+          name="password"
+          label="Contraseña"
+          placeholder="Mínimo 8 caracteres"
+          autoComplete="new-password"
+          error={fieldErrors.password}
+          required
+        />
+        <PasswordInput
+          name="confirmPassword"
+          label="Confirmar contraseña"
+          placeholder="Repite tu contraseña"
+          autoComplete="new-password"
+          error={fieldErrors.confirmPassword}
+          required
+        />
+        <Button type="submit" size="lg" fullWidth loading={isPending}>
+          Crear cuenta
+        </Button>
+        <p className="text-center text-xs text-neutral-500">
+          Al crear tu cuenta se crea automáticamente tu workspace de Growth Link.
+        </p>
+      </form>
+    </div>
   );
 }

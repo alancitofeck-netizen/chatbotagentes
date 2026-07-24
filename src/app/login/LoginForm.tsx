@@ -24,7 +24,9 @@ export function LoginForm({ next, initialError }: { next: string; initialError?:
   const [rememberMe, setRememberMe] = useState(true);
 
   useEffect(() => {
-    if (initialError) toast.error(initialError);
+    if (!initialError) return;
+    const id = setTimeout(() => toast.error(initialError), 0);
+    return () => clearTimeout(id);
   }, [initialError]);
 
   useEffect(() => {
