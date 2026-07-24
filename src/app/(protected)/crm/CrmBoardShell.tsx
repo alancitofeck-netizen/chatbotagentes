@@ -100,10 +100,14 @@ export function CrmBoardShell({
 
   function handleCreatePipeline() {
     startCreatePipeline(async () => {
-      const fresh = await ensureCrmPipelineAction();
-      setBoard(fresh);
-      if (fresh) setPipelines((prev) => (prev.some((p) => p.id === fresh.pipelineId) ? prev : [...prev, { id: fresh.pipelineId, name: fresh.pipelineName }]));
-      toast.success("Pipeline de ventas creado.");
+      try {
+        const fresh = await ensureCrmPipelineAction();
+        setBoard(fresh);
+        if (fresh) setPipelines((prev) => (prev.some((p) => p.id === fresh.pipelineId) ? prev : [...prev, { id: fresh.pipelineId, name: fresh.pipelineName }]));
+        toast.success("Pipeline de ventas creado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo crear el pipeline de ventas.");
+      }
     });
   }
 

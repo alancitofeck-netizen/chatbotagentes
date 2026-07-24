@@ -3,6 +3,7 @@ import { forbidden } from "next/navigation";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import { isPlatformAdmin as checkIsPlatformAdmin } from "@/lib/auth/roles";
 import { getCrmBoard, getCrmPipelines } from "@/lib/crm/queries";
+import { ensureCrmPipeline } from "@/lib/crm/actions";
 import { getAgentList, getTeams } from "@/lib/agents/queries";
 import { getAllWorkspacesForSupervision } from "@/lib/platform/queries";
 import { getWorkspaceMembers, getWorkspaceTags } from "@/lib/inbox/queries";
@@ -32,7 +33,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
 
   const isPlatformAdmin = await checkIsPlatformAdmin();
 
-  const [board, pipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents, moduleStatus, hasKpiSheet, platformWorkspaces] =
+  const [initialBoard, initialPipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents, moduleStatus, hasKpiSheet, platformWorkspaces] =
     await Promise.all([
       getCrmBoard(workspaceId),
       getCrmPipelines(workspaceId),
@@ -50,6 +51,21 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
       isPlatformAdmin ? getAllWorkspacesForSupervision() : Promise.resolve([]),
     ]);
   const atsEnabled = moduleStatus.some((m) => m.moduleKey === "ats" && m.enabled);
+
+  let board = initialBoard;
+  let pipelines = initialPipelines;
+
+  // A first-time Agent in a workspace with no CRM pipeline yet (e.g. their
+  // own solo workspace from provisionDefaultWorkspaceIfNeeded, which enables
+  // the CRM module but never seeds a pipeline) must never hit the "Crear
+  // pipeline de ventas" empty state — pipelines_insert (RLS) intentionally
+  // blocks agents from creating pipelines themselves, so it auto-provisions
+  // here via ensureCrmPipeline's service-role escalation instead. Owner/admin
+  // keep the manual empty-state button (they administer pipelines).
+  if (!board && isRealAgent) {
+    await ensureCrmPipeline(workspaceId);
+    [board, pipelines] = await Promise.all([getCrmBoard(workspaceId), getCrmPipelines(workspaceId)]);
+  }
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">

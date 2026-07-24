@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { getCrmBoard, getCrmPipelines, getOpportunityActivity, getOpportunityDetail } from "@/lib/crm/queries";
 import { getCrmAnalyticsRangeData, resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
@@ -77,7 +78,24 @@ const DEFAULT_CRM_STAGES = [
  * pipeline yet, so the first opportunity created for a workspace provisions
  * it instead of throwing "todavía no tiene un pipeline de ventas". Exported
  * so the Tablero empty state can also call it directly (no opportunity
- * required to get a usable board). */
+ * required to get a usable board), and so CrmPage (page.tsx) can
+ * auto-provision it for a first-time Agent (see comment below).
+ *
+ * `pipelines_insert` (0002_crm_and_dashboard.sql) intentionally restricts
+ * INSERT on public.pipelines to owner/admin — agents must not be able to
+ * create pipelines at will. But every workspace still needs its one CRM
+ * pipeline seeded on first use, regardless of whether an owner/admin or an
+ * agent gets there first (e.g. a brand-new solo-agent workspace from
+ * provisionDefaultWorkspaceIfNeeded, src/lib/auth/provision-workspace.ts,
+ * which enables the CRM module but never seeds a pipeline). So the existence
+ * check runs under the caller's own RLS-scoped session (cheap, and covers
+ * the overwhelming majority of calls — the pipeline already exists), and
+ * only the actual creation — always this exact fixed shape: one pipeline
+ * named "Pipeline de ventas" with the standard default stages, never a
+ * custom name, never more than one per workspace — escalates to the
+ * service-role client. This does NOT open up arbitrary pipeline creation to
+ * agents: createPipeline() (custom name, multiple pipelines per workspace,
+ * below) still runs on the RLS-scoped client and stays owner/admin-only. */
 export async function ensureCrmPipeline(workspaceId: string): Promise<string> {
   const supabase = await createClient();
 
@@ -90,14 +108,30 @@ export async function ensureCrmPipeline(workspaceId: string): Promise<string> {
     .maybeSingle();
   if (existing) return existing.id as string;
 
-  const { data: pipeline, error } = await supabase
+  const service = createServiceRoleClient();
+
+  // Re-check under service-role right before creating — closes the TOCTOU
+  // race between two concurrent first-visits (e.g. two tabs, or an agent
+  // clicking the board's empty-state button while page.tsx's own
+  // auto-provision call for the same request is still in flight) so a
+  // workspace never ends up with two "Pipeline de ventas" rows.
+  const { data: existingRace } = await service
+    .from("pipelines")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("module_key", "crm")
+    .limit(1)
+    .maybeSingle();
+  if (existingRace) return existingRace.id as string;
+
+  const { data: pipeline, error } = await service
     .from("pipelines")
     .insert({ workspace_id: workspaceId, module_key: "crm", name: "Pipeline de ventas" })
     .select("id")
     .single();
   if (error || !pipeline) throw new Error("No se pudo crear el pipeline de ventas.");
 
-  await supabase.from("pipeline_stages").insert(
+  await service.from("pipeline_stages").insert(
     DEFAULT_CRM_STAGES.map((s, i) => ({
       pipeline_id: pipeline.id,
       name: s.name,

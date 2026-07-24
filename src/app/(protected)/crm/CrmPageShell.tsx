@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { KanbanSquare } from "lucide-react";
+import { toast } from "@/components/toast/toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import type { CrmBoard, CrmPipelineOption, OpportunityTag } from "@/lib/crm/queries";
@@ -69,8 +70,13 @@ export function CrmPageShell({
 
   function handleCreatePipeline() {
     startCreatePipeline(async () => {
-      const fresh = await ensureCrmPipelineAction();
-      setBoard(fresh);
+      try {
+        const fresh = await ensureCrmPipelineAction();
+        setBoard(fresh);
+        toast.success("Pipeline de ventas creado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo crear el pipeline de ventas.");
+      }
     });
   }
   // Derived directly from the URL on every render (not mirrored into its own
