@@ -33,6 +33,10 @@ export async function GET(request: NextRequest) {
   try {
     const redirectUri = `${request.nextUrl.origin}/api/auth/google/callback`;
     const tokens = await exchangeCodeForTokens(code, redirectUri);
+    // Logs exactly what Google's token endpoint reports as granted — the
+    // authoritative source, since it reflects what the user actually
+    // consented to, not just what the initial /connect request asked for.
+    console.log(`[google login callback] redirect_uri=${redirectUri} granted_scope=${tokens.scope}`);
     const profile = await getGoogleProfile(tokens.accessToken);
     if (!profile.email) return failure("/login");
 

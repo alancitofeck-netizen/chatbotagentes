@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const state = crypto.randomUUID();
     const redirectUri = `${request.nextUrl.origin}/api/auth/google/callback`;
     const authUrl = getGoogleAccountAuthUrl(redirectUri, state);
+    console.log(`[google login connect] redirect_uri=${redirectUri} scope=${new URL(authUrl).searchParams.get("scope")}`);
 
     const response = NextResponse.redirect(authUrl);
     response.cookies.set(STATE_COOKIE, state, {
