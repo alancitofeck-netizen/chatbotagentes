@@ -111,19 +111,22 @@ async function getTargetMember(workspaceId: string, memberId: string) {
   return data;
 }
 
-/** Owner-only, and never targets/assigns "owner" — a workspace has exactly
- * one Owner, who never changes via this action (confirmed requirement: "solo
- * existe un único Owner del sistema"). requireManagerRole (owner OR admin)
+/** Owner-only. A workspace has exactly one Owner at all times: assigning
+ * role="owner" to someone else doesn't just set their role, it *transfers*
+ * ownership — the acting Owner is atomically demoted to Admin in the same
+ * operation, via transfer_workspace_ownership (0047_transfer_workspace_
+ * ownership.sql). That RPC exists specifically so the two-row swap can never
+ * leave the workspace with zero Owners (which two sequential plain
+ * `.update()` calls couldn't guarantee). requireManagerRole (owner OR admin)
  * is deliberately NOT used here, unlike every other mutation in this file —
  * role changes specifically are more sensitive (privilege escalation) than
  * the rest of workspace management, which stays owner+admin. Used by both
  * Perfil > Miembros (MembersSection.tsx) and the CRM Agentes tab
- * (AgentsList.tsx's "Cambiar rol" button) — one action, one set of rules,
+ * (AgentsList.tsx's role-badge dropdown) — one action, one set of rules,
  * instead of duplicating this logic per surface. */
 export async function updateMemberRole(memberId: string, role: Role) {
   const { workspaceId, role: actingRole } = await requireActiveWorkspace();
   if (actingRole !== "owner") throw new Error("Solo el Owner puede cambiar roles.");
-  if (role === "owner") throw new Error("No se puede asignar el rol Owner.");
   if (!VALID_ROLES.includes(role)) throw new Error("Rol inválido.");
 
   const ownMemberId = await getCurrentMemberId(workspaceId);
@@ -137,6 +140,29 @@ export async function updateMemberRole(memberId: string, role: Role) {
   if (target.role === role) return;
 
   const supabase = await createClient();
+
+  if (role === "owner") {
+    const { error } = await supabase.rpc("transfer_workspace_ownership", {
+      p_workspace_id: workspaceId,
+      p_new_owner_member_id: memberId,
+    });
+    if (error) throw new Error(error.message || "No se pudo transferir la propiedad del workspace.");
+
+    await supabase.from("audit_log").insert({
+      workspace_id: workspaceId,
+      actor_type: "user",
+      actor_id: ownMemberId,
+      action: "workspace_owner_transferred",
+      entity_type: "workspace_member",
+      entity_id: memberId,
+      metadata: { from_owner_member_id: ownMemberId, to_owner_member_id: memberId },
+    });
+
+    revalidatePath("/settings");
+    revalidatePath("/crm");
+    return;
+  }
+
   const { error } = await supabase
     .from("workspace_members")
     .update({ role })

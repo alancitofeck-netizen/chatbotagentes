@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Minus, Pencil, Search, ShieldCheck, StickyNote, TrendingDown, TrendingUp, Trophy, Users2 } from "lucide-react";
+import { Minus, Pencil, Search, StickyNote, TrendingDown, TrendingUp, Trophy, Users2 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,6 +11,7 @@ import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { toast } from "@/components/toast/toast";
 import type { AgentListItem, Team } from "@/lib/agents/queries";
 import { getAgentListAction } from "@/lib/agents/actions";
@@ -21,10 +23,12 @@ import { ManageTeamsSheet } from "./ManageTeamsSheet";
 
 const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", agent: "Agente" };
 const ROLE_BADGE: Record<string, BadgeVariant> = { owner: "accent", admin: "warning", agent: "neutral" };
-/** Only Admin/Agent are ever offered as a target — "Cambiar rol" can never
- * assign or target Owner (updateMemberRole rejects both server-side too;
- * un workspace tiene un único Owner, que no se reasigna desde acá). */
-type AssignableRole = "admin" | "agent";
+/** All 3 roles are assignable now — assigning "owner" doesn't just set a
+ * role, it *transfers* ownership (updateMemberRole demotes the acting Owner
+ * to Admin in the same atomic RPC call, see
+ * supabase/migrations/0047_transfer_workspace_ownership.sql). */
+type AssignableRole = "owner" | "admin" | "agent";
+const ROLE_ORDER: AssignableRole[] = ["owner", "admin", "agent"];
 
 const PRESENCE_LABEL: Record<"online" | "away" | "offline", { emoji: string; label: string }> = {
   online: { emoji: "🟢", label: "Online" },
@@ -73,6 +77,7 @@ export function AgentsList({
    * gate). Admin and Agent never see the button at all. */
   isOwner: boolean;
 }) {
+  const router = useRouter();
   const [agents, setAgents] = useState(initialAgents);
   const presence = useWorkspacePresence(workspaceId);
   const [teams, setTeams] = useState(initialTeams);
@@ -87,19 +92,31 @@ export function AgentsList({
   const [, startTransition] = useTransition();
   const [isChangingRole, startRoleChange] = useTransition();
 
-  function openRoleChange(agent: AgentListItem) {
-    setPendingRole(agent.role === "admin" ? "agent" : "admin");
+  function openRoleChange(agent: AgentListItem, role: AssignableRole) {
+    setPendingRole(role);
     setRoleChangeAgent(agent);
   }
 
   function confirmRoleChange() {
     if (!roleChangeAgent) return;
     const agent = roleChangeAgent;
+    const role = pendingRole;
     startRoleChange(async () => {
       try {
-        await updateMemberRole(agent.memberId, pendingRole);
-        toast.success(`Rol de ${agent.fullName} actualizado a ${ROLE_LABEL[pendingRole]}.`);
+        await updateMemberRole(agent.memberId, role);
         setRoleChangeAgent(null);
+        if (role === "owner") {
+          toast.success(`${agent.fullName} ahora es el Owner del workspace. Tu rol pasó a Admin.`);
+          // The acting Owner just demoted themselves to Admin — `isOwner` is
+          // a server-rendered prop from this page's own load, so a plain
+          // refetch() (agent list data only) would leave it stale, still
+          // showing clickable role badges the server would now reject.
+          // router.refresh() re-runs the Server Component tree to pick up
+          // the new role immediately, without a full page reload.
+          router.refresh();
+        } else {
+          toast.success(`Rol de ${agent.fullName} actualizado a ${ROLE_LABEL[role]}.`);
+        }
         refetch();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo cambiar el rol.");
@@ -209,20 +226,20 @@ export function AgentsList({
         <EmptyState icon={Trophy} title="Sin agentes" description="No hay resultados para este filtro." />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)]">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table className="w-full min-w-[960px] text-left text-sm">
             <thead>
               <tr className="border-b border-border-default text-xs uppercase text-neutral-500">
-                <th className="px-4 py-3 font-medium">Agente</th>
-                <th className="px-4 py-3 font-medium">Rol</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 font-medium">Score</th>
-                <th className="px-4 py-3 font-medium">Tendencia</th>
-                <th className="px-4 py-3 font-medium">Leads</th>
-                <th className="px-4 py-3 font-medium">Respuesta</th>
-                <th className="px-4 py-3 font-medium">Reuniones</th>
-                <th className="px-4 py-3 font-medium">Conversión</th>
-                <th className="px-4 py-3 font-medium">Última actividad</th>
-                <th className="px-4 py-3 font-medium">Acciones</th>
+                <th className="px-2.5 py-2 font-medium">Agente</th>
+                <th className="px-2.5 py-2 font-medium">Rol</th>
+                <th className="px-2.5 py-2 font-medium">Estado</th>
+                <th className="px-2.5 py-2 font-medium">Score</th>
+                <th className="px-2.5 py-2 font-medium">Tendencia</th>
+                <th className="px-2.5 py-2 font-medium">Leads</th>
+                <th className="px-2.5 py-2 font-medium">Respuesta</th>
+                <th className="px-2.5 py-2 font-medium">Reuniones</th>
+                <th className="px-2.5 py-2 font-medium">Conversión</th>
+                <th className="px-2.5 py-2 font-medium">Última actividad</th>
+                <th className="px-2.5 py-2 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -233,9 +250,9 @@ export function AgentsList({
                 const presenceInfo = PRESENCE_LABEL[presenceStatus];
                 return (
                   <tr key={a.memberId} className="border-b border-border-default last:border-b-0 hover:bg-surface-2">
-                    <td className="px-4 py-3">
+                    <td className="px-2.5 py-2">
                       <Link href={`/crm/agents/${a.memberId}`} className="flex items-center gap-3">
-                        <Avatar name={a.fullName} size={36} />
+                        <Avatar name={a.fullName} size={32} />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">{a.fullName}</p>
                           <p className="truncate text-xs text-neutral-500">
@@ -245,10 +262,26 @@ export function AgentsList({
                         </div>
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={ROLE_BADGE[a.role] ?? "neutral"}>{ROLE_LABEL[a.role] ?? a.role}</Badge>
+                    <td className="px-2.5 py-2">
+                      {isOwner && a.role !== "owner" ? (
+                        <DropdownMenu
+                          triggerLabel={`Cambiar rol de ${a.fullName}`}
+                          triggerClassName="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-accent-500 focus-visible:outline-offset-2"
+                          trigger={
+                            <Badge variant={ROLE_BADGE[a.role] ?? "neutral"} className="cursor-pointer hover:opacity-80">
+                              {ROLE_LABEL[a.role] ?? a.role}
+                            </Badge>
+                          }
+                          items={ROLE_ORDER.filter((r) => r !== a.role).map((r) => ({
+                            label: ROLE_LABEL[r],
+                            onSelect: () => openRoleChange(a, r),
+                          }))}
+                        />
+                      ) : (
+                        <Badge variant={ROLE_BADGE[a.role] ?? "neutral"}>{ROLE_LABEL[a.role] ?? a.role}</Badge>
+                      )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-2.5 py-2">
                       <span
                         className="inline-flex items-center gap-1.5 text-xs text-neutral-500"
                         title={presenceStatus === "offline" ? formatRelative(a.sessionLastActiveAt) : undefined}
@@ -257,24 +290,24 @@ export function AgentsList({
                         {presenceInfo.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-2xl font-semibold" style={{ color: scoreColor(a.score) }}>
+                    <td className="px-2.5 py-2">
+                      <span className="font-mono text-lg font-semibold" style={{ color: scoreColor(a.score) }}>
                         {a.score}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-2.5 py-2">
                       <div className="flex items-center gap-2">
-                        <Sparkline data={a.trend} color={a.trendDirection === "down" ? "#C1484F" : "var(--color-accent-500)"} />
+                        <Sparkline data={a.trend} width={48} height={24} color={a.trendDirection === "down" ? "#C1484F" : "var(--color-accent-500)"} />
                         {a.trendDirection === "up" && <TrendingUp className="size-4 text-success-strong" aria-hidden="true" />}
                         {a.trendDirection === "down" && <TrendingDown className="size-4 text-error-strong" aria-hidden="true" />}
                         {a.trendDirection === "flat" && <Minus className="size-4 text-neutral-400" aria-hidden="true" />}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs">
+                    <td className="px-2.5 py-2 font-mono text-xs">
                       {a.leadsContacted}/{a.leadsAssigned}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs">{a.responseRate}%</td>
-                    <td className="px-4 py-3">
+                    <td className="px-2.5 py-2 font-mono text-xs">{a.responseRate}%</td>
+                    <td className="px-2.5 py-2">
                       <p className="font-mono text-xs">
                         {a.meetingsCompleted}/{a.meetingsScheduled}
                       </p>
@@ -289,9 +322,9 @@ export function AgentsList({
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs">{a.conversionRate}%</td>
-                    <td className="px-4 py-3 text-xs text-neutral-500">{formatRelative(a.lastActivityAt)}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-2.5 py-2 font-mono text-xs">{a.conversionRate}%</td>
+                    <td className="px-2.5 py-2 text-xs text-neutral-500">{formatRelative(a.lastActivityAt)}</td>
+                    <td className="px-2.5 py-2">
                       <div className="flex items-center gap-1">
                         <Link
                           href={`/crm/agents/${a.memberId}`}
@@ -316,16 +349,6 @@ export function AgentsList({
                         >
                           <StickyNote size={15} aria-hidden="true" />
                         </button>
-                        {isOwner && a.role !== "owner" && (
-                          <button
-                            type="button"
-                            title="Cambiar rol"
-                            onClick={() => openRoleChange(a)}
-                            className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-2 hover:text-foreground"
-                          >
-                            <ShieldCheck size={15} aria-hidden="true" />
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -362,30 +385,31 @@ export function AgentsList({
 
       <ConfirmDialog
         open={roleChangeAgent !== null}
-        title="Cambiar rol"
+        title={pendingRole === "owner" ? "Transferir propiedad del workspace" : "Cambiar rol"}
         description={
-          roleChangeAgent && (
+          roleChangeAgent &&
+          (pendingRole === "owner" ? (
+            <>
+              Vas a transferir la propiedad de este workspace a{" "}
+              <strong className="text-foreground">{roleChangeAgent.fullName}</strong>. Tu propio rol pasará
+              automáticamente a <Badge variant={ROLE_BADGE.admin}>Admin</Badge> — solo puede existir un Owner por
+              workspace. Esta acción no se puede deshacer directamente, solo transfiriendo la propiedad de nuevo.
+            </>
+          ) : (
             <>
               Vas a cambiar el rol de <strong className="text-foreground">{roleChangeAgent.fullName}</strong> de{" "}
-              <Badge variant={ROLE_BADGE[roleChangeAgent.role] ?? "neutral"}>{ROLE_LABEL[roleChangeAgent.role] ?? roleChangeAgent.role}</Badge>{" "}
-              a:
+              <Badge variant={ROLE_BADGE[roleChangeAgent.role] ?? "neutral"}>
+                {ROLE_LABEL[roleChangeAgent.role] ?? roleChangeAgent.role}
+              </Badge>{" "}
+              a <Badge variant={ROLE_BADGE[pendingRole]}>{ROLE_LABEL[pendingRole]}</Badge>.
             </>
-          )
+          ))
         }
-        confirmLabel="Cambiar rol"
+        confirmLabel={pendingRole === "owner" ? "Transferir propiedad" : "Cambiar rol"}
         isLoading={isChangingRole}
         onConfirm={confirmRoleChange}
         onCancel={() => setRoleChangeAgent(null)}
-      >
-        <Select
-          label="Nuevo rol"
-          value={pendingRole}
-          onChange={(e) => setPendingRole(e.target.value as AssignableRole)}
-        >
-          <option value="admin">Admin</option>
-          <option value="agent">Agente</option>
-        </Select>
-      </ConfirmDialog>
+      />
     </div>
   );
 }
