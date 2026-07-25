@@ -18,10 +18,21 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/components/toast/toast";
 import type { PlatformWorkspaceSummary } from "@/lib/platform/queries";
-import { enterSupervisorMode, toggleWorkspaceStatus } from "@/lib/platform/actions";
+import { enterSupervisorMode, toggleWorkspaceStatus, updateWorkspacePrimaryRole } from "@/lib/platform/actions";
 import { useMultiWorkspacePresence } from "@/lib/presence/useMultiWorkspacePresence";
+
+type PrimaryAssignableRole = "admin" | "agent";
+
+interface RoleChangeRequest {
+  workspaceId: string;
+  memberId: string;
+  primaryUserName: string;
+  currentRole: string;
+  nextRole: PrimaryAssignableRole;
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
@@ -63,7 +74,17 @@ function IntegrationIcon({ active, icon: Icon, label }: { active: boolean; icon:
   );
 }
 
-function WorkspaceRow({ w, onlineCount }: { w: PlatformWorkspaceSummary; onlineCount: number }) {
+function WorkspaceRow({
+  w,
+  onlineCount,
+  role,
+  onRequestRoleChange,
+}: {
+  w: PlatformWorkspaceSummary;
+  onlineCount: number;
+  role: string;
+  onRequestRoleChange: (next: PrimaryAssignableRole) => void;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(w.status);
@@ -119,7 +140,22 @@ function WorkspaceRow({ w, onlineCount }: { w: PlatformWorkspaceSummary; onlineC
         </button>
       </td>
       <td className="px-4 py-3">
-        <Badge variant={ROLE_BADGE[w.primaryUserRole] ?? "neutral"}>{ROLE_LABEL[w.primaryUserRole] ?? w.primaryUserRole}</Badge>
+        {role === "owner" || !w.primaryMemberId ? (
+          <Badge variant={ROLE_BADGE[role] ?? "neutral"}>{ROLE_LABEL[role] ?? role}</Badge>
+        ) : (
+          <DropdownMenu
+            triggerLabel={`Cambiar rol de ${w.primaryUserName}`}
+            triggerClassName="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-accent-500 focus-visible:outline-offset-2"
+            trigger={
+              <Badge variant={ROLE_BADGE[role] ?? "neutral"} className="cursor-pointer hover:opacity-80">
+                {ROLE_LABEL[role] ?? role}
+              </Badge>
+            }
+            items={(["admin", "agent"] as PrimaryAssignableRole[])
+              .filter((r) => r !== role)
+              .map((r) => ({ label: ROLE_LABEL[r], onSelect: () => onRequestRoleChange(r) }))}
+          />
+        )}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1.5">
@@ -202,37 +238,106 @@ function WorkspaceRow({ w, onlineCount }: { w: PlatformWorkspaceSummary; onlineC
  * whichever real page of that workspace (Dashboard/CRM/Configuración) makes
  * sense — no dedicated admin pages built for this, by design. Rendered by
  * CrmPageShell.tsx only when the viewer is a platform admin; every other
- * owner/admin still sees the normal per-workspace AgentsList here. */
+ * owner/admin still sees the normal per-workspace AgentsList here.
+ *
+ * "Rol" is directly editable here too (Agente↔Admin) via
+ * updateWorkspacePrimaryRole — the platform Owner never has to enter a
+ * workspace ("Administrar") or join its team just to promote its primary
+ * user. Role state is tracked per-workspace in this parent component (not
+ * inside WorkspaceRow) specifically so the single shared ConfirmDialog can
+ * live here as a real sibling of the table, not nested inside a <tr> (which
+ * would be invalid HTML — ConfirmDialog isn't portal-rendered, unlike
+ * DropdownMenu). */
 export function PlatformWorkspacesTable({ workspaces }: { workspaces: PlatformWorkspaceSummary[] }) {
   const onlineByWorkspace = useMultiWorkspacePresence(workspaces.map((w) => w.workspaceId));
+  const [roles, setRoles] = useState<Record<string, string>>(() =>
+    Object.fromEntries(workspaces.map((w) => [w.workspaceId, w.primaryUserRole])),
+  );
+  const [roleChange, setRoleChange] = useState<RoleChangeRequest | null>(null);
+  const [isChangingRole, startRoleChange] = useTransition();
+  const router = useRouter();
+
+  function confirmRoleChange() {
+    if (!roleChange) return;
+    const { workspaceId, memberId, nextRole } = roleChange;
+    startRoleChange(async () => {
+      try {
+        await updateWorkspacePrimaryRole(memberId, nextRole);
+        setRoles((prev) => ({ ...prev, [workspaceId]: nextRole }));
+        toast.success(`Rol de ${roleChange.primaryUserName} actualizado a ${ROLE_LABEL[nextRole]}.`);
+        setRoleChange(null);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo cambiar el rol.");
+      }
+    });
+  }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)]">
-      <table className="w-full min-w-[1500px] text-left text-sm">
-        <thead>
-          <tr className="border-b border-border-default text-xs uppercase text-neutral-500">
-            <th className="px-4 py-3 font-medium">Workspace</th>
-            <th className="px-4 py-3 font-medium">Usuario principal</th>
-            <th className="px-4 py-3 font-medium">Estado</th>
-            <th className="px-4 py-3 font-medium">Rol</th>
-            <th className="px-4 py-3 font-medium">Miembros</th>
-            <th className="px-4 py-3 font-medium">Leads</th>
-            <th className="px-4 py-3 font-medium">Conversaciones</th>
-            <th className="px-4 py-3 font-medium">Oportunidades</th>
-            <th className="px-4 py-3 font-medium">Agenda hoy</th>
-            <th className="px-4 py-3 font-medium">Bot / WA</th>
-            <th className="px-4 py-3 font-medium">Integraciones</th>
-            <th className="px-4 py-3 font-medium">Última actividad</th>
-            <th className="px-4 py-3 font-medium">Creado</th>
-            <th className="px-4 py-3 font-medium">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {workspaces.map((w) => (
-            <WorkspaceRow key={w.workspaceId} w={w} onlineCount={onlineByWorkspace[w.workspaceId] ?? 0} />
-          ))}
-        </tbody>
-      </table>
+    <div className="flex flex-col gap-4">
+      <div className="overflow-x-auto rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)]">
+        <table className="w-full min-w-[1500px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-border-default text-xs uppercase text-neutral-500">
+              <th className="px-4 py-3 font-medium">Workspace</th>
+              <th className="px-4 py-3 font-medium">Usuario principal</th>
+              <th className="px-4 py-3 font-medium">Estado</th>
+              <th className="px-4 py-3 font-medium">Rol</th>
+              <th className="px-4 py-3 font-medium">Miembros</th>
+              <th className="px-4 py-3 font-medium">Leads</th>
+              <th className="px-4 py-3 font-medium">Conversaciones</th>
+              <th className="px-4 py-3 font-medium">Oportunidades</th>
+              <th className="px-4 py-3 font-medium">Agenda hoy</th>
+              <th className="px-4 py-3 font-medium">Bot / WA</th>
+              <th className="px-4 py-3 font-medium">Integraciones</th>
+              <th className="px-4 py-3 font-medium">Última actividad</th>
+              <th className="px-4 py-3 font-medium">Creado</th>
+              <th className="px-4 py-3 font-medium">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {workspaces.map((w) => (
+              <WorkspaceRow
+                key={w.workspaceId}
+                w={w}
+                onlineCount={onlineByWorkspace[w.workspaceId] ?? 0}
+                role={roles[w.workspaceId] ?? w.primaryUserRole}
+                onRequestRoleChange={(next) => {
+                  if (!w.primaryMemberId) return;
+                  setRoleChange({
+                    workspaceId: w.workspaceId,
+                    memberId: w.primaryMemberId,
+                    primaryUserName: w.primaryUserName,
+                    currentRole: roles[w.workspaceId] ?? w.primaryUserRole,
+                    nextRole: next,
+                  });
+                }}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <ConfirmDialog
+        open={roleChange !== null}
+        title="Cambiar rol"
+        description={
+          roleChange && (
+            <>
+              Vas a cambiar el rol de <strong className="text-foreground">{roleChange.primaryUserName}</strong> en su
+              workspace, de{" "}
+              <Badge variant={ROLE_BADGE[roleChange.currentRole] ?? "neutral"}>
+                {ROLE_LABEL[roleChange.currentRole] ?? roleChange.currentRole}
+              </Badge>{" "}
+              a <Badge variant={ROLE_BADGE[roleChange.nextRole]}>{ROLE_LABEL[roleChange.nextRole]}</Badge>.
+            </>
+          )
+        }
+        confirmLabel="Cambiar rol"
+        isLoading={isChangingRole}
+        onConfirm={confirmRoleChange}
+        onCancel={() => setRoleChange(null)}
+      />
     </div>
   );
 }

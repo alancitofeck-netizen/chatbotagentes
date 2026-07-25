@@ -18,6 +18,11 @@ export interface PlatformWorkspaceSummary {
    * Owner can tell at a glance which workspaces are real team accounts vs
    * solo self-service ones. */
   primaryUserRole: string;
+  /** workspace_members.id of the primary user's own row — needed to target
+   * platform_update_workspace_member_role (0048_platform_admin_role_
+   * management.sql) when the platform Owner changes this role directly from
+   * the table, without joining that workspace. */
+  primaryMemberId: string | null;
   memberCount: number;
   lastActivityAt: string | null;
   connectedIntegrations: string[];
@@ -83,7 +88,7 @@ export async function getAllWorkspacesForSupervision(): Promise<PlatformWorkspac
     { data: aiAgents },
   ] = await Promise.all([
     supabase.from("workspaces").select("id, name, slug, created_at, status, plan").order("created_at", { ascending: false }),
-    supabase.from("workspace_members").select("workspace_id, user_id, role, created_at, last_active_at").order("created_at", { ascending: true }),
+    supabase.from("workspace_members").select("id, workspace_id, user_id, role, created_at, last_active_at").order("created_at", { ascending: true }),
     supabase.from("integration_connections").select("workspace_id, provider").eq("status", "active"),
     supabase.from("contacts").select("workspace_id"),
     supabase.from("conversations").select("workspace_id, status").neq("status", "closed"),
@@ -99,10 +104,11 @@ export async function getAllWorkspacesForSupervision(): Promise<PlatformWorkspac
   ]);
   if (!workspaces) return [];
 
-  const membersByWorkspace = new Map<string, { user_id: string; role: string; created_at: string; last_active_at: string | null }[]>();
+  const membersByWorkspace = new Map<string, { id: string; user_id: string; role: string; created_at: string; last_active_at: string | null }[]>();
   for (const m of members ?? []) {
     const list = membersByWorkspace.get(m.workspace_id as string) ?? [];
     list.push({
+      id: m.id as string,
       user_id: m.user_id as string,
       role: m.role as string,
       created_at: m.created_at as string,
@@ -208,6 +214,7 @@ export async function getAllWorkspacesForSupervision(): Promise<PlatformWorkspac
       primaryUserName: primaryUser?.name ?? "—",
       primaryUserEmail: primaryUser?.email ?? "—",
       primaryUserRole: list[0]?.role ?? "—",
+      primaryMemberId: list[0]?.id ?? null,
       memberCount: list.length,
       lastActivityAt,
       connectedIntegrations: providers ? [...providers].map((p) => INTEGRATION_LABELS[p] ?? p) : [],

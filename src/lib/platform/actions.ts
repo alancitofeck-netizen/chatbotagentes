@@ -49,6 +49,34 @@ export async function toggleWorkspaceStatus(workspaceId: string, nextStatus: "ac
   if (error) throw new Error("No se pudo actualizar el estado del workspace.");
 }
 
+/** Lets the platform Owner change a workspace's primary user's role
+ * directly from the "Rol" column of PlatformWorkspacesTable — without
+ * entering that workspace ("Administrar") or being a member of it at all.
+ * Same authorization shape as toggleWorkspaceStatus above (requirePlatformAdmin
+ * + service-role update, bypassing RLS entirely since the caller has no real
+ * workspace_members row there to satisfy has_workspace_role). Deliberately
+ * restricted to agent/admin only — this table's "Rol" column has never
+ * shown or assigned "owner" (a self-service workspace has none to begin
+ * with; hand-provisioned ones already have one, permanently, per
+ * updateMemberRole's own one-Owner invariant), so this stays a simple
+ * Agente↔Admin toggle, not a second ownership-transfer path. */
+export async function updateWorkspacePrimaryRole(memberId: string, role: "agent" | "admin") {
+  await requireUser();
+  await requirePlatformAdmin();
+  if (role !== "agent" && role !== "admin") throw new Error("Rol inválido.");
+
+  const serviceClient = createServiceRoleClient();
+  const { data: target } = await serviceClient.from("workspace_members").select("id, role").eq("id", memberId).maybeSingle();
+  if (!target) throw new Error("Miembro no encontrado.");
+  if (target.role === "owner") throw new Error("No se puede cambiar el rol del Owner desde este panel.");
+  if (target.role === role) return;
+
+  const { error } = await serviceClient.from("workspace_members").update({ role }).eq("id", memberId);
+  if (error) throw new Error("No se pudo actualizar el rol.");
+
+  revalidatePath("/crm");
+}
+
 /** Restores the platform admin's own workspace (every account, including
  * the Owner global's, still owns its own workspace from registration — see
  * the "un Workspace por usuario" clarification). Falls back to
