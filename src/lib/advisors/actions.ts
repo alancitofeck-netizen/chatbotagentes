@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getAdvisorsBoard, getDealDetail } from "@/lib/advisors/queries";
 
@@ -41,7 +42,24 @@ const DEFAULT_STAGES = [
  * module starts with none — the first deal created for a workspace
  * auto-provisions its pipeline + a sensible default stage set, making the
  * board's own empty-state copy ("se crea con tu primera oportunidad") true
- * for this module. */
+ * for this module.
+ *
+ * `pipelines_insert` and `pipeline_stages_write` (0002_crm_and_dashboard.sql)
+ * both restrict writes to owner/admin only — by design, same as CRM's
+ * `pipelines_insert` (see ensureCrmPipeline, src/lib/crm/actions.ts, fixed
+ * for the exact same reason). A solo self-registered Agent workspace has no
+ * owner/admin at all, so their first "Nueva póliza" here hit the identical
+ * bug: creating this pipeline threw an RLS violation the caller's own
+ * plain client can't get past, which the Server Action boundary then
+ * reduces to a digest-only error in production. The existence check still
+ * runs on the caller's own RLS-scoped session (cheap, and covers the
+ * overwhelming majority of calls — the pipeline already exists); only the
+ * actual creation — always this exact fixed shape: one pipeline named
+ * "Pólizas y clientes" with these 5 default stages, never a custom name,
+ * never more than one per workspace — escalates to the service-role
+ * client. This does not open up arbitrary pipeline/stage creation to
+ * agents anywhere else; every other write path in this file stays on the
+ * RLS-scoped client. */
 async function ensurePipeline(workspaceId: string): Promise<string> {
   const supabase = await createClient();
 
@@ -54,14 +72,15 @@ async function ensurePipeline(workspaceId: string): Promise<string> {
     .maybeSingle();
   if (existing) return existing.id as string;
 
-  const { data: pipeline, error } = await supabase
+  const serviceClient = createServiceRoleClient();
+  const { data: pipeline, error } = await serviceClient
     .from("pipelines")
     .insert({ workspace_id: workspaceId, module_key: "advisors", name: "Pólizas y clientes" })
     .select("id")
     .single();
   if (error || !pipeline) throw new Error("No se pudo crear el pipeline de Asesores.");
 
-  await supabase.from("pipeline_stages").insert(
+  await serviceClient.from("pipeline_stages").insert(
     DEFAULT_STAGES.map((s, i) => ({
       pipeline_id: pipeline.id,
       name: s.name,
