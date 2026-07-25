@@ -38,6 +38,7 @@ export interface OpportunityCard {
   tags: OpportunityTag[];
   ownerId: string | null;
   ownerName: string | null;
+  ownerAvatarUrl: string | null;
   createdAt: string;
   lastContactAt: string | null;
   nextMeeting: { subject: string | null; startTime: string } | null;
@@ -201,8 +202,11 @@ export async function getCrmBoard(workspaceId: string, pipelineId?: string): Pro
     tagsByContact.set(row.contact_id as string, list);
   }
 
-  const nameByOwnerId = new Map(
-    ((names ?? []) as { member_id: string; full_name: string }[]).map((n) => [n.member_id, n.full_name]),
+  const nameByOwnerId = new Map<string, { fullName: string; avatarUrl: string | null }>(
+    ((names ?? []) as { member_id: string; full_name: string; avatar_url: string | null }[]).map((n) => [
+      n.member_id,
+      { fullName: n.full_name, avatarUrl: n.avatar_url },
+    ]),
   );
 
   const lastContactByContact = new Map<string, string>();
@@ -282,7 +286,8 @@ export async function getCrmBoard(workspaceId: string, pipelineId?: string): Pro
       phone: contact?.phone ?? null,
       tags: tagsByContact.get(contactId) ?? [],
       ownerId: (opp.owner_id as string | null) ?? null,
-      ownerName: opp.owner_id ? (nameByOwnerId.get(opp.owner_id as string) ?? null) : null,
+      ownerName: opp.owner_id ? (nameByOwnerId.get(opp.owner_id as string)?.fullName ?? null) : null,
+      ownerAvatarUrl: opp.owner_id ? (nameByOwnerId.get(opp.owner_id as string)?.avatarUrl ?? null) : null,
       createdAt: opp.created_at as string,
       lastContactAt,
       nextMeeting: nextMeetingByContact.get(contactId) ?? null,

@@ -3,9 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getUser, requireActiveWorkspace } from "@/lib/auth/session";
 
 export interface MyProfile {
+  userId: string;
   fullName: string;
   username: string;
   email: string;
+  /** Stored in user_metadata.avatar_url (Supabase Storage `avatars` bucket,
+   * public, path {userId}/avatar.webp) — one photo per user, shown
+   * everywhere else in the app that resolves a display name via
+   * public.workspace_member_names (0049_user_avatars.sql). */
+  avatarUrl: string | null;
   /** Stored in user_metadata.phone, never the native auth.users.phone column
    * — that column is reserved for Supabase's own OTP/SMS auth flow, and
    * writing it can trigger (or fail without) phone verification depending on
@@ -27,13 +33,20 @@ export async function getMyProfile(): Promise<MyProfile> {
   const user = await getUser();
   const { role, name: workspaceName, slug: workspaceSlug } = await requireActiveWorkspace();
 
-  const metadata = (user?.user_metadata ?? {}) as { full_name?: string; username?: string; phone?: string };
+  const metadata = (user?.user_metadata ?? {}) as {
+    full_name?: string;
+    username?: string;
+    phone?: string;
+    avatar_url?: string;
+  };
 
   return {
+    userId: user?.id ?? "",
     fullName: metadata.full_name ?? "",
     username: metadata.username ?? "",
     email: user?.email ?? "",
     phone: metadata.phone ?? "",
+    avatarUrl: metadata.avatar_url ?? null,
     role,
     workspaceName,
     workspaceSlug,

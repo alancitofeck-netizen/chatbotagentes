@@ -39,6 +39,7 @@ export interface AgentListItem {
   userId: string;
   fullName: string;
   email: string;
+  avatarUrl: string | null;
   role: string;
   title: string | null;
   status: "active" | "vacation" | "inactive";
@@ -124,10 +125,10 @@ export async function getAgentList(
 
   if (!members || members.length === 0) return [];
 
-  const nameByMemberId = new Map(
-    ((names ?? []) as { member_id: string; full_name: string; email: string }[]).map((n) => [
+  const nameByMemberId = new Map<string, { fullName: string; email: string; avatarUrl: string | null }>(
+    ((names ?? []) as { member_id: string; full_name: string; email: string; avatar_url: string | null }[]).map((n) => [
       n.member_id,
-      { fullName: n.full_name, email: n.email },
+      { fullName: n.full_name, email: n.email, avatarUrl: n.avatar_url },
     ]),
   );
   const teamNameById = new Map(((teams ?? []) as { id: string; name: string }[]).map((t) => [t.id, t.name]));
@@ -253,6 +254,7 @@ export async function getAgentList(
       userId: m.user_id as string,
       fullName: identity?.fullName ?? "Sin nombre",
       email: identity?.email ?? "",
+      avatarUrl: identity?.avatarUrl ?? null,
       role: m.role as string,
       title: m.title as string | null,
       status: m.status as "active" | "vacation" | "inactive",

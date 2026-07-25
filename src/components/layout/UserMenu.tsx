@@ -2,13 +2,15 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { HelpCircle, LogOut, Settings, ShieldCheck, User, UserCircle } from "lucide-react";
+import { HelpCircle, LogOut, Settings, ShieldCheck, UserCircle } from "lucide-react";
 import { signOut } from "@/app/(protected)/actions";
+import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils/cn";
 
 interface UserMenuProps {
   name: string;
   email: string;
+  avatarUrl?: string | null;
   /** "navbar" (default): dropdown opens below, anchored right — original
    * placement. "sidebar": trigger sits at the foot of the icon dock
    * (Sidebar.tsx), dropdown opens upward and to the right instead, since
@@ -23,17 +25,7 @@ interface UserMenuProps {
   isPlatformAdmin?: boolean;
 }
 
-function initialsFrom(name: string, email: string) {
-  const source = name || email;
-  return source
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
-export function UserMenu({ name, email, variant = "navbar", isPlatformAdmin = false }: UserMenuProps) {
+export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", isPlatformAdmin = false }: UserMenuProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const isSidebar = variant === "sidebar";
 
@@ -47,14 +39,7 @@ export function UserMenu({ name, email, variant = "navbar", isPlatformAdmin = fa
         className="flex cursor-pointer list-none items-center gap-2 rounded-full outline-none focus-visible:outline-2 focus-visible:outline-accent-500 focus-visible:outline-offset-2"
         aria-label="Menú de perfil"
       >
-        <span
-          className={cn(
-            "flex size-8 items-center justify-center rounded-full text-xs font-semibold text-white",
-            isSidebar ? "bg-accent-500" : "bg-primary-600",
-          )}
-        >
-          {initialsFrom(name, email) || <User className="size-4" aria-hidden="true" />}
-        </span>
+        <Avatar name={name || email} src={avatarUrl} size={32} />
       </summary>
 
       <div

@@ -178,7 +178,7 @@ export function OpportunityCardView({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <Avatar name={card.ownerName ?? "Sin asignar"} size={20} />
+        <Avatar name={card.ownerName ?? "Sin asignar"} src={card.ownerAvatarUrl} size={20} />
         {badges.length > 0 && (
           <div className="flex flex-wrap justify-end gap-1 text-[10px] text-neutral-500">
             {badges.map((b) => (

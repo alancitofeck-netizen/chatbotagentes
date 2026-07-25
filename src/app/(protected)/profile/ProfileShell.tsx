@@ -132,7 +132,7 @@ export function ProfileShell({
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col items-center gap-3 rounded-lg bg-surface-1 p-8 shadow-[var(--elevation-sm)] sm:flex-row sm:items-center sm:text-left">
-        <Avatar name={profile.fullName || profile.email} size={72} />
+        <Avatar name={profile.fullName || profile.email} src={profile.avatarUrl} size={72} />
         <div className="flex flex-col items-center gap-1 sm:items-start">
           <h1 className="text-[19px] font-semibold text-foreground">{profile.fullName || "Tu cuenta"}</h1>
           <p className="text-sm text-neutral-500">

@@ -252,7 +252,7 @@ export function AgentsList({
                   <tr key={a.memberId} className="border-b border-border-default last:border-b-0 hover:bg-surface-2">
                     <td className="px-2.5 py-2">
                       <Link href={`/crm/agents/${a.memberId}`} className="flex items-center gap-3">
-                        <Avatar name={a.fullName} size={32} />
+                        <Avatar name={a.fullName} src={a.avatarUrl} size={32} />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">{a.fullName}</p>
                           <p className="truncate text-xs text-neutral-500">

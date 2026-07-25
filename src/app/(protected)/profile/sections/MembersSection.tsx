@@ -87,7 +87,7 @@ export function MembersSection({
       <ul className="flex flex-col divide-y divide-border-default">
         {members.map((m) => (
           <li key={m.memberId} className="flex items-center gap-3 py-3">
-            <Avatar name={m.fullName} size={32} />
+            <Avatar name={m.fullName} src={m.avatarUrl} size={32} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-foreground">{m.fullName}</p>
               <p className="truncate text-[13px] text-neutral-500">{m.email}</p>

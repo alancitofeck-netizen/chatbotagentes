@@ -17,7 +17,7 @@ export interface TaskItem {
   priority: TaskPriority;
   status: TaskStatus;
   dueAt: string | null;
-  assignedTo: { memberId: string; fullName: string } | null;
+  assignedTo: { memberId: string; fullName: string; avatarUrl: string | null } | null;
   createdByMemberId: string | null;
   relatedType: TaskRelatedType | null;
   relatedId: string | null;
@@ -108,12 +108,15 @@ async function mapTaskRows(
   const [{ data: memberNames }, relatedLabels] = await Promise.all([
     memberIds.length
       ? supabase.rpc("workspace_member_names", { ws_id: workspaceId })
-      : Promise.resolve({ data: [] as { member_id: string; full_name: string }[] }),
+      : Promise.resolve({ data: [] as { member_id: string; full_name: string; avatar_url: string | null }[] }),
     resolveRelatedLabels(supabase, workspaceId, rows),
   ]);
 
-  const nameByMember = new Map<string, string>(
-    (memberNames ?? []).map((m: { member_id: string; full_name: string }) => [m.member_id, m.full_name]),
+  const nameByMember = new Map<string, { fullName: string; avatarUrl: string | null }>(
+    (memberNames ?? []).map((m: { member_id: string; full_name: string; avatar_url: string | null }) => [
+      m.member_id,
+      { fullName: m.full_name, avatarUrl: m.avatar_url },
+    ]),
   );
 
   return rows.map((r) => ({
@@ -123,7 +126,13 @@ async function mapTaskRows(
     priority: r.priority as TaskPriority,
     status: r.status as TaskStatus,
     dueAt: r.due_at,
-    assignedTo: r.assigned_to ? { memberId: r.assigned_to, fullName: nameByMember.get(r.assigned_to) ?? "—" } : null,
+    assignedTo: r.assigned_to
+      ? {
+          memberId: r.assigned_to,
+          fullName: nameByMember.get(r.assigned_to)?.fullName ?? "—",
+          avatarUrl: nameByMember.get(r.assigned_to)?.avatarUrl ?? null,
+        }
+      : null,
     createdByMemberId: r.created_by,
     relatedType: (r.related_type as TaskRelatedType | null) ?? null,
     relatedId: r.related_id,

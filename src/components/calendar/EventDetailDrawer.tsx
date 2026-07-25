@@ -107,7 +107,7 @@ export function EventDetailDrawer({
         {event.assignedTo && (
           <Row icon={User}>
             <div className="flex items-center gap-2">
-              <Avatar name={event.assignedTo.fullName} size={24} />
+              <Avatar name={event.assignedTo.fullName} src={event.assignedTo.avatarUrl} size={24} />
               <span>{event.assignedTo.fullName}</span>
             </div>
             <p className="text-xs text-neutral-400">Responsable</p>

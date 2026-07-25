@@ -96,7 +96,7 @@ export function DealCardView({
       {card.lastNote && <p className="truncate text-[11px] text-neutral-500">Última nota: {formatRelativeTime(card.lastNote.createdAt)}</p>}
 
       <div className="flex items-center justify-between border-t border-border-default pt-2">
-        <Avatar name={card.ownerName ?? "Sin asignar"} size={20} />
+        <Avatar name={card.ownerName ?? "Sin asignar"} src={card.ownerAvatarUrl} size={20} />
         <div className="flex items-center gap-2">
           <button type="button" onClick={onOpen} className="text-neutral-400 hover:text-accent-700" title="Ver">
             <Eye className="size-3.5" aria-hidden="true" />

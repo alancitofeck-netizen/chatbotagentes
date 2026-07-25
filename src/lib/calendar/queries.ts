@@ -29,7 +29,7 @@ export interface CalendarEvent {
   contactId: string | null;
   contactName: string | null;
   contactCompany: string | null;
-  assignedTo: { memberId: string; fullName: string } | null;
+  assignedTo: { memberId: string; fullName: string; avatarUrl: string | null } | null;
   createdByMemberId: string | null;
   relatedType: EventRelatedType | null;
   relatedId: string | null;
@@ -111,11 +111,14 @@ async function mapEventRows(
   const [{ data: memberNames }, relatedLabels] = await Promise.all([
     memberIds.length
       ? supabase.rpc("workspace_member_names", { ws_id: workspaceId })
-      : Promise.resolve({ data: [] as { member_id: string; full_name: string }[] }),
+      : Promise.resolve({ data: [] as { member_id: string; full_name: string; avatar_url: string | null }[] }),
     resolveRelatedLabels(supabase, workspaceId, rows),
   ]);
-  const nameByMember = new Map<string, string>(
-    (memberNames ?? []).map((m: { member_id: string; full_name: string }) => [m.member_id, m.full_name]),
+  const nameByMember = new Map<string, { fullName: string; avatarUrl: string | null }>(
+    (memberNames ?? []).map((m: { member_id: string; full_name: string; avatar_url: string | null }) => [
+      m.member_id,
+      { fullName: m.full_name, avatarUrl: m.avatar_url },
+    ]),
   );
 
   return rows.map((r) => {
@@ -137,7 +140,13 @@ async function mapEventRows(
       contactId: r.contact_id,
       contactName: contact?.name ?? null,
       contactCompany: contact?.company ?? null,
-      assignedTo: r.owner_id ? { memberId: r.owner_id, fullName: nameByMember.get(r.owner_id) ?? "—" } : null,
+      assignedTo: r.owner_id
+        ? {
+            memberId: r.owner_id,
+            fullName: nameByMember.get(r.owner_id)?.fullName ?? "—",
+            avatarUrl: nameByMember.get(r.owner_id)?.avatarUrl ?? null,
+          }
+        : null,
       createdByMemberId: r.created_by,
       relatedType: (r.related_type as EventRelatedType | null) ?? null,
       relatedId: r.related_id,

@@ -68,7 +68,7 @@ export function AgendaView({ events, onSelect }: { events: CalendarEvent[]; onSe
                     </div>
                     {event.assignedTo && (
                       <div className="hidden shrink-0 items-center gap-2 sm:flex">
-                        <Avatar name={event.assignedTo.fullName} size={26} />
+                        <Avatar name={event.assignedTo.fullName} src={event.assignedTo.avatarUrl} size={26} />
                         <span className="max-w-[110px] truncate text-[12.5px] text-neutral-500">{event.assignedTo.fullName}</span>
                       </div>
                     )}

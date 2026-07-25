@@ -129,8 +129,13 @@ function WorkspaceRow({
         </div>
       </td>
       <td className="px-4 py-3">
-        <p className="text-sm text-foreground">{w.primaryUserName}</p>
-        <p className="truncate text-xs text-neutral-500">{w.primaryUserEmail}</p>
+        <div className="flex items-center gap-2.5">
+          <Avatar name={w.primaryUserName} src={w.primaryUserAvatarUrl} size={28} />
+          <div className="min-w-0">
+            <p className="truncate text-sm text-foreground">{w.primaryUserName}</p>
+            <p className="truncate text-xs text-neutral-500">{w.primaryUserEmail}</p>
+          </div>
+        </div>
       </td>
       <td className="px-4 py-3">
         <button type="button" onClick={handleToggleStatus} disabled={isPending} className="disabled:opacity-50">

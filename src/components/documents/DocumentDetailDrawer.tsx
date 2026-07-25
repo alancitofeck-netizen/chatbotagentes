@@ -153,7 +153,7 @@ export function DocumentDetailDrawer({
         <Row icon={User} label="Propietario">
           {document.owner ? (
             <div className="flex items-center gap-2">
-              <Avatar name={document.owner.fullName} size={22} />
+              <Avatar name={document.owner.fullName} src={document.owner.avatarUrl} size={22} />
               {document.owner.fullName}
             </div>
           ) : (
@@ -204,7 +204,7 @@ export function DocumentDetailDrawer({
               document.sharedWith.map((s) => (
                 <div key={s.memberId} className="flex items-center justify-between gap-2 rounded-md bg-surface-2 px-2.5 py-1.5">
                   <div className="flex items-center gap-2 text-[13px]">
-                    <Avatar name={s.fullName} size={20} />
+                    <Avatar name={s.fullName} src={s.avatarUrl} size={20} />
                     {s.fullName}
                     <span className="text-[11px] text-neutral-400">{s.role === "editor" ? "Editor" : "Solo lectura"}</span>
                   </div>

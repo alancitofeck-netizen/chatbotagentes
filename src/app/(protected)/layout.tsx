@@ -24,6 +24,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   }
 
   const userName = (user.user_metadata?.full_name as string | undefined) ?? "";
+  const userAvatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
   const memberId = activeWorkspace.isSupervising ? null : await getCurrentMemberId(activeWorkspace.workspaceId);
   const isPlatformAdmin = await checkIsPlatformAdmin();
 
@@ -41,6 +42,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
         enabledModules={enabledModules}
         userName={userName}
         userEmail={user.email ?? ""}
+        userAvatarUrl={userAvatarUrl}
         isPlatformAdmin={isPlatformAdmin}
       />
       <div className="flex flex-1 flex-col overflow-hidden">

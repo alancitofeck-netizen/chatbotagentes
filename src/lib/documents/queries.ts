@@ -22,9 +22,9 @@ export interface DocumentItem {
   externalMetadata: { parents?: string[]; owners?: string[]; sharedWith?: string[] } | null;
   isTrashed: boolean;
   isFavorite: boolean;
-  owner: { memberId: string; fullName: string } | null;
-  lastModifiedBy: { memberId: string; fullName: string } | null;
-  sharedWith: { memberId: string; fullName: string; role: "viewer" | "editor" }[];
+  owner: { memberId: string; fullName: string; avatarUrl: string | null } | null;
+  lastModifiedBy: { memberId: string; fullName: string; avatarUrl: string | null } | null;
+  sharedWith: { memberId: string; fullName: string; avatarUrl: string | null; role: "viewer" | "editor" }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -63,21 +63,29 @@ async function mapDocumentRows(
   const [{ data: memberNames }, { data: permissionRows }, { data: favoriteRows }] = await Promise.all([
     memberIds.length
       ? supabase.rpc("workspace_member_names", { ws_id: workspaceId })
-      : Promise.resolve({ data: [] as { member_id: string; full_name: string }[] }),
+      : Promise.resolve({ data: [] as { member_id: string; full_name: string; avatar_url: string | null }[] }),
     supabase.from("document_permissions").select("document_id, member_id, role").in("document_id", documentIds),
     currentMemberId
       ? supabase.from("document_favorites").select("document_id").eq("member_id", currentMemberId).in("document_id", documentIds)
       : Promise.resolve({ data: [] as { document_id: string }[] }),
   ]);
 
-  const nameByMember = new Map<string, string>(
-    (memberNames ?? []).map((m: { member_id: string; full_name: string }) => [m.member_id, m.full_name]),
+  const nameByMember = new Map<string, { fullName: string; avatarUrl: string | null }>(
+    (memberNames ?? []).map((m: { member_id: string; full_name: string; avatar_url: string | null }) => [
+      m.member_id,
+      { fullName: m.full_name, avatarUrl: m.avatar_url },
+    ]),
   );
   const favoriteIds = new Set((favoriteRows ?? []).map((f) => f.document_id));
-  const permissionsByDocument = new Map<string, { memberId: string; fullName: string; role: "viewer" | "editor" }[]>();
+  const permissionsByDocument = new Map<string, { memberId: string; fullName: string; avatarUrl: string | null; role: "viewer" | "editor" }[]>();
   for (const p of permissionRows ?? []) {
     const list = permissionsByDocument.get(p.document_id) ?? [];
-    list.push({ memberId: p.member_id, fullName: nameByMember.get(p.member_id) ?? "—", role: p.role as "viewer" | "editor" });
+    list.push({
+      memberId: p.member_id,
+      fullName: nameByMember.get(p.member_id)?.fullName ?? "—",
+      avatarUrl: nameByMember.get(p.member_id)?.avatarUrl ?? null,
+      role: p.role as "viewer" | "editor",
+    });
     permissionsByDocument.set(p.document_id, list);
   }
 
@@ -94,8 +102,20 @@ async function mapDocumentRows(
     externalMetadata: r.external_metadata,
     isTrashed: r.is_trashed,
     isFavorite: favoriteIds.has(r.id),
-    owner: r.owner_id ? { memberId: r.owner_id, fullName: nameByMember.get(r.owner_id) ?? "—" } : null,
-    lastModifiedBy: r.last_modified_by ? { memberId: r.last_modified_by, fullName: nameByMember.get(r.last_modified_by) ?? "—" } : null,
+    owner: r.owner_id
+      ? {
+          memberId: r.owner_id,
+          fullName: nameByMember.get(r.owner_id)?.fullName ?? "—",
+          avatarUrl: nameByMember.get(r.owner_id)?.avatarUrl ?? null,
+        }
+      : null,
+    lastModifiedBy: r.last_modified_by
+      ? {
+          memberId: r.last_modified_by,
+          fullName: nameByMember.get(r.last_modified_by)?.fullName ?? "—",
+          avatarUrl: nameByMember.get(r.last_modified_by)?.avatarUrl ?? null,
+        }
+      : null,
     sharedWith: permissionsByDocument.get(r.id) ?? [],
     createdAt: r.created_at,
     updatedAt: r.updated_at,

@@ -25,6 +25,7 @@ export interface DealCard {
   phone: string | null;
   ownerId: string | null;
   ownerName: string | null;
+  ownerAvatarUrl: string | null;
   policyType: string | null;
   renewalDate: string | null;
   commission: number | null;
@@ -131,8 +132,11 @@ export async function getAdvisorsBoard(workspaceId: string): Promise<AdvisorsBoa
       },
     ]),
   );
-  const nameByOwnerId = new Map(
-    ((names ?? []) as { member_id: string; full_name: string }[]).map((n) => [n.member_id, n.full_name]),
+  const nameByOwnerId = new Map<string, { fullName: string; avatarUrl: string | null }>(
+    ((names ?? []) as { member_id: string; full_name: string; avatar_url: string | null }[]).map((n) => [
+      n.member_id,
+      { fullName: n.full_name, avatarUrl: n.avatar_url },
+    ]),
   );
   const lastNoteByOpportunity = new Map<string, { body: string; createdAt: string }>();
   for (const n of notes ?? []) {
@@ -169,7 +173,8 @@ export async function getAdvisorsBoard(workspaceId: string): Promise<AdvisorsBoa
       email: contact?.email ?? null,
       phone: contact?.phone ?? null,
       ownerId: (opp.owner_id as string | null) ?? null,
-      ownerName: opp.owner_id ? (nameByOwnerId.get(opp.owner_id as string) ?? null) : null,
+      ownerName: opp.owner_id ? (nameByOwnerId.get(opp.owner_id as string)?.fullName ?? null) : null,
+      ownerAvatarUrl: opp.owner_id ? (nameByOwnerId.get(opp.owner_id as string)?.avatarUrl ?? null) : null,
       policyType: policy.policyType,
       renewalDate: policy.renewalDate,
       commission: policy.commission,

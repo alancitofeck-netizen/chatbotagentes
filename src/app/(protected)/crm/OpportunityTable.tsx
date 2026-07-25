@@ -90,7 +90,16 @@ export function OpportunityTable({
               </td>
               <td className="px-3 py-2.5 text-neutral-600">{card.probability !== null ? `${card.probability}%` : "—"}</td>
               <td className="px-3 py-2.5 text-neutral-600">{stageNameById.get(card.stageId) ?? "—"}</td>
-              <td className="px-3 py-2.5 text-neutral-600">{card.ownerName ?? "Sin asignar"}</td>
+              <td className="px-3 py-2.5 text-neutral-600">
+                {card.ownerName ? (
+                  <span className="flex items-center gap-1.5">
+                    <Avatar name={card.ownerName} src={card.ownerAvatarUrl} size={20} />
+                    {card.ownerName}
+                  </span>
+                ) : (
+                  "Sin asignar"
+                )}
+              </td>
               <td className="px-3 py-2.5">
                 <div className="flex flex-wrap gap-1">
                   {card.tags.map((tag) => (

@@ -27,6 +27,26 @@ export async function updateMyProfile(input: { fullName: string; username: strin
   revalidatePath("/profile");
 }
 
+/** The browser already uploaded the cropped image straight to Supabase
+ * Storage (`avatars` bucket, public — AvatarUploadDialog.tsx), same
+ * upload-then-register-URL pattern as Documents (src/lib/documents/actions.ts).
+ * This just persists the resulting public URL into user_metadata.avatar_url
+ * — the single place every other module reads it from via
+ * public.workspace_member_names (0049_user_avatars.sql), so one upload
+ * propagates everywhere automatically. Pass null to remove the photo
+ * (falls back to initials everywhere, same as never having uploaded one). */
+export async function updateMyAvatar(avatarUrl: string | null) {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
+  if (error) throw new Error("No se pudo actualizar la foto de perfil.");
+
+  revalidatePath("/profile");
+  revalidatePath("/crm");
+  revalidatePath("/inbox");
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+}
+
 /** Supabase's default behavior for an authenticated session: no need to
  * re-enter the current password first (there's no "old password" check
  * built into updateUser — the valid session itself is the authorization). */

@@ -11,6 +11,7 @@ export interface PlatformWorkspaceSummary {
   plan: string;
   primaryUserName: string;
   primaryUserEmail: string;
+  primaryUserAvatarUrl: string | null;
   /** Role of the primary user (earliest member) within THEIR OWN workspace
    * — "owner" for a hand-provisioned workspace like the platform Owner's
    * own, "agent" for a self-service signup (provision-workspace.ts always
@@ -127,7 +128,7 @@ export async function getAllWorkspacesForSupervision(): Promise<PlatformWorkspac
   }
 
   const serviceClient = createServiceRoleClient();
-  const userInfoById = new Map<string, { name: string; email: string }>();
+  const userInfoById = new Map<string, { name: string; email: string; avatarUrl: string | null }>();
   await Promise.all(
     [...primaryUserIds].map(async (userId) => {
       const { data } = await serviceClient.auth.admin.getUserById(userId);
@@ -135,6 +136,7 @@ export async function getAllWorkspacesForSupervision(): Promise<PlatformWorkspac
         userInfoById.set(userId, {
           name: (data.user.user_metadata?.full_name as string | undefined) || data.user.email || "—",
           email: data.user.email ?? "—",
+          avatarUrl: (data.user.user_metadata?.avatar_url as string | undefined) ?? null,
         });
       }
     }),
@@ -213,6 +215,7 @@ export async function getAllWorkspacesForSupervision(): Promise<PlatformWorkspac
       plan: w.plan as string,
       primaryUserName: primaryUser?.name ?? "—",
       primaryUserEmail: primaryUser?.email ?? "—",
+      primaryUserAvatarUrl: primaryUser?.avatarUrl ?? null,
       primaryUserRole: list[0]?.role ?? "—",
       primaryMemberId: list[0]?.id ?? null,
       memberCount: list.length,

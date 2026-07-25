@@ -116,7 +116,7 @@ export function CrmBoardShell({
     [agents],
   );
   const supervisors = useMemo(
-    () => agents.filter((a) => agents.some((b) => b.supervisorId === a.memberId)).map((a) => ({ memberId: a.memberId, fullName: a.fullName })),
+    () => agents.filter((a) => agents.some((b) => b.supervisorId === a.memberId)).map((a) => ({ memberId: a.memberId, fullName: a.fullName, avatarUrl: a.avatarUrl })),
     [agents],
   );
 

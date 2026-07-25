@@ -26,6 +26,7 @@ export interface WorkspaceMember {
   memberId: string;
   fullName: string;
   email: string;
+  avatarUrl: string | null;
   role: string;
 }
 
@@ -42,11 +43,12 @@ export async function getWorkspaceMembersList(workspaceId: string): Promise<Work
 
   const roleByMemberId = new Map((members ?? []).map((m) => [m.id as string, m.role as string]));
 
-  return ((names ?? []) as { member_id: string; full_name: string; email: string }[])
+  return ((names ?? []) as { member_id: string; full_name: string; email: string; avatar_url: string | null }[])
     .map((n) => ({
       memberId: n.member_id,
       fullName: n.full_name,
       email: n.email,
+      avatarUrl: n.avatar_url,
       role: roleByMemberId.get(n.member_id) ?? "agent",
     }))
     .sort((a, b) => a.fullName.localeCompare(b.fullName));

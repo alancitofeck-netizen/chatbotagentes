@@ -241,6 +241,7 @@ export async function getConversationDetail(
 export interface WorkspaceMemberOption {
   memberId: string;
   fullName: string;
+  avatarUrl: string | null;
 }
 
 /** Resolves member display names via public.workspace_member_names (supabase/migrations/0003_inbox.sql)
@@ -248,9 +249,10 @@ export interface WorkspaceMemberOption {
 export async function getWorkspaceMembers(workspaceId: string): Promise<WorkspaceMemberOption[]> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("workspace_member_names", { ws_id: workspaceId });
-  return (data ?? []).map((r: { member_id: string; full_name: string }) => ({
+  return (data ?? []).map((r: { member_id: string; full_name: string; avatar_url: string | null }) => ({
     memberId: r.member_id,
     fullName: r.full_name,
+    avatarUrl: r.avatar_url,
   }));
 }
 

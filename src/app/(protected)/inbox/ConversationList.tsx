@@ -69,7 +69,7 @@ export function ConversationList({
   onSearchChange: (search: string) => void;
   className?: string;
 }) {
-  const nameByMember = useMemo(() => new Map(members.map((m) => [m.memberId, m.fullName])), [members]);
+  const memberById = useMemo(() => new Map(members.map((m) => [m.memberId, m])), [members]);
 
   const counts = useMemo(() => {
     const result: Record<InboxTab, number> = { all: 0, unread: 0, assigned: 0, closed: 0 };
@@ -144,7 +144,8 @@ export function ConversationList({
             {filtered.map((c) => {
               const active = c.id === selectedId;
               const unread = c.unreadCount > 0;
-              const assignedName = c.assignedMemberId ? nameByMember.get(c.assignedMemberId) : null;
+              const assignedMember = c.assignedMemberId ? memberById.get(c.assignedMemberId) : null;
+              const assignedName = assignedMember?.fullName ?? null;
               return (
                 <li key={c.id}>
                   <button
@@ -193,7 +194,7 @@ export function ConversationList({
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           {assignedName && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
-                              <Avatar name={assignedName} size={14} />
+                              <Avatar name={assignedName} src={assignedMember?.avatarUrl} size={14} />
                               {assignedName.split(" ")[0]}
                             </span>
                           )}

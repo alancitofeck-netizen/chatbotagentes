@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import type { MyProfile } from "@/lib/profile/queries";
 import { EditProfileSheet } from "./EditProfileSheet";
+import { AvatarUploadDialog } from "./AvatarUploadDialog";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -33,6 +34,8 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ cla
 
 export function MyProfileSection({ profile, onChanged }: { profile: MyProfile; onChanged: () => void }) {
   const [editOpen, setEditOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl);
 
   return (
     <div className="flex flex-col gap-4">
@@ -43,16 +46,15 @@ export function MyProfileSection({ profile, onChanged }: { profile: MyProfile; o
         />
 
         <div className="mb-4 flex items-center gap-4">
-          <Avatar name={profile.fullName || profile.email} size={64} />
+          <Avatar name={profile.fullName || profile.email} src={avatarUrl} size={64} />
           <div className="flex flex-col gap-1">
             <button
               type="button"
-              disabled
-              title="Próximamente — requiere Supabase Storage"
-              className="flex items-center gap-1.5 text-xs font-medium text-neutral-400 disabled:cursor-not-allowed"
+              onClick={() => setPhotoOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-accent-600 hover:text-accent-700"
             >
               <ImageIcon className="size-3.5" aria-hidden="true" />
-              Cambiar foto (próximamente)
+              Cambiar foto
             </button>
           </div>
         </div>
@@ -78,6 +80,16 @@ export function MyProfileSection({ profile, onChanged }: { profile: MyProfile; o
           }}
         />
       )}
+
+      <AvatarUploadDialog
+        open={photoOpen}
+        userId={profile.userId}
+        onClose={() => setPhotoOpen(false)}
+        onUploaded={(url) => {
+          setAvatarUrl(url);
+          onChanged();
+        }}
+      />
     </div>
   );
 }
