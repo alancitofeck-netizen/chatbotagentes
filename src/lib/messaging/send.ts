@@ -2,6 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getYCloudCredentials, normalizeE164 } from "@/lib/integrations/ycloud";
+import { resolveMessagingProviderForConversation } from "@/lib/messaging/resolveProvider";
+import { sendViaWorker } from "@/lib/whatsappWeb/workerClient";
 
 export type SendSenderType = "agent" | "ai" | "system";
 
@@ -87,42 +89,76 @@ export async function sendOutboundWhatsAppMessage(input: SendOutboundMessageInpu
     return { ok: false, error: "outside_24h_window" };
   }
 
-  const credentials = await getYCloudCredentials(createServiceRoleClient(), workspaceId);
-  if (!credentials) {
-    console.error(`[send] no active YCloud integration configured for workspace ${workspaceId}.`);
+  const serviceClient = createServiceRoleClient();
+  const toNumber = normalizeE164(contactPhone);
+
+  // Provider dispatch — always resolved with a service-role client (see
+  // resolveProvider.ts's own comment: a plain Agent's RLS-scoped session
+  // can't see every workspace_web_sessions row, but this routing decision
+  // must, regardless of who's sending).
+  const resolution = await resolveMessagingProviderForConversation(
+    serviceClient,
+    workspaceId,
+    conversation.whatsapp_phone_number_id as string | null,
+  );
+  if (!resolution) {
+    console.error(`[send] no active WhatsApp provider (YCloud or WhatsApp Web) configured for workspace ${workspaceId}.`);
     return { ok: false, error: "ycloud_not_configured" };
   }
 
-  const fromNumber = normalizeE164(conversation.whatsapp_phone_number_id as string);
-  const toNumber = normalizeE164(contactPhone);
+  let sentMessage: { externalId: string | null; wamid: string | null; status: string };
 
-  let ycloudMessage: { id?: string; wamid?: string; status?: string };
-  try {
-    const res = await fetch("https://api.ycloud.com/v2/whatsapp/messages", {
-      method: "POST",
-      headers: { "X-API-Key": credentials.apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: fromNumber, to: toNumber, type: "text", text: { body: content } }),
-    });
-    const data = await res.json();
-    console.log(`[send] YCloud response (HTTP ${res.status}):`, JSON.stringify(data, null, 2));
-    if (!res.ok) {
-      console.error("[send] YCloud rejected the send:", res.status, data);
-      return { ok: false, error: "ycloud_send_failed", detail: data };
+  if (resolution.provider === "ycloud") {
+    const credentials = await getYCloudCredentials(serviceClient, workspaceId);
+    if (!credentials) {
+      console.error(`[send] no active YCloud integration configured for workspace ${workspaceId}.`);
+      return { ok: false, error: "ycloud_not_configured" };
     }
-    ycloudMessage = data;
-  } catch (err) {
-    console.error("[send] network error calling YCloud:", err);
-    return { ok: false, error: "ycloud_network_error" };
+
+    const fromNumber = normalizeE164(conversation.whatsapp_phone_number_id as string);
+
+    let ycloudMessage: { id?: string; wamid?: string; status?: string };
+    try {
+      const res = await fetch("https://api.ycloud.com/v2/whatsapp/messages", {
+        method: "POST",
+        headers: { "X-API-Key": credentials.apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: fromNumber, to: toNumber, type: "text", text: { body: content } }),
+      });
+      const data = await res.json();
+      console.log(`[send] YCloud response (HTTP ${res.status}):`, JSON.stringify(data, null, 2));
+      if (!res.ok) {
+        console.error("[send] YCloud rejected the send:", res.status, data);
+        return { ok: false, error: "ycloud_send_failed", detail: data };
+      }
+      ycloudMessage = data;
+    } catch (err) {
+      console.error("[send] network error calling YCloud:", err);
+      return { ok: false, error: "ycloud_network_error" };
+    }
+
+    if (ycloudMessage.status === "failed") {
+      console.error('[send] YCloud accepted the request but reports status="failed":', ycloudMessage);
+      return { ok: false, error: "ycloud_send_failed", detail: ycloudMessage };
+    }
+
+    sentMessage = { externalId: ycloudMessage.id ?? null, wamid: ycloudMessage.wamid ?? null, status: ycloudMessage.status ?? "sent" };
+  } else {
+    try {
+      const result = await sendViaWorker(resolution.sessionId, toNumber, content);
+      if (!result.ok) {
+        console.error("[send] WhatsApp Web worker reported failure sending to", toNumber);
+        return { ok: false, error: "whatsapp_web_send_failed" };
+      }
+      sentMessage = { externalId: result.externalId ?? null, wamid: null, status: "sent" };
+    } catch (err) {
+      console.error("[send] error calling the WhatsApp Web worker:", err);
+      return { ok: false, error: "whatsapp_web_worker_unreachable" };
+    }
   }
 
-  if (ycloudMessage.status === "failed") {
-    console.error('[send] YCloud accepted the request but reports status="failed":', ycloudMessage);
-    return { ok: false, error: "ycloud_send_failed", detail: ycloudMessage };
-  }
-
-  // YCloud accepted the send — persist. If this fails, the message is truly
-  // sent (irreversible) but invisible in the Inbox; log loudly, matching the
-  // resilience rule in 08-integrations.md.
+  // Provider accepted the send — persist. If this fails, the message is
+  // truly sent (irreversible) but invisible in the Inbox; log loudly,
+  // matching the resilience rule in 08-integrations.md.
   const { data: newMessage, error: insertError } = await supabase
     .from("messages")
     .insert({
@@ -133,16 +169,16 @@ export async function sendOutboundWhatsAppMessage(input: SendOutboundMessageInpu
       sender_id: senderId,
       type: "text",
       content: { body: content },
-      external_id: ycloudMessage.id ?? null,
-      wamid: ycloudMessage.wamid ?? null,
-      status: ycloudMessage.status ?? "sent",
+      external_id: sentMessage.externalId,
+      wamid: sentMessage.wamid,
+      status: sentMessage.status,
     })
     .select("id, created_at")
     .single();
 
   if (insertError || !newMessage) {
     console.error(
-      `[send] YCloud ACCEPTED the message (wamid=${ycloudMessage.wamid}) but persisting it failed — ` +
+      `[send] the message was ACCEPTED by ${resolution.provider} (external_id=${sentMessage.externalId}) but persisting it failed — ` +
         "it was really sent and won't show in the Inbox:",
       insertError,
     );
@@ -161,13 +197,13 @@ export async function sendOutboundWhatsAppMessage(input: SendOutboundMessageInpu
     action: "message.sent",
     entity_type: "message",
     entity_id: newMessage.id as string,
-    metadata: { conversation_id: conversationId },
+    metadata: { conversation_id: conversationId, provider: resolution.provider },
   });
 
   return {
     ok: true,
     id: newMessage.id as string,
     createdAt: newMessage.created_at as string,
-    wamid: ycloudMessage.wamid ?? null,
+    wamid: sentMessage.wamid,
   };
 }

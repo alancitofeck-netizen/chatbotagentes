@@ -25,6 +25,7 @@ import {
 import { WhatsAppIntegrationSheet } from "./WhatsAppIntegrationSheet";
 import { OpenRouterIntegrationSheet } from "./OpenRouterIntegrationSheet";
 import { KpiSettersManager } from "./KpiSettersManager";
+import { WhatsAppWebConnectionsCard } from "./WhatsAppWebConnectionsCard";
 
 /** Moved from the old standalone /settings/integrations page into the
  * Perfil > Integraciones tab — same components/actions, no logic changes. */
@@ -35,6 +36,7 @@ export function IntegrationsSection({
   initialGoogleSheets,
   initialGoogleDrive,
   currentRole,
+  currentMemberId,
 }: {
   initialWhatsApp: WhatsAppIntegration | null;
   initialGoogleCalendar: GoogleCalendarStatus;
@@ -42,6 +44,7 @@ export function IntegrationsSection({
   initialGoogleSheets: GoogleSheetsAccountStatus;
   initialGoogleDrive: GoogleDriveStatus;
   currentRole: string;
+  currentMemberId: string | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -234,6 +237,8 @@ export function IntegrationsSection({
           )}
         </div>
       </Card>
+
+      <WhatsAppWebConnectionsCard currentRole={currentRole} currentMemberId={currentMemberId} />
 
       <Card>
         <div className="mb-4 flex items-center justify-between gap-3">

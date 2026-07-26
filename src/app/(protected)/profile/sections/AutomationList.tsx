@@ -5,8 +5,15 @@ import { Trash2, Workflow } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "@/components/toast/toast";
-import type { AutomationListItem } from "@/lib/automations/queries";
+import type { AutomationActionType, AutomationListItem } from "@/lib/automations/queries";
 import { deleteAutomation, toggleAutomationEnabled } from "@/lib/automations/actions";
+
+const ACTION_LABEL: Record<AutomationActionType, string> = {
+  send_text: "Enviar texto",
+  create_opportunity: "Crear oportunidad",
+  change_pipeline_stage: "Cambiar etapa",
+  assign_task: "Asignar tarea",
+};
 
 export function AutomationList({
   automations,
@@ -60,7 +67,9 @@ export function AutomationList({
           >
             <p className="truncate text-sm font-medium text-foreground">{a.name}</p>
             <p className="truncate text-[13px] text-neutral-500">
-              {a.triggerKeyword ? `Palabra clave: "${a.triggerKeyword}"` : "Sin trigger"}
+              {a.triggerType === "any_message" ? "Cualquier mensaje" : `Palabra clave: "${a.triggerKeyword}"`}
+              {" → "}
+              {ACTION_LABEL[a.actionType]}
             </p>
           </button>
           <button

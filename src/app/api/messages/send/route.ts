@@ -67,7 +67,10 @@ export async function POST(request: NextRequest) {
         ? 404
         : result.error === "ycloud_not_configured"
           ? 500
-          : result.error === "ycloud_send_failed" || result.error === "ycloud_network_error"
+          : result.error === "ycloud_send_failed" ||
+              result.error === "ycloud_network_error" ||
+              result.error === "whatsapp_web_send_failed" ||
+              result.error === "whatsapp_web_worker_unreachable"
             ? 502
             : result.error === "persist_failed"
               ? 500

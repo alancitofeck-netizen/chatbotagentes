@@ -40,52 +40,71 @@ export async function processClaimedBuffer(row: ConversationBufferRow): Promise<
   const flushKey = [...messageIds].sort().join(",");
 
   try {
-    const outcome = await decide({ supabase, workspaceId, conversationId, messageText });
+    const outcomeHandled = (async () => {
+      const outcome = await decide({ supabase, workspaceId, conversationId, messageText });
 
-    switch (outcome.type) {
-      case "ai_respond":
-        await runAgentTurn({
-          workspaceId,
-          conversationId,
-          promptId: outcome.promptId,
-          agentId: outcome.agentId,
-          moduleKey: outcome.moduleKey,
-          responseMode: outcome.responseMode,
-          bufferedMessageText: messageText,
-          flushKey,
-        });
-        break;
+      switch (outcome.type) {
+        case "ai_respond":
+          await runAgentTurn({
+            workspaceId,
+            conversationId,
+            promptId: outcome.promptId,
+            agentId: outcome.agentId,
+            moduleKey: outcome.moduleKey,
+            responseMode: outcome.responseMode,
+            bufferedMessageText: messageText,
+            flushKey,
+          });
+          break;
 
-      case "run_automation": {
-        const { data: conversation } = await supabase
-          .from("conversations")
-          .select("contact_id")
-          .eq("id", conversationId)
-          .maybeSingle();
-        const toolCtx: ToolContext = {
-          supabase,
-          workspaceId,
-          conversationId,
-          contactId: (conversation?.contact_id as string) ?? "",
-          flushKey,
-        };
-        await executeToolDirect("run_automation", { automation_id: outcome.automationId }, toolCtx);
-        break;
+        case "run_automation": {
+          const { data: conversation } = await supabase
+            .from("conversations")
+            .select("contact_id")
+            .eq("id", conversationId)
+            .maybeSingle();
+          const toolCtx: ToolContext = {
+            supabase,
+            workspaceId,
+            conversationId,
+            contactId: (conversation?.contact_id as string) ?? "",
+            flushKey,
+          };
+          await executeToolDirect("run_automation", { automation_id: outcome.automationId }, toolCtx);
+          break;
+        }
+
+        case "escalate":
+          await applyEscalation(supabase, { workspaceId, conversationId, reason: outcome.reason });
+          break;
+
+        case "human_respond":
+        case "wait":
+        case "invoke_tool_directly":
+          // human_respond/wait: no action, the batch stays visible in the
+          // inbox for a human. invoke_tool_directly is unreachable from the
+          // Decision Engine this round (no automation shape produces it yet,
+          // reserved for a future "invoke a tool with no reasoning" trigger).
+          break;
       }
+    })();
 
-      case "escalate":
-        await applyEscalation(supabase, { workspaceId, conversationId, reason: outcome.reason });
-        break;
-
-      case "human_respond":
-      case "wait":
-      case "invoke_tool_directly":
-        // human_respond/wait: no action, the batch stays visible in the
-        // inbox for a human. invoke_tool_directly is unreachable from the
-        // Decision Engine this round (no automation shape produces it yet,
-        // reserved for a future "invoke a tool with no reasoning" trigger).
-        break;
-    }
+    // "any_message" automations (e.g. "cuando un contacto responde ->
+    // cambiar etapa del pipeline") run as an always-on side effect on every
+    // flush, in PARALLEL with whatever decide() triggers above — never
+    // instead of it. This is a deliberate divergence from the Decision
+    // Engine's documented single-outcome-per-turn model
+    // (docs/blueprint/13-agent-engine.md), confirmed with the user: the AI
+    // must keep responding normally even when an any_message automation is
+    // enabled, and a failing automation must never delay or block that
+    // response. runSideEffectAutomations() never throws (every failure is
+    // caught and logged internally) — Promise.allSettled here is
+    // defense-in-depth, not the primary error boundary. Both promises are
+    // still awaited (not fire-and-forget) because this function runs inside
+    // a Vercel Cron invocation: if neither were awaited before returning,
+    // the process could be frozen/killed before either finished writing to
+    // the DB.
+    await Promise.allSettled([outcomeHandled, runSideEffectAutomations({ supabase, workspaceId, conversationId, flushKey })]);
   } catch (err) {
     console.error(`[bufferDispatch] failed to process conversation ${conversationId}:`, err);
   } finally {
@@ -96,5 +115,48 @@ export async function processClaimedBuffer(row: ConversationBufferRow): Promise<
       p_conversation_id: conversationId,
       p_processed_message_ids: messageIds,
     });
+  }
+}
+
+/**
+ * Runs every enabled `trigger.type === 'any_message'` automation for this
+ * workspace via the same `run_automation` tool the keyword gate uses
+ * (src/lib/ai/tools/runAutomation.ts) — same action registry
+ * (src/lib/automations/executors.ts), same idempotency (`flushKey`), just a
+ * different trigger path. Deliberately swallows every error itself (never
+ * rejects) so a bug here can never surface as a failure of the main
+ * decide()/ai_respond flow it runs alongside.
+ */
+async function runSideEffectAutomations(ctx: {
+  supabase: ReturnType<typeof createServiceRoleClient>;
+  workspaceId: string;
+  conversationId: string;
+  flushKey: string;
+}): Promise<void> {
+  const { supabase, workspaceId, conversationId, flushKey } = ctx;
+  try {
+    const { data: automations } = await supabase
+      .from("automations")
+      .select("id, trigger")
+      .eq("workspace_id", workspaceId)
+      .eq("enabled", true);
+
+    const anyMessageAutomations = (automations ?? []).filter((a) => (a.trigger as { type?: string } | null)?.type === "any_message");
+    if (anyMessageAutomations.length === 0) return;
+
+    const { data: conversation } = await supabase.from("conversations").select("contact_id").eq("id", conversationId).maybeSingle();
+    const toolCtx: ToolContext = {
+      supabase,
+      workspaceId,
+      conversationId,
+      contactId: (conversation?.contact_id as string) ?? "",
+      flushKey,
+    };
+
+    await Promise.allSettled(
+      anyMessageAutomations.map((a) => executeToolDirect("run_automation", { automation_id: a.id }, toolCtx)),
+    );
+  } catch (err) {
+    console.error(`[bufferDispatch] runSideEffectAutomations failed for conversation ${conversationId}:`, err);
   }
 }

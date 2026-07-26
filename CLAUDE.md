@@ -74,3 +74,11 @@ Do not read/write Supabase auth cookies manually outside these helpers — the s
 Deploy target is Vercel, currently on the **Hobby** plan — [vercel.json](vercel.json) exists solely to configure a Cron Job, and its schedule must stay at daily-or-coarser (Hobby only allows Cron Jobs to run once a day; anything more frequent blocks deployment). Remember to set the same Supabase env vars in the Vercel project settings.
 
 The Buffer Inteligente's real flush cadence does **not** come from that Vercel Cron Job — it runs via **pg_cron + pg_net inside Supabase** (`supabase/migrations/0029_pgcron_buffer_flush.sql`), which isn't subject to Vercel plan limits at all. The Vercel Cron entry is a once-daily safety net only. If/when this project moves to Vercel Pro, the Vercel Cron schedule *could* be tightened again, but there's no need to — pg_cron already covers the near-real-time requirement independent of plan.
+
+### WhatsApp Web worker (second WhatsApp channel, separate deployment)
+
+[worker/whatsapp-connector/](worker/whatsapp-connector/) is a **second, independent Node.js project** in this repo — a standalone, always-on process (Baileys, holds one persistent WhatsApp Web socket per connected workspace member) that does **not** deploy to Vercel and is **not** part of the Next.js app's build. It exists because Vercel serverless functions cannot hold a long-lived connection, which every other part of this app can assume away. See that folder's own `README.md` for its env vars/control API/Dockerfile.
+
+It talks to the Next.js app over plain HTTP with shared secrets in both directions (`WHATSAPP_WEB_WORKER_SECRET`, `WHATSAPP_WEB_WEBHOOK_SECRET` — see `.env.local.example`), the same pattern as `CRON_SECRET`. Inbound messages land on `/api/webhooks/whatsapp-web`, reusing the exact same ingestion path as the YCloud webhook (`src/lib/messaging/ingest.ts`) — treat this worker architecturally as "our own self-hosted YCloud," not a special case. `src/lib/messaging/send.ts` dispatches outbound sends to whichever provider (YCloud or WhatsApp Web) owns the conversation.
+
+Deployment target for the worker is intentionally not fixed to one platform (Railway/Fly.io/a VPS all work via its Dockerfile, purely env-var configured) — do not hardcode assumptions about where it runs.

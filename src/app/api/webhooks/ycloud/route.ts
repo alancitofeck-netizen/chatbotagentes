@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { normalizeE164, resolveWorkspaceIdForYCloudAccount } from "@/lib/integrations/ycloud";
-import { DEFAULT_BUFFER_WINDOW_SECONDS } from "@/lib/ai/bufferConfig";
+import { ingestInboundWhatsAppMessage, ingestWhatsAppStatusUpdate } from "@/lib/messaging/ingest";
 
 /**
  * YCloud (WhatsApp Business API) webhook receiver.
@@ -126,140 +126,22 @@ async function processInboundMessage(
     return;
   }
 
-  // Idempotency: YCloud may retry webhook delivery. A lighter substitute for
-  // the full webhook_events table (deliberately out of scope for this pass) —
-  // if a message with this wamid already exists in this workspace, it was
-  // already processed, so skip re-inserting it.
-  if (msg.wamid) {
-    const { data: existingMessage } = await supabase
-      .from("messages")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .eq("wamid", msg.wamid)
-      .maybeSingle();
-    if (existingMessage) {
-      console.log(`[ycloud-webhook] wamid "${msg.wamid}" already processed, skipping duplicate delivery.`);
-      return;
-    }
-  }
-
   const phone = normalizeE164(msg.from);
   const profileName = msg.fromName?.trim() || msg.profile?.name?.trim() || msg.contact?.name?.trim();
   const messageBody = msg.text?.body ?? "";
 
-  // 1. Contact: find by phone, create only if missing — never overwrite an
-  // existing contact's name/company/etc. on every incoming message.
-  const { data: existingContact, error: findContactError } = await supabase
-    .from("contacts")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("phone", phone)
-    .maybeSingle();
-  if (findContactError) {
-    console.error("[ycloud-webhook] failed to look up contact:", findContactError);
-    return;
-  }
-
-  let contactId: string;
-  if (existingContact) {
-    contactId = existingContact.id as string;
-  } else {
-    const { data: newContact, error: createContactError } = await supabase
-      .from("contacts")
-      .insert({
-        workspace_id: workspaceId,
-        phone,
-        name: profileName || phone,
-        source: "whatsapp",
-        whatsapp_opt_status: "subscribed",
-      })
-      .select("id")
-      .single();
-    if (createContactError || !newContact) {
-      console.error("[ycloud-webhook] failed to create contact:", createContactError);
-      return;
-    }
-    contactId = newContact.id as string;
-    console.log(`[ycloud-webhook] created contact ${contactId} for ${phone}`);
-  }
-
-  // 2. Conversation: find an open one for this contact, create only if missing.
-  const { data: existingConversation, error: findConversationError } = await supabase
-    .from("conversations")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("contact_id", contactId)
-    .eq("status", "open")
-    .maybeSingle();
-  if (findConversationError) {
-    console.error("[ycloud-webhook] failed to look up conversation:", findConversationError);
-    return;
-  }
-
-  const nowIso = new Date().toISOString();
-  let conversationId: string;
-  if (existingConversation) {
-    conversationId = existingConversation.id as string;
-    await supabase.from("conversations").update({ last_message_at: nowIso }).eq("id", conversationId);
-  } else {
-    const { data: newConversation, error: createConversationError } = await supabase
-      .from("conversations")
-      .insert({
-        workspace_id: workspaceId,
-        contact_id: contactId,
-        whatsapp_phone_number_id: msg.to,
-        status: "open",
-        mode: "human",
-        assigned_user_id: null,
-        last_message_at: nowIso,
-      })
-      .select("id")
-      .single();
-    if (createConversationError || !newConversation) {
-      console.error("[ycloud-webhook] failed to create conversation:", createConversationError);
-      return;
-    }
-    conversationId = newConversation.id as string;
-    console.log(`[ycloud-webhook] created conversation ${conversationId} for contact ${contactId}`);
-  }
-
-  // 3. Message.
-  const { data: newMessage, error: createMessageError } = await supabase
-    .from("messages")
-    .insert({
-      workspace_id: workspaceId,
-      conversation_id: conversationId,
-      direction: "inbound",
-      sender_type: "contact",
-      sender_id: null,
-      type: "text",
-      content: { body: messageBody },
-      external_id: msg.id ?? null,
-      wamid: msg.wamid ?? null,
-      status: "received",
-    })
-    .select("id")
-    .single();
-  if (createMessageError || !newMessage) {
-    console.error("[ycloud-webhook] failed to create message:", createMessageError);
-    return;
-  }
-
-  console.log(`[ycloud-webhook] stored message ${newMessage.id} in conversation ${conversationId}`);
-
-  // Buffer Inteligente (docs/blueprint/04-inbox.md, Motor de IA Fase 2):
-  // push this message into conversation_buffers instead of dispatching to
-  // the AI engine directly — a scheduled flush (src/app/api/cron/flush-buffers)
-  // groups consecutive messages from the same contact into one turn.
-  const { error: bufferError } = await supabase.rpc("push_conversation_buffer_message", {
-    p_conversation_id: conversationId,
-    p_workspace_id: workspaceId,
-    p_message_id: newMessage.id,
-    p_window_seconds: DEFAULT_BUFFER_WINDOW_SECONDS,
+  // Contact/conversation/message/buffer creation is shared with the
+  // WhatsApp Web (Baileys) webhook — see src/lib/messaging/ingest.ts.
+  await ingestInboundWhatsAppMessage({
+    supabase,
+    workspaceId,
+    fromPhone: phone,
+    businessNumber: msg.to,
+    profileName,
+    messageBody,
+    externalId: msg.id ?? null,
+    wamid: msg.wamid ?? null,
   });
-  if (bufferError) {
-    console.error(`[ycloud-webhook] failed to push message ${newMessage.id} into conversation_buffers:`, bufferError);
-  }
 }
 
 /**
@@ -302,47 +184,16 @@ async function processMessageStatusUpdate(
     return;
   }
 
-  let existing = await supabase
-    .from("messages")
-    .select("id, content")
-    .eq("workspace_id", workspaceId)
-    .eq("external_id", msg.id)
-    .maybeSingle();
-
-  if (!existing.data && msg.wamid) {
-    existing = await supabase
-      .from("messages")
-      .select("id, content")
-      .eq("workspace_id", workspaceId)
-      .eq("wamid", msg.wamid)
-      .maybeSingle();
-  }
-
-  if (!existing.data) {
-    console.error(
-      `[ycloud-webhook] no message found for external_id='${msg.id}'` +
-        (msg.wamid ? ` / wamid='${msg.wamid}'` : "") +
-        " — status update dropped (nothing to update, and this handler never inserts).",
-    );
-    return;
-  }
-
-  const currentContent = (existing.data.content as { body?: string; error?: unknown } | null) ?? {};
-  const nextContent =
-    msg.status === "failed" && msg.errorMessage
-      ? { ...currentContent, error: { code: msg.errorCode ?? null, message: msg.errorMessage } }
-      : currentContent;
-
-  const update: { content: typeof nextContent; status?: string; wamid?: string } = { content: nextContent };
-  if (msg.status) update.status = msg.status;
-  if (msg.wamid) update.wamid = msg.wamid; // fill in if it arrived later than the original send response
-
-  await supabase.from("messages").update(update).eq("id", existing.data.id);
-
-  console.log(
-    `[ycloud-webhook] updated message ${existing.data.id} → status="${msg.status}"` +
-      (msg.errorMessage ? ` (${msg.errorMessage})` : ""),
-  );
+  // Shared with the WhatsApp Web (Baileys) webhook — see src/lib/messaging/ingest.ts.
+  await ingestWhatsAppStatusUpdate({
+    supabase,
+    workspaceId,
+    externalId: msg.id ?? null,
+    wamid: msg.wamid ?? null,
+    status: msg.status ?? null,
+    errorCode: msg.errorCode ?? null,
+    errorMessage: msg.errorMessage ?? null,
+  });
 }
 
 /** Handles `whatsapp.template.reviewed` — syncs local whatsapp_templates

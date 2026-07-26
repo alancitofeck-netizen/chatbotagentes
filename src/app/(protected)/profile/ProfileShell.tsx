@@ -191,6 +191,7 @@ export function ProfileShell({
               initialGoogleSheets={initialGoogleSheets}
               initialGoogleDrive={initialGoogleDrive}
               currentRole={currentRole}
+              currentMemberId={currentMemberId}
             />
           )}
           {activeTab === "billing" && <BillingSection />}
