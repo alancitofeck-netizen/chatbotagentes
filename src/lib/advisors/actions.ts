@@ -59,8 +59,13 @@ const DEFAULT_STAGES = [
  * never more than one per workspace — escalates to the service-role
  * client. This does not open up arbitrary pipeline/stage creation to
  * agents anywhere else; every other write path in this file stays on the
- * RLS-scoped client. */
-async function ensurePipeline(workspaceId: string): Promise<string> {
+ * RLS-scoped client.
+ *
+ * Exported so the Importador de Cartera (src/lib/advisors/import/actions.ts)
+ * can resolve/provision the same pipeline once per job, cached on
+ * import_jobs.pipeline_id, instead of re-querying or re-provisioning it on
+ * every one of up to 10,000 policy rows. */
+export async function ensurePipeline(workspaceId: string): Promise<string> {
   const supabase = await createClient();
 
   const { data: existing } = await supabase

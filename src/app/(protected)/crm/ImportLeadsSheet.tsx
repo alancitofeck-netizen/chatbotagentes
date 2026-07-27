@@ -5,53 +5,23 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import { importOpportunitiesCsv, type ImportLeadRow } from "@/lib/crm/actions";
+import { parseCsvRows } from "@/lib/utils/csv";
 
 const EXPECTED_HEADER = ["name", "phone", "email", "company", "source", "value", "priority"];
 const SAMPLE = "name,phone,email,company,source,value,priority\nNombre Apellido,+5491100000000,correo@empresa.com,Nombre de la empresa,LinkedIn,5000,high";
 
-/** Minimal, hand-rolled CSV parser for this fixed column format — not a
- * generic CSV engine (no new dependency added), just quote-aware enough for
- * company names with commas in them. */
+/** Thin wrapper over the shared CSV splitter (src/lib/utils/csv.ts) — this
+ * fixed column format matches by lowercase header name, unlike the shared
+ * util's case-preserved default. */
 function parseCsv(text: string): Record<string, string>[] {
-  const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
-  if (lines.length < 2) return [];
-
-  function splitLine(line: string): string[] {
-    const fields: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"' && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else if (ch === '"') {
-          inQuotes = false;
-        } else {
-          current += ch;
-        }
-      } else if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ",") {
-        fields.push(current);
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-    fields.push(current);
-    return fields.map((f) => f.trim());
-  }
-
-  const header = splitLine(lines[0]).map((h) => h.toLowerCase());
-  return lines.slice(1).map((line) => {
-    const values = splitLine(line);
-    const row: Record<string, string> = {};
-    header.forEach((key, i) => {
-      row[key] = values[i] ?? "";
+  const { headers, rows } = parseCsvRows(text);
+  const lower = headers.map((h) => h.toLowerCase());
+  return rows.map((row) => {
+    const remapped: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      remapped[lower[i]] = row[h];
     });
-    return row;
+    return remapped;
   });
 }
 

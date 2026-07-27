@@ -3,6 +3,7 @@
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { parseCsvRows } from "@/lib/utils/csv";
 
 export interface ParsedImportFile {
   headers: string[];
@@ -11,53 +12,8 @@ export interface ParsedImportFile {
 
 const MAX_IMPORT_ROWS = 1000;
 
-/** Same quote-aware, hand-rolled parser style as ImportLeadsSheet.tsx
- * (src/app/(protected)/crm/ImportLeadsSheet.tsx) — no new CSV dependency,
- * just reused for a generic (not fixed-column) header set here. */
 function parseCsvText(text: string): ParsedImportFile {
-  const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
-  if (lines.length < 2) return { headers: [], rows: [] };
-
-  function splitLine(line: string): string[] {
-    const fields: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"' && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else if (ch === '"') {
-          inQuotes = false;
-        } else {
-          current += ch;
-        }
-      } else if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ",") {
-        fields.push(current);
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-    fields.push(current);
-    return fields.map((f) => f.trim());
-  }
-
-  const headers = splitLine(lines[0]);
-  const rows = lines
-    .slice(1, 1 + MAX_IMPORT_ROWS)
-    .map((line) => {
-      const values = splitLine(line);
-      const row: Record<string, string> = {};
-      headers.forEach((key, i) => {
-        row[key] = values[i] ?? "";
-      });
-      return row;
-    });
-  return { headers, rows };
+  return parseCsvRows(text, MAX_IMPORT_ROWS);
 }
 
 async function parseXlsxBuffer(buffer: ArrayBuffer): Promise<ParsedImportFile> {

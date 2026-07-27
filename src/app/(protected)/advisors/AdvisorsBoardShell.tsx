@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, Plus } from "lucide-react";
+import { ShieldCheck, Plus, Upload } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { LinkButton } from "@/components/ui/LinkButton";
 import { toast } from "@/components/toast/toast";
 import type { AdvisorsBoard, DealCard } from "@/lib/advisors/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
@@ -54,10 +55,16 @@ export function AdvisorsBoardShell({
             title="Todavía no hay pólizas cargadas"
             description="Se crea automáticamente con tu primera póliza."
             action={
-              <Button onClick={() => setDealForm({ card: null, defaultStageId: null })}>
-                <Plus className="size-4" aria-hidden="true" />
-                Nueva póliza
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button onClick={() => setDealForm({ card: null, defaultStageId: null })}>
+                  <Plus className="size-4" aria-hidden="true" />
+                  Nueva póliza
+                </Button>
+                <LinkButton href="/advisors/import" variant="secondary">
+                  <Upload className="size-4" aria-hidden="true" />
+                  Importar cartera
+                </LinkButton>
+              </div>
             }
           />
         </div>
@@ -65,11 +72,15 @@ export function AdvisorsBoardShell({
         <>
           <div className="flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
             <AdvisorsKpiHeader kpis={board.kpis} />
-            <div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button onClick={() => setDealForm({ card: null, defaultStageId: board.stages[0]?.id ?? null })}>
                 <Plus className="size-4" aria-hidden="true" />
                 Nueva póliza
               </Button>
+              <LinkButton href="/advisors/import" variant="secondary">
+                <Upload className="size-4" aria-hidden="true" />
+                Importar cartera
+              </LinkButton>
             </div>
           </div>
 
