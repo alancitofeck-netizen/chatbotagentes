@@ -127,7 +127,11 @@ export async function ingestInboundWhatsAppMessage(
         contact_id: contactId,
         whatsapp_phone_number_id: businessNumber,
         status: "open",
-        mode: "human",
+        // Default to "ai" (not "human") so the Agent Runtime engages new
+        // contacts automatically — decisionEngine.ts only skips the model
+        // once a human explicitly takes the conversation over (mode→human,
+        // docs/blueprint/05-ai-engine.md "Handoff humano").
+        mode: "ai",
         assigned_user_id: null,
         last_message_at: nowIso,
       })
