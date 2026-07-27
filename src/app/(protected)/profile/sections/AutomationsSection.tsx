@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, TriangleAlert } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { AutomationListItem } from "@/lib/automations/queries";
 import { getAutomationListAction } from "@/lib/automations/actions";
@@ -28,20 +28,15 @@ export function AutomationsSection({ initialAutomations }: { initialAutomations:
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-[17px] font-semibold text-foreground">Automatizaciones</h2>
-          <p className="text-sm text-neutral-500">Reglas automáticas por palabra clave para el workspace.</p>
+          <p className="text-sm text-neutral-500">
+            Reglas que se ejecutan automáticamente cuando llega un mensaje — por palabra clave o en cada respuesta del
+            contacto.
+          </p>
         </div>
         <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Plus size={15} aria-hidden="true" />
           Nueva automatización
         </Button>
-      </div>
-
-      <div className="flex items-start gap-2 rounded-lg border border-border-default bg-warning-bg px-4 py-3 text-[13px] text-warning-strong">
-        <TriangleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-        <p>
-          Estas reglas se guardan pero todavía <strong>no se ejecutan automáticamente</strong> — el motor de IA
-          que las dispararía (Buffer Inteligente + Decision Engine) no está conectado todavía.
-        </p>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)]">

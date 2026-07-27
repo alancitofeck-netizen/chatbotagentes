@@ -50,7 +50,7 @@ export function AutomationList({
         <EmptyState
           icon={Workflow}
           title="Sin automatizaciones"
-          description="Creá una regla de palabra clave para empezar."
+          description="Creá una regla para empezar — por palabra clave o para cada mensaje del contacto."
         />
       </div>
     );
