@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // worker/whatsapp-connector is a fully separate TypeScript/Node project
+    // (own tsconfig.json, package.json, dependencies) — same reasoning as
+    // its exclusion from the root tsconfig.json's `exclude`. It lints
+    // itself; the root config has no business scanning it (or its dist/).
+    "worker/**",
   ]),
 ]);
 

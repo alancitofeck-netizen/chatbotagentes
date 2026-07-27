@@ -3,4 +3,5 @@ dist
 .env
 .env.*
 *.log
+.wwebjs_auth
 README.md

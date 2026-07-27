@@ -36,6 +36,11 @@ export function createApp() {
       res.status(200).json({ ok: true });
     } catch (err) {
       console.error(`[controlApi] failed to start session ${sessionId}:`, err);
+      const message = err instanceof Error ? err.message : "start_failed";
+      if (message.startsWith("max_concurrent_sessions_reached")) {
+        res.status(503).json({ error: message });
+        return;
+      }
       res.status(500).json({ error: "start_failed" });
     }
   });
