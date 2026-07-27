@@ -10,7 +10,6 @@ import { getWorkspaceMembers, getWorkspaceTags } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
 import { getAiAgentList } from "@/lib/ai-agents/queries";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
-import { hasAnyKpiSetterSheet } from "@/lib/kpis/queries";
 import { CrmPageShell } from "./CrmPageShell";
 
 export const metadata: Metadata = {
@@ -33,7 +32,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
 
   const isPlatformAdmin = await checkIsPlatformAdmin();
 
-  const [initialBoard, initialPipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents, moduleStatus, hasKpiSheet, platformWorkspaces] =
+  const [initialBoard, initialPipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents, moduleStatus, platformWorkspaces] =
     await Promise.all([
       getCrmBoard(workspaceId),
       getCrmPipelines(workspaceId),
@@ -47,7 +46,6 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
       getCurrentMemberId(workspaceId),
       getAiAgentList(workspaceId),
       getWorkspaceModuleStatus(workspaceId),
-      hasAnyKpiSetterSheet(workspaceId),
       isPlatformAdmin ? getAllWorkspacesForSupervision() : Promise.resolve([]),
     ]);
   const atsEnabled = moduleStatus.some((m) => m.moduleKey === "ats" && m.enabled);
@@ -88,7 +86,6 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         ownMemberId={ownMemberId}
         aiAgents={aiAgents}
         atsEnabled={atsEnabled}
-        hasKpiConnection={hasKpiSheet}
         isAgent={isRealAgent}
         isOwner={role === "owner"}
         isPlatformAdmin={isPlatformAdmin}

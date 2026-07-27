@@ -10,7 +10,6 @@ const CRM_TABS = [
   { key: "agents", label: "Agentes", href: "/crm?tab=agents", managerOnly: true },
   { key: "agentes-ia", label: "Agentes IA", href: "/crm?tab=agentes-ia" },
   { key: "tasks", label: "Tareas", href: "/crm?tab=tasks" },
-  { key: "kpis", label: "KPIs", href: "/crm?tab=kpis" },
 ] as const;
 
 /**
@@ -18,7 +17,7 @@ const CRM_TABS = [
  * /ats/[vacancyId]) rather than nesting under /crm/ats (would have weakened
  * its independent workspace_modules activation), so this renders the same
  * row of tabs on both /crm and /ats to make the two feel like one area even
- * though they're separate routes. The 5 CRM-internal tabs stay ?tab=-driven
+ * though they're separate routes. The 4 CRM-internal tabs stay ?tab=-driven
  * (CrmPageShell derives `view` from the URL on every render already, so a
  * real <Link> navigation to a new ?tab= value is a drop-in replacement for
  * the previous router.replace-driven TabsTrigger — same soft client nav,

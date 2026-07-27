@@ -20,10 +20,9 @@ import { PlatformWorkspacesTable } from "./PlatformWorkspacesTable";
 import { TasksSection } from "./TasksSection";
 import { AiAgentsSection } from "./AiAgentsSection";
 import { CrmAtsTabStrip } from "./CrmAtsTabStrip";
-import { KpisSection } from "./kpis/KpisSection";
 
-type View = "board" | "analytics" | "agents" | "agentes-ia" | "tasks" | "kpis";
-const VALID_VIEWS: View[] = ["board", "analytics", "agents", "agentes-ia", "tasks", "kpis"];
+type View = "board" | "analytics" | "agents" | "agentes-ia" | "tasks";
+const VALID_VIEWS: View[] = ["board", "analytics", "agents", "agentes-ia", "tasks"];
 
 export function CrmPageShell({
   workspaceId,
@@ -40,7 +39,6 @@ export function CrmPageShell({
   ownMemberId,
   aiAgents,
   atsEnabled,
-  hasKpiConnection,
   isAgent,
   isOwner,
   isPlatformAdmin,
@@ -60,7 +58,6 @@ export function CrmPageShell({
   ownMemberId: string | null;
   aiAgents: AiAgentListItem[];
   atsEnabled: boolean;
-  hasKpiConnection: boolean;
   isAgent: boolean;
   /** Gates "Cambiar rol" in the Agentes tab (AgentsList) — only the Owner
    * can change roles, per updateMemberRole (src/lib/settings/actions.ts). */
@@ -156,12 +153,6 @@ export function CrmPageShell({
             canAssignOthers={canAssignOthers}
             ownMemberId={ownMemberId}
           />
-        </div>
-      )}
-
-      {view === "kpis" && (
-        <div className="flex-1 overflow-y-auto">
-          <KpisSection hasConnection={hasKpiConnection} teams={teams} />
         </div>
       )}
     </div>
