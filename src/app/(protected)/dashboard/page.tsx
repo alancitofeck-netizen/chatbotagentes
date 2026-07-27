@@ -11,14 +11,31 @@ import {
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions } from "@/lib/tasks/queries";
 import { getUpcomingEvents } from "@/lib/calendar/queries";
+import { getCrmBoard } from "@/lib/crm/queries";
+import { getAgentList } from "@/lib/agents/queries";
+import {
+  getUnansweredConversations,
+  getWeekOverWeekMetrics,
+  getOverdueTasksCount,
+  getUncontactedLeads,
+  hasLinkedInConnection,
+} from "@/lib/insights/queries";
+import { evaluateInsights } from "@/lib/insights/engine";
+import { buildExecutiveSummary, buildTrendItems, buildRecommendedActions, deriveStaleOpportunities } from "@/lib/insights/summary";
+import { computeAdvisorStatus } from "@/lib/insights/advisorStatus";
+import type { EngineInput } from "@/lib/insights/types";
 import { KpiCards } from "./KpiCards";
 import { ActivityChart } from "./ActivityChart";
 import { RecentConversations } from "./RecentConversations";
 import { PendingTasks } from "./PendingTasks";
 import { UpcomingMeetings } from "./UpcomingMeetings";
 import { LeadsBySourceChart } from "./LeadsBySourceChart";
-import { AiAssistantWidget } from "./AiAssistantWidget";
 import { TopDeals } from "./TopDeals";
+import { ExecutiveSummary } from "./ExecutiveSummary";
+import { PriorityInsights } from "./PriorityInsights";
+import { RecommendedActions } from "./RecommendedActions";
+import { Trends } from "./Trends";
+import { AdvisorPerformance } from "./AdvisorPerformance";
 
 export const metadata: Metadata = {
   title: "Dashboard — Growth Link",
@@ -26,6 +43,7 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const { workspaceId, role } = await requireActiveWorkspace();
+  const isOwner = role === "owner";
 
   const [
     kpis,
@@ -40,6 +58,13 @@ export default async function DashboardPage() {
     conversationOptions,
     upcomingEvents,
     primaryUserName,
+    crmBoard,
+    unansweredConversations,
+    weekOverWeek,
+    overdueTasksCount,
+    uncontactedLeads,
+    linkedinConnected,
+    agentList,
   ] = await Promise.all([
     getDashboardKpis(workspaceId),
     getActivitySeries(workspaceId, "7d"),
@@ -57,42 +82,88 @@ export default async function DashboardPage() {
     // differ: a platform admin viewing someone else's workspace must see
     // that workspace owner's name here, never their own.
     getWorkspacePrimaryUserName(workspaceId),
+    // Insights-first Dashboard redesign (2026-07-27) — see
+    // src/lib/insights/ for the pure rules engine these feed.
+    getCrmBoard(workspaceId),
+    getUnansweredConversations(workspaceId),
+    getWeekOverWeekMetrics(workspaceId),
+    getOverdueTasksCount(workspaceId),
+    getUncontactedLeads(workspaceId),
+    hasLinkedInConnection(workspaceId),
+    // Only Owners see Rendimiento de Asesores — skip this heavier query otherwise.
+    isOwner ? getAgentList(workspaceId) : Promise.resolve([]),
   ]);
   const firstName = primaryUserName.split(" ")[0];
 
+  const staleOpportunities = deriveStaleOpportunities(crmBoard);
+  const engineInput: EngineInput = {
+    unansweredConversations,
+    staleOpportunities,
+    overdueTasksCount,
+    weekOverWeek,
+    hasLinkedInConnection: linkedinConnected,
+  };
+  const insights = evaluateInsights(engineInput);
+  const { bullets, health } = buildExecutiveSummary(
+    {
+      wonThisWeek: weekOverWeek.wonThisWeek,
+      unansweredCount: unansweredConversations.length,
+      connectionsDeltaPct: weekOverWeek.connections.deltaPct,
+      staleOpportunitiesCount: staleOpportunities.length,
+      overdueTasksCount,
+    },
+    insights,
+  );
+  const trends = buildTrendItems(weekOverWeek);
+  const recommendedActions = buildRecommendedActions({
+    unansweredConversations,
+    staleOpportunities,
+    uncontactedLeads,
+    overdueTasksCount,
+  });
+  const now = new Date();
+  const advisors = agentList.map((agent) => ({ ...agent, ...computeAdvisorStatus(agent, now) }));
+
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground text-balance">
-          {firstName ? `Hola, ${firstName}` : "Hola de nuevo"}
-        </h1>
-        <p className="text-sm text-neutral-500">Esto es lo que está pasando en tu workspace hoy.</p>
+      <ExecutiveSummary greetingName={firstName} bullets={bullets} health={health} />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-[15px] font-semibold text-foreground">Insights prioritarios</h2>
+        <PriorityInsights insights={insights} />
+      </section>
+
+      <RecommendedActions actions={recommendedActions} />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-[15px] font-semibold text-foreground">Tendencias</h2>
+        <Trends trends={trends} />
+      </section>
+
+      <AdvisorPerformance isOwner={isOwner} advisors={advisors} />
+
+      <KpiCards kpis={kpis} activity={activity} compact />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <RecentConversations conversations={conversations} />
+        <PendingTasks
+          tasks={tasks}
+          members={members}
+          contactOptions={contactOptions}
+          conversationOptions={conversationOptions}
+          canAssignOthers={role === "owner" || role === "admin"}
+          ownMemberId={ownMemberId}
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="flex flex-col gap-6">
-          <KpiCards kpis={kpis} activity={activity} />
-          <ActivityChart initialData={activity} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <UpcomingMeetings events={upcomingEvents} />
+        <TopDeals deals={topDeals} />
+      </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <RecentConversations conversations={conversations} />
-            <PendingTasks
-              tasks={tasks}
-              members={members}
-              contactOptions={contactOptions}
-              conversationOptions={conversationOptions}
-              canAssignOthers={role === "owner" || role === "admin"}
-              ownMemberId={ownMemberId}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <UpcomingMeetings events={upcomingEvents} />
-          <LeadsBySourceChart sources={leadsBySource} />
-          <AiAssistantWidget />
-          <TopDeals deals={topDeals} />
-        </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ActivityChart initialData={activity} />
+        <LeadsBySourceChart sources={leadsBySource} />
       </div>
     </div>
   );

@@ -44,6 +44,9 @@ Semánticos — **deliberadamente apagados**, nunca el rojo/verde/ámbar saturad
 | Success | `#ECF9F2` | `#2E9563` | `#1E7A4C` |
 | Warning | `#FBF2E3` | `#B7791F` | `#92600F` |
 | Error | `#FCEEEE` | `#C1484F` | `#9C363D` |
+| Info | `#EAF1FB` | `#3573C9` | `#2B5AA0` |
+
+Info (2026-07-27): cuarto semántico agregado explícitamente para el Dashboard insights-first — cubre badges/tiers que no son ni un éxito, ni una advertencia, ni un error (p. ej. el slot de insight reservado para integraciones futuras como LinkedIn, hoy inactivo). Sigue las mismas reglas de uso que success/warning/error (regla 2 abajo): solo en badges de estado, nunca como fondo de un componente grande.
 
 **Reglas de uso**:
 1. Nunca más de un color de acción visible a la vez por vista (un botón `accent` primario, el resto son `neutral`/ghost/outline).

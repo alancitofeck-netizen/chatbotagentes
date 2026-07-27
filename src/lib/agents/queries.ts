@@ -67,6 +67,14 @@ export interface AgentListItem {
    * "was their session actually open", the fallback shown once the live
    * Presence channel (useWorkspacePresence) has nobody connected. */
   sessionLastActiveAt: string | null;
+  /** Opportunities this agent owns that were won this week (updated_at-
+   * bucketed — same convention getCrmBoard already uses for "won this
+   * month"). Consumed by the Dashboard's Rendimiento de Asesores section
+   * (src/lib/insights/advisorStatus.ts). */
+  wonThisWeek: number;
+  /** Assigned conversations (not closed) whose last message is inbound —
+   * i.e. genuinely waiting on this agent right now. Same consumer as above. */
+  pendingConversations: number;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -116,11 +124,11 @@ export async function getAgentList(
       supabase.from("teams").select("id, name").eq("workspace_id", workspaceId),
       supabase
         .from("conversations")
-        .select("id, assigned_user_id, contact_id, last_message_at")
+        .select("id, assigned_user_id, contact_id, last_message_at, status")
         .eq("workspace_id", workspaceId)
         .not("assigned_user_id", "is", null),
       supabase.from("bookings").select("owner_id, start_time, end_time, status").eq("workspace_id", workspaceId),
-      supabase.from("opportunities").select("owner_id, status").eq("workspace_id", workspaceId),
+      supabase.from("opportunities").select("owner_id, status, updated_at").eq("workspace_id", workspaceId),
     ]);
 
   if (!members || members.length === 0) return [];
@@ -133,11 +141,16 @@ export async function getAgentList(
   );
   const teamNameById = new Map(((teams ?? []) as { id: string; name: string }[]).map((t) => [t.id, t.name]));
 
-  const conversationsByAgent = new Map<string, { id: string; contactId: string; lastMessageAt: string | null }[]>();
+  const conversationsByAgent = new Map<string, { id: string; contactId: string; lastMessageAt: string | null; status: string }[]>();
   for (const c of conversations ?? []) {
     const agentId = c.assigned_user_id as string;
     const list = conversationsByAgent.get(agentId) ?? [];
-    list.push({ id: c.id as string, contactId: c.contact_id as string, lastMessageAt: c.last_message_at as string | null });
+    list.push({
+      id: c.id as string,
+      contactId: c.contact_id as string,
+      lastMessageAt: c.last_message_at as string | null,
+      status: c.status as string,
+    });
     conversationsByAgent.set(agentId, list);
   }
 
@@ -167,11 +180,11 @@ export async function getAgentList(
     bookingsByAgent.set(b.owner_id as string, list);
   }
 
-  const opportunitiesByAgent = new Map<string, { status: string }[]>();
+  const opportunitiesByAgent = new Map<string, { status: string; updatedAt: string }[]>();
   for (const o of opportunities ?? []) {
     if (!o.owner_id) continue;
     const list = opportunitiesByAgent.get(o.owner_id as string) ?? [];
-    list.push({ status: o.status as string });
+    list.push({ status: o.status as string, updatedAt: o.updated_at as string });
     opportunitiesByAgent.set(o.owner_id as string, list);
   }
 
@@ -191,6 +204,7 @@ export async function getAgentList(
 
     let contacted = 0;
     let replied = 0;
+    let pendingConversations = 0;
     const responseGapsMin: number[] = [];
     const outboundByDay = new Map<string, number>();
 
@@ -212,6 +226,13 @@ export async function getAgentList(
         if (hasOutbound && msgs[i].direction === "inbound") gotReply = true;
       }
       if (gotReply) replied += 1;
+
+      // Dashboard's Rendimiento de Asesores section (insights/advisorStatus.ts)
+      // — a still-open conversation whose last message is inbound is
+      // genuinely waiting on this agent right now.
+      if (conv.status !== "closed" && msgs.length > 0 && msgs[msgs.length - 1].direction === "inbound") {
+        pendingConversations += 1;
+      }
     }
 
     const responseRate = contacted > 0 ? Math.round((replied / contacted) * 1000) / 10 : 0;
@@ -229,6 +250,7 @@ export async function getAgentList(
     const wonOpportunities = agentOpportunities.filter((o) => o.status === "won").length;
     const conversionRate =
       agentOpportunities.length > 0 ? Math.round((wonOpportunities / agentOpportunities.length) * 1000) / 10 : 0;
+    const wonThisWeek = agentOpportunities.filter((o) => o.status === "won" && new Date(o.updatedAt) >= weekStart).length;
 
     const trend: number[] = [];
     for (let i = 6; i >= 0; i--) {
@@ -277,6 +299,8 @@ export async function getAgentList(
       trendDirection,
       lastActivityAt,
       sessionLastActiveAt: m.last_active_at as string | null,
+      wonThisWeek,
+      pendingConversations,
     };
   });
 

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils/cn";
 interface ProgressBarProps {
   value: number; // 0-100
   className?: string;
-  variant?: "accent" | "success" | "warning" | "error";
+  variant?: "accent" | "success" | "warning" | "error" | "info";
 }
 
 const VARIANT_FILL: Record<NonNullable<ProgressBarProps["variant"]>, string> = {
@@ -11,6 +11,7 @@ const VARIANT_FILL: Record<NonNullable<ProgressBarProps["variant"]>, string> = {
   success: "bg-success-strong",
   warning: "bg-warning-strong",
   error: "bg-error-strong",
+  info: "bg-info-strong",
 };
 
 /** Objetivos section's meta-vs-actual bars (KPIs module) — no existing

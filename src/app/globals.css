@@ -62,6 +62,9 @@
   --color-error-bg: #fceeee;
   --color-error: #c1484f;
   --color-error-strong: #9c363d;
+  --color-info-bg: #eaf1fb;
+  --color-info: #3573c9;
+  --color-info-strong: #2b5aa0;
 
   /* Radius — bumped up per visual reference (soft/floating card language),
      see 14-design-system.md §5 for the reconciliation with the original brief */

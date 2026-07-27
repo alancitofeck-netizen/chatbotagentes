@@ -43,6 +43,7 @@ function KpiCard({
   sparklineData,
   sparklineKey,
   footnote,
+  compact,
 }: {
   icon: ReactNode;
   iconBg: string;
@@ -54,11 +55,14 @@ function KpiCard({
   sparklineData: ActivityPoint[];
   sparklineKey: keyof ActivityPoint;
   footnote?: string;
+  compact?: boolean;
 }) {
   return (
-    <Card className="flex flex-col gap-3">
+    <Card className={compact ? "flex flex-col gap-2" : "flex flex-col gap-3"}>
       <div className="flex items-start justify-between">
-        <span className={`flex size-10 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
+        <span
+          className={`flex items-center justify-center rounded-full ${compact ? "size-8" : "size-10"} ${iconBg} ${iconColor}`}
+        >
           {icon}
         </span>
         {delta !== undefined && delta !== null && (
@@ -77,17 +81,21 @@ function KpiCard({
       </div>
       <div className="flex items-end justify-between gap-2">
         <div>
-          <p className="font-mono text-2xl font-semibold leading-none text-foreground">{value}</p>
+          <p className={`font-mono font-semibold leading-none text-foreground ${compact ? "text-lg" : "text-2xl"}`}>{value}</p>
           <p className="mt-1.5 text-[13px] text-neutral-500">{label}</p>
-          {footnote && <p className="mt-1 truncate text-xs text-neutral-500">{footnote}</p>}
+          {footnote && !compact && <p className="mt-1 truncate text-xs text-neutral-500">{footnote}</p>}
         </div>
-        <Sparkline data={sparklineData} dataKey={sparklineKey} color={sparklineColor} />
+        {!compact && <Sparkline data={sparklineData} dataKey={sparklineKey} color={sparklineColor} />}
       </div>
     </Card>
   );
 }
 
-export function KpiCards({ kpis, activity }: { kpis: DashboardKpis; activity: ActivityPoint[] }) {
+/** `compact` demotes these to secondary status (smaller icons/values, no
+ * sparkline/footnote) — used in their new, lower position in the
+ * insights-first Dashboard (page.tsx), where Priority Insights/Trends carry
+ * the primary visual weight instead. */
+export function KpiCards({ kpis, activity, compact = false }: { kpis: DashboardKpis; activity: ActivityPoint[]; compact?: boolean }) {
   const delta = kpis.leadsYesterday === 0 ? null : Math.round(((kpis.leadsToday - kpis.leadsYesterday) / kpis.leadsYesterday) * 100);
 
   return (
@@ -102,6 +110,7 @@ export function KpiCards({ kpis, activity }: { kpis: DashboardKpis; activity: Ac
         sparklineColor="var(--color-accent-500)"
         sparklineData={activity}
         sparklineKey="leads"
+        compact={compact}
       />
 
       <KpiCard
@@ -114,6 +123,7 @@ export function KpiCards({ kpis, activity }: { kpis: DashboardKpis; activity: Ac
         sparklineData={activity}
         sparklineKey="mensajes"
         footnote={`${kpis.conversationsUnread} no leídas · ${kpis.conversationsWaiting} esperando`}
+        compact={compact}
       />
 
       <KpiCard
@@ -130,6 +140,7 @@ export function KpiCards({ kpis, activity }: { kpis: DashboardKpis; activity: Ac
             ? `Próxima: ${kpis.nextMeeting.subject ?? kpis.nextMeeting.contactName} · ${formatRelativeTime(kpis.nextMeeting.startTime)}`
             : "Sin próximas reuniones"
         }
+        compact={compact}
       />
 
       <KpiCard
@@ -142,6 +153,7 @@ export function KpiCards({ kpis, activity }: { kpis: DashboardKpis; activity: Ac
         sparklineData={activity}
         sparklineKey="ventas"
         footnote={`${kpis.conversionRate}% conversión`}
+        compact={compact}
       />
     </div>
   );

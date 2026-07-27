@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils/cn";
 import type { WorkspaceTagWithUsage } from "@/lib/inbox/queries";
 import { createWorkspaceTag, deleteWorkspaceTag, renameWorkspaceTag } from "@/lib/inbox/actions";
 
-const COLOR_OPTIONS: BadgeVariant[] = ["neutral", "accent", "success", "warning", "error"];
-const COLOR_LABELS: Record<BadgeVariant, string> = {
+const COLOR_OPTIONS = ["neutral", "accent", "success", "warning", "error"] as const satisfies readonly BadgeVariant[];
+const COLOR_LABELS: Record<(typeof COLOR_OPTIONS)[number], string> = {
   neutral: "Gris",
   accent: "Azul",
   success: "Verde",
