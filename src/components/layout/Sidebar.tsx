@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   CalendarDays,
   Folder,
   Inbox,
@@ -35,7 +36,14 @@ export interface NavItem {
  * /ats/[vacancyId]) deliberately did NOT move under /crm/ats — ATS has its
  * own independent workspace_modules activation flag, and nesting the route
  * would have made it unreachable if CRM were ever disabled while ATS stayed
- * enabled. Only the *navigation entry point* moved, not the module boundary. */
+ * enabled. Only the *navigation entry point* moved, not the module boundary.
+ *
+ * "KPIs" used to live as a tab inside CRM (CrmAtsTabStrip.tsx) but is now
+ * its own top-level module/route (/kpis) per explicit user request — same
+ * KpisSection component, same queries, not workspace_modules-gated (it
+ * never was even as a CRM tab; `KpisSection` shows its own "conectá tu
+ * hoja" empty state internally when there's no Google Sheets connection
+ * yet, same as Inbox/Calendario/Documentos being always-on links). */
 export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
   return [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -44,6 +52,7 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     { label: "Documentos", href: "/documents", icon: Folder, comingSoon: false },
     { label: "CRM", href: "/crm", icon: Kanban, comingSoon: !enabledModules.has("crm") },
     { label: "Asesores", href: "/advisors", icon: ShieldCheck, comingSoon: !enabledModules.has("advisors") },
+    { label: "KPIs", href: "/kpis", icon: BarChart3, comingSoon: false },
   ];
 }
 
