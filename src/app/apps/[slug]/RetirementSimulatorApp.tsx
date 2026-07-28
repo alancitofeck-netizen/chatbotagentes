@@ -7,6 +7,12 @@ import {
   ArrowRight,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
+  Compass,
+  Handshake,
+  HeartPulse,
+  Home,
+  Lightbulb,
   Loader2,
   MessageCircle,
   PiggyBank,
@@ -17,7 +23,12 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { simulateRetirement, simulateRetirementSeries } from "@/lib/miniApps/financialEngine";
+import {
+  RECOMMENDED_INCOME_REPLACEMENT_PCT,
+  recommendedMonthlyIncome,
+  simulateRetirement,
+  simulateRetirementSeries,
+} from "@/lib/miniApps/financialEngine";
 import { submitMiniAppLeadFromHostedPage } from "@/lib/miniApps/actions";
 import type { PublicMiniAppView } from "@/lib/miniApps/queries";
 import { RetirementGrowthChart } from "./RetirementResultCharts";
@@ -36,8 +47,9 @@ function soften(cssVar: string, percent: number): string {
 
 const AHORRO_CHIPS = [2000, 4000, 6000, 10000, 15000];
 
-type WizardStepKey = "edad" | "retiro" | "ahorro" | "ingreso" | "nombre" | "whatsapp" | "consentimiento";
+type WizardStepKey = "intro" | "edad" | "retiro" | "ahorro" | "ingreso" | "nombre" | "whatsapp" | "consentimiento";
 type Phase = "wizard" | "calculando" | "resultado";
+type ResultStepKey = "pension" | "comparacion" | "brecha" | "significado" | "cierre";
 
 /** Animated count-up for the headline fund number — mirrors the reference
  * simulator's `countTo` easing (cubic ease-out, ~700ms), disabled entirely
@@ -126,6 +138,26 @@ function MiniAppProgressBar({ value, colorVar = "--ma-button-primary-bg" }: { va
         aria-valuemin={0}
         aria-valuemax={100}
       />
+    </div>
+  );
+}
+
+/** Progress indicator for the paginated results reveal — dots instead of the
+ * wizard's linear bar, so the two phases read as distinct experiences: one
+ * "filling in a form", the other "unwrapping a story". */
+function RevealStepDots({ total, current }: { total: number; current: number }) {
+  return (
+    <div className="flex items-center justify-center gap-1.5" role="progressbar" aria-valuenow={current + 1} aria-valuemin={1} aria-valuemax={total}>
+      {Array.from({ length: total }).map((_, i) => (
+        <span
+          key={i}
+          className="h-1.5 rounded-full transition-all duration-300"
+          style={{
+            width: i === current ? 22 : 6,
+            background: i <= current ? "var(--ma-button-primary-bg)" : "var(--ma-background-surface-alt)",
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -278,7 +310,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   }, []);
 
   const steps = useMemo<WizardStepKey[]>(() => {
-    const list: WizardStepKey[] = ["edad", "retiro", "ahorro"];
+    const list: WizardStepKey[] = ["intro", "edad", "retiro", "ahorro"];
     if (config.showIngresoActual) list.push("ingreso");
     list.push("nombre", "whatsapp", "consentimiento");
     return list;
@@ -286,6 +318,9 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("wizard");
+  const [resultStepIndex, setResultStepIndex] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [edad, setEdad] = useState(35);
   const [edadRetiro, setEdadRetiro] = useState(65);
   const [ahorroMensual, setAhorroMensual] = useState(4000);
@@ -312,8 +347,19 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   );
   const capitalAportado = ahorroMensual * (clampedRetiro - edad) * 12;
 
-  const fundDisplay = useCountUp(result.fondoEstimado, phase === "resultado");
-  const incomeDisplay = useCountUp(result.rentaMensualEstimada, phase === "resultado");
+  const ingresoRecomendado = ingresoActual > 0 ? recommendedMonthlyIncome(ingresoActual) : null;
+  const brecha = ingresoRecomendado !== null ? Math.max(0, ingresoRecomendado - result.rentaMensualEstimada) : null;
+  const sinBrecha = brecha === 0;
+
+  const resultSteps = useMemo<ResultStepKey[]>(
+    () => (brecha !== null ? ["pension", "comparacion", "brecha", "significado", "cierre"] : ["pension", "significado", "cierre"]),
+    [brecha],
+  );
+  const currentResultStep = resultSteps[resultStepIndex];
+
+  const fundDisplay = useCountUp(result.fondoEstimado, phase === "resultado" && currentResultStep === "pension");
+  const incomeDisplay = useCountUp(result.rentaMensualEstimada, phase === "resultado" && currentResultStep === "comparacion");
+  const brechaDisplay = useCountUp(brecha ?? 0, phase === "resultado" && currentResultStep === "brecha");
 
   function goBack() {
     setError(null);
@@ -331,6 +377,14 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
       return;
     }
     setStepIndex((i) => Math.min(steps.length - 1, i + 1));
+  }
+
+  function goResultBack() {
+    setResultStepIndex((i) => Math.max(0, i - 1));
+  }
+
+  function goResultNext() {
+    setResultStepIndex((i) => Math.min(resultSteps.length - 1, i + 1));
   }
 
   async function handleFinish() {
@@ -364,6 +418,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
       // Deliberate short pause — "loading antes del resultado" per spec,
       // and it gives the count-up entrance somewhere natural to start from.
       await new Promise((r) => setTimeout(r, 1300));
+      setResultStepIndex(0);
       setPhase("resultado");
     } catch {
       setError("No pudimos guardar tus datos. Intentá de nuevo en unos minutos.");
@@ -373,7 +428,16 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
     }
   }
 
-  const replacementPct = ingresoActual > 0 ? Math.min(200, Math.round((result.rentaMensualEstimada / ingresoActual) * 100)) : null;
+  // Coverage relative to the RECOMMENDED income (not the raw current income) —
+  // this is what the "comparación" reveal step visualizes as two bars.
+  const replacementPct =
+    ingresoRecomendado !== null && ingresoRecomendado > 0 ? Math.min(200, Math.round((result.rentaMensualEstimada / ingresoRecomendado) * 100)) : null;
+
+  const genericWhyPlanEarly = [
+    "El interés compuesto hace la mayor parte del trabajo — cuanto antes empezás, menos tenés que poner vos.",
+    "Un plan de retiro formal ordena tus aportes y te protege de imprevistos en el camino.",
+    "Revisar tu plan cada año te permite ajustarlo a cambios reales en tu ingreso o tus metas.",
+  ];
 
   return (
     <div
@@ -412,6 +476,26 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
             className="rounded-2xl p-6 sm:p-7"
             style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
           >
+            {currentStep === "intro" && (
+              <div className="flex flex-col items-center gap-5 py-4 text-center motion-safe:animate-[fade-in-up_0.35s_ease]">
+                <span
+                  className="flex size-16 items-center justify-center rounded-2xl"
+                  style={{ background: "var(--ma-gradient-hero)", color: "var(--ma-gradient-hero-text)" }}
+                >
+                  <Compass className="size-7" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="text-[21px] font-semibold tracking-[-0.01em]" style={{ color: "var(--ma-title-color)" }}>
+                    Conozcamos tu situación
+                  </h2>
+                  <p className="mx-auto mt-2.5 max-w-xs text-[14px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                    En menos de 2 minutos vas a ver cuánto podrías recibir al retirarte, qué tan cerca estás de lo que necesitás, y cómo cerrar esa
+                    diferencia.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {currentStep === "edad" && (
               <StepShell icon={CalendarClock} title="¿Cuántos años tenés hoy?" subtitle="Es el punto de partida de tu proyección.">
                 <SliderQuestion label="Tu edad hoy" value={edad} min={18} max={65} format={(v) => `${v} años`} onChange={setEdad} />
@@ -555,7 +639,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                 </MiniAppButton>
               ) : (
                 <MiniAppButton type="button" onClick={goNext}>
-                  Continuar <ArrowRight className="size-4" aria-hidden="true" />
+                  {currentStep === "intro" ? "Comenzar" : "Continuar"} <ArrowRight className="size-4" aria-hidden="true" />
                 </MiniAppButton>
               )}
             </div>
@@ -563,103 +647,263 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
         )}
 
         {phase === "resultado" && (
-          <div className="flex flex-col gap-5 motion-safe:animate-[fade-in-up_0.4s_ease]">
-            <div
-              className="overflow-hidden rounded-2xl p-7 text-center sm:p-9"
-              style={{ background: "var(--ma-gradient-hero)", color: "var(--ma-gradient-hero-text)", boxShadow: "var(--ma-shadow-lg)" }}
-            >
-              <p className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.16em] uppercase opacity-70">
-                <Sparkles className="size-3.5" aria-hidden="true" /> Tu fondo estimado al retirarte
-              </p>
-              <p className="mt-3 font-mono text-5xl font-bold tabular-nums sm:text-6xl">{formatCurrency(fundDisplay)}</p>
-              <p className="mt-3 text-[13.5px] opacity-80">
-                Rango estimado: <span className="font-mono font-medium">{formatCurrency(result.fondoRangoBajo)}</span> —{" "}
-                <span className="font-mono font-medium">{formatCurrency(result.fondoRangoAlto)}</span>
-              </p>
-            </div>
+          <div className="flex flex-col gap-5">
+            <RevealStepDots total={resultSteps.length} current={resultStepIndex} />
 
-            <div className="grid grid-cols-2 gap-3">
-              <StatCard emoji="💰" label="Capital aportado" value={formatCurrency(capitalAportado)} />
-              <StatCard emoji="📈" label="Rendimiento esperado" value={`${config.annualReturnRatePct}% anual`} />
-              <StatCard emoji="🎯" label="Edad de retiro" value={`${clampedRetiro} años`} />
-              <StatCard emoji="💵" label="Ingreso mensual estimado" value={formatCurrency(incomeDisplay)} />
-            </div>
+            <div key={resultStepIndex} className="flex flex-col gap-5 motion-safe:animate-[fade-in-up_0.4s_ease]">
+              {currentResultStep === "pension" && (
+                <>
+                  <div
+                    className="overflow-hidden rounded-2xl p-7 text-center sm:p-9"
+                    style={{ background: "var(--ma-gradient-hero)", color: "var(--ma-gradient-hero-text)", boxShadow: "var(--ma-shadow-lg)" }}
+                  >
+                    <p className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.16em] uppercase opacity-70">
+                      <Sparkles className="size-3.5" aria-hidden="true" /> Tu pensión estimada al retirarte
+                    </p>
+                    <p className="mt-3 font-mono text-5xl font-bold tabular-nums sm:text-6xl">{formatCurrency(fundDisplay)}</p>
+                    <p className="mt-3 text-[13.5px] opacity-80">
+                      Rango estimado: <span className="font-mono font-medium">{formatCurrency(result.fondoRangoBajo)}</span> —{" "}
+                      <span className="font-mono font-medium">{formatCurrency(result.fondoRangoAlto)}</span>
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <StatCard emoji="🎯" label="Edad de retiro" value={`${clampedRetiro} años`} />
+                    <StatCard emoji="📈" label="Rendimiento esperado" value={`${config.annualReturnRatePct}% anual`} />
+                  </div>
+                </>
+              )}
 
-            <div className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}>
-              <div className="mb-1 flex items-center gap-2">
-                <TrendingUp className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
-                <h3 className="text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
-                  Cómo crece tu fondo, año a año
-                </h3>
-              </div>
-              <p className="mb-4 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
-                Lo que vos aportás vs. lo que te da el interés compuesto.
-              </p>
-              <RetirementGrowthChart series={series} />
-              <div className="mt-2 flex flex-wrap justify-center gap-5 text-[12.5px]" style={{ color: "var(--ma-text-muted)" }}>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-primary)" }} /> Aportado
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-secondary)" }} /> Interés compuesto
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <ScenarioChip label="Conservador" value={formatCurrency(result.fondoRangoBajo)} />
-              <ScenarioChip label="Moderado" value={formatCurrency(result.fondoEstimado)} highlighted />
-              <ScenarioChip label="Optimista" value={formatCurrency(result.fondoRangoAlto)} />
-            </div>
-
-            {replacementPct !== null && (
-              <div className="rounded-2xl p-5" style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-[13.5px] font-medium" style={{ color: "var(--ma-title-color)" }}>
-                    Cobertura de tu ritmo de vida actual
+              {currentResultStep === "comparacion" && ingresoRecomendado !== null && (
+                <div
+                  className="rounded-2xl p-6 sm:p-7"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+                >
+                  <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                    Comparemos con lo que realmente necesitás
+                  </h3>
+                  <p className="mt-1.5 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                    La guía estándar de planificación recomienda cubrir un {RECOMMENDED_INCOME_REPLACEMENT_PCT}% de tu ingreso actual durante el
+                    retiro.
                   </p>
-                  <p className="font-mono text-lg font-semibold" style={{ color: "var(--ma-chart-series-secondary)" }}>
-                    {replacementPct}%
-                  </p>
+                  <div className="mt-5 flex flex-col gap-4">
+                    <div>
+                      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                        <span className="text-[13.5px] font-medium" style={{ color: "var(--ma-text-color)" }}>
+                          Tu pensión estimada
+                        </span>
+                        <span className="font-mono text-lg font-semibold tabular-nums" style={{ color: "var(--ma-button-primary-bg)" }}>
+                          {formatCurrency(incomeDisplay)}
+                        </span>
+                      </div>
+                      <MiniAppProgressBar value={replacementPct !== null ? Math.min(100, replacementPct) : 0} colorVar="--ma-button-primary-bg" />
+                    </div>
+                    <div>
+                      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                        <span className="text-[13.5px] font-medium" style={{ color: "var(--ma-text-color)" }}>
+                          Ingreso recomendado
+                        </span>
+                        <span className="font-mono text-lg font-semibold tabular-nums" style={{ color: "var(--ma-chart-series-secondary)" }}>
+                          {formatCurrency(ingresoRecomendado)}
+                        </span>
+                      </div>
+                      <MiniAppProgressBar value={100} colorVar="--ma-chart-series-secondary" />
+                    </div>
+                  </div>
+                  {replacementPct !== null && (
+                    <p className="mt-4 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                      Hoy estarías cubriendo el <strong style={{ color: "var(--ma-text-color)" }}>{replacementPct}%</strong> de lo recomendado.
+                    </p>
+                  )}
                 </div>
-                <MiniAppProgressBar value={Math.min(100, replacementPct)} colorVar="--ma-chart-series-secondary" />
-                <p className="mt-2 text-[12.5px]" style={{ color: "var(--ma-text-muted)" }}>
-                  {replacementPct < 70
-                    ? "Ahí está la brecha que conviene cerrar antes del retiro."
-                    : "Vas por muy buen camino para mantener tu ritmo de vida."}
-                </p>
+              )}
+
+              {currentResultStep === "brecha" && brecha !== null && (
+                <div
+                  className="overflow-hidden rounded-2xl p-7 text-center sm:p-9"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border-strong)", boxShadow: "var(--ma-shadow-lg)" }}
+                >
+                  {sinBrecha ? (
+                    <>
+                      <p className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--ma-text-muted)" }}>
+                        <CheckCircle2 className="size-3.5" aria-hidden="true" /> Tu brecha
+                      </p>
+                      <p className="mt-3 font-mono text-4xl font-bold tabular-nums sm:text-5xl" style={{ color: "var(--ma-chart-series-secondary)" }}>
+                        {formatCurrency(0)}
+                      </p>
+                      <p className="mx-auto mt-3 max-w-sm text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                        Vas por muy buen camino — tu proyección ya cubre lo recomendado para mantener tu ritmo de vida.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--ma-text-muted)" }}>
+                        Tu brecha mensual
+                      </p>
+                      <p className="mt-3 font-mono text-5xl font-bold tabular-nums sm:text-6xl" style={{ color: "var(--ma-button-primary-bg)" }}>
+                        {formatCurrency(brechaDisplay)}
+                      </p>
+                      <p className="mx-auto mt-3 max-w-sm text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                        Es la diferencia entre lo que recibirías y lo que realmente necesitarías cada mes para mantener tu ritmo de vida.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {currentResultStep === "significado" && (
+                <div
+                  className="rounded-2xl p-6 sm:p-7"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+                >
+                  {brecha !== null && !sinBrecha ? (
+                    <>
+                      <div className="mb-1 flex items-center gap-2">
+                        <Lightbulb className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
+                        <h3 className="text-[16px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                          ¿Qué significan realmente esos {formatCurrency(brecha)} de diferencia?
+                        </h3>
+                      </div>
+                      <ul className="mt-4 flex flex-col gap-3">
+                        {[
+                          { Icon: Home, text: "Podría ser el costo de tu vivienda cada mes." },
+                          { Icon: HeartPulse, text: "O lo que necesitás para medicamentos y atención médica." },
+                          { Icon: Compass, text: "O la diferencia entre mantener tu estilo de vida... o tener que resignarlo." },
+                        ].map(({ Icon, text }) => (
+                          <li key={text} className="flex items-start gap-3 text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                            <span
+                              className="flex size-8 shrink-0 items-center justify-center rounded-lg"
+                              style={{ background: "var(--ma-tag-bg)", color: "var(--ma-icon-color)" }}
+                            >
+                              <Icon className="size-4" aria-hidden="true" />
+                            </span>
+                            <span className="pt-1.5">{text}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-5 text-[13.5px] font-medium" style={{ color: "var(--ma-title-color)" }}>
+                        La buena noticia es que todavía estás a tiempo de planificarlo.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="mb-3 text-[16px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                        Por qué planificar temprano importa
+                      </h3>
+                      <ul className="flex flex-col gap-2.5">
+                        {genericWhyPlanEarly.map((text) => (
+                          <li key={text} className="flex items-start gap-2.5 text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                            <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: "var(--ma-chart-series-secondary)" }} aria-hidden="true" />
+                            {text}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {currentResultStep === "cierre" && (
+                <>
+                  {!confirmed ? (
+                    <div
+                      className="flex flex-col items-center gap-4 rounded-2xl p-7 text-center sm:p-9"
+                      style={{ background: "var(--ma-gradient-hero)", color: "var(--ma-gradient-hero-text)", boxShadow: "var(--ma-shadow-lg)" }}
+                    >
+                      <span className="flex size-14 items-center justify-center rounded-2xl" style={{ background: soften("--ma-gradient-hero-text", 16) }}>
+                        <Handshake className="size-6" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <h3 className="text-[19px] font-semibold">Con una estrategia adecuada podés reducir esa diferencia.</h3>
+                        <p className="mx-auto mt-2 max-w-sm text-[13.5px] opacity-80">
+                          Ya guardamos tus datos — solo falta confirmar que {config.assignedAgentName ?? "tu asesor"} revise tu caso, sin costo y sin
+                          compromiso.
+                        </p>
+                      </div>
+                      <MiniAppButton type="button" className="mt-1" onClick={() => setConfirmed(true)}>
+                        Quiero que un asesor revise mi caso <ArrowRight className="size-4" aria-hidden="true" />
+                      </MiniAppButton>
+                    </div>
+                  ) : (
+                    <div
+                      className="rounded-2xl p-6 text-center motion-safe:animate-[fade-in-up_0.35s_ease]"
+                      style={{ background: "var(--ma-title-color)", color: "var(--ma-background-page)", boxShadow: "var(--ma-shadow-lg)" }}
+                    >
+                      <p className="text-[16px] font-semibold">¡Gracias, {nombre.split(" ")[0]}!</p>
+                      <p className="mx-auto mt-1.5 max-w-sm text-[13.5px] opacity-70">
+                        {config.assignedAgentName ?? "Tu asesor"} te va a contactar por WhatsApp para armar tu plan real.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setDetailsOpen((v) => !v)}
+                    className="mt-5 flex w-full items-center justify-center gap-1.5 text-[13px] font-medium"
+                    style={{ color: "var(--ma-text-muted)" }}
+                  >
+                    Ver el desglose completo
+                    <ChevronDown className={`size-4 transition-transform duration-200 ${detailsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                  </button>
+
+                  {detailsOpen && (
+                    <div className="mt-4 flex flex-col gap-5 motion-safe:animate-[fade-in-up_0.3s_ease]">
+                      <div className="grid grid-cols-2 gap-3">
+                        <StatCard emoji="💰" label="Capital aportado" value={formatCurrency(capitalAportado)} />
+                        <StatCard emoji="📈" label="Rendimiento esperado" value={`${config.annualReturnRatePct}% anual`} />
+                        <StatCard emoji="🎯" label="Edad de retiro" value={`${clampedRetiro} años`} />
+                        <StatCard emoji="💵" label="Ingreso mensual estimado" value={formatCurrency(result.rentaMensualEstimada)} />
+                      </div>
+
+                      <div
+                        className="rounded-2xl p-5 sm:p-6"
+                        style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}
+                      >
+                        <div className="mb-1 flex items-center gap-2">
+                          <TrendingUp className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
+                          <h3 className="text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                            Cómo crece tu fondo, año a año
+                          </h3>
+                        </div>
+                        <p className="mb-4 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                          Lo que vos aportás vs. lo que te da el interés compuesto.
+                        </p>
+                        <RetirementGrowthChart series={series} />
+                        <div className="mt-2 flex flex-wrap justify-center gap-5 text-[12.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                          <span className="flex items-center gap-1.5">
+                            <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-primary)" }} /> Aportado
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-secondary)" }} /> Interés compuesto
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <ScenarioChip label="Conservador" value={formatCurrency(result.fondoRangoBajo)} />
+                        <ScenarioChip label="Moderado" value={formatCurrency(result.fondoEstimado)} highlighted />
+                        <ScenarioChip label="Optimista" value={formatCurrency(result.fondoRangoAlto)} />
+                      </div>
+
+                      <p className="px-2 text-center text-[11px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                        Simulación con fines ilustrativos. Las cifras son estimaciones y no constituyen asesoría financiera certificada — los
+                        resultados reales dependen del plan que contrates y de las condiciones de mercado.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {currentResultStep !== "cierre" && (
+              <div className="flex items-center justify-between gap-3 px-1">
+                <MiniAppButton type="button" variant="ghost" onClick={goResultBack} disabled={resultStepIndex === 0}>
+                  <ArrowLeft className="size-4" aria-hidden="true" /> Atrás
+                </MiniAppButton>
+                <MiniAppButton type="button" onClick={goResultNext}>
+                  Seguir <ArrowRight className="size-4" aria-hidden="true" />
+                </MiniAppButton>
               </div>
             )}
-
-            <div className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}>
-              <h3 className="mb-3 text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
-                Por qué planificar temprano importa
-              </h3>
-              <ul className="flex flex-col gap-2.5">
-                {[
-                  "El interés compuesto hace la mayor parte del trabajo — cuanto antes empezás, menos tenés que poner vos.",
-                  "Un plan de retiro formal ordena tus aportes y te protege de imprevistos en el camino.",
-                  "Revisar tu plan cada año te permite ajustarlo a cambios reales en tu ingreso o tus metas.",
-                ].map((text) => (
-                  <li key={text} className="flex items-start gap-2.5 text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: "var(--ma-chart-series-secondary)" }} aria-hidden="true" />
-                    {text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-2xl p-6 text-center" style={{ background: "var(--ma-title-color)", color: "var(--ma-background-page)", boxShadow: "var(--ma-shadow-lg)" }}>
-              <p className="text-[16px] font-semibold">¡Gracias, {nombre.split(" ")[0]}!</p>
-              <p className="mx-auto mt-1.5 max-w-sm text-[13.5px] opacity-70">
-                Ya recibimos tus datos — {config.assignedAgentName ?? "tu asesor"} te va a contactar por WhatsApp para armar tu plan real.
-              </p>
-            </div>
-
-            <p className="px-2 text-center text-[11px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
-              Simulación con fines ilustrativos. Las cifras son estimaciones y no constituyen asesoría financiera certificada — los resultados reales
-              dependen del plan que contrates y de las condiciones de mercado.
-            </p>
           </div>
         )}
       </div>

@@ -96,3 +96,13 @@ export function simulateRetirementSeries(input: RetirementSimulationInput): Reti
 }
 
 export const DEFAULT_ANNUAL_RETURN_RATE_PCT = 8;
+
+/** Standard retirement-planning guidance: a monthly income around 70% of your
+ * pre-retirement income is usually enough to sustain your lifestyle. Used
+ * only to build the "brecha" (gap) narrative on the results screen — never
+ * fed back into simulateRetirement's own math. */
+export const RECOMMENDED_INCOME_REPLACEMENT_PCT = 70;
+
+export function recommendedMonthlyIncome(ingresoActual: number): number {
+  return Math.round(ingresoActual * (RECOMMENDED_INCOME_REPLACEMENT_PCT / 100));
+}
