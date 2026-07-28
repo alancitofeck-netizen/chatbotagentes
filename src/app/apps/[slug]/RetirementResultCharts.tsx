@@ -21,15 +21,28 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   const aportado = payload.find((p) => p.dataKey === "aportado")?.value ?? 0;
   const intereses = payload.find((p) => p.dataKey === "intereses")?.value ?? 0;
   return (
-    <div className="rounded-xl border border-border-default bg-surface-1 px-3.5 py-3 text-xs shadow-[var(--elevation-md)]">
-      <p className="mb-1.5 font-mono font-semibold text-foreground">Año {label}</p>
-      <p className="flex items-center gap-1.5 text-neutral-500">
-        <span className="size-2 rounded-full bg-accent-500" /> Aportado <span className="ml-auto font-medium text-foreground">{formatCurrency(aportado)}</span>
+    <div
+      className="rounded-xl px-3.5 py-3 text-xs"
+      style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}
+    >
+      <p className="mb-1.5 font-mono font-semibold" style={{ color: "var(--ma-title-color)" }}>
+        Año {label}
       </p>
-      <p className="mt-1 flex items-center gap-1.5 text-neutral-500">
-        <span className="size-2 rounded-full bg-success-strong" /> Interés <span className="ml-auto font-medium text-foreground">{formatCurrency(intereses)}</span>
+      <p className="flex items-center gap-1.5" style={{ color: "var(--ma-text-muted)" }}>
+        <span className="size-2 rounded-full" style={{ background: "var(--ma-chart-series-primary)" }} /> Aportado{" "}
+        <span className="ml-auto font-medium" style={{ color: "var(--ma-text-color)" }}>
+          {formatCurrency(aportado)}
+        </span>
       </p>
-      <p className="mt-1.5 border-t border-border-default pt-1.5 font-medium text-foreground">Total {formatCurrency(aportado + intereses)}</p>
+      <p className="mt-1 flex items-center gap-1.5" style={{ color: "var(--ma-text-muted)" }}>
+        <span className="size-2 rounded-full" style={{ background: "var(--ma-chart-series-secondary)" }} /> Interés{" "}
+        <span className="ml-auto font-medium" style={{ color: "var(--ma-text-color)" }}>
+          {formatCurrency(intereses)}
+        </span>
+      </p>
+      <p className="mt-1.5 pt-1.5 font-medium" style={{ borderTop: "1px solid var(--ma-border)", color: "var(--ma-text-color)" }}>
+        Total {formatCurrency(aportado + intereses)}
+      </p>
     </div>
   );
 }
@@ -38,8 +51,11 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
  * total line on top, doubling as the "crecimiento del capital", "evolución
  * anual", and "aportes vs intereses" visuals the user asked for in one
  * interactive chart rather than three separate widgets. Categorical pair
- * (accent-500 / success-strong) validated against both the light and dark
- * chart surface via the dataviz skill's contrast/CVD checks. */
+ * comes from paletteEngine.ts's chartSeriesPrimary/chartSeriesSecondary —
+ * always contrast/hue-separated regardless of which two brand colors this
+ * mini app picked (see generateMiniAppPalette's chartSecondary rotation).
+ * Grid/axis neutrals stay on the sitewide --border-default/--color-neutral-*
+ * tokens deliberately — structural chrome, not brand identity. */
 export function RetirementGrowthChart({ series }: { series: RetirementYearPoint[] }) {
   return (
     <div className="h-[260px] w-full sm:h-[300px]">
@@ -47,12 +63,12 @@ export function RetirementGrowthChart({ series }: { series: RetirementYearPoint[
         <ComposedChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="fill-aportado" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-accent-500)" stopOpacity={0.85} />
-              <stop offset="100%" stopColor="var(--color-accent-500)" stopOpacity={0.35} />
+              <stop offset="0%" stopColor="var(--ma-chart-series-primary)" stopOpacity={0.85} />
+              <stop offset="100%" stopColor="var(--ma-chart-series-primary)" stopOpacity={0.35} />
             </linearGradient>
             <linearGradient id="fill-intereses" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-success-strong)" stopOpacity={0.85} />
-              <stop offset="100%" stopColor="var(--color-success-strong)" stopOpacity={0.35} />
+              <stop offset="0%" stopColor="var(--ma-chart-series-secondary)" stopOpacity={0.85} />
+              <stop offset="100%" stopColor="var(--ma-chart-series-secondary)" stopOpacity={0.35} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="var(--border-default)" />
@@ -72,9 +88,17 @@ export function RetirementGrowthChart({ series }: { series: RetirementYearPoint[
             width={54}
           />
           <Tooltip content={<ChartTooltip />} />
-          <Area type="monotone" dataKey="aportado" stackId="fondo" name="Aportado" stroke="var(--color-accent-500)" fill="url(#fill-aportado)" strokeWidth={1.5} />
-          <Area type="monotone" dataKey="intereses" stackId="fondo" name="Interés" stroke="var(--color-success-strong)" fill="url(#fill-intereses)" strokeWidth={1.5} />
-          <Line type="monotone" dataKey="total" name="Total" stroke="var(--color-primary-700)" strokeWidth={2} dot={false} />
+          <Area type="monotone" dataKey="aportado" stackId="fondo" name="Aportado" stroke="var(--ma-chart-series-primary)" fill="url(#fill-aportado)" strokeWidth={1.5} />
+          <Area
+            type="monotone"
+            dataKey="intereses"
+            stackId="fondo"
+            name="Interés"
+            stroke="var(--ma-chart-series-secondary)"
+            fill="url(#fill-intereses)"
+            strokeWidth={1.5}
+          />
+          <Line type="monotone" dataKey="total" name="Total" stroke="var(--ma-button-primary-hover)" strokeWidth={2} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

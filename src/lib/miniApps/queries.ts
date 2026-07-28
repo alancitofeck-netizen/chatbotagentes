@@ -2,8 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
-
-const DEFAULT_PRIMARY_COLOR = "#6c63ff";
+import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from "@/lib/miniApps/paletteEngine";
 
 export type MiniAppTemplateKey = "simulador_retiro";
 export type MiniAppStatus = "active" | "inactive";
@@ -144,7 +143,11 @@ export async function getMiniAppDetail(workspaceId: string, miniAppId: string): 
     allowedOrigins: (app.allowed_origins as string[]) ?? [],
     apiKeyLast4: app.api_key_last4 as string,
     status: app.status as MiniAppStatus,
-    branding: { logoUrl: branding.logoUrl ?? null, primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR },
+    branding: {
+      logoUrl: branding.logoUrl ?? null,
+      primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR,
+      secondaryColor: branding.secondaryColor ?? DEFAULT_SECONDARY_COLOR,
+    },
     config: {
       annualReturnRatePct: config.annualReturnRatePct ?? DEFAULT_ANNUAL_RETURN_RATE_PCT,
       showIngresoActual: config.showIngresoActual ?? true,
@@ -262,6 +265,7 @@ export async function getMiniAppVisitsCount(workspaceId: string, miniAppId: stri
 export interface MiniAppBranding {
   logoUrl: string | null;
   primaryColor: string;
+  secondaryColor: string;
 }
 
 export interface MiniAppFieldConfig {
@@ -306,6 +310,7 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
     branding: {
       logoUrl: branding.logoUrl ?? null,
       primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR,
+      secondaryColor: branding.secondaryColor ?? DEFAULT_SECONDARY_COLOR,
     },
     config: {
       annualReturnRatePct: config.annualReturnRatePct ?? DEFAULT_ANNUAL_RETURN_RATE_PCT,

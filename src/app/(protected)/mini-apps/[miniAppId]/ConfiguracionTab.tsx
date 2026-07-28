@@ -12,7 +12,9 @@ import type { MiniAppDetail } from "@/lib/miniApps/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { updateMiniApp, updateMiniAppBranding, regenerateApiKey, deleteMiniApp } from "@/lib/miniApps/actions";
 import { createClient } from "@/lib/supabase/client";
+import { isValidHexColor } from "@/lib/miniApps/paletteEngine";
 import { LogoCropDialog } from "../LogoCropDialog";
+import { MiniAppPalettePreview } from "../MiniAppPalettePreview";
 
 function CopyableLine({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -54,6 +56,9 @@ export function ConfiguracionTab({
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
   const [primaryColor, setPrimaryColor] = useState(miniApp.branding.primaryColor);
+  const [secondaryColor, setSecondaryColor] = useState(miniApp.branding.secondaryColor);
+  const [primaryHexInput, setPrimaryHexInput] = useState(miniApp.branding.primaryColor);
+  const [secondaryHexInput, setSecondaryHexInput] = useState(miniApp.branding.secondaryColor);
   const [logoUrl, setLogoUrl] = useState(miniApp.branding.logoUrl);
   const [showLogoDialog, setShowLogoDialog] = useState(false);
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(miniApp.config.annualReturnRatePct);
@@ -107,7 +112,7 @@ export function ConfiguracionTab({
       if (uploadError) throw new Error("No se pudo subir el logo.");
       const { data: publicUrlData } = supabase.storage.from("mini-app-logos").getPublicUrl(path);
       const url = `${publicUrlData.publicUrl}?v=${Date.now()}`;
-      await updateMiniAppBranding(miniApp.id, { logoUrl: url, primaryColor });
+      await updateMiniAppBranding(miniApp.id, { logoUrl: url, primaryColor, secondaryColor });
       setLogoUrl(url);
       toast.success("Logo actualizado.");
     } catch (err) {
@@ -119,8 +124,8 @@ export function ConfiguracionTab({
 
   function handleSaveColor() {
     setIsSavingBranding(true);
-    updateMiniAppBranding(miniApp.id, { logoUrl, primaryColor })
-      .then(() => toast.success("Color actualizado."))
+    updateMiniAppBranding(miniApp.id, { logoUrl, primaryColor, secondaryColor })
+      .then(() => toast.success("Colores actualizados."))
       .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo actualizar el color."))
       .finally(() => setIsSavingBranding(false));
   }
@@ -191,31 +196,83 @@ export function ConfiguracionTab({
       <Card>
         <CardHeader title="Marca y motor financiero" />
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-foreground">Logo</label>
-              <div className="flex items-center gap-3">
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt={miniApp.name} className="size-12 rounded-full object-cover" />
-                ) : (
-                  <div className="flex size-12 items-center justify-center rounded-full bg-surface-2 text-xs text-neutral-400">Sin logo</div>
-                )}
-                <Button type="button" variant="secondary" size="sm" onClick={() => setShowLogoDialog(true)} loading={isSavingBranding}>
-                  {logoUrl ? "Cambiar" : "Subir logo"}
-                </Button>
-              </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-foreground">Logo</label>
+            <div className="flex items-center gap-3">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={miniApp.name} className="size-12 rounded-full object-cover" />
+              ) : (
+                <div className="flex size-12 items-center justify-center rounded-full bg-surface-2 text-xs text-neutral-400">Sin logo</div>
+              )}
+              <Button type="button" variant="secondary" size="sm" onClick={() => setShowLogoDialog(true)} loading={isSavingBranding}>
+                {logoUrl ? "Cambiar" : "Subir logo"}
+              </Button>
             </div>
+          </div>
+
+          {/* Solo estos dos colores — el resto del sistema visual de la
+           * página pública (fondos, botones, hover, texto, bordes, íconos,
+           * gráficos, etiquetas, sombras, gradientes, en claro y oscuro) se
+           * genera automáticamente desde acá (paletteEngine.ts), con
+           * contraste WCAG verificado — el usuario no vuelve a decidir nada
+           * de diseño más allá de estos dos valores. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-foreground">Color principal</label>
               <div className="flex items-center gap-2">
-                <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-9 w-16 rounded-md border border-border-default" />
-                <Button type="button" variant="secondary" size="sm" onClick={handleSaveColor} loading={isSavingBranding}>
-                  Guardar
-                </Button>
+                <input
+                  type="color"
+                  value={primaryColor}
+                  onChange={(e) => {
+                    setPrimaryColor(e.target.value);
+                    setPrimaryHexInput(e.target.value);
+                  }}
+                  className="h-9 w-12 shrink-0 rounded-md border border-border-default"
+                />
+                <Input
+                  label=""
+                  containerClassName="flex-1"
+                  value={primaryHexInput}
+                  onChange={(e) => {
+                    setPrimaryHexInput(e.target.value);
+                    if (isValidHexColor(e.target.value)) setPrimaryColor(e.target.value);
+                  }}
+                  error={primaryHexInput && !isValidHexColor(primaryHexInput) ? "Hex inválido" : undefined}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Color secundario</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={secondaryColor}
+                  onChange={(e) => {
+                    setSecondaryColor(e.target.value);
+                    setSecondaryHexInput(e.target.value);
+                  }}
+                  className="h-9 w-12 shrink-0 rounded-md border border-border-default"
+                />
+                <Input
+                  label=""
+                  containerClassName="flex-1"
+                  value={secondaryHexInput}
+                  onChange={(e) => {
+                    setSecondaryHexInput(e.target.value);
+                    if (isValidHexColor(e.target.value)) setSecondaryColor(e.target.value);
+                  }}
+                  error={secondaryHexInput && !isValidHexColor(secondaryHexInput) ? "Hex inválido" : undefined}
+                />
               </div>
             </div>
           </div>
+
+          <MiniAppPalettePreview primaryColor={primaryColor} secondaryColor={secondaryColor} />
+
+          <Button type="button" variant="secondary" size="sm" onClick={handleSaveColor} loading={isSavingBranding} className="self-start">
+            Guardar colores
+          </Button>
 
           <div className="my-1 h-px bg-border-default" />
 

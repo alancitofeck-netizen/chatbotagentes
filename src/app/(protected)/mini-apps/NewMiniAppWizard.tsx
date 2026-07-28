@@ -11,7 +11,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { createMiniApp, updateMiniAppBranding } from "@/lib/miniApps/actions";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
+import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR, isValidHexColor } from "@/lib/miniApps/paletteEngine";
 import { LogoCropDialog } from "./LogoCropDialog";
+import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
 const TEMPLATES = [
   { key: "simulador_retiro", label: "Simulador de Retiro", available: true },
@@ -21,7 +23,6 @@ const TEMPLATES = [
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
 ] as const;
 
-const DEFAULT_PRIMARY_COLOR = "#6c63ff";
 const STEPS = ["Tipo", "Marca", "Campos y motor", "Publicar"] as const;
 
 function CopyableField({ label, value }: { label: string; value: string }) {
@@ -70,6 +71,9 @@ export function NewMiniAppWizard({
   const [externalUrl, setExternalUrl] = useState("");
   const [allowedOrigins, setAllowedOrigins] = useState("");
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_COLOR);
+  const [secondaryColor, setSecondaryColor] = useState(DEFAULT_SECONDARY_COLOR);
+  const [primaryHexInput, setPrimaryHexInput] = useState(DEFAULT_PRIMARY_COLOR);
+  const [secondaryHexInput, setSecondaryHexInput] = useState(DEFAULT_SECONDARY_COLOR);
   const [logoBlob, setLogoBlob] = useState<Blob | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [showLogoDialog, setShowLogoDialog] = useState(false);
@@ -127,7 +131,7 @@ export function NewMiniAppWizard({
           logoUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
         }
       }
-      await updateMiniAppBranding(result.id, { logoUrl, primaryColor });
+      await updateMiniAppBranding(result.id, { logoUrl, primaryColor, secondaryColor });
 
       setCreated(result);
       onCreated();
@@ -196,26 +200,77 @@ export function NewMiniAppWizard({
                 </option>
               ))}
             </Select>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Logo</label>
+              <div className="flex items-center gap-3">
+                {logoPreviewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoPreviewUrl} alt="Logo" className="size-12 rounded-full object-cover" />
+                ) : (
+                  <div className="flex size-12 items-center justify-center rounded-full bg-surface-2 text-xs text-neutral-400">Sin logo</div>
+                )}
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowLogoDialog(true)}>
+                  {logoPreviewUrl ? "Cambiar" : "Subir logo"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Solo estos dos colores — el resto del sistema visual de la
+             * página pública se genera solo (paletteEngine.ts), con
+             * contraste WCAG verificado automáticamente. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">Logo</label>
-                <div className="flex items-center gap-3">
-                  {logoPreviewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoPreviewUrl} alt="Logo" className="size-12 rounded-full object-cover" />
-                  ) : (
-                    <div className="flex size-12 items-center justify-center rounded-full bg-surface-2 text-xs text-neutral-400">Sin logo</div>
-                  )}
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setShowLogoDialog(true)}>
-                    {logoPreviewUrl ? "Cambiar" : "Subir logo"}
-                  </Button>
+                <label className="text-sm font-medium text-foreground">Color principal</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => {
+                      setPrimaryColor(e.target.value);
+                      setPrimaryHexInput(e.target.value);
+                    }}
+                    className="h-9 w-12 shrink-0 rounded-md border border-border-default"
+                  />
+                  <Input
+                    label=""
+                    containerClassName="flex-1"
+                    value={primaryHexInput}
+                    onChange={(e) => {
+                      setPrimaryHexInput(e.target.value);
+                      if (isValidHexColor(e.target.value)) setPrimaryColor(e.target.value);
+                    }}
+                    error={primaryHexInput && !isValidHexColor(primaryHexInput) ? "Hex inválido" : undefined}
+                  />
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">Color principal</label>
-                <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-9 w-16 rounded-md border border-border-default" />
+                <label className="text-sm font-medium text-foreground">Color secundario</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={secondaryColor}
+                    onChange={(e) => {
+                      setSecondaryColor(e.target.value);
+                      setSecondaryHexInput(e.target.value);
+                    }}
+                    className="h-9 w-12 shrink-0 rounded-md border border-border-default"
+                  />
+                  <Input
+                    label=""
+                    containerClassName="flex-1"
+                    value={secondaryHexInput}
+                    onChange={(e) => {
+                      setSecondaryHexInput(e.target.value);
+                      if (isValidHexColor(e.target.value)) setSecondaryColor(e.target.value);
+                    }}
+                    error={secondaryHexInput && !isValidHexColor(secondaryHexInput) ? "Hex inválido" : undefined}
+                  />
+                </div>
               </div>
             </div>
+
+            <MiniAppPalettePreview primaryColor={primaryColor} secondaryColor={secondaryColor} />
+
             <Input
               label="URL donde vive la mini app (opcional)"
               value={externalUrl}

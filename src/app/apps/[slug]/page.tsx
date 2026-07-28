@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicMiniAppBySlug } from "@/lib/miniApps/queries";
+import { generateMiniAppPalette, toCssDeclarations } from "@/lib/miniApps/paletteEngine";
 import { RetirementSimulatorApp } from "./RetirementSimulatorApp";
+
+const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -18,8 +21,28 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
   const app = await getPublicMiniAppBySlug(slug);
   if (!app) notFound();
 
+  // Computed once per request (pure arithmetic, no I/O) rather than on the
+  // client — this page is public/high-traffic, so this keeps the generated
+  // theme in the initial HTML with no flash-of-default-color and no extra
+  // client JS. Same light/dark-override shape the sitewide globals.css
+  // itself uses: prefers-color-scheme as the default signal, with explicit
+  // html[data-theme] overrides for a visitor who toggled the site's own
+  // theme switch (see docs/blueprint/14-design-system.md).
+  const palette = generateMiniAppPalette(app.branding.primaryColor, app.branding.secondaryColor);
+  const themeCss = `
+    ${THEME_SELECTOR} { ${toCssDeclarations(palette.light)} }
+    @media (prefers-color-scheme: dark) { ${THEME_SELECTOR} { ${toCssDeclarations(palette.dark)} } }
+    html[data-theme="dark"] ${THEME_SELECTOR} { ${toCssDeclarations(palette.dark)} }
+    html[data-theme="light"] ${THEME_SELECTOR} { ${toCssDeclarations(palette.light)} }
+  `;
+
   if (app.templateKey === "simulador_retiro") {
-    return <RetirementSimulatorApp app={app} />;
+    return (
+      <>
+        <style>{themeCss}</style>
+        <RetirementSimulatorApp app={app} />
+      </>
+    );
   }
 
   notFound();

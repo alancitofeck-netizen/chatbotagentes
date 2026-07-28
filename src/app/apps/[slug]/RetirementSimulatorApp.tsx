@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -17,8 +17,6 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { simulateRetirement, simulateRetirementSeries } from "@/lib/miniApps/financialEngine";
 import { submitMiniAppLeadFromHostedPage } from "@/lib/miniApps/actions";
 import type { PublicMiniAppView } from "@/lib/miniApps/queries";
@@ -26,6 +24,14 @@ import { RetirementGrowthChart } from "./RetirementResultCharts";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(value);
+}
+
+/** `color-mix` instead of Tailwind's opacity-modifier-on-arbitrary-value —
+ * the palette is only known to this page as CSS custom properties (computed
+ * once server-side in page.tsx, never passed down as a JS object), so a
+ * "10% of --ma-button-primary-bg" tint has to happen in CSS, not JS. */
+function soften(cssVar: string, percent: number): string {
+  return `color-mix(in srgb, var(${cssVar}) ${percent}%, transparent)`;
 }
 
 const AHORRO_CHIPS = [2000, 4000, 6000, 10000, 15000];
@@ -66,16 +72,74 @@ function useCountUp(target: number, active: boolean) {
   return display;
 }
 
+// ---------------------------------------------------------------------------
+// Brand-aware primitives — deliberately local (not the shared
+// src/components/ui/Button.tsx / ProgressBar.tsx) since those hardcode GL's
+// own --color-accent-* tokens; this public page's whole point is rendering
+// each mini app's OWN generated palette instead, without touching the
+// shared components every authenticated screen still relies on.
+// ---------------------------------------------------------------------------
+
+function MiniAppButton({
+  variant = "primary",
+  loading,
+  className = "",
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost"; loading?: boolean }) {
+  const base = "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none";
+  const styleByVariant: CSSProperties =
+    variant === "primary"
+      ? { background: "var(--ma-button-primary-bg)", color: "var(--ma-button-primary-text)" }
+      : variant === "secondary"
+        ? { background: "transparent", color: "var(--ma-text-color)", border: "1px solid var(--ma-border-strong)" }
+        : { background: "transparent", color: "var(--ma-text-muted)" };
+
+  return (
+    <button
+      {...props}
+      disabled={props.disabled || loading}
+      className={`${base} ${className}`}
+      style={styleByVariant}
+      onMouseEnter={(e) => {
+        if (variant === "primary") e.currentTarget.style.background = "var(--ma-button-primary-hover)";
+      }}
+      onMouseLeave={(e) => {
+        if (variant === "primary") e.currentTarget.style.background = "var(--ma-button-primary-bg)";
+      }}
+    >
+      {loading && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+      {children}
+    </button>
+  );
+}
+
+function MiniAppProgressBar({ value, colorVar = "--ma-button-primary-bg" }: { value: number; colorVar?: string }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--ma-background-surface-alt)" }}>
+      <div
+        className="h-full rounded-full transition-[width] duration-500 ease-out"
+        style={{ width: `${clamped}%`, background: `var(${colorVar})` }}
+        role="progressbar"
+        aria-valuenow={clamped}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      />
+    </div>
+  );
+}
+
 function DecorativeBackground() {
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-background" aria-hidden="true">
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" style={{ background: "var(--ma-background-page)" }} aria-hidden="true">
       <div
-        className="absolute inset-0 bg-[length:220%_220%] opacity-[0.07] motion-safe:animate-[gradient-pan_22s_ease_infinite] dark:opacity-[0.14]"
-        style={{ backgroundImage: "linear-gradient(120deg, var(--color-primary-900) 0%, var(--color-accent-700) 50%, var(--color-primary-900) 100%)" }}
+        className="absolute inset-0 bg-[length:220%_220%] opacity-[0.10] motion-safe:animate-[gradient-pan_22s_ease_infinite]"
+        style={{ backgroundImage: "var(--ma-gradient-decorative)" }}
       />
-      <div className="absolute -top-24 -left-20 size-72 rounded-full bg-accent-500/10 blur-3xl motion-safe:animate-[float-slow_7s_ease-in-out_infinite]" />
-      <div className="absolute top-1/3 -right-16 size-80 rounded-full bg-primary-500/10 blur-3xl motion-safe:animate-[float-slow_9s_ease-in-out_infinite]" />
-      <div className="absolute -bottom-24 left-1/4 size-72 rounded-full bg-success-strong/8 blur-3xl motion-safe:animate-[float-slow_8s_ease-in-out_infinite]" />
+      <div className="absolute -top-24 -left-20 size-72 rounded-full blur-3xl motion-safe:animate-[float-slow_7s_ease-in-out_infinite]" style={{ background: soften("--ma-button-primary-bg", 14) }} />
+      <div className="absolute top-1/3 -right-16 size-80 rounded-full blur-3xl motion-safe:animate-[float-slow_9s_ease-in-out_infinite]" style={{ background: soften("--ma-button-secondary-bg", 14) }} />
+      <div className="absolute -bottom-24 left-1/4 size-72 rounded-full blur-3xl motion-safe:animate-[float-slow_8s_ease-in-out_infinite]" style={{ background: soften("--ma-chart-series-secondary", 10) }} />
     </div>
   );
 }
@@ -91,22 +155,32 @@ function AgentBar({ app }: { app: PublicMiniAppView }) {
     .join("");
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border-default bg-surface-1/90 p-3 shadow-[var(--elevation-sm)] backdrop-blur-sm">
+    <div
+      className="flex items-center gap-3 rounded-2xl p-3 backdrop-blur-sm"
+      style={{ background: soften("--ma-background-surface", 92), border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-sm)" }}
+    >
       {branding.logoUrl ? (
         <Image src={branding.logoUrl} alt={agentName} width={44} height={44} className="size-11 shrink-0 rounded-xl object-cover" unoptimized />
       ) : (
         <div
-          className="flex size-11 shrink-0 items-center justify-center rounded-xl text-[15px] font-semibold tracking-wide text-white"
-          style={{ background: "linear-gradient(135deg, var(--color-accent-500), var(--color-primary-700))" }}
+          className="flex size-11 shrink-0 items-center justify-center rounded-xl text-[15px] font-semibold tracking-wide"
+          style={{ background: "var(--ma-gradient-hero)", color: "var(--ma-gradient-hero-text)" }}
         >
           {initials || "GL"}
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold text-foreground">{agentName}</p>
-        <p className="truncate text-xs text-neutral-500">{app.description || "Asesor en protección y retiro"}</p>
+        <p className="truncate text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+          {agentName}
+        </p>
+        <p className="truncate text-xs" style={{ color: "var(--ma-text-muted)" }}>
+          {app.description || "Asesor en protección y retiro"}
+        </p>
       </div>
-      <span className="shrink-0 rounded-full border border-accent-200 bg-accent-50 px-2.5 py-1 text-[10.5px] font-bold tracking-[0.08em] text-accent-700 uppercase">
+      <span
+        className="shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-bold tracking-[0.08em] uppercase"
+        style={{ background: "var(--ma-tag-bg)", color: "var(--ma-tag-text)" }}
+      >
         Simulador
       </span>
     </div>
@@ -135,10 +209,18 @@ function SliderQuestion({
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between gap-3">
-        <span className="text-[15px] font-medium text-foreground">{label}</span>
-        <span className="font-mono text-2xl font-semibold text-accent-600 tabular-nums">{format(value)}</span>
+        <span className="text-[15px] font-medium" style={{ color: "var(--ma-title-color)" }}>
+          {label}
+        </span>
+        <span className="font-mono text-2xl font-semibold tabular-nums" style={{ color: "var(--ma-button-primary-bg)" }}>
+          {format(value)}
+        </span>
       </div>
-      {hint && <p className="mb-3 text-[13px] text-neutral-500">{hint}</p>}
+      {hint && (
+        <p className="mb-3 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+          {hint}
+        </p>
+      )}
       <input
         type="range"
         min={min}
@@ -146,9 +228,10 @@ function SliderQuestion({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-surface-3 accent-accent-500"
+        className="h-2 w-full cursor-pointer appearance-none rounded-full"
+        style={{ background: "var(--ma-background-surface-alt)", accentColor: "var(--ma-button-primary-bg)" }}
       />
-      <div className="mt-1.5 flex justify-between font-mono text-[11px] text-neutral-400">
+      <div className="mt-1.5 flex justify-between font-mono text-[11px]" style={{ color: "var(--ma-text-muted)" }}>
         <span>{format(min)}</span>
         <span>{format(max)}</span>
       </div>
@@ -160,12 +243,21 @@ function StepShell({ icon: Icon, title, subtitle, children }: { icon: typeof Spa
   return (
     <div className="flex flex-col gap-5 motion-safe:animate-[fade-in-up_0.35s_ease]">
       <div className="flex items-center gap-2.5">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-50 text-accent-600">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-full"
+          style={{ background: "var(--ma-tag-bg)", color: "var(--ma-icon-color)" }}
+        >
           <Icon className="size-[18px]" aria-hidden="true" />
         </span>
         <div>
-          <h2 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground">{title}</h2>
-          {subtitle && <p className="text-[13px] text-neutral-500">{subtitle}</p>}
+          <h2 className="text-[19px] font-semibold tracking-[-0.01em]" style={{ color: "var(--ma-title-color)" }}>
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+              {subtitle}
+            </p>
+          )}
         </div>
       </div>
       {children}
@@ -279,29 +371,42 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const replacementPct = ingresoActual > 0 ? Math.min(200, Math.round((result.rentaMensualEstimada / ingresoActual) * 100)) : null;
 
   return (
-    <div className={`relative flex min-h-screen justify-center px-4 py-8 sm:py-12 ${phase === "resultado" ? "items-start" : "items-center"}`}>
+    <div
+      data-mini-app-theme="true"
+      className={`relative flex min-h-screen justify-center px-4 py-8 sm:py-12 ${phase === "resultado" ? "items-start" : "items-center"}`}
+    >
       <DecorativeBackground />
       <div className={`flex w-full flex-col gap-4 transition-[max-width] duration-300 ${phase === "resultado" ? "max-w-2xl" : "max-w-md"}`}>
         <AgentBar app={app} />
 
         {phase !== "resultado" && (
           <div className="px-1">
-            <ProgressBar value={progressPct} />
+            <MiniAppProgressBar value={progressPct} />
           </div>
         )}
 
         {phase === "calculando" && (
-          <div className="flex flex-col items-center gap-4 rounded-2xl border border-border-default bg-surface-1 px-6 py-16 text-center shadow-[var(--elevation-lg)] motion-safe:animate-[fade-in-up_0.3s_ease]">
-            <Loader2 className="size-9 animate-spin text-accent-500" aria-hidden="true" />
+          <div
+            className="flex flex-col items-center gap-4 rounded-2xl px-6 py-16 text-center motion-safe:animate-[fade-in-up_0.3s_ease]"
+            style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+          >
+            <Loader2 className="size-9 animate-spin" style={{ color: "var(--ma-button-primary-bg)" }} aria-hidden="true" />
             <div>
-              <p className="text-[15px] font-semibold text-foreground">Calculando tu proyección…</p>
-              <p className="mt-1 text-[13px] text-neutral-500">Estamos armando tu resultado personalizado.</p>
+              <p className="text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                Calculando tu proyección…
+              </p>
+              <p className="mt-1 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                Estamos armando tu resultado personalizado.
+              </p>
             </div>
           </div>
         )}
 
         {phase === "wizard" && (
-          <div className="rounded-2xl border border-border-default bg-surface-1 p-6 shadow-[var(--elevation-lg)] sm:p-7">
+          <div
+            className="rounded-2xl p-6 sm:p-7"
+            style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+          >
             {currentStep === "edad" && (
               <StepShell icon={CalendarClock} title="¿Cuántos años tenés hoy?" subtitle="Es el punto de partida de tu proyección.">
                 <SliderQuestion label="Tu edad hoy" value={edad} min={18} max={65} format={(v) => `${v} años`} onChange={setEdad} />
@@ -333,20 +438,24 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                   onChange={setAhorroMensual}
                 />
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {AHORRO_CHIPS.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setAhorroMensual(v)}
-                      className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold tabular-nums transition-colors duration-[var(--duration-fast)] ${
-                        ahorroMensual === v
-                          ? "border-accent-500 bg-accent-500 text-white"
-                          : "border-border-strong bg-surface-2 text-neutral-600 hover:border-accent-400"
-                      }`}
-                    >
-                      {formatCurrency(v)}
-                    </button>
-                  ))}
+                  {AHORRO_CHIPS.map((v) => {
+                    const selected = ahorroMensual === v;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setAhorroMensual(v)}
+                        className="rounded-full border px-3.5 py-1.5 text-[13px] font-semibold tabular-nums transition-colors duration-150"
+                        style={
+                          selected
+                            ? { borderColor: "var(--ma-button-primary-bg)", background: "var(--ma-button-primary-bg)", color: "var(--ma-button-primary-text)" }
+                            : { borderColor: "var(--ma-border-strong)", background: "var(--ma-background-surface-alt)", color: "var(--ma-text-color)" }
+                        }
+                      >
+                        {formatCurrency(v)}
+                      </button>
+                    );
+                  })}
                 </div>
               </StepShell>
             )}
@@ -373,7 +482,8 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder="Nombre y apellido"
-                  className="w-full rounded-xl border border-border-strong bg-surface-1 px-4 py-3 text-[15px] text-foreground outline-none transition-colors duration-[var(--duration-fast)] placeholder:text-neutral-400 focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+                  className="w-full rounded-xl px-4 py-3 text-[15px] outline-none transition-colors duration-150"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border-strong)", color: "var(--ma-text-color)" }}
                 />
               </StepShell>
             )}
@@ -387,24 +497,35 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
                   placeholder="55 1234 5678"
-                  className="w-full rounded-xl border border-border-strong bg-surface-1 px-4 py-3 text-[15px] text-foreground outline-none transition-colors duration-[var(--duration-fast)] placeholder:text-neutral-400 focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+                  className="w-full rounded-xl px-4 py-3 text-[15px] outline-none transition-colors duration-150"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border-strong)", color: "var(--ma-text-color)" }}
                 />
               </StepShell>
             )}
 
             {currentStep === "consentimiento" && (
               <StepShell icon={ShieldCheck} title="Último paso" subtitle="Confirmá que podemos contactarte con tu resultado.">
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border-default bg-surface-2 p-4">
+                <label
+                  className="flex cursor-pointer items-start gap-3 rounded-xl p-4"
+                  style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}
+                >
                   <input
                     type="checkbox"
                     checked={consentimiento}
                     onChange={(e) => setConsentimiento(e.target.checked)}
-                    className="mt-0.5 size-5 shrink-0 accent-accent-500"
+                    className="mt-0.5 size-5 shrink-0"
+                    style={{ accentColor: "var(--ma-button-primary-bg)" }}
                   />
-                  <span className="text-[13.5px] leading-relaxed text-neutral-600">
-                    Acepto que <strong className="text-foreground">{config.assignedAgentName ?? "Growth Link"}</strong> me contacte por WhatsApp para
-                    orientarme sobre mi plan de retiro, conforme a la LFPDPPP.{" "}
-                    <button type="button" onClick={() => setPrivacyOpen(true)} className="underline underline-offset-2 hover:text-accent-600">
+                  <span className="text-[13.5px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                    Acepto que{" "}
+                    <strong style={{ color: "var(--ma-text-color)" }}>{config.assignedAgentName ?? "Growth Link"}</strong> me contacte por WhatsApp
+                    para orientarme sobre mi plan de retiro, conforme a la LFPDPPP.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setPrivacyOpen(true)}
+                      className="underline underline-offset-2"
+                      style={{ color: "var(--ma-button-primary-bg)" }}
+                    >
                       Ver aviso de privacidad
                     </button>
                     .
@@ -413,20 +534,24 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </StepShell>
             )}
 
-            {error && <p className="mt-4 text-[13px] text-error-strong">{error}</p>}
+            {error && (
+              <p className="mt-4 text-[13px]" style={{ color: "var(--color-error-strong)" }}>
+                {error}
+              </p>
+            )}
 
             <div className="mt-6 flex items-center justify-between gap-3">
-              <Button variant="ghost" onClick={goBack} disabled={stepIndex === 0}>
+              <MiniAppButton type="button" variant="ghost" onClick={goBack} disabled={stepIndex === 0}>
                 <ArrowLeft className="size-4" aria-hidden="true" /> Atrás
-              </Button>
+              </MiniAppButton>
               {currentStep === "consentimiento" ? (
-                <Button onClick={handleFinish} loading={submitting} disabled={!consentimiento}>
+                <MiniAppButton type="button" onClick={handleFinish} loading={submitting} disabled={!consentimiento}>
                   Ver mi resultado <ArrowRight className="size-4" aria-hidden="true" />
-                </Button>
+                </MiniAppButton>
               ) : (
-                <Button onClick={goNext}>
+                <MiniAppButton type="button" onClick={goNext}>
                   Continuar <ArrowRight className="size-4" aria-hidden="true" />
-                </Button>
+                </MiniAppButton>
               )}
             </div>
           </div>
@@ -435,16 +560,16 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
         {phase === "resultado" && (
           <div className="flex flex-col gap-5 motion-safe:animate-[fade-in-up_0.4s_ease]">
             <div
-              className="overflow-hidden rounded-2xl p-7 text-center text-white shadow-[var(--elevation-lg)] sm:p-9"
-              style={{ background: "linear-gradient(160deg, var(--color-primary-800), var(--color-primary-950))" }}
+              className="overflow-hidden rounded-2xl p-7 text-center sm:p-9"
+              style={{ background: "var(--ma-gradient-hero)", color: "var(--ma-gradient-hero-text)", boxShadow: "var(--ma-shadow-lg)" }}
             >
-              <p className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.16em] text-white/60 uppercase">
+              <p className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.16em] uppercase opacity-70">
                 <Sparkles className="size-3.5" aria-hidden="true" /> Tu fondo estimado al retirarte
               </p>
               <p className="mt-3 font-mono text-5xl font-bold tabular-nums sm:text-6xl">{formatCurrency(fundDisplay)}</p>
-              <p className="mt-3 text-[13.5px] text-white/70">
-                Rango estimado: <span className="font-mono font-medium text-white">{formatCurrency(result.fondoRangoBajo)}</span> —{" "}
-                <span className="font-mono font-medium text-white">{formatCurrency(result.fondoRangoAlto)}</span>
+              <p className="mt-3 text-[13.5px] opacity-80">
+                Rango estimado: <span className="font-mono font-medium">{formatCurrency(result.fondoRangoBajo)}</span> —{" "}
+                <span className="font-mono font-medium">{formatCurrency(result.fondoRangoAlto)}</span>
               </p>
             </div>
 
@@ -455,19 +580,23 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               <StatCard emoji="💵" label="Ingreso mensual estimado" value={formatCurrency(incomeDisplay)} />
             </div>
 
-            <div className="rounded-2xl border border-border-default bg-surface-1 p-5 shadow-[var(--elevation-md)] sm:p-6">
+            <div className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}>
               <div className="mb-1 flex items-center gap-2">
-                <TrendingUp className="size-4 text-accent-600" aria-hidden="true" />
-                <h3 className="text-[15px] font-semibold text-foreground">Cómo crece tu fondo, año a año</h3>
+                <TrendingUp className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
+                <h3 className="text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                  Cómo crece tu fondo, año a año
+                </h3>
               </div>
-              <p className="mb-4 text-[13px] text-neutral-500">Lo que vos aportás vs. lo que te da el interés compuesto.</p>
+              <p className="mb-4 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                Lo que vos aportás vs. lo que te da el interés compuesto.
+              </p>
               <RetirementGrowthChart series={series} />
-              <div className="mt-2 flex flex-wrap justify-center gap-5 text-[12.5px] text-neutral-500">
+              <div className="mt-2 flex flex-wrap justify-center gap-5 text-[12.5px]" style={{ color: "var(--ma-text-muted)" }}>
                 <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-accent-500" /> Aportado
+                  <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-primary)" }} /> Aportado
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-success-strong" /> Interés compuesto
+                  <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-secondary)" }} /> Interés compuesto
                 </span>
               </div>
             </div>
@@ -479,13 +608,17 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
             </div>
 
             {replacementPct !== null && (
-              <div className="rounded-2xl border border-border-default bg-surface-1 p-5 shadow-[var(--elevation-md)]">
+              <div className="rounded-2xl p-5" style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}>
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-[13.5px] font-medium text-foreground">Cobertura de tu ritmo de vida actual</p>
-                  <p className="font-mono text-lg font-semibold text-success-strong">{replacementPct}%</p>
+                  <p className="text-[13.5px] font-medium" style={{ color: "var(--ma-title-color)" }}>
+                    Cobertura de tu ritmo de vida actual
+                  </p>
+                  <p className="font-mono text-lg font-semibold" style={{ color: "var(--ma-chart-series-secondary)" }}>
+                    {replacementPct}%
+                  </p>
                 </div>
-                <ProgressBar value={Math.min(100, replacementPct)} variant="success" />
-                <p className="mt-2 text-[12.5px] text-neutral-500">
+                <MiniAppProgressBar value={Math.min(100, replacementPct)} colorVar="--ma-chart-series-secondary" />
+                <p className="mt-2 text-[12.5px]" style={{ color: "var(--ma-text-muted)" }}>
                   {replacementPct < 70
                     ? "Ahí está la brecha que conviene cerrar antes del retiro."
                     : "Vas por muy buen camino para mantener tu ritmo de vida."}
@@ -493,30 +626,32 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </div>
             )}
 
-            <div className="rounded-2xl border border-border-default bg-surface-1 p-5 shadow-[var(--elevation-md)] sm:p-6">
-              <h3 className="mb-3 text-[15px] font-semibold text-foreground">Por qué planificar temprano importa</h3>
+            <div className="rounded-2xl p-5 sm:p-6" style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}>
+              <h3 className="mb-3 text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                Por qué planificar temprano importa
+              </h3>
               <ul className="flex flex-col gap-2.5">
                 {[
                   "El interés compuesto hace la mayor parte del trabajo — cuanto antes empezás, menos tenés que poner vos.",
                   "Un plan de retiro formal ordena tus aportes y te protege de imprevistos en el camino.",
                   "Revisar tu plan cada año te permite ajustarlo a cambios reales en tu ingreso o tus metas.",
                 ].map((text) => (
-                  <li key={text} className="flex items-start gap-2.5 text-[13.5px] text-neutral-600">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success-strong" aria-hidden="true" />
+                  <li key={text} className="flex items-start gap-2.5 text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: "var(--ma-chart-series-secondary)" }} aria-hidden="true" />
                     {text}
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="rounded-2xl bg-foreground p-6 text-center text-background shadow-[var(--elevation-lg)]">
+            <div className="rounded-2xl p-6 text-center" style={{ background: "var(--ma-title-color)", color: "var(--ma-background-page)", boxShadow: "var(--ma-shadow-lg)" }}>
               <p className="text-[16px] font-semibold">¡Gracias, {nombre.split(" ")[0]}!</p>
               <p className="mx-auto mt-1.5 max-w-sm text-[13.5px] opacity-70">
                 Ya recibimos tus datos — {config.assignedAgentName ?? "tu asesor"} te va a contactar por WhatsApp para armar tu plan real.
               </p>
             </div>
 
-            <p className="px-2 text-center text-[11px] leading-relaxed text-neutral-400">
+            <p className="px-2 text-center text-[11px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
               Simulación con fines ilustrativos. Las cifras son estimaciones y no constituyen asesoría financiera certificada — los resultados reales
               dependen del plan que contrates y de las condiciones de mercado.
             </p>
@@ -529,24 +664,34 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-5"
           onClick={(e) => e.target === e.currentTarget && setPrivacyOpen(false)}
         >
-          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl bg-surface-1 p-6 shadow-[var(--elevation-lg)]">
+          <div
+            className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl p-6"
+            style={{ background: "var(--ma-background-surface)", boxShadow: "var(--ma-shadow-lg)" }}
+          >
             <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-[17px] font-semibold text-foreground">Aviso de privacidad</h4>
-              <button type="button" onClick={() => setPrivacyOpen(false)} aria-label="Cerrar" className="text-neutral-400 hover:text-foreground">
+              <h4 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                Aviso de privacidad
+              </h4>
+              <button
+                type="button"
+                onClick={() => setPrivacyOpen(false)}
+                aria-label="Cerrar"
+                style={{ color: "var(--ma-text-muted)" }}
+              >
                 <X className="size-5" aria-hidden="true" />
               </button>
             </div>
-            <p className="mb-2.5 text-[13px] leading-relaxed text-neutral-600">
-              <strong className="text-foreground">Responsable:</strong> {config.assignedAgentName ?? "el asesor asignado"}. Los datos que compartís
-              (nombre y WhatsApp) se usan únicamente para contactarte y darte orientación sobre tu plan de retiro.
+            <p className="mb-2.5 text-[13px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+              <strong style={{ color: "var(--ma-text-color)" }}>Responsable:</strong> {config.assignedAgentName ?? "el asesor asignado"}. Los datos
+              que compartís (nombre y WhatsApp) se usan únicamente para contactarte y darte orientación sobre tu plan de retiro.
             </p>
-            <p className="text-[13px] leading-relaxed text-neutral-600">
+            <p className="text-[13px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
               No se comparten con terceros ajenos a esta finalidad. Podés solicitar acceder, rectificar, cancelar tu información u oponerte a su uso
               en cualquier momento escribiendo por el mismo WhatsApp.
             </p>
-            <Button variant="secondary" fullWidth className="mt-4" onClick={() => setPrivacyOpen(false)}>
+            <MiniAppButton type="button" variant="secondary" className="mt-4 w-full" onClick={() => setPrivacyOpen(false)}>
               Entendido
-            </Button>
+            </MiniAppButton>
           </div>
         </div>
       )}
@@ -556,10 +701,17 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
 
 function StatCard({ emoji, label, value }: { emoji: string; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-sm)] transition-transform duration-[var(--duration-fast)] hover:-translate-y-0.5">
+    <div
+      className="rounded-2xl p-4 transition-transform duration-150 hover:-translate-y-0.5"
+      style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-sm)" }}
+    >
       <p className="text-2xl">{emoji}</p>
-      <p className="mt-1.5 font-mono text-[17px] font-semibold tabular-nums text-foreground">{value}</p>
-      <p className="text-[12px] text-neutral-500">{label}</p>
+      <p className="mt-1.5 font-mono text-[17px] font-semibold tabular-nums" style={{ color: "var(--ma-title-color)" }}>
+        {value}
+      </p>
+      <p className="text-[12px]" style={{ color: "var(--ma-text-muted)" }}>
+        {label}
+      </p>
     </div>
   );
 }
@@ -567,12 +719,19 @@ function StatCard({ emoji, label, value }: { emoji: string; label: string; value
 function ScenarioChip({ label, value, highlighted }: { label: string; value: string; highlighted?: boolean }) {
   return (
     <div
-      className={`rounded-xl border p-3 text-center ${
-        highlighted ? "border-accent-500 bg-accent-50" : "border-border-default bg-surface-1"
-      }`}
+      className="rounded-xl p-3 text-center"
+      style={
+        highlighted
+          ? { border: "1px solid var(--ma-button-primary-bg)", background: soften("--ma-button-primary-bg", 10) }
+          : { border: "1px solid var(--ma-border)", background: "var(--ma-background-surface)" }
+      }
     >
-      <p className={`text-[11px] font-semibold uppercase tracking-wide ${highlighted ? "text-accent-700" : "text-neutral-500"}`}>{label}</p>
-      <p className="mt-1 font-mono text-[13px] font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: highlighted ? "var(--ma-button-primary-bg)" : "var(--ma-text-muted)" }}>
+        {label}
+      </p>
+      <p className="mt-1 font-mono text-[13px] font-semibold tabular-nums" style={{ color: "var(--ma-title-color)" }}>
+        {value}
+      </p>
     </div>
   );
 }
