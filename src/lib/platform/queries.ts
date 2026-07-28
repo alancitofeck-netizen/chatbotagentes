@@ -99,6 +99,7 @@ export async function getAllWorkspacesForSupervision(): Promise<PlatformWorkspac
       .from("bookings")
       .select("workspace_id")
       .neq("status", "cancelled")
+      .neq("event_type", "task")
       .gte("start_time", todayStart.toISOString())
       .lte("start_time", todayEnd.toISOString()),
     supabase.from("ai_agents").select("workspace_id, status"),

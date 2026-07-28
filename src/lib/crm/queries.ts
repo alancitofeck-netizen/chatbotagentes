@@ -181,6 +181,7 @@ export async function getCrmBoard(workspaceId: string, pipelineId?: string): Pro
       .select("contact_id, subject, start_time, status")
       .eq("workspace_id", workspaceId)
       .neq("status", "cancelled")
+      .neq("event_type", "task")
       .order("start_time", { ascending: true }),
     opportunityIds.length
       ? supabase

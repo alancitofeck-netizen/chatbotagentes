@@ -89,13 +89,18 @@ export async function getDashboardKpis(workspaceId: string): Promise<DashboardKp
       .eq("workspace_id", workspaceId)
       .gte("start_time", todayStart.toISOString())
       .lt("start_time", tomorrowStart.toISOString())
-      .neq("status", "cancelled"),
+      .neq("status", "cancelled")
+      // "Tarea" is a real event_type value on bookings (Calendar's own
+      // category system, EVENT_TYPE_META.task) — not the separate `tasks`
+      // table. It must never count as a "reunión."
+      .neq("event_type", "task"),
     supabase
       .from("bookings")
       .select("subject, start_time, contacts(name)")
       .eq("workspace_id", workspaceId)
       .gte("start_time", now.toISOString())
       .neq("status", "cancelled")
+      .neq("event_type", "task")
       .order("start_time", { ascending: true })
       .limit(1),
     supabase
@@ -177,7 +182,8 @@ export async function getActivitySeries(workspaceId: string, range: ChartRange):
         .from("bookings")
         .select("start_time")
         .eq("workspace_id", workspaceId)
-        .gte("start_time", start.toISOString()),
+        .gte("start_time", start.toISOString())
+        .neq("event_type", "task"),
       supabase
         .from("opportunities")
         .select("created_at, value, status")

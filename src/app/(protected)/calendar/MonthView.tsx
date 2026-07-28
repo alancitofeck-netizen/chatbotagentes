@@ -21,29 +21,55 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
 }
 
-function EventChip({ event, onSelect }: { event: CalendarEvent; onSelect: (event: CalendarEvent) => void }) {
+function EventChip({
+  event,
+  onSelect,
+  selectionMode,
+  selected,
+  onToggleSelect,
+}: {
+  event: CalendarEvent;
+  onSelect: (event: CalendarEvent) => void;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: event.id });
   const meta = EVENT_TYPE_META[event.eventType] ?? EVENT_TYPE_META.other;
   const isCancelled = event.status === "cancelled";
 
   return (
-    <button
+    <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      type="button"
-      onClick={() => !isDragging && onSelect(event)}
       style={{ transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined, zIndex: isDragging ? 20 : undefined }}
-      className={cn(
-        "flex w-full flex-col gap-0 truncate rounded-md border-l-[3px] px-1.5 py-1 text-left shadow-[var(--elevation-xs)] transition-all duration-150",
-        "hover:-translate-y-0.5 hover:shadow-[var(--elevation-sm)]",
-        isCancelled ? "border-l-neutral-300 bg-surface-3 text-neutral-400 line-through" : cn(meta.border, meta.bg, meta.text),
-        isDragging && "opacity-80 shadow-[var(--elevation-md)]",
-      )}
+      className="relative w-full"
     >
-      <span className="truncate text-[11px] font-semibold leading-tight">{event.title}</span>
-      <span className="truncate text-[10px] leading-tight opacity-70">{formatTime(event.startTime)}</span>
-    </button>
+      <button
+        {...(!selectionMode ? { ...attributes, ...listeners } : {})}
+        type="button"
+        onClick={() => !isDragging && (selectionMode ? onToggleSelect(event.id) : onSelect(event))}
+        className={cn(
+          "flex w-full flex-col gap-0 truncate rounded-md border-l-[3px] px-1.5 py-1 text-left shadow-[var(--elevation-xs)] transition-all duration-150",
+          "hover:-translate-y-0.5 hover:shadow-[var(--elevation-sm)]",
+          isCancelled ? "border-l-neutral-300 bg-surface-3 text-neutral-400 line-through" : cn(meta.border, meta.bg, meta.text),
+          isDragging && "opacity-80 shadow-[var(--elevation-md)]",
+          selectionMode && "pr-4",
+          selected && "ring-2 ring-accent-500",
+        )}
+      >
+        <span className="truncate text-[11px] font-semibold leading-tight">{event.title}</span>
+        <span className="truncate text-[10px] leading-tight opacity-70">{formatTime(event.startTime)}</span>
+      </button>
+      {selectionMode && (
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(event.id)}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0.5 top-0.5 z-10 size-3 rounded border-border-strong accent-[var(--color-accent-500)]"
+        />
+      )}
+    </div>
   );
 }
 
@@ -53,12 +79,18 @@ function DayCell({
   events,
   onSelect,
   onOpenDay,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
 }: {
   day: Date;
   inMonth: boolean;
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
   onOpenDay: (day: Date) => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dayKey(day), data: { day } });
   const isToday = isSameDay(day, new Date());
@@ -86,7 +118,14 @@ function DayCell({
       </button>
       <div className="flex flex-col gap-1">
         {visible.map((event) => (
-          <EventChip key={event.id} event={event} onSelect={onSelect} />
+          <EventChip
+            key={event.id}
+            event={event}
+            onSelect={onSelect}
+            selectionMode={selectionMode}
+            selected={selectedIds.has(event.id)}
+            onToggleSelect={onToggleSelect}
+          />
         ))}
         {overflow > 0 && (
           <button
@@ -111,12 +150,18 @@ export function MonthView({
   onSelect,
   onOpenDay,
   onChanged,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
 }: {
   monthDate: Date;
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
   onOpenDay: (day: Date) => void;
   onChanged: () => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
 }) {
   const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
   const gridStart = getMonday(firstOfMonth);
@@ -159,6 +204,9 @@ export function MonthView({
             events={events.filter((e) => isSameDay(new Date(e.startTime), day))}
             onSelect={onSelect}
             onOpenDay={onOpenDay}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={onToggleSelect}
           />
         ))}
       </div>

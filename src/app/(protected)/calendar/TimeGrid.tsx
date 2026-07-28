@@ -84,12 +84,18 @@ function EventBlock({
   onSelect,
   onLiveResize,
   onResizeCommit,
+  selectionMode,
+  selected,
+  onToggleSelect,
 }: {
   event: CalendarEvent;
   day: Date;
   onSelect: (event: CalendarEvent) => void;
   onLiveResize: (eventId: string, endTime: string) => void;
   onResizeCommit: (eventId: string) => void;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: event.id, data: { event } });
   const meta = EVENT_TYPE_META[event.eventType] ?? EVENT_TYPE_META.other;
@@ -104,46 +110,60 @@ function EventBlock({
   const isCancelled = event.status === "cancelled";
 
   return (
-    <button
+    <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      type="button"
-      onClick={() => !isDragging && onSelect(event)}
       style={{
         top,
         height,
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         zIndex: isDragging ? 30 : undefined,
       }}
-      className={cn(
-        "group absolute inset-x-1.5 overflow-hidden rounded-lg border-l-[3px] px-2.5 py-1.5 text-left shadow-[var(--elevation-xs)] transition-all duration-150 ease-out",
-        "hover:-translate-y-0.5 hover:shadow-[var(--elevation-md)]",
-        isCancelled
-          ? "border-l-neutral-300 bg-surface-3 text-neutral-400 line-through"
-          : isPast
-            ? "border-l-neutral-300 bg-surface-2 text-neutral-500"
-            : cn(meta.border, meta.bg, meta.text),
-        isDragging && "opacity-90 shadow-[var(--elevation-lg)]",
-      )}
+      className="group absolute inset-x-1.5"
     >
-      <div className={cn("truncate font-semibold", compact ? "text-[11px]" : "text-[12px]")}>{event.title}</div>
-      {!compact && (
-        <div className="mt-0.5 truncate text-[10.5px] opacity-80">
-          {formatTime(event.startTime)} – {formatTime(event.endTime)}
-        </div>
-      )}
-      {!compact && event.assignedTo && <div className="mt-0.5 truncate text-[10.5px] opacity-70">{event.assignedTo.fullName}</div>}
-      {!isCancelled && (
-        <ResizeHandle
-          onLiveResize={(deltaMinutes) => {
-            const newEnd = new Date(new Date(event.endTime).getTime() + deltaMinutes * 60000);
-            if (newEnd > new Date(event.startTime)) onLiveResize(event.id, newEnd.toISOString());
-          }}
-          onCommit={() => onResizeCommit(event.id)}
+      <button
+        type="button"
+        {...(!selectionMode ? { ...attributes, ...listeners } : {})}
+        onClick={() => !isDragging && (selectionMode ? onToggleSelect(event.id) : onSelect(event))}
+        className={cn(
+          "relative block h-full w-full overflow-hidden rounded-lg border-l-[3px] px-2.5 py-1.5 text-left shadow-[var(--elevation-xs)] transition-all duration-150 ease-out",
+          "hover:-translate-y-0.5 hover:shadow-[var(--elevation-md)]",
+          isCancelled
+            ? "border-l-neutral-300 bg-surface-3 text-neutral-400 line-through"
+            : isPast
+              ? "border-l-neutral-300 bg-surface-2 text-neutral-500"
+              : cn(meta.border, meta.bg, meta.text),
+          isDragging && "opacity-90 shadow-[var(--elevation-lg)]",
+          selectionMode && "pr-5",
+          selected && "ring-2 ring-accent-500",
+        )}
+      >
+        <div className={cn("truncate font-semibold", compact ? "text-[11px]" : "text-[12px]")}>{event.title}</div>
+        {!compact && (
+          <div className="mt-0.5 truncate text-[10.5px] opacity-80">
+            {formatTime(event.startTime)} – {formatTime(event.endTime)}
+          </div>
+        )}
+        {!compact && event.assignedTo && <div className="mt-0.5 truncate text-[10.5px] opacity-70">{event.assignedTo.fullName}</div>}
+        {!isCancelled && !selectionMode && (
+          <ResizeHandle
+            onLiveResize={(deltaMinutes) => {
+              const newEnd = new Date(new Date(event.endTime).getTime() + deltaMinutes * 60000);
+              if (newEnd > new Date(event.startTime)) onLiveResize(event.id, newEnd.toISOString());
+            }}
+            onCommit={() => onResizeCommit(event.id)}
+          />
+        )}
+      </button>
+      {selectionMode && (
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(event.id)}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-1.5 top-1.5 z-10 size-3.5 rounded border-border-strong accent-[var(--color-accent-500)]"
         />
       )}
-    </button>
+    </div>
   );
 }
 
@@ -165,12 +185,18 @@ function DayColumn({
   onSelect,
   onLiveResize,
   onResizeCommit,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
 }: {
   day: Date;
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
   onLiveResize: (eventId: string, endTime: string) => void;
   onResizeCommit: (eventId: string) => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dayKey(day), data: { day } });
   const dayIsToday = isSameDay(day, new Date());
@@ -186,7 +212,17 @@ function DayColumn({
       ))}
       <NowIndicator day={day} />
       {events.map((event) => (
-        <EventBlock key={event.id} event={event} day={day} onSelect={onSelect} onLiveResize={onLiveResize} onResizeCommit={onResizeCommit} />
+        <EventBlock
+          key={event.id}
+          event={event}
+          day={day}
+          onSelect={onSelect}
+          onLiveResize={onLiveResize}
+          onResizeCommit={onResizeCommit}
+          selectionMode={selectionMode}
+          selected={selectedIds.has(event.id)}
+          onToggleSelect={onToggleSelect}
+        />
       ))}
     </div>
   );
@@ -201,11 +237,17 @@ export function TimeGrid({
   events,
   onSelect,
   onChanged,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
 }: {
   days: Date[];
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
   onChanged: () => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
 }) {
   // `events` only needs to be mirrored into local state because drag/resize
   // apply optimistic mutations on top of it — rather than an effect to keep
@@ -292,7 +334,16 @@ export function TimeGrid({
                     {day.getDate()}
                   </span>
                 </div>
-                <DayColumn day={day} events={dayEvents} onSelect={onSelect} onLiveResize={handleLiveResize} onResizeCommit={handleResizeCommit} />
+                <DayColumn
+                  day={day}
+                  events={dayEvents}
+                  onSelect={onSelect}
+                  onLiveResize={handleLiveResize}
+                  onResizeCommit={handleResizeCommit}
+                  selectionMode={selectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={onToggleSelect}
+                />
               </div>
             );
           })}

@@ -127,7 +127,10 @@ export async function getAgentList(
         .select("id, assigned_user_id, contact_id, last_message_at, status")
         .eq("workspace_id", workspaceId)
         .not("assigned_user_id", "is", null),
-      supabase.from("bookings").select("owner_id, start_time, end_time, status").eq("workspace_id", workspaceId),
+      // "task"-typed bookings are Calendar's own "Tarea" category (not the
+      // separate tasks table) — excluded so an agent's meeting score/count
+      // never inflates from those.
+      supabase.from("bookings").select("owner_id, start_time, end_time, status").eq("workspace_id", workspaceId).neq("event_type", "task"),
       supabase.from("opportunities").select("owner_id, status, updated_at").eq("workspace_id", workspaceId),
     ]);
 

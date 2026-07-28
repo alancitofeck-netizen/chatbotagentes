@@ -267,7 +267,40 @@ export async function deleteEvent(eventId: string) {
   const event = await getEventById(workspaceId, eventId);
   await supabase.from("bookings").delete().eq("id", eventId).eq("workspace_id", workspaceId);
 
-  if (event?.provider === "google") void deleteEventFromGoogle(workspaceId, event);
+  // externalId (not provider) is the real signal a Google-side copy exists —
+  // an internally-created event that was successfully pushed to Google keeps
+  // provider='internal' forever (only external_id gets set by pushEventToGoogle),
+  // so checking provider alone silently skipped Google cleanup for those.
+  // Same corrected criterion already used by src/lib/crm/calendarSync.ts.
+  if (event?.externalId) void deleteEventFromGoogle(workspaceId, event);
+
+  revalidateEventPaths();
+}
+
+/** Bulk version of deleteEvent — one batched fetch + one batched delete
+ * (never a loop of N single deletes, per the explicit performance
+ * requirement), then Promise.all's the Google cleanup only for the rows
+ * that actually have a Google-side copy (externalId not null). Mirrors
+ * bulkDeleteOpportunities's shape (src/lib/crm/actions.ts). */
+export async function bulkDeleteEvents(eventIds: string[]) {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (eventIds.length === 0) return;
+  const supabase = await createClient();
+
+  const { data: withExternal } = await supabase
+    .from("bookings")
+    .select("id, external_id")
+    .eq("workspace_id", workspaceId)
+    .in("id", eventIds)
+    .not("external_id", "is", null);
+
+  await supabase.from("bookings").delete().in("id", eventIds).eq("workspace_id", workspaceId);
+
+  await Promise.all(
+    (withExternal ?? []).map((row) =>
+      deleteEventFromGoogle(workspaceId, { id: row.id as string, externalId: row.external_id as string }),
+    ),
+  );
 
   revalidateEventPaths();
 }

@@ -80,6 +80,7 @@ export async function getWeekOverWeekMetrics(workspaceId: string): Promise<WeekO
       .select("start_time")
       .eq("workspace_id", workspaceId)
       .neq("status", "cancelled")
+      .neq("event_type", "task")
       .gte("start_time", lastWeek.start.toISOString()),
     supabase
       .from("conversations")

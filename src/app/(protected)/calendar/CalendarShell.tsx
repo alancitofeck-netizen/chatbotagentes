@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, ListChecks, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { toast } from "@/components/toast/toast";
 import { cn } from "@/lib/utils/cn";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import type { TaskOption } from "@/lib/tasks/queries";
-import { getCalendarEventsAction, getEventByIdAction } from "@/lib/calendar/actions";
+import { bulkDeleteEvents, getCalendarEventsAction, getEventByIdAction } from "@/lib/calendar/actions";
 import { addDays, getMonday, parseLocalDate } from "@/lib/calendar/week";
 import { TimeGrid } from "./TimeGrid";
 import { MonthView } from "./MonthView";
@@ -15,6 +16,7 @@ import { AgendaView } from "./AgendaView";
 import { EventFormSheet } from "@/components/calendar/EventFormSheet";
 import { EventDetailDrawer } from "@/components/calendar/EventDetailDrawer";
 import { CalendarSidebar } from "@/components/calendar/CalendarSidebar";
+import { CalendarSelectionBar } from "@/components/calendar/CalendarSelectionBar";
 import { categoryFor, type CategoryKey } from "@/components/calendar/eventTypeMeta";
 
 type ViewKey = "day" | "week" | "month" | "agenda";
@@ -106,6 +108,27 @@ export function CalendarShell({
   const [showTeam, setShowTeam] = useState(true);
   const [activeCategories, setActiveCategories] = useState<Set<CategoryKey>>(new Set(ALL_CATEGORIES));
 
+  // Multi-select — same shape as CrmBoardShell.tsx's bulk-select (Set of ids
+  // + a mode flag), the established pattern for this app rather than a new one.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectionMode() {
+    setSelectionMode((v) => !v);
+    clearSelection();
+  }
+
   const { start, end } = rangeFor(view, date);
 
   // Rapid view/date switches (or a switch immediately followed by a create)
@@ -123,6 +146,10 @@ export function CalendarShell({
       if (requestId !== latestRequestId.current) return;
       setEvents(fresh);
       setRefreshTick((t) => t + 1);
+      // Clears any stale selection whenever the visible range changes
+      // (view/date navigation) — avoids a "N seleccionados" count referencing
+      // events no longer in view.
+      clearSelection();
     });
   }
 
@@ -181,8 +208,27 @@ export function CalendarShell({
 
   const upcomingEvent =
     visibleEvents
-      .filter((e) => e.status !== "cancelled" && new Date(e.endTime) >= new Date())
+      // "task"-typed bookings are Calendar's own "Tarea" category (not the
+      // separate tasks table) — never counted as the sidebar's "Próximo evento".
+      .filter((e) => e.status !== "cancelled" && e.eventType !== "task" && new Date(e.endTime) >= new Date())
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ?? null;
+
+  // Uses visibleEvents (already filtered by scope/category), never the raw
+  // `events` array — "seleccionar todos" must respect what's actually shown.
+  function selectAllVisible() {
+    setSelectedIds(new Set(visibleEvents.map((e) => e.id)));
+  }
+
+  async function handleBulkDelete() {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    if (!window.confirm(`¿Eliminar ${count} evento(s)? Esta acción no se puede deshacer.`)) return;
+    await bulkDeleteEvents(Array.from(selectedIds));
+    toast.success(`${count} evento(s) eliminado(s).`);
+    clearSelection();
+    setSelectionMode(false);
+    refetch();
+  }
 
   const days = view === "day" ? [date] : view === "week" ? Array.from({ length: 7 }, (_, i) => addDays(getMonday(date), i)) : [];
 
@@ -210,10 +256,16 @@ export function CalendarShell({
               </span>
               <h1 className="text-[19px] font-semibold text-foreground">Calendario</h1>
             </div>
-            <Button size="lg" onClick={() => setSheetState({ mode: "create", defaultStart: date })}>
-              <Plus size={17} aria-hidden="true" />
-              Nuevo evento
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant={selectionMode ? "primary" : "secondary"} size="lg" onClick={toggleSelectionMode}>
+                <ListChecks size={17} aria-hidden="true" />
+                Acciones masivas
+              </Button>
+              <Button size="lg" onClick={() => setSheetState({ mode: "create", defaultStart: date })}>
+                <Plus size={17} aria-hidden="true" />
+                Nuevo evento
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 px-6 pb-4 pt-3">
@@ -264,9 +316,27 @@ export function CalendarShell({
           </div>
         </div>
 
+        {selectionMode && (
+          <CalendarSelectionBar
+            selectedCount={selectedIds.size}
+            onSelectAllVisible={selectAllVisible}
+            onDeselectAll={clearSelection}
+            onBulkDelete={handleBulkDelete}
+          />
+        )}
+
         <div className="flex-1 overflow-auto">
           {(view === "day" || view === "week") && (
-            <TimeGrid key={`${start.toISOString()}-${refreshTick}`} days={days} events={visibleEvents} onSelect={handleSelect} onChanged={refetch} />
+            <TimeGrid
+              key={`${start.toISOString()}-${refreshTick}`}
+              days={days}
+              events={visibleEvents}
+              onSelect={handleSelect}
+              onChanged={refetch}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+            />
           )}
           {view === "month" && (
             <MonthView
@@ -275,9 +345,20 @@ export function CalendarShell({
               onSelect={handleSelect}
               onOpenDay={(day) => setUrl("day", day)}
               onChanged={refetch}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
             />
           )}
-          {view === "agenda" && <AgendaView events={visibleEvents} onSelect={handleSelect} />}
+          {view === "agenda" && (
+            <AgendaView
+              events={visibleEvents}
+              onSelect={handleSelect}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+            />
+          )}
         </div>
       </div>
 

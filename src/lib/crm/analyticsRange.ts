@@ -89,6 +89,7 @@ export async function getCrmAnalyticsRangeData(workspaceId: string, range: DateR
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", workspaceId)
       .neq("status", "cancelled")
+      .neq("event_type", "task")
       .gte("created_at", range.start)
       .lte("created_at", range.end),
     // "Won"/"lost" opportunities in the period — opportunities.status is kept

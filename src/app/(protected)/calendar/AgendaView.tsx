@@ -18,7 +18,19 @@ function formatTimeRange(startIso: string, endIso: string) {
 
 /** Flat chronological list grouped by date — the simplest of the 4 views,
  * no drag-and-drop (there's no spatial position to drag from/to in a list). */
-export function AgendaView({ events, onSelect }: { events: CalendarEvent[]; onSelect: (event: CalendarEvent) => void }) {
+export function AgendaView({
+  events,
+  onSelect,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
+}: {
+  events: CalendarEvent[];
+  onSelect: (event: CalendarEvent) => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+}) {
   if (events.length === 0) {
     return (
       <div className="p-8">
@@ -45,14 +57,23 @@ export function AgendaView({ events, onSelect }: { events: CalendarEvent[]; onSe
               const meta = EVENT_TYPE_META[event.eventType] ?? EVENT_TYPE_META.other;
               const isCancelled = event.status === "cancelled";
               return (
-                <li key={event.id}>
+                <li key={event.id} className="flex items-center gap-2">
+                  {selectionMode && (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(event.id)}
+                      onChange={() => onToggleSelect(event.id)}
+                      className="size-4 shrink-0 rounded border-border-strong accent-[var(--color-accent-500)]"
+                    />
+                  )}
                   <button
                     type="button"
-                    onClick={() => onSelect(event)}
+                    onClick={() => (selectionMode ? onToggleSelect(event.id) : onSelect(event))}
                     className={cn(
                       "flex w-full items-center gap-4 rounded-xl border-l-[3px] bg-surface-1 px-4 py-3.5 text-left shadow-[var(--elevation-xs)] transition-all duration-150",
                       "hover:-translate-y-0.5 hover:shadow-[var(--elevation-sm)]",
                       isCancelled ? "border-l-neutral-300" : meta.border,
+                      selectedIds.has(event.id) && "ring-2 ring-accent-500",
                     )}
                   >
                     <div className="w-[92px] shrink-0 text-[13px] font-medium text-neutral-500">{formatTimeRange(event.startTime, event.endTime)}</div>

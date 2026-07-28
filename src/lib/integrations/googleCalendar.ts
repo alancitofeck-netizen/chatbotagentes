@@ -242,7 +242,10 @@ export async function pushEventToGoogle(workspaceId: string, event: CalendarEven
   }
 }
 
-export async function deleteEventFromGoogle(workspaceId: string, event: CalendarEvent): Promise<void> {
+/** Only ever reads `id`/`externalId` — narrowed (not the full CalendarEvent)
+ * so callers that already know just those two fields (e.g. bulk delete)
+ * don't need to fetch a full row per event. */
+export async function deleteEventFromGoogle(workspaceId: string, event: Pick<CalendarEvent, "id" | "externalId">): Promise<void> {
   if (!event.externalId) return;
   try {
     const accessToken = await getValidAccessToken(workspaceId);

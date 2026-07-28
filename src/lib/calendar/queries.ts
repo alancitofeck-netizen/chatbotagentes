@@ -196,7 +196,9 @@ export async function getContactEvents(workspaceId: string, contactId: string): 
   return mapEventRows(supabase, workspaceId, (data ?? []) as EventRow[]);
 }
 
-/** For the Dashboard "Próximas reuniones" widget. */
+/** For the Dashboard "Próximas reuniones" widget — excludes `event_type='task'`
+ * (Calendar's own "Tarea" booking category, unrelated to the separate `tasks`
+ * table) so a task-styled booking never shows up as a "meeting." */
 export async function getUpcomingEvents(workspaceId: string, limit = 5): Promise<CalendarEvent[]> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -205,6 +207,7 @@ export async function getUpcomingEvents(workspaceId: string, limit = 5): Promise
     .eq("workspace_id", workspaceId)
     .gte("start_time", new Date().toISOString())
     .neq("status", "cancelled")
+    .neq("event_type", "task")
     .order("start_time", { ascending: true })
     .limit(limit);
 
