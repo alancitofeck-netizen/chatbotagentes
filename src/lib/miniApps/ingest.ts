@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { verifyApiKey } from "@/lib/miniApps/apiKey";
+import { simulateRetirement, DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "fecha",
@@ -35,30 +36,45 @@ interface MiniAppRow {
   allowed_origins: string[];
   status: string;
   name: string;
+  template_key: string;
+  config: Record<string, unknown>;
 }
 
-/** Resolves the mini app + verifies the API key — always via
- * createServiceRoleClient(), since this is an anonymous public request with
- * no session/RLS context. Workspace is always taken from THIS row, never
- * from anything the caller sends (same principle as the YCloud webhook's
- * resolveWorkspaceIdForYCloudAccount). */
-async function resolveAuthorizedMiniApp(
-  slug: string,
-  apiKey: string | null,
-): Promise<{ ok: true; app: MiniAppRow } | { ok: false; status: number; error: string }> {
+/** Resolves the mini app by slug — always via createServiceRoleClient()
+ * (anonymous public request, no session/RLS context). Workspace is always
+ * taken from THIS row, never from anything the caller sends (same
+ * principle as the YCloud webhook's resolveWorkspaceIdForYCloudAccount). */
+async function resolveMiniAppBySlug(slug: string): Promise<{ ok: true; app: MiniAppRow } | { ok: false; status: number; error: string }> {
   const supabase = createServiceRoleClient();
   const { data: app } = await supabase
     .from("mini_apps")
-    .select("id, workspace_id, api_key_hash, allowed_origins, status, name")
+    .select("id, workspace_id, api_key_hash, allowed_origins, status, name, template_key, config")
     .eq("slug", slug)
     .maybeSingle();
 
   if (!app) return { ok: false, status: 404, error: "not_found" };
   if (app.status !== "active") return { ok: false, status: 404, error: "not_found" };
-  if (!apiKey || !verifyApiKey(apiKey, app.api_key_hash as string)) {
+  return { ok: true, app: app as unknown as MiniAppRow };
+}
+
+/** Adds the API-key check on top of resolveMiniAppBySlug — used only by the
+ * public Route Handler (external mini apps). The Growth-Link-hosted page's
+ * own submission path (submitMiniAppLeadFromHostedPage, miniApps/actions.ts)
+ * uses resolveMiniAppBySlug directly instead: it's our own same-origin
+ * form, not a third party, so requiring/exposing the API key there would
+ * mean shipping a secret into the public page's client bundle for no real
+ * benefit — Next.js's own Server Action origin checks are the boundary
+ * for that path. */
+async function resolveAuthorizedMiniApp(
+  slug: string,
+  apiKey: string | null,
+): Promise<{ ok: true; app: MiniAppRow } | { ok: false; status: number; error: string }> {
+  const resolved = await resolveMiniAppBySlug(slug);
+  if (!resolved.ok) return resolved;
+  if (!apiKey || !verifyApiKey(apiKey, resolved.app.api_key_hash)) {
     return { ok: false, status: 401, error: "unauthorized" };
   }
-  return { ok: true, app: app as unknown as MiniAppRow };
+  return resolved;
 }
 
 /** Only enforced when the request actually carries an Origin header (a
@@ -75,20 +91,40 @@ function isValidDateString(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(new Date(value).getTime());
 }
 
-export async function ingestMiniAppLead(input: IngestInput): Promise<IngestResult> {
-  const resolved = await resolveAuthorizedMiniApp(input.slug, input.apiKey);
-  if (!resolved.ok) return { ...resolved, allowedOrigins: [] };
-  const { app } = resolved;
+function toFiniteNumber(value: unknown): number | null {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+interface ProcessLeadOptions {
+  /** True for the Growth-Link-hosted page's own submission path — same-
+   * origin by construction, so there's no third-party Origin header to
+   * validate against the mini app's CORS allow-list. */
+  skipOriginCheck?: boolean;
+}
+
+/** Shared core: validation, the simulador_retiro authoritative recompute,
+ * rate limiting, idempotency, and the actual insert — used by both entry
+ * points (public API-key route + the hosted page's Server Action) so
+ * neither ever re-implements or drifts from the other. */
+async function processLeadSubmission(
+  app: MiniAppRow,
+  payload: unknown,
+  origin: string | null,
+  ip: string | null,
+  userAgent: string | null,
+  options: ProcessLeadOptions,
+): Promise<IngestResult> {
   const allowedOrigins = app.allowed_origins ?? [];
 
-  if (!isOriginAllowed(input.origin, allowedOrigins)) {
+  if (!options.skipOriginCheck && !isOriginAllowed(origin, allowedOrigins)) {
     return { ok: false, status: 403, error: "origin_not_allowed", allowedOrigins };
   }
 
-  if (typeof input.payload !== "object" || input.payload === null) {
+  if (typeof payload !== "object" || payload === null) {
     return { ok: false, status: 400, error: "invalid_json", allowedOrigins };
   }
-  const body = input.payload as Record<string, unknown>;
+  const body = payload as Record<string, unknown>;
 
   const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
   const whatsapp = typeof body.whatsapp === "string" ? body.whatsapp.trim() : "";
@@ -99,6 +135,37 @@ export async function ingestMiniAppLead(input: IngestInput): Promise<IngestResul
     return { ok: false, status: 400, error: "invalid_consent_date", allowedOrigins };
   }
   if (!isValidDateString(body.fecha)) return { ok: false, status: 400, error: "invalid_fecha", allowedOrigins };
+
+  const data: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (!KNOWN_TOP_LEVEL_FIELDS.has(key)) data[key] = value;
+  }
+
+  // Authoritative recompute — never trust whatever fondo_estimado/etc. the
+  // caller sent (a visitor could edit the DOM/replay a crafted request).
+  // Applies regardless of entry point, so an externally-hosted simulador
+  // using the same template also gets our one canonical calculation.
+  if (app.template_key === "simulador_retiro") {
+    const edad = toFiniteNumber(body.edad);
+    const edadRetiro = toFiniteNumber(body.edad_retiro);
+    const ahorroMensual = toFiniteNumber(body.ahorro_mensual);
+    if (edad === null || edadRetiro === null || ahorroMensual === null) {
+      return { ok: false, status: 400, error: "invalid_simulation_inputs", allowedOrigins };
+    }
+    const ingresoActual = toFiniteNumber(body.ingreso_actual);
+    const annualReturnRatePct =
+      typeof app.config?.annualReturnRatePct === "number" ? app.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT;
+    const result = simulateRetirement({ edad, edadRetiro, ahorroMensual, annualReturnRatePct });
+
+    data.edad = edad;
+    data.edad_retiro = edadRetiro;
+    data.ahorro_mensual = ahorroMensual;
+    if (ingresoActual !== null) data.ingreso_actual = ingresoActual;
+    data.fondo_estimado = result.fondoEstimado;
+    data.fondo_rango_bajo = result.fondoRangoBajo;
+    data.fondo_rango_alto = result.fondoRangoAlto;
+    data.renta_mensual_estimada = result.rentaMensualEstimada;
+  }
 
   const supabase = createServiceRoleClient();
 
@@ -126,11 +193,6 @@ export async function ingestMiniAppLead(input: IngestInput): Promise<IngestResul
     console.error("[mini-apps] failed to record webhook_events row:", webhookEventError);
   }
 
-  const data: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(body)) {
-    if (!KNOWN_TOP_LEVEL_FIELDS.has(key)) data[key] = value;
-  }
-
   const { error: insertError } = await supabase.from("mini_app_leads").insert({
     workspace_id: app.workspace_id,
     mini_app_id: app.id,
@@ -142,8 +204,8 @@ export async function ingestMiniAppLead(input: IngestInput): Promise<IngestResul
     consentimiento_fecha: body.consentimiento_fecha,
     fecha: body.fecha,
     data,
-    ip_address: input.ip,
-    user_agent: input.userAgent,
+    ip_address: ip,
+    user_agent: userAgent,
   });
   if (insertError && insertError.code !== "23505") {
     console.error("[mini-apps] failed to insert lead:", insertError);
@@ -159,4 +221,26 @@ export async function ingestMiniAppLead(input: IngestInput): Promise<IngestResul
   }
 
   return { ok: true, duplicate: insertError?.code === "23505", allowedOrigins };
+}
+
+/** Public Route Handler entry point (external mini apps) — requires the
+ * X-Api-Key + CORS origin check. */
+export async function ingestMiniAppLead(input: IngestInput): Promise<IngestResult> {
+  const resolved = await resolveAuthorizedMiniApp(input.slug, input.apiKey);
+  if (!resolved.ok) return { ...resolved, allowedOrigins: [] };
+  return processLeadSubmission(resolved.app, input.payload, input.origin, input.ip, input.userAgent, {});
+}
+
+/** Growth-Link-hosted page entry point (src/app/apps/[slug]/) — no API key,
+ * no CORS check (same-origin Server Action), used exclusively by
+ * submitMiniAppLeadFromHostedPage (src/lib/miniApps/actions.ts). */
+export async function ingestMiniAppLeadFromHostedPage(
+  slug: string,
+  payload: unknown,
+  ip: string | null,
+  userAgent: string | null,
+): Promise<IngestResult> {
+  const resolved = await resolveMiniAppBySlug(slug);
+  if (!resolved.ok) return { ...resolved, allowedOrigins: [] };
+  return processLeadSubmission(resolved.app, payload, null, ip, userAgent, { skipOriginCheck: true });
 }

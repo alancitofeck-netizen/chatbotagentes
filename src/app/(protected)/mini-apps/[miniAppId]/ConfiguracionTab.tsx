@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import type { MiniAppDetail } from "@/lib/miniApps/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
-import { updateMiniApp, regenerateApiKey, deleteMiniApp } from "@/lib/miniApps/actions";
+import { updateMiniApp, updateMiniAppBranding, regenerateApiKey, deleteMiniApp } from "@/lib/miniApps/actions";
+import { createClient } from "@/lib/supabase/client";
+import { LogoCropDialog } from "../LogoCropDialog";
 
 function CopyableLine({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -32,7 +34,15 @@ function CopyableLine({ value }: { value: string }) {
   );
 }
 
-export function ConfiguracionTab({ miniApp, members }: { miniApp: MiniAppDetail; members: WorkspaceMemberOption[] }) {
+export function ConfiguracionTab({
+  miniApp,
+  members,
+  canManage,
+}: {
+  miniApp: MiniAppDetail;
+  members: WorkspaceMemberOption[];
+  canManage: boolean;
+}) {
   const router = useRouter();
   const [name, setName] = useState(miniApp.name);
   const [description, setDescription] = useState(miniApp.description ?? "");
@@ -43,7 +53,23 @@ export function ConfiguracionTab({ miniApp, members }: { miniApp: MiniAppDetail;
   const [isPending, startTransition] = useTransition();
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
+  const [primaryColor, setPrimaryColor] = useState(miniApp.branding.primaryColor);
+  const [logoUrl, setLogoUrl] = useState(miniApp.branding.logoUrl);
+  const [showLogoDialog, setShowLogoDialog] = useState(false);
+  const [annualReturnRatePct, setAnnualReturnRatePct] = useState(miniApp.config.annualReturnRatePct);
+  const [showIngresoActual, setShowIngresoActual] = useState(miniApp.config.showIngresoActual);
+  const [labelEdad, setLabelEdad] = useState(miniApp.config.fieldLabels.edad ?? "Tu edad actual");
+  const [labelEdadRetiro, setLabelEdadRetiro] = useState(miniApp.config.fieldLabels.edadRetiro ?? "¿A qué edad te querés retirar?");
+  const [labelAhorroMensual, setLabelAhorroMensual] = useState(
+    miniApp.config.fieldLabels.ahorroMensual ?? "¿Cuánto podés ahorrar por mes? (MXN)",
+  );
+  const [labelIngresoActual, setLabelIngresoActual] = useState(
+    miniApp.config.fieldLabels.ingresoActual ?? "Tu ingreso mensual actual (MXN, opcional)",
+  );
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
+
   const endpointUrl = typeof window !== "undefined" ? `${window.location.origin}/api/public/mini-apps/${miniApp.slug}/leads` : "";
+  const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/apps/${miniApp.slug}` : "";
   const curlExample = `curl -X POST "${endpointUrl}" \\\n  -H "Content-Type: application/json" \\\n  -H "X-Api-Key: <tu-api-key>" \\\n  -d '{"nombre":"Prueba","whatsapp":"5215512345678","consentimiento":true,"consentimiento_fecha":"2026-01-01T00:00:00.000Z","fecha":"2026-01-01T00:00:00.000Z"}'`;
 
   function handleSave() {
@@ -56,6 +82,11 @@ export function ConfiguracionTab({ miniApp, members }: { miniApp: MiniAppDetail;
           allowedOrigins: allowedOrigins.split(/[\n,]/).map((o) => o.trim()).filter(Boolean),
           externalUrl,
           status,
+          config: {
+            annualReturnRatePct,
+            showIngresoActual,
+            fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
+          },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -63,6 +94,35 @@ export function ConfiguracionTab({ miniApp, members }: { miniApp: MiniAppDetail;
         toast.error(err instanceof Error ? err.message : "No se pudo guardar.");
       }
     });
+  }
+
+  async function handleLogoCropped(blob: Blob) {
+    setIsSavingBranding(true);
+    try {
+      const supabase = createClient();
+      const path = `${miniApp.id}/logo.webp`;
+      const { error: uploadError } = await supabase.storage
+        .from("mini-app-logos")
+        .upload(path, blob, { upsert: true, contentType: "image/webp", cacheControl: "3600" });
+      if (uploadError) throw new Error("No se pudo subir el logo.");
+      const { data: publicUrlData } = supabase.storage.from("mini-app-logos").getPublicUrl(path);
+      const url = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+      await updateMiniAppBranding(miniApp.id, { logoUrl: url, primaryColor });
+      setLogoUrl(url);
+      toast.success("Logo actualizado.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar el logo.");
+    } finally {
+      setIsSavingBranding(false);
+    }
+  }
+
+  function handleSaveColor() {
+    setIsSavingBranding(true);
+    updateMiniAppBranding(miniApp.id, { logoUrl, primaryColor })
+      .then(() => toast.success("Color actualizado."))
+      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo actualizar el color."))
+      .finally(() => setIsSavingBranding(false));
   }
 
   function handleRegenerate() {
@@ -129,7 +189,77 @@ export function ConfiguracionTab({ miniApp, members }: { miniApp: MiniAppDetail;
       </Card>
 
       <Card>
-        <CardHeader title="Endpoint" />
+        <CardHeader title="Marca y motor financiero" />
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Logo</label>
+              <div className="flex items-center gap-3">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt={miniApp.name} className="size-12 rounded-full object-cover" />
+                ) : (
+                  <div className="flex size-12 items-center justify-center rounded-full bg-surface-2 text-xs text-neutral-400">Sin logo</div>
+                )}
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowLogoDialog(true)} loading={isSavingBranding}>
+                  {logoUrl ? "Cambiar" : "Subir logo"}
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Color principal</label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-9 w-16 rounded-md border border-border-default" />
+                <Button type="button" variant="secondary" size="sm" onClick={handleSaveColor} loading={isSavingBranding}>
+                  Guardar
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="my-1 h-px bg-border-default" />
+
+          <Input
+            label="Tasa de rendimiento anual esperada (%)"
+            type="number"
+            min={1}
+            max={20}
+            value={String(annualReturnRatePct)}
+            onChange={(e) => setAnnualReturnRatePct(Number(e.target.value) || annualReturnRatePct)}
+          />
+          <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Campos del simulador</p>
+          <Input label="Etiqueta — Edad" value={labelEdad} onChange={(e) => setLabelEdad(e.target.value)} />
+          <Input label="Etiqueta — Edad de retiro" value={labelEdadRetiro} onChange={(e) => setLabelEdadRetiro(e.target.value)} />
+          <Input label="Etiqueta — Ahorro mensual" value={labelAhorroMensual} onChange={(e) => setLabelAhorroMensual(e.target.value)} />
+          <div className="flex items-center justify-between gap-3">
+            <Input
+              label="Etiqueta — Ingreso actual"
+              value={labelIngresoActual}
+              onChange={(e) => setLabelIngresoActual(e.target.value)}
+              disabled={!showIngresoActual}
+              containerClassName="flex-1"
+            />
+            <label className="mt-6 flex items-center gap-1.5 text-xs text-neutral-500">
+              <input type="checkbox" checked={showIngresoActual} onChange={(e) => setShowIngresoActual(e.target.checked)} />
+              Mostrar
+            </label>
+          </div>
+          <p className="text-xs text-neutral-500">
+            Los cambios de esta sección (excepto logo y color, que se guardan al instante) se aplican al tocar &quot;Guardar cambios&quot; en Datos generales.
+          </p>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Página pública" />
+        <div className="flex flex-col gap-3">
+          <CopyableLine value={publicUrl} />
+          <p className="text-xs text-neutral-500">Esta es la URL que le compartís a tus prospectos.</p>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Endpoint (integraciones externas avanzadas)" />
         <div className="flex flex-col gap-3">
           <CopyableLine value={endpointUrl} />
           <div>
@@ -140,9 +270,11 @@ export function ConfiguracionTab({ miniApp, members }: { miniApp: MiniAppDetail;
               <p className="text-sm text-foreground">•••• {miniApp.apiKeyLast4}</p>
             )}
           </div>
-          <Button variant="secondary" onClick={handleRegenerate} loading={isPending} className="self-start">
-            Regenerar API Key
-          </Button>
+          {canManage && (
+            <Button variant="secondary" onClick={handleRegenerate} loading={isPending} className="self-start">
+              Regenerar API Key
+            </Button>
+          )}
           <details className="text-sm">
             <summary className="cursor-pointer text-neutral-500">Ver ejemplo de request (curl)</summary>
             <pre className="mt-2 overflow-x-auto rounded-md bg-surface-3 p-3 text-xs text-foreground">{curlExample}</pre>
@@ -150,12 +282,31 @@ export function ConfiguracionTab({ miniApp, members }: { miniApp: MiniAppDetail;
         </div>
       </Card>
 
-      <Card>
-        <CardHeader title="Zona de riesgo" />
-        <Button variant="destructive" onClick={handleDelete} loading={isPending}>
-          Eliminar mini app
-        </Button>
-      </Card>
+      {showLogoDialog && (
+        <LogoCropDialog
+          open
+          onClose={() => setShowLogoDialog(false)}
+          onCropped={(blob) => {
+            setShowLogoDialog(false);
+            handleLogoCropped(blob);
+          }}
+        />
+      )}
+
+      {/* Owner/admin only — mirrors the sitewide "el botón ni siquiera debe
+       * renderizarse" rule for manager-gated actions (same pattern
+       * CrmAtsTabStrip.tsx uses for "Agentes"/ATS), rather than letting an
+       * agent hit requireManagerRole's thrown error, which reaches the
+       * client redacted in production (see the memory note on Server Action
+       * error redaction). */}
+      {canManage && (
+        <Card>
+          <CardHeader title="Zona de riesgo" />
+          <Button variant="destructive" onClick={handleDelete} loading={isPending}>
+            Eliminar mini app
+          </Button>
+        </Card>
+      )}
     </div>
   );
 }

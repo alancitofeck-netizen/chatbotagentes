@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import type { MiniAppListItem } from "@/lib/miniApps/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { getMiniAppsListAction } from "@/lib/miniApps/actions";
-import { NewMiniAppSheet } from "./NewMiniAppSheet";
+import { NewMiniAppWizard } from "./NewMiniAppWizard";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
@@ -83,7 +83,7 @@ export function MiniAppsListShell({
         </div>
       )}
 
-      {showCreate && <NewMiniAppSheet members={members} onClose={() => setShowCreate(false)} onCreated={refetch} />}
+      {showCreate && <NewMiniAppWizard members={members} onClose={() => setShowCreate(false)} onCreated={refetch} />}
     </div>
   );
 }

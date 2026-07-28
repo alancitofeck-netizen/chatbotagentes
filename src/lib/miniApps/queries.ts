@@ -1,5 +1,9 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
+
+const DEFAULT_PRIMARY_COLOR = "#6c63ff";
 
 export type MiniAppTemplateKey = "simulador_retiro";
 export type MiniAppStatus = "active" | "inactive";
@@ -31,6 +35,8 @@ export interface MiniAppDetail {
   allowedOrigins: string[];
   apiKeyLast4: string;
   status: MiniAppStatus;
+  branding: MiniAppBranding;
+  config: MiniAppFieldConfig;
   createdAt: string;
 }
 
@@ -113,7 +119,7 @@ export async function getMiniAppDetail(workspaceId: string, miniAppId: string): 
     supabase
       .from("mini_apps")
       .select(
-        "id, workspace_id, name, description, template_key, slug, external_url, assigned_agent_id, allowed_origins, api_key_last4, status, created_at",
+        "id, workspace_id, name, description, template_key, slug, external_url, assigned_agent_id, allowed_origins, api_key_last4, status, branding, config, created_at",
       )
       .eq("workspace_id", workspaceId)
       .eq("id", miniAppId)
@@ -121,6 +127,9 @@ export async function getMiniAppDetail(workspaceId: string, miniAppId: string): 
     getMemberNamesById(supabase, workspaceId),
   ]);
   if (!app) return null;
+
+  const branding = (app.branding as Partial<MiniAppBranding>) ?? {};
+  const config = (app.config as Partial<MiniAppFieldConfig>) ?? {};
 
   return {
     id: app.id as string,
@@ -135,6 +144,13 @@ export async function getMiniAppDetail(workspaceId: string, miniAppId: string): 
     allowedOrigins: (app.allowed_origins as string[]) ?? [],
     apiKeyLast4: app.api_key_last4 as string,
     status: app.status as MiniAppStatus,
+    branding: { logoUrl: branding.logoUrl ?? null, primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR },
+    config: {
+      annualReturnRatePct: config.annualReturnRatePct ?? DEFAULT_ANNUAL_RETURN_RATE_PCT,
+      showIngresoActual: config.showIngresoActual ?? true,
+      fieldLabels: config.fieldLabels ?? {},
+      assignedAgentName: config.assignedAgentName,
+    },
     createdAt: app.created_at as string,
   };
 }
@@ -231,4 +247,71 @@ export async function getMiniAppLeadsByDay(
     countsByDay.set(day, (countsByDay.get(day) ?? 0) + 1);
   }
   return [...countsByDay.entries()].map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export async function getMiniAppVisitsCount(workspaceId: string, miniAppId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("mini_app_visits")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId)
+    .eq("mini_app_id", miniAppId);
+  return count ?? 0;
+}
+
+export interface MiniAppBranding {
+  logoUrl: string | null;
+  primaryColor: string;
+}
+
+export interface MiniAppFieldConfig {
+  annualReturnRatePct: number;
+  showIngresoActual: boolean;
+  fieldLabels: Partial<Record<"edad" | "edadRetiro" | "ahorroMensual" | "ingresoActual", string>>;
+  assignedAgentName?: string;
+}
+
+export interface PublicMiniAppView {
+  slug: string;
+  name: string;
+  description: string | null;
+  templateKey: MiniAppTemplateKey;
+  branding: MiniAppBranding;
+  config: MiniAppFieldConfig;
+}
+
+/** Public-safe projection for the Growth-Link-hosted page
+ * (src/app/apps/[slug]/) — always via createServiceRoleClient() (no
+ * session for an anonymous visitor), and the select list is deliberately
+ * narrow: never api_key_hash, allowed_origins, assigned_agent_id, or
+ * workspace_id. Returns null for a missing slug or an inactive mini app
+ * (the page treats both as notFound()). */
+export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAppView | null> {
+  const supabase = createServiceRoleClient();
+  const { data } = await supabase
+    .from("mini_apps")
+    .select("slug, name, description, template_key, status, branding, config")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!data || data.status !== "active") return null;
+
+  const branding = (data.branding as Partial<MiniAppBranding>) ?? {};
+  const config = (data.config as Partial<MiniAppFieldConfig>) ?? {};
+
+  return {
+    slug: data.slug as string,
+    name: data.name as string,
+    description: data.description as string | null,
+    templateKey: data.template_key as MiniAppTemplateKey,
+    branding: {
+      logoUrl: branding.logoUrl ?? null,
+      primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR,
+    },
+    config: {
+      annualReturnRatePct: config.annualReturnRatePct ?? DEFAULT_ANNUAL_RETURN_RATE_PCT,
+      showIngresoActual: config.showIngresoActual ?? true,
+      fieldLabels: config.fieldLabels ?? {},
+      assignedAgentName: config.assignedAgentName,
+    },
+  };
 }

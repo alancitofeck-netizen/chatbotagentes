@@ -10,16 +10,21 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Only leads-based totals for now — "visitas" and "conversión" need actual
- * page-view tracking, which only exists once Mini Apps hosts its own public
- * pages (Phase 2); this mini app's page still lives on a 3rd-party domain. */
-export function DashboardTab({ leads }: { leads: MiniAppLeadRow[] }) {
+/** "Total de visitas"/"Conversión" now come from real mini_app_visits rows
+ * — only possible now that Mini Apps hosts its own public pages (Phase 2);
+ * a mini app that still points at an externally-hosted `external_url`
+ * simply never accumulates visits, so both cards degrade to "0"/"—"
+ * gracefully rather than erroring. */
+export function DashboardTab({ leads, visitsCount }: { leads: MiniAppLeadRow[]; visitsCount: number }) {
   const converted = leads.filter((l) => l.status === "converted").length;
   const lastLead = leads[0];
+  const conversionPct = visitsCount > 0 ? Math.round((leads.length / visitsCount) * 1000) / 10 : null;
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <StatCard label="Total de visitas" value={String(visitsCount)} />
       <StatCard label="Total de leads" value={String(leads.length)} />
+      <StatCard label="Conversión" value={conversionPct !== null ? `${conversionPct}%` : "—"} />
       <StatCard label="Convertidos" value={String(converted)} />
       <StatCard
         label="Último lead"

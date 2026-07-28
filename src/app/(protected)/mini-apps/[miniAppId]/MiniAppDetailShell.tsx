@@ -24,10 +24,14 @@ export function MiniAppDetailShell({
   miniApp,
   initialLeads,
   members,
+  visitsCount,
+  canManage,
 }: {
   miniApp: MiniAppDetail;
   initialLeads: MiniAppLeadRow[];
   members: WorkspaceMemberOption[];
+  visitsCount: number;
+  canManage: boolean;
 }) {
   const searchParams = useSearchParams();
   const [leads, setLeads] = useState(initialLeads);
@@ -55,9 +59,9 @@ export function MiniAppDetailShell({
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8">
-        {view === "dashboard" && <DashboardTab leads={leads} />}
+        {view === "dashboard" && <DashboardTab leads={leads} visitsCount={visitsCount} />}
         {view === "leads" && <LeadsTab miniApp={miniApp} leads={leads} members={members} onChanged={refetchLeads} />}
-        {view === "configuracion" && <ConfiguracionTab miniApp={miniApp} members={members} />}
+        {view === "configuracion" && <ConfiguracionTab miniApp={miniApp} members={members} canManage={canManage} />}
         {view === "analiticas" && <AnaliticasTab miniAppId={miniApp.id} />}
       </div>
     </div>
