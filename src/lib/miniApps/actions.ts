@@ -22,7 +22,7 @@ import {
   type MiniAppFieldConfig,
 } from "@/lib/miniApps/queries";
 import { getWorkspaceMembersList } from "@/lib/settings/queries";
-import { ingestMiniAppLeadFromHostedPage, MINI_APP_CONTACT_SOURCE, type IngestResult } from "@/lib/miniApps/ingest";
+import { ingestMiniAppLeadFromHostedPage, appendMiniAppLeadQualification, MINI_APP_CONTACT_SOURCE, type IngestResult } from "@/lib/miniApps/ingest";
 import { resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
 import { getDefaultOutboundBusinessNumber, getOrCreateOpenConversationForContact } from "@/lib/messaging/conversations";
 import type { MiniAppLeadStatus, MiniAppTemplateKey } from "@/lib/miniApps/queries";
@@ -405,4 +405,13 @@ export async function submitMiniAppLeadFromHostedPage(slug: string, payload: Rec
     headerList.get("x-forwarded-for"),
     headerList.get("user-agent"),
   );
+}
+
+/** Appends the "calificación de lead" answers (asked during the results
+ * reveal, after submitMiniAppLeadFromHostedPage already created the lead)
+ * onto that same lead — fire-and-forget from the client, same posture as
+ * the visit-tracking fetch: never blocks the reveal, never surfaces an
+ * error to the visitor. */
+export async function submitMiniAppLeadQualificationFromHostedPage(leadId: string, answers: Record<string, unknown>): Promise<void> {
+  await appendMiniAppLeadQualification(leadId, answers);
 }

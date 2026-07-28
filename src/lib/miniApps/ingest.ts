@@ -28,7 +28,7 @@ export const MINI_APP_CONTACT_SOURCE = "mini_app";
 const RATE_LIMIT_PER_MINUTE = 20;
 
 export type IngestResult =
-  | { ok: true; duplicate?: boolean; allowedOrigins: string[] }
+  | { ok: true; duplicate?: boolean; allowedOrigins: string[]; leadId?: string }
   | { ok: false; status: number; error: string; allowedOrigins: string[] };
 
 export interface IngestInput {
@@ -240,7 +240,7 @@ async function processLeadSubmission(
     await linkLeadToContact(supabase, app.workspace_id, nombre, whatsapp, insertedLead.id as string);
   }
 
-  return { ok: true, duplicate: insertError?.code === "23505", allowedOrigins };
+  return { ok: true, duplicate: insertError?.code === "23505", allowedOrigins, leadId: insertedLead?.id as string | undefined };
 }
 
 /** Best-effort — a failure here must never fail the lead submission itself
@@ -281,6 +281,27 @@ async function linkLeadToContact(
     }
   } catch (err) {
     console.error("[mini-apps] failed to link lead to contact:", err);
+  }
+}
+
+/** Appends the "calificación de lead" question answers (asked during the
+ * results reveal, i.e. AFTER the lead already exists) into the same lead's
+ * `data` jsonb — best-effort, same posture as linkLeadToContact: a failure
+ * here must never surface to the visitor, the lead itself is already
+ * durably saved by this point. Read-then-write merge (not a raw `data ||
+ * jsonb` update) is fine here: single-visitor, single-write flow, no
+ * meaningful concurrent-write risk. */
+export async function appendMiniAppLeadQualification(leadId: string, answers: Record<string, unknown>): Promise<void> {
+  const supabase = createServiceRoleClient();
+  try {
+    const { data: row } = await supabase.from("mini_app_leads").select("data").eq("id", leadId).maybeSingle();
+    const existing = (row?.data as Record<string, unknown> | null) ?? {};
+    await supabase
+      .from("mini_app_leads")
+      .update({ data: { ...existing, ...answers } })
+      .eq("id", leadId);
+  } catch (err) {
+    console.error("[mini-apps] failed to append lead qualification:", err);
   }
 }
 

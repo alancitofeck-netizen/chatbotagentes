@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import Image from "next/image";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   CalendarClock,
   CheckCircle2,
   Compass,
+  GraduationCap,
   Handshake,
   HeartPulse,
   Home,
@@ -15,6 +17,7 @@ import {
   Loader2,
   MessageCircle,
   PiggyBank,
+  Share2,
   ShieldCheck,
   Sparkles,
   Target,
@@ -28,7 +31,8 @@ import {
   simulateRetirement,
   simulateRetirementSeries,
 } from "@/lib/miniApps/financialEngine";
-import { submitMiniAppLeadFromHostedPage } from "@/lib/miniApps/actions";
+import { getPreparationLevel, getStrengthsAndOpportunities } from "@/lib/miniApps/resultDiagnostics";
+import { submitMiniAppLeadFromHostedPage, submitMiniAppLeadQualificationFromHostedPage } from "@/lib/miniApps/actions";
 import type { PublicMiniAppView } from "@/lib/miniApps/queries";
 import { RetirementGrowthChart } from "./RetirementResultCharts";
 
@@ -46,9 +50,49 @@ function soften(cssVar: string, percent: number): string {
 
 const AHORRO_CHIPS = [2000, 4000, 6000, 10000, 15000];
 
+const PREOCUPACION_OPTIONS = [
+  { value: "no_se_cuanto", label: "No sé cuánto voy a recibir." },
+  { value: "retirarme_antes", label: "Quiero retirarme antes." },
+  { value: "pension_insuficiente", label: "Mi pensión será insuficiente." },
+  { value: "proteger_familia", label: "Quiero proteger a mi familia." },
+  { value: "solo_conocer", label: "Solo quería conocer mi situación." },
+];
+const HABLO_ASESOR_OPTIONS = [
+  { value: "si", label: "Sí" },
+  { value: "no", label: "No" },
+];
+const OBJETIVO_OPTIONS = [
+  { value: "mejorar_retiro", label: "Mejorar mi retiro." },
+  { value: "reducir_impuestos", label: "Reducir impuestos." },
+  { value: "invertir_mejor", label: "Invertir mejor." },
+  { value: "proteger_patrimonio", label: "Proteger mi patrimonio." },
+  { value: "no_seguro", label: "No estoy seguro." },
+];
+const CUANDO_OPTIONS = [
+  { value: "esta_semana", label: "Esta semana." },
+  { value: "este_mes", label: "Este mes." },
+  { value: "mas_adelante", label: "Más adelante." },
+];
+
+const EDUCATIONAL_TIPS = [
+  "Revisar la estrategia de retiro con una mirada actualizada.",
+  "Optimizar el ahorro mensual sin resignar calidad de vida hoy.",
+  "Analizar alternativas de inversión acordes al plazo restante.",
+  "Revisar beneficios fiscales disponibles para el ahorro de largo plazo.",
+];
+
 type WizardStepKey = "intro" | "edad" | "retiro" | "ahorro" | "ingreso" | "nombre" | "whatsapp" | "consentimiento";
 type Phase = "wizard" | "calculando" | "resultado";
-type ResultStepKey = "pension" | "comparacion" | "brecha" | "significado" | "cierre";
+type ResultStepKey =
+  | "pension"
+  | "diagnostico"
+  | "comparacion"
+  | "brecha"
+  | "significado"
+  | "escenarios"
+  | "educacion"
+  | "calificacion"
+  | "cierre";
 
 /** Animated count-up for the headline fund number — mirrors the reference
  * simulator's `countTo` easing (cubic ease-out, ~700ms), disabled entirely
@@ -270,6 +314,49 @@ function SliderQuestion({
   );
 }
 
+/** One optional single-select question for the lead-qualification step —
+ * same selectable-pill visual language as the AHORRO_CHIPS quick-picks
+ * already used in the wizard, just wrapped with its own label. */
+function SingleChoiceQuestion({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  value: string | null;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[13.5px] font-medium" style={{ color: "var(--ma-text-color)" }}>
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => {
+          const selected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className="rounded-full border px-3.5 py-1.5 text-left text-[13px] font-medium transition-colors duration-150"
+              style={
+                selected
+                  ? { borderColor: "var(--ma-button-primary-bg)", background: "var(--ma-button-primary-bg)", color: "var(--ma-button-primary-text)" }
+                  : { borderColor: "var(--ma-border-strong)", background: "var(--ma-background-surface-alt)", color: "var(--ma-text-color)" }
+              }
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function StepShell({ icon: Icon, title, subtitle, children }: { icon: typeof Sparkles; title: string; subtitle?: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-5 motion-safe:animate-[fade-in-up_0.35s_ease]">
@@ -329,6 +416,12 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const leadIdRef = useRef<string | null>(null);
+  const [preocupacion, setPreocupacion] = useState<string | null>(null);
+  const [habloAsesor, setHabloAsesor] = useState<string | null>(null);
+  const [objetivo, setObjetivo] = useState<string | null>(null);
+  const [cuandoEmpezar, setCuandoEmpezar] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const currentStep = steps[stepIndex];
   const progressPct = phase === "wizard" ? Math.round((stepIndex / steps.length) * 100) : 100;
@@ -349,8 +442,16 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const brecha = ingresoRecomendado !== null ? Math.max(0, ingresoRecomendado - result.rentaMensualEstimada) : null;
   const sinBrecha = brecha === 0;
 
+  // Coverage relative to the RECOMMENDED income (not the raw current income) —
+  // this is what the "comparación" reveal step visualizes as two bars.
+  const replacementPct =
+    ingresoRecomendado !== null && ingresoRecomendado > 0 ? Math.min(200, Math.round((result.rentaMensualEstimada / ingresoRecomendado) * 100)) : null;
+
   const resultSteps = useMemo<ResultStepKey[]>(
-    () => (brecha !== null ? ["pension", "comparacion", "brecha", "significado", "cierre"] : ["pension", "significado", "cierre"]),
+    () =>
+      brecha !== null
+        ? ["pension", "diagnostico", "comparacion", "brecha", "significado", "escenarios", "educacion", "calificacion", "cierre"]
+        : ["pension", "diagnostico", "significado", "escenarios", "educacion", "calificacion", "cierre"],
     [brecha],
   );
   const currentResultStep = resultSteps[resultStepIndex];
@@ -358,6 +459,22 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const fundDisplay = useCountUp(result.fondoEstimado, phase === "resultado" && currentResultStep === "pension");
   const incomeDisplay = useCountUp(result.rentaMensualEstimada, phase === "resultado" && currentResultStep === "comparacion");
   const brechaDisplay = useCountUp(brecha ?? 0, phase === "resultado" && currentResultStep === "brecha");
+
+  const aniosParaRetiro = clampedRetiro - edad;
+  const preparation = getPreparationLevel({ aniosParaRetiro, ahorroMensual, replacementPct });
+  const { strengths, opportunities } = getStrengthsAndOpportunities({ aniosParaRetiro, ahorroMensual, replacementPct });
+
+  // "Qué pasaría si" — orientative what-ifs, same simulateRetirement engine
+  // with tweaked inputs, never a new calculation method.
+  const ahorroBump = Math.max(1000, Math.round((ahorroMensual * 0.2) / 500) * 500);
+  const scenarioMasAhorro = useMemo(
+    () => simulateRetirement({ edad, edadRetiro: clampedRetiro, ahorroMensual: ahorroMensual + ahorroBump, annualReturnRatePct: config.annualReturnRatePct }),
+    [edad, clampedRetiro, ahorroMensual, ahorroBump, config.annualReturnRatePct],
+  );
+  const scenarioRetiroTardio = useMemo(
+    () => simulateRetirement({ edad, edadRetiro: clampedRetiro + 1, ahorroMensual, annualReturnRatePct: config.annualReturnRatePct }),
+    [edad, clampedRetiro, ahorroMensual, config.annualReturnRatePct],
+  );
 
   function goBack() {
     setError(null);
@@ -382,7 +499,36 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   }
 
   function goResultNext() {
+    if (currentResultStep === "calificacion") saveQualification();
     setResultStepIndex((i) => Math.min(resultSteps.length - 1, i + 1));
+  }
+
+  function saveQualification() {
+    if (!leadIdRef.current) return;
+    const answers: Record<string, unknown> = {};
+    if (preocupacion) answers.preocupacion_principal = preocupacion;
+    if (habloAsesor) answers.hablo_con_asesor_antes = habloAsesor;
+    if (objetivo) answers.objetivo_principal = objetivo;
+    if (cuandoEmpezar) answers.cuando_quiere_empezar = cuandoEmpezar;
+    if (Object.keys(answers).length === 0) return;
+    submitMiniAppLeadQualificationFromHostedPage(leadIdRef.current, answers).catch(() => {});
+  }
+
+  async function handleShare() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: app.name, url });
+      } catch {
+        // El usuario canceló el share nativo — no es un error a mostrar.
+      }
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
   }
 
   async function handleFinish() {
@@ -413,6 +559,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
         setPhase("wizard");
         return;
       }
+      leadIdRef.current = outcome.leadId ?? null;
       // Deliberate short pause — "loading antes del resultado" per spec,
       // and it gives the count-up entrance somewhere natural to start from.
       await new Promise((r) => setTimeout(r, 1300));
@@ -425,11 +572,6 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
       setSubmitting(false);
     }
   }
-
-  // Coverage relative to the RECOMMENDED income (not the raw current income) —
-  // this is what the "comparación" reveal step visualizes as two bars.
-  const replacementPct =
-    ingresoRecomendado !== null && ingresoRecomendado > 0 ? Math.min(200, Math.round((result.rentaMensualEstimada / ingresoRecomendado) * 100)) : null;
 
   const genericWhyPlanEarly = [
     "El interés compuesto hace la mayor parte del trabajo — cuanto antes empezás, menos tenés que poner vos.",
@@ -671,6 +813,57 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                 </>
               )}
 
+              {currentResultStep === "diagnostico" && (
+                <div
+                  className="rounded-2xl p-6 sm:p-7"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl leading-none">{preparation.emoji}</span>
+                    <div>
+                      <p className="text-[11px] font-bold tracking-[0.1em] uppercase" style={{ color: "var(--ma-text-muted)" }}>
+                        Tu diagnóstico
+                      </p>
+                      <h3 className="text-[18px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                        {preparation.label}
+                      </h3>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                    {preparation.reason}
+                  </p>
+
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-2 text-[12.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--ma-text-muted)" }}>
+                        Lo que hoy juega a tu favor
+                      </p>
+                      <ul className="flex flex-col gap-2">
+                        {strengths.map((text) => (
+                          <li key={text} className="flex items-start gap-2 text-[13px]" style={{ color: "var(--ma-text-color)" }}>
+                            <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: "var(--ma-chart-series-secondary)" }} aria-hidden="true" />
+                            {text}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-[12.5px] font-semibold uppercase tracking-wide" style={{ color: "var(--ma-text-muted)" }}>
+                        Aspectos que sería conveniente revisar
+                      </p>
+                      <ul className="flex flex-col gap-2">
+                        {opportunities.map((text) => (
+                          <li key={text} className="flex items-start gap-2 text-[13px]" style={{ color: "var(--ma-text-color)" }}>
+                            <AlertCircle className="mt-0.5 size-4 shrink-0" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
+                            {text}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {currentResultStep === "comparacion" && ingresoRecomendado !== null && (
                 <div
                   className="rounded-2xl p-6 sm:p-7"
@@ -712,6 +905,11 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                       Hoy estarías cubriendo el <strong style={{ color: "var(--ma-text-color)" }}>{replacementPct}%</strong> de lo recomendado.
                     </p>
                   )}
+                  <p className="mt-3 text-[12.5px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                    En palabras simples: tu <strong style={{ color: "var(--ma-text-color)" }}>pensión estimada</strong> es lo que tu ahorro
+                    proyectaría como ingreso mensual al retirarte; el <strong style={{ color: "var(--ma-text-color)" }}>ingreso recomendado</strong>{" "}
+                    es lo que sueles necesitar para mantener tu ritmo de vida actual.
+                  </p>
                 </div>
               )}
 
@@ -742,6 +940,10 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                       </p>
                       <p className="mx-auto mt-3 max-w-sm text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
                         Es la diferencia entre lo que recibirías y lo que realmente necesitarías cada mes para mantener tu ritmo de vida.
+                      </p>
+                      <p className="mx-auto mt-3 max-w-sm text-[12px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                        Existe porque tu ahorro actual, proyectado a tu edad de retiro, todavía no alcanza a cubrir el ingreso recomendado — es
+                        exactamente lo que se puede trabajar con una estrategia adecuada.
                       </p>
                     </>
                   )}
@@ -800,6 +1002,108 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                 </div>
               )}
 
+              {currentResultStep === "escenarios" && (
+                <div
+                  className="rounded-2xl p-6 sm:p-7"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+                >
+                  <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                    Tu resultado puede cambiar
+                  </h3>
+                  <p className="mt-1.5 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                    Estos son ejemplos orientativos de cómo pequeños ajustes moverían tu proyección.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-3">
+                    <div className="rounded-xl p-4" style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}>
+                      <p className="text-[13.5px] font-medium" style={{ color: "var(--ma-text-color)" }}>
+                        ¿Qué pasaría si aumentás tu ahorro mensual en {formatCurrency(ahorroBump)}?
+                      </p>
+                      <div className="mt-2 flex items-baseline justify-between">
+                        <span className="text-[12px]" style={{ color: "var(--ma-text-muted)" }}>
+                          Hoy: {formatCurrency(result.fondoEstimado)}
+                        </span>
+                        <span className="font-mono text-[15px] font-semibold" style={{ color: "var(--ma-button-primary-bg)" }}>
+                          {formatCurrency(scenarioMasAhorro.fondoEstimado)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="rounded-xl p-4" style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}>
+                      <p className="text-[13.5px] font-medium" style={{ color: "var(--ma-text-color)" }}>
+                        ¿Qué pasaría si retrasás tu retiro un año, a los {clampedRetiro + 1}?
+                      </p>
+                      <div className="mt-2 flex items-baseline justify-between">
+                        <span className="text-[12px]" style={{ color: "var(--ma-text-muted)" }}>
+                          Hoy: {formatCurrency(result.fondoEstimado)}
+                        </span>
+                        <span className="font-mono text-[15px] font-semibold" style={{ color: "var(--ma-button-primary-bg)" }}>
+                          {formatCurrency(scenarioRetiroTardio.fondoEstimado)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-[11.5px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                    Son ejemplos ilustrativos con la misma proyección de tu simulación — un análisis personalizado puede mostrarte más alternativas.
+                  </p>
+                </div>
+              )}
+
+              {currentResultStep === "educacion" && (
+                <div
+                  className="rounded-2xl p-6 sm:p-7"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+                >
+                  <div className="mb-1 flex items-center gap-2">
+                    <GraduationCap className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
+                    <h3 className="text-[16px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                      ¿Qué suelen hacer las personas con un resultado similar?
+                    </h3>
+                  </div>
+                  <ul className="mt-4 flex flex-col gap-2.5">
+                    {EDUCATIONAL_TIPS.map((text) => (
+                      <li key={text} className="flex items-start gap-2.5 text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: "var(--ma-chart-series-secondary)" }} aria-hidden="true" />
+                        {text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {currentResultStep === "calificacion" && (
+                <div
+                  className="rounded-2xl p-6 sm:p-7"
+                  style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+                >
+                  <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                    Antes de continuar, contanos un poco más
+                  </h3>
+                  <p className="mt-1.5 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                    Es opcional, pero ayuda a que tu asesor llegue mejor preparado a la conversación.
+                  </p>
+                  <div className="mt-5 flex flex-col gap-5">
+                    <SingleChoiceQuestion
+                      label="¿Cuál es hoy tu mayor preocupación?"
+                      options={PREOCUPACION_OPTIONS}
+                      value={preocupacion}
+                      onChange={setPreocupacion}
+                    />
+                    <SingleChoiceQuestion
+                      label="¿Ya hablaste antes con un asesor financiero?"
+                      options={HABLO_ASESOR_OPTIONS}
+                      value={habloAsesor}
+                      onChange={setHabloAsesor}
+                    />
+                    <SingleChoiceQuestion label="¿Qué te gustaría lograr?" options={OBJETIVO_OPTIONS} value={objetivo} onChange={setObjetivo} />
+                    <SingleChoiceQuestion
+                      label="¿Cuándo te gustaría comenzar?"
+                      options={CUANDO_OPTIONS}
+                      value={cuandoEmpezar}
+                      onChange={setCuandoEmpezar}
+                    />
+                  </div>
+                </div>
+              )}
+
               {currentResultStep === "cierre" && (
                 <>
                   {!confirmed ? (
@@ -811,15 +1115,36 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                         <Handshake className="size-6" aria-hidden="true" />
                       </span>
                       <div>
-                        <h3 className="text-[19px] font-semibold">Con una estrategia adecuada podés reducir esa diferencia.</h3>
+                        <h3 className="text-[19px] font-semibold">Tu simulación ya está lista.</h3>
                         <p className="mx-auto mt-2 max-w-sm text-[13.5px] opacity-80">
-                          Ya guardamos tus datos — solo falta confirmar que {config.assignedAgentName ?? "tu asesor"} revise tu caso, sin costo y sin
-                          compromiso.
+                          Este simulador ofrece una estimación basada en la información que ingresaste. Existen muchos factores personales que
+                          pueden modificar el resultado y que requieren un análisis individual.
+                        </p>
+                        <p className="mx-auto mt-2 max-w-sm text-[13.5px] opacity-80">
+                          Una revisión personalizada con {config.assignedAgentName ?? "un asesor"} puede ayudarte a entender qué alternativas
+                          existen para mejorar tu planificación para el retiro.
                         </p>
                       </div>
-                      <MiniAppButton type="button" className="mt-1" onClick={() => setConfirmed(true)}>
-                        Quiero que un asesor revise mi caso <ArrowRight className="size-4" aria-hidden="true" />
-                      </MiniAppButton>
+                      <div className="mt-1 flex flex-col items-center gap-2.5">
+                        <MiniAppButton type="button" onClick={() => setConfirmed(true)}>
+                          Quiero una revisión personalizada <ArrowRight className="size-4" aria-hidden="true" />
+                        </MiniAppButton>
+                        <button
+                          type="button"
+                          onClick={handleShare}
+                          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium opacity-80 transition-opacity duration-150 hover:opacity-100"
+                        >
+                          {shareCopied ? (
+                            <>
+                              <CheckCircle2 className="size-3.5" aria-hidden="true" /> ¡Enlace copiado!
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="size-3.5" aria-hidden="true" /> Compartir este simulador
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div
