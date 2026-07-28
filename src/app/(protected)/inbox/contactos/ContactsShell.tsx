@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
 import type { CompanyGroup, ContactDetail, ContactListItem } from "@/lib/contacts/queries";
 import type { WorkspaceTag } from "@/lib/inbox/queries";
-import { getCompanyGroupsAction, getContactDetailAction, getContactListAction } from "@/lib/contacts/actions";
+import type { MiniAppListItem } from "@/lib/miniApps/queries";
+import type { MiniAppTemplateCategory } from "@/lib/miniApps/templateCatalog";
+import { getAppContactListAction, getCompanyGroupsAction, getContactDetailAction, getContactListAction } from "@/lib/contacts/actions";
 import { ContactList } from "./ContactList";
+import { AppContactList } from "./AppContactList";
 import { CompanyList } from "./CompanyList";
 import { ContactDetailPanel } from "./ContactDetailPanel";
 import { CreateContactForm } from "./CreateContactForm";
@@ -19,24 +22,31 @@ export function ContactsShell({
   initialContacts,
   initialCompanies,
   tags,
+  miniApps,
 }: {
   workspaceId: string;
   initialContacts: ContactListItem[];
   initialCompanies: CompanyGroup[];
   tags: WorkspaceTag[];
+  miniApps: MiniAppListItem[];
 }) {
-  const [tab, setTab] = useState<"contactos" | "empresas">("contactos");
+  const [tab, setTab] = useState<"contactos" | "empresas" | "apps">("contactos");
   const [contacts, setContacts] = useState(initialContacts);
   const [companies, setCompanies] = useState(initialCompanies);
   const [search, setSearch] = useState("");
   const [optStatus, setOptStatus] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
+  const [appContacts, setAppContacts] = useState<ContactListItem[]>([]);
+  const [appSearch, setAppSearch] = useState("");
+  const [appCategory, setAppCategory] = useState<MiniAppTemplateCategory | "">("");
+  const [appMiniAppId, setAppMiniAppId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ContactDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [, startTransition] = useTransition();
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appSearchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function refetchList() {
     startTransition(async () => {
@@ -55,6 +65,17 @@ export function ContactsShell({
     });
   }
 
+  function refetchAppContacts() {
+    startTransition(async () => {
+      const fresh = await getAppContactListAction({
+        search: appSearch || undefined,
+        category: appCategory || undefined,
+        miniAppId: appMiniAppId || undefined,
+      });
+      setAppContacts(fresh);
+    });
+  }
+
   // Re-run the list query whenever a filter changes, debounced like InboxShell.
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
@@ -64,6 +85,16 @@ export function ContactsShell({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, optStatus, companyFilter]);
+
+  useEffect(() => {
+    if (tab !== "apps") return;
+    if (appSearchDebounce.current) clearTimeout(appSearchDebounce.current);
+    appSearchDebounce.current = setTimeout(() => refetchAppContacts(), 300);
+    return () => {
+      if (appSearchDebounce.current) clearTimeout(appSearchDebounce.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, appSearch, appCategory, appMiniAppId]);
 
   function loadDetail(id: string) {
     setSelectedId(id);
@@ -105,6 +136,7 @@ export function ContactsShell({
           () => {
             refetchList();
             refetchCompanies();
+            refetchAppContacts();
           },
         )
         .subscribe();
@@ -133,10 +165,11 @@ export function ContactsShell({
       <div className="flex items-center justify-between gap-4 border-b border-border-default px-6 py-4">
         <div>
           <h1 className="text-[17px] font-semibold text-foreground">Contactos</h1>
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "contactos" | "empresas")} className="mt-2">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "contactos" | "empresas" | "apps")} className="mt-2">
             <TabsList>
               <TabsTrigger value="contactos">Contactos</TabsTrigger>
               <TabsTrigger value="empresas">Empresas</TabsTrigger>
+              <TabsTrigger value="apps">Contactos de Apps</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -161,7 +194,7 @@ export function ContactsShell({
       )}
 
       <div className="flex-1 overflow-y-auto">
-        {tab === "contactos" ? (
+        {tab === "contactos" && (
           <ContactList
             contacts={contacts}
             search={search}
@@ -170,8 +203,20 @@ export function ContactsShell({
             onOptStatusChange={setOptStatus}
             onSelect={loadDetail}
           />
-        ) : (
-          <CompanyList companies={companies} onSelectCompany={handleSelectCompany} />
+        )}
+        {tab === "empresas" && <CompanyList companies={companies} onSelectCompany={handleSelectCompany} />}
+        {tab === "apps" && (
+          <AppContactList
+            contacts={appContacts}
+            search={appSearch}
+            onSearchChange={setAppSearch}
+            category={appCategory}
+            onCategoryChange={setAppCategory}
+            miniAppId={appMiniAppId}
+            onMiniAppIdChange={setAppMiniAppId}
+            miniApps={miniApps}
+            onSelect={loadDetail}
+          />
         )}
       </div>
 

@@ -12,7 +12,18 @@ const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "whatsapp",
   "consentimiento",
   "consentimiento_fecha",
+  "duration_seconds",
 ]);
+
+/** Single unified contact record per the "Contactos de Apps" design — a
+ * mini-app lead is a real CRM contact from the moment it's submitted, not
+ * just after someone manually clicks "convertir a contacto"
+ * (convertMiniAppLeadToContact, miniApps/actions.ts, still exists for the
+ * cases where a lead somehow arrived without one — e.g. rows created before
+ * this existed). `ignoreDuplicates: true` means an EXISTING contact's
+ * name/source is never overwritten by a repeat mini-app submission — the
+ * contact who was here first (whatever channel they came from) wins. */
+export const MINI_APP_CONTACT_SOURCE = "mini_app";
 
 const RATE_LIMIT_PER_MINUTE = 20;
 
@@ -193,20 +204,25 @@ async function processLeadSubmission(
     console.error("[mini-apps] failed to record webhook_events row:", webhookEventError);
   }
 
-  const { error: insertError } = await supabase.from("mini_app_leads").insert({
-    workspace_id: app.workspace_id,
-    mini_app_id: app.id,
-    origen_app: typeof body.origen_app === "string" && body.origen_app.trim() ? body.origen_app.trim() : app.name,
-    agente: typeof body.agente === "string" ? body.agente.trim() || null : null,
-    nombre,
-    whatsapp,
-    consentimiento: true,
-    consentimiento_fecha: body.consentimiento_fecha,
-    fecha: body.fecha,
-    data,
-    ip_address: ip,
-    user_agent: userAgent,
-  });
+  const { data: insertedLead, error: insertError } = await supabase
+    .from("mini_app_leads")
+    .insert({
+      workspace_id: app.workspace_id,
+      mini_app_id: app.id,
+      origen_app: typeof body.origen_app === "string" && body.origen_app.trim() ? body.origen_app.trim() : app.name,
+      agente: typeof body.agente === "string" ? body.agente.trim() || null : null,
+      nombre,
+      whatsapp,
+      consentimiento: true,
+      consentimiento_fecha: body.consentimiento_fecha,
+      fecha: body.fecha,
+      data,
+      duration_seconds: toFiniteNumber(body.duration_seconds),
+      ip_address: ip,
+      user_agent: userAgent,
+    })
+    .select("id")
+    .single();
   if (insertError && insertError.code !== "23505") {
     console.error("[mini-apps] failed to insert lead:", insertError);
     return { ok: false, status: 500, error: "insert_failed", allowedOrigins };
@@ -220,7 +236,52 @@ async function processLeadSubmission(
       .eq("event_id", eventId);
   }
 
+  if (insertedLead) {
+    await linkLeadToContact(supabase, app.workspace_id, nombre, whatsapp, insertedLead.id as string);
+  }
+
   return { ok: true, duplicate: insertError?.code === "23505", allowedOrigins };
+}
+
+/** Best-effort — a failure here must never fail the lead submission itself
+ * (the lead is already durably recorded by this point), same posture as the
+ * webhook_events write above it. Upsert-by-phone reuses the exact shape
+ * already proven in convertMiniAppLeadToContact/createOpportunity's own
+ * contact upsert, just fired automatically instead of waiting for a manual
+ * click. */
+async function linkLeadToContact(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  workspaceId: string,
+  nombre: string,
+  whatsapp: string,
+  leadId: string,
+): Promise<void> {
+  try {
+    const { data: upserted } = await supabase
+      .from("contacts")
+      .upsert(
+        { workspace_id: workspaceId, name: nombre, phone: whatsapp, source: MINI_APP_CONTACT_SOURCE },
+        { onConflict: "workspace_id,phone", ignoreDuplicates: true },
+      )
+      .select("id")
+      .maybeSingle();
+
+    let contactId = upserted?.id as string | undefined;
+    if (!contactId) {
+      const { data: existing } = await supabase
+        .from("contacts")
+        .select("id")
+        .eq("workspace_id", workspaceId)
+        .eq("phone", whatsapp)
+        .maybeSingle();
+      contactId = existing?.id as string | undefined;
+    }
+    if (contactId) {
+      await supabase.from("mini_app_leads").update({ contact_id: contactId }).eq("id", leadId);
+    }
+  } catch (err) {
+    console.error("[mini-apps] failed to link lead to contact:", err);
+  }
 }
 
 /** Public Route Handler entry point (external mini apps) — requires the

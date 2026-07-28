@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from "@/lib/miniApps/paletteEngine";
+import { templateKeysForCategory, type MiniAppTemplateCategory } from "@/lib/miniApps/templateCatalog";
 
 export type MiniAppTemplateKey = "simulador_retiro";
 export type MiniAppStatus = "active" | "inactive";
@@ -319,4 +320,84 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
       assignedAgentName: config.assignedAgentName,
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Contactos de Apps — app-origin resolution. Lives here (not
+// contacts/queries.ts) so the contacts module never needs to know mini_apps'
+// schema; mirrors the existing tagId pre-resolve pattern getContactList
+// already uses for tags.
+// ---------------------------------------------------------------------------
+
+export interface AppContactFilter {
+  category?: MiniAppTemplateCategory;
+  miniAppId?: string;
+}
+
+/** Resolves which contact_ids have >=1 mini_app_leads row matching the given
+ * category/app filter. Deliberately NOT `contacts.source = 'mini_app'` — a
+ * contact whose first touch was a mini app but who later also messaged in
+ * over WhatsApp (or vice-versa) must still show up here, and `source` only
+ * ever reflects whichever channel touched the contact FIRST (linkToContact
+ * in ingest.ts uses ignoreDuplicates specifically so an existing contact's
+ * source is never overwritten) — so filtering by source would silently drop
+ * contacts "Contactos de Apps" is supposed to surface. */
+export async function getContactIdsForAppOrigin(workspaceId: string, filter: AppContactFilter): Promise<string[]> {
+  const supabase = await createClient();
+
+  let miniAppIds: string[] | null = null;
+  if (filter.miniAppId) {
+    miniAppIds = [filter.miniAppId];
+  } else if (filter.category) {
+    const keys = templateKeysForCategory(filter.category);
+    if (keys.length === 0) return [];
+    const { data } = await supabase.from("mini_apps").select("id").eq("workspace_id", workspaceId).in("template_key", keys);
+    miniAppIds = (data ?? []).map((r) => r.id as string);
+    if (miniAppIds.length === 0) return [];
+  }
+
+  let query = supabase.from("mini_app_leads").select("contact_id").eq("workspace_id", workspaceId).not("contact_id", "is", null);
+  if (miniAppIds) query = query.in("mini_app_id", miniAppIds);
+
+  const { data } = await query;
+  return Array.from(new Set((data ?? []).map((r) => r.contact_id as string)));
+}
+
+export interface ContactMiniAppOrigin {
+  leadId: string;
+  miniAppId: string;
+  miniAppName: string;
+  miniAppSlug: string;
+  templateKey: MiniAppTemplateKey;
+  receivedAt: string;
+  data: Record<string, unknown>;
+  durationSeconds: number | null;
+}
+
+/** Powers ContactDetailPanel's "Origen del Lead" tab — every mini-app
+ * submission this contact ever made, most recent first, fully generic
+ * (reads whichever fields happen to be in each lead's `data` jsonb — no
+ * per-template field names hardcoded here). */
+export async function getContactMiniAppOrigins(workspaceId: string, contactId: string): Promise<ContactMiniAppOrigin[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("mini_app_leads")
+    .select("id, mini_app_id, received_at, data, duration_seconds, mini_apps(name, slug, template_key)")
+    .eq("workspace_id", workspaceId)
+    .eq("contact_id", contactId)
+    .order("received_at", { ascending: false });
+
+  return (data ?? []).map((r) => {
+    const app = Array.isArray(r.mini_apps) ? r.mini_apps[0] : r.mini_apps;
+    return {
+      leadId: r.id as string,
+      miniAppId: r.mini_app_id as string,
+      miniAppName: (app?.name as string | undefined) ?? "Mini app eliminada",
+      miniAppSlug: (app?.slug as string | undefined) ?? "",
+      templateKey: (app?.template_key as MiniAppTemplateKey | undefined) ?? "simulador_retiro",
+      receivedAt: r.received_at as string,
+      data: (r.data as Record<string, unknown>) ?? {},
+      durationSeconds: (r.duration_seconds as number | null) ?? null,
+    };
+  });
 }

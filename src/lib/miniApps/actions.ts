@@ -16,12 +16,13 @@ import {
   getMiniAppLeads,
   getMiniAppLeadsByDay,
   getMiniAppVisitsCount,
+  getContactMiniAppOrigins,
   type MiniAppLeadFilters,
   type MiniAppBranding,
   type MiniAppFieldConfig,
 } from "@/lib/miniApps/queries";
 import { getWorkspaceMembersList } from "@/lib/settings/queries";
-import { ingestMiniAppLeadFromHostedPage, type IngestResult } from "@/lib/miniApps/ingest";
+import { ingestMiniAppLeadFromHostedPage, MINI_APP_CONTACT_SOURCE, type IngestResult } from "@/lib/miniApps/ingest";
 import { resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
 import { getDefaultOutboundBusinessNumber, getOrCreateOpenConversationForContact } from "@/lib/messaging/conversations";
 import type { MiniAppLeadStatus, MiniAppTemplateKey } from "@/lib/miniApps/queries";
@@ -44,6 +45,15 @@ export async function getMiniAppLeadsAction(miniAppId: string, filters?: MiniApp
 export async function getMiniAppLeadDetailAction(leadId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getMiniAppLeadDetail(workspaceId, leadId);
+}
+
+/** Powers ContactDetailPanel's "Origen del Lead" tab — not gated behind
+ * assertModuleEnabled("mini_apps") deliberately: a contact's past mini-app
+ * submissions stay visible even if the module is later disabled for this
+ * workspace, same as any other historical CRM data. */
+export async function getContactMiniAppOriginsAction(contactId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getContactMiniAppOrigins(workspaceId, contactId);
 }
 
 export async function getMiniAppVisitsCountAction(miniAppId: string) {
@@ -243,7 +253,7 @@ export async function convertMiniAppLeadToContact(leadId: string): Promise<{ con
         workspace_id: workspaceId,
         name: lead.nombre,
         phone: lead.whatsapp,
-        source: "mini_app",
+        source: MINI_APP_CONTACT_SOURCE,
         custom_fields: { origen_app: lead.origenApp, ...lead.data },
       },
       { onConflict: "workspace_id,phone" },
@@ -286,7 +296,7 @@ export async function moveMiniAppLeadToPipeline(leadId: string, stageId?: string
       email: "",
       company: "",
       jobTitle: "",
-      source: "mini_app",
+      source: MINI_APP_CONTACT_SOURCE,
       title: `Lead — ${lead.nombre} (${lead.origenApp})`,
       value: 0,
       currency: "MXN",

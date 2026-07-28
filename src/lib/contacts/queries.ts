@@ -17,13 +17,24 @@ export interface ContactListItem {
   whatsappOptStatus: string;
   tags: ContactTag[];
   createdAt: string;
+  /** True when this contact has ≥1 mini_app_leads row linked to it —
+   * deliberately NOT derived from contacts.source (which a later, different
+   * touch — e.g. importing the same phone from a spreadsheet — could
+   * overwrite): see getContactIdsForAppOrigin's doc comment
+   * (src/lib/miniApps/queries.ts) for why "Contactos de Apps" filters the
+   * same way instead of trusting the source column. */
+  hasMiniAppOrigin: boolean;
 }
 
 /** Same search + batched-tags pattern as getConversationList (src/lib/inbox/queries.ts),
- * applied directly to `contacts` instead of joining through `conversations`. */
+ * applied directly to `contacts` instead of joining through `conversations`.
+ * `contactIds`, when passed, further restricts to that exact id set — used
+ * by getAppContactListAction (src/lib/contacts/actions.ts) to compose with
+ * miniApps/queries.ts's category/app-origin resolution without this module
+ * needing to know anything about mini_apps' schema. */
 export async function getContactList(
   workspaceId: string,
-  filters: { search?: string; company?: string; tagId?: string; optStatus?: string } = {},
+  filters: { search?: string; company?: string; tagId?: string; optStatus?: string; contactIds?: string[] } = {},
 ): Promise<ContactListItem[]> {
   const supabase = await createClient();
 
@@ -52,14 +63,20 @@ export async function getContactList(
   if (filters.company) query = query.eq("company", filters.company);
   if (filters.optStatus) query = query.eq("whatsapp_opt_status", filters.optStatus);
   if (idFilter) query = query.in("id", idFilter);
+  if (filters.contactIds) query = query.in("id", filters.contactIds);
 
   const { data } = await query;
   const contacts = data ?? [];
   const contactIds = contacts.map((c) => c.id as string);
 
-  const { data: tagRows } = contactIds.length
-    ? await supabase.from("contact_tags").select("contact_id, tags(id, name, color)").in("contact_id", contactIds)
-    : { data: [] };
+  const [{ data: tagRows }, { data: miniAppLeadRows }] = await Promise.all([
+    contactIds.length
+      ? supabase.from("contact_tags").select("contact_id, tags(id, name, color)").in("contact_id", contactIds)
+      : Promise.resolve({ data: [] }),
+    contactIds.length
+      ? supabase.from("mini_app_leads").select("contact_id").eq("workspace_id", workspaceId).in("contact_id", contactIds)
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const tagsByContact = new Map<string, ContactTag[]>();
   for (const row of tagRows ?? []) {
@@ -69,6 +86,7 @@ export async function getContactList(
     list.push({ id: tag.id as string, name: tag.name as string, color: tag.color as string });
     tagsByContact.set(row.contact_id as string, list);
   }
+  const contactsWithAppOrigin = new Set((miniAppLeadRows ?? []).map((r) => r.contact_id as string));
 
   return contacts.map((c) => ({
     id: c.id as string,
@@ -80,6 +98,7 @@ export async function getContactList(
     whatsappOptStatus: c.whatsapp_opt_status as string,
     tags: tagsByContact.get(c.id as string) ?? [],
     createdAt: c.created_at as string,
+    hasMiniAppOrigin: contactsWithAppOrigin.has(c.id as string),
   }));
 }
 

@@ -267,8 +267,12 @@ function StepShell({ icon: Icon, title, subtitle, children }: { icon: typeof Spa
 
 export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const { config } = app;
+  // Set inside an effect (post-render), not inline in useRef's initializer —
+  // Date.now() is impure and React flags calling it during render itself.
+  const startedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
+    startedAtRef.current = Date.now();
     fetch(`/api/public/mini-apps/${app.slug}/visit`, { method: "POST", keepalive: true }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -350,6 +354,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
         edad_retiro: clampedRetiro,
         ahorro_mensual: ahorroMensual,
         ingreso_actual: ingresoActual || undefined,
+        duration_seconds: Math.round((Date.now() - (startedAtRef.current ?? Date.now())) / 1000),
       });
       if (!outcome.ok) {
         setError("No pudimos guardar tus datos. Intentá de nuevo en unos minutos.");

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getCompanyGroups, getContactDetail, getContactList } from "@/lib/contacts/queries";
+import { getContactIdsForAppOrigin } from "@/lib/miniApps/queries";
+import type { MiniAppTemplateCategory } from "@/lib/miniApps/templateCatalog";
 
 export async function getContactListAction(filters: {
   search?: string;
@@ -13,6 +15,21 @@ export async function getContactListAction(filters: {
 }) {
   const { workspaceId } = await requireActiveWorkspace();
   return getContactList(workspaceId, filters);
+}
+
+/** "Contactos de Apps" tab — resolves the matching contact_ids via
+ * mini_app_leads first (miniApps/queries.ts, this module never queries
+ * mini_apps/mini_app_leads directly), then reuses getContactList unchanged
+ * for the actual row data/search/tags. */
+export async function getAppContactListAction(filters: {
+  search?: string;
+  category?: MiniAppTemplateCategory;
+  miniAppId?: string;
+}) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const contactIds = await getContactIdsForAppOrigin(workspaceId, { category: filters.category, miniAppId: filters.miniAppId });
+  if (contactIds.length === 0) return [];
+  return getContactList(workspaceId, { search: filters.search, contactIds });
 }
 
 export async function getContactDetailAction(contactId: string) {

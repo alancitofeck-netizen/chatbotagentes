@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils/cn";
 import type { ContactListItem } from "@/lib/contacts/queries";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
+import { MiniAppContactBadge } from "./MiniAppContactBadge";
 
 const OPT_STATUS_FILTERS: { key: string; label: string }[] = [
   { key: "", label: "Todos" },
@@ -89,7 +90,10 @@ export function ContactList({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-medium text-foreground">{c.name}</span>
-                      <Badge variant={opt.variant}>{opt.label}</Badge>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {c.hasMiniAppOrigin && <MiniAppContactBadge />}
+                        <Badge variant={opt.variant}>{opt.label}</Badge>
+                      </div>
                     </div>
                     <p className="truncate text-[13px] text-neutral-500">
                       {[c.phone, c.company].filter(Boolean).join(" · ") || "Sin datos adicionales"}

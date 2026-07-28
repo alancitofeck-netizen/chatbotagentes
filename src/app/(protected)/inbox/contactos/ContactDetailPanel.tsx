@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ExternalLink, Smartphone } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -12,9 +12,12 @@ import { toast } from "@/components/toast/toast";
 import type { ContactDetail } from "@/lib/contacts/queries";
 import type { WorkspaceTag } from "@/lib/inbox/queries";
 import type { CalendarEvent } from "@/lib/calendar/queries";
+import type { ContactMiniAppOrigin } from "@/lib/miniApps/queries";
 import { addContactNote, updateContact } from "@/lib/contacts/actions";
 import { toggleContactTag } from "@/lib/inbox/actions";
 import { getContactEventsAction } from "@/lib/calendar/actions";
+import { getContactMiniAppOriginsAction } from "@/lib/miniApps/actions";
+import { TEMPLATE_KEY_META } from "@/lib/miniApps/templateCatalog";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 
 function formatEventDate(iso: string) {
@@ -32,6 +35,29 @@ const OPT_STATUS_OPTIONS = [
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDuration(seconds: number | null) {
+  if (seconds === null) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+/** snake_case -> Title Case, no per-field hardcoding — this is what keeps
+ * "Resultado obtenido"/"Variables calculadas" fully generic across any
+ * future mini-app template's own field names. */
+function humanizeFieldKey(key: string) {
+  return key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function formatFieldValue(value: unknown): string {
+  if (typeof value === "boolean") return value ? "Sí" : "No";
+  if (typeof value === "number") return value.toLocaleString("es");
+  return String(value);
 }
 
 /** Rendered with key={selectedId ?? "closed"} by ContactsShell so editable
@@ -57,6 +83,8 @@ export function ContactDetailPanel({
   const [noteBody, setNoteBody] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [origins, setOrigins] = useState<ContactMiniAppOrigin[]>([]);
+  const [originsLoaded, setOriginsLoaded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -66,6 +94,14 @@ export function ContactDetailPanel({
       setEventsLoaded(true);
     });
   }, [tab, eventsLoaded, detail]);
+
+  useEffect(() => {
+    if (tab !== "origen" || originsLoaded || !detail) return;
+    getContactMiniAppOriginsAction(detail.id).then((fresh) => {
+      setOrigins(fresh);
+      setOriginsLoaded(true);
+    });
+  }, [tab, originsLoaded, detail]);
 
   if (loading) {
     return (
@@ -133,6 +169,7 @@ export function ContactDetailPanel({
             <TabsTrigger value="notas">Notas</TabsTrigger>
             <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
             <TabsTrigger value="historial">Historial</TabsTrigger>
+            <TabsTrigger value="origen">Origen del Lead</TabsTrigger>
           </TabsList>
 
           <div className="py-4">
@@ -261,6 +298,61 @@ export function ContactDetailPanel({
                   </div>
                 )}
               </dl>
+            </TabsContent>
+
+            <TabsContent value="origen">
+              {!originsLoaded ? (
+                <Skeleton className="h-16 w-full" />
+              ) : origins.length === 0 ? (
+                <p className="text-sm text-neutral-500">Sin datos de mini app — este contacto no llegó desde ninguna mini app.</p>
+              ) : (
+                <ul className="flex flex-col gap-4">
+                  {/* Deliberately generic — every field here comes straight
+                   * from origin.data (each template's own answers/results
+                   * jsonb), humanized by key name alone. No per-template
+                   * field list: this same rendering works for the
+                   * retirement simulator today and for any future
+                   * calculadora/quiz/formulario without touching this file. */}
+                  {origins.map((origin) => {
+                    const fields = Object.entries(origin.data);
+                    return (
+                      <li key={origin.leadId} className="rounded-md bg-surface-2 p-3">
+                        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                          <Smartphone size={14} aria-hidden="true" />
+                          {origin.miniAppName}
+                          <Badge variant="neutral">{TEMPLATE_KEY_META[origin.templateKey]?.label ?? origin.templateKey}</Badge>
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          Fecha: {formatDate(origin.receivedAt)} · Tiempo en completar: {formatDuration(origin.durationSeconds)}
+                        </p>
+                        {origin.miniAppSlug && (
+                          <a
+                            href={`/apps/${origin.miniAppSlug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 flex items-center gap-1 text-xs text-accent-600 hover:underline"
+                          >
+                            Ver mini app <ExternalLink size={11} aria-hidden="true" />
+                          </a>
+                        )}
+                        {fields.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">Datos y resultado</p>
+                            <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                              {fields.map(([k, v]) => (
+                                <div key={k} className="flex items-center justify-between gap-2">
+                                  <dt className="text-neutral-500">{humanizeFieldKey(k)}</dt>
+                                  <dd className="font-medium text-foreground">{formatFieldValue(v)}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </TabsContent>
           </div>
         </Tabs>
