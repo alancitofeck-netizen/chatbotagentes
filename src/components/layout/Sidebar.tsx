@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  AppWindow,
   BarChart3,
   CalendarDays,
   Folder,
@@ -52,6 +53,7 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     { label: "Documentos", href: "/documents", icon: Folder, comingSoon: false },
     { label: "CRM", href: "/crm", icon: Kanban, comingSoon: !enabledModules.has("crm") },
     { label: "Asesores", href: "/advisors", icon: ShieldCheck, comingSoon: !enabledModules.has("advisors") },
+    { label: "Mini Apps", href: "/mini-apps", icon: AppWindow, comingSoon: !enabledModules.has("mini_apps") },
     { label: "KPIs", href: "/kpis", icon: BarChart3, comingSoon: false },
   ];
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-const MODULE_KEYS = ["crm", "ats", "advisors"] as const;
+const MODULE_KEYS = ["crm", "ats", "advisors", "mini_apps"] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
 export interface ModuleStatus {
@@ -20,6 +20,22 @@ export async function getWorkspaceModuleStatus(workspaceId: string): Promise<Mod
 
   const enabledByKey = new Map((data ?? []).map((r) => [r.module_key as string, r.enabled as boolean]));
   return MODULE_KEYS.map((key) => ({ moduleKey: key, enabled: enabledByKey.get(key) ?? false }));
+}
+
+/** Server-side module gate — CRM/ATS/Advisors today rely only on RLS +
+ * Sidebar hiding, with no explicit guard at the top of their own actions;
+ * Mini Apps adds this real check (docs/blueprint/03-modules.md's 3-layer
+ * enforcement) so a stale bookmark/tab into a disabled module can't call
+ * server actions at all, not just fail to navigate there via the UI. */
+export async function assertModuleEnabled(workspaceId: string, moduleKey: ModuleKey): Promise<void> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("workspace_modules")
+    .select("enabled")
+    .eq("workspace_id", workspaceId)
+    .eq("module_key", moduleKey)
+    .maybeSingle();
+  if (!data?.enabled) throw new Error("Este módulo no está activo para este workspace.");
 }
 
 export interface WorkspaceMember {

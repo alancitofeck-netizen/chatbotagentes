@@ -11,6 +11,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   crm: { name: "CRM", description: "Oportunidades de venta sobre el pipeline genérico." },
   ats: { name: "ATS", description: "Vacantes y candidatos para reclutamiento." },
   advisors: { name: "Asesores", description: "Pólizas y clientes para agentes de seguros y asesores financieros." },
+  mini_apps: { name: "Mini Apps", description: "Simuladores y formularios públicos que capturan leads para el CRM." },
 };
 
 export function ModulesSection({

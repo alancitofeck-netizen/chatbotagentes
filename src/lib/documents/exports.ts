@@ -11,7 +11,7 @@ import { ENTITY_LABELS, type ExportEntity, type ExportFormat } from "@/lib/docum
 
 export { ENTITY_LABELS, type ExportEntity, type ExportFormat };
 
-interface ExportColumn<T> {
+export interface ExportColumn<T> {
   header: string;
   accessor: (row: T) => string | number;
 }
