@@ -20,6 +20,7 @@ import {
   buildAnalysisSummary,
   candidateKey,
   collectDistinctLookups,
+  contactDedupeKey,
   detectContactDuplicates,
   detectPolicyDuplicates,
   suggestIntraFileMerges,
@@ -289,6 +290,24 @@ export async function confirmImportConfigAction(jobId: string, config: ImportJob
   // than let the background phase discover the same failure per row.
   const errorRowNumbers = new Set((job?.analysis.errors ?? []).map((e) => e.row));
 
+  // Real portfolios routinely repeat the same client across several rows
+  // (one per policy) — detectContactDuplicates only checked the DB, never
+  // the file's own rows against each other, so every repeat became its own
+  // brand-new contact (confirmed live). Fixed here: the FIRST row for a
+  // given dedupe key (DNI>CUIT>Email>Teléfono, contactDedupeKey in
+  // analysis.ts) that has no real DB match goes through the normal
+  // resolveContactAction(false, ...) path unchanged; every LATER row
+  // sharing that same key is treated as a duplicate (resolveContactAction
+  // (true, ...), respecting the user's actual strategy — "create_new" still
+  // creates a separate contact per row, on purpose). Both the first row and
+  // its followers get `contact_dedupe_key` stamped so the background
+  // "clients" phase (rowProcessor.ts's findSiblingContactId) can link a
+  // follower to whatever contact the first occurrence ends up producing,
+  // even though that contact doesn't exist yet at this point (Paso 6) —
+  // same "resolve now, have dependents wait for it" pattern already proven
+  // for insurer/branch/product intra-file merges (0058).
+  const seenDedupeKeys = new Set<string>();
+
   const rowsToInsert = mappedRows.map((data, i) => {
     const rowNumber = i + 1;
     if (errorRowNumbers.has(rowNumber)) {
@@ -299,6 +318,7 @@ export async function confirmImportConfigAction(jobId: string, config: ImportJob
         data,
         contact_action: "skip" as const,
         matched_contact_id: null,
+        contact_dedupe_key: null,
         policy_action: "skip" as const,
         matched_policy_id: null,
         status: "skipped" as const,
@@ -307,7 +327,19 @@ export async function confirmImportConfigAction(jobId: string, config: ImportJob
     }
     const contactMatch = contactMatches[i];
     const policyMatch = policyMatches[i];
-    const contactAction = resolveContactAction(Boolean(contactMatch), config);
+
+    let dedupeKey: string | null = null;
+    let isDbMatched = Boolean(contactMatch);
+    if (!isDbMatched) {
+      const key = contactDedupeKey(data);
+      if (key) {
+        dedupeKey = key;
+        isDbMatched = seenDedupeKeys.has(key); // treat a repeat-in-file exactly like a DB match
+        seenDedupeKeys.add(key);
+      }
+    }
+
+    const contactAction = resolveContactAction(isDbMatched, config);
     const policyAction = contactAction === "skip" ? "skip" : resolvePolicyAction(Boolean(policyMatch), config);
     return {
       job_id: jobId,
@@ -316,6 +348,7 @@ export async function confirmImportConfigAction(jobId: string, config: ImportJob
       data,
       contact_action: contactAction,
       matched_contact_id: contactMatch?.matchedContactId ?? null,
+      contact_dedupe_key: dedupeKey,
       policy_action: policyAction,
       matched_policy_id: policyMatch ?? null,
       status: contactAction === "skip" ? "skipped" : "pending",

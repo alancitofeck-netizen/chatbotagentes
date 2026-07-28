@@ -196,6 +196,24 @@ export interface ContactDedupeResult {
   matchedContactId: string | null;
 }
 
+/** Same priority order as detectContactDuplicates' own exact-match check
+ * (DNI > CUIT > Email > Teléfono > Celular) — first field present wins, not
+ * a union of every field, matching that function's existing "first match
+ * wins" philosophy rather than a full union-find across mismatched fields.
+ * Pure/sync (no DB access needed) — used by confirmImportConfigAction
+ * (actions.ts) to group rows that share the SAME real-world client WITHIN
+ * this file (e.g. one client, several policy rows), which
+ * detectContactDuplicates alone can't do since it only checks each row
+ * against the database, never against its own siblings. */
+export function contactDedupeKey(row: MappedRowData): string | null {
+  if (row.clienteDni) return `dni:${row.clienteDni}`;
+  if (row.clienteCuit) return `cuit:${row.clienteCuit}`;
+  if (row.clienteEmail) return `email:${row.clienteEmail.toLowerCase()}`;
+  if (row.clienteTelefono) return `phone:${row.clienteTelefono}`;
+  if (row.clienteCelular) return `phone:${row.clienteCelular}`;
+  return null;
+}
+
 const CONTACT_FUZZY_FALLBACK_CAP = 500;
 
 /** Paso 5's contact-duplicate detection: exact key match (DNI/CUIT/Email/

@@ -246,6 +246,12 @@ export interface ClaimedRow {
   data: MappedRowData;
   contact_action: "create" | "update" | "skip" | null;
   matched_contact_id: string | null;
+  /** Set when this row shares a real-world client (DNI/CUIT/Email/Teléfono)
+   * with another row in the SAME file — see contactDedupeKey (analysis.ts)
+   * and confirmImportConfigAction (actions.ts). Only actually consulted
+   * when contact_action='update' and matched_contact_id is null (i.e. the
+   * "duplicate" is intra-file only, not a real existing DB contact yet). */
+  contact_dedupe_key: string | null;
   contact_id: string | null;
   policy_action: "create" | "update" | "skip" | "duplicate" | null;
   matched_policy_id: string | null;
@@ -276,37 +282,106 @@ function buildCustomFields(data: MappedRowData): Record<string, string> {
   return fields;
 }
 
+/** Thrown by resolveContactId when a row is waiting on ANOTHER row in this
+ * same file to finish creating the shared contact first (contact_dedupe_key
+ * — see actions.ts/analysis.ts). Mirrors LookupNotReadyError exactly: caught
+ * by processClientRowBatch, which reverts the row to 'pending' instead of
+ * 'error' so a later tick retries it once the sibling is done. */
+class ContactNotReadyError extends Error {}
+
+async function findSiblingContactId(service: ServiceClient, jobId: string, dedupeKey: string, excludeRowId: string): Promise<string | null> {
+  const { data } = await service
+    .from("import_job_rows")
+    .select("contact_id")
+    .eq("job_id", jobId)
+    .eq("contact_dedupe_key", dedupeKey)
+    .not("contact_id", "is", null)
+    .neq("id", excludeRowId)
+    .limit(1)
+    .maybeSingle();
+  return (data?.contact_id as string | null) ?? null;
+}
+
+/** True when a sibling sharing this dedupe key exists but hasn't reached a
+ * terminal state yet — the caller should defer (ContactNotReadyError)
+ * rather than give up. False also covers "sibling errored/skipped" or "no
+ * such sibling", both real failures the caller should surface as an error
+ * (e.g. the first occurrence was configured to skip client creation
+ * entirely, so no contact will ever exist for this key). */
+async function siblingContactStillPending(service: ServiceClient, jobId: string, dedupeKey: string, excludeRowId: string): Promise<boolean> {
+  const { data } = await service
+    .from("import_job_rows")
+    .select("status")
+    .eq("job_id", jobId)
+    .eq("contact_dedupe_key", dedupeKey)
+    .is("contact_id", null)
+    .neq("id", excludeRowId)
+    .in("status", ["pending", "processing"])
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+async function resolveContactId(service: ServiceClient, row: ClaimedRow): Promise<string> {
+  // A real, already-existing DB contact — the pre-0060 path, unchanged.
+  if (row.contact_action === "update" && row.matched_contact_id) {
+    const data = row.data;
+    const payload = {
+      workspace_id: row.workspace_id,
+      name: buildContactName(data),
+      email: data.clienteEmail || null,
+      company: buildContactCompany(data),
+      dni: data.clienteDni || null,
+      cuit: data.clienteCuit || null,
+      custom_fields: buildCustomFields(data),
+    };
+    const { error } = await service.from("contacts").update(payload).eq("id", row.matched_contact_id);
+    if (error) throw new Error("No se pudo actualizar el cliente.");
+    return row.matched_contact_id;
+  }
+
+  // An intra-file duplicate (same DNI/CUIT/Email/Teléfono as another row in
+  // THIS file, no real DB match) — reuse whatever contact the first
+  // occurrence creates, waiting for it if it hasn't finished yet.
+  if (row.contact_action === "update" && !row.matched_contact_id && row.contact_dedupe_key) {
+    const siblingId = await findSiblingContactId(service, row.job_id, row.contact_dedupe_key, row.id);
+    if (siblingId) return siblingId;
+    if (await siblingContactStillPending(service, row.job_id, row.contact_dedupe_key, row.id)) {
+      throw new ContactNotReadyError();
+    }
+    throw new Error("No se pudo vincular con el cliente duplicado de este mismo archivo.");
+  }
+
+  // First occurrence of a new client (or contactDuplicateStrategy:'create_new').
+  const data = row.data;
+  const payload = {
+    workspace_id: row.workspace_id,
+    name: buildContactName(data),
+    email: data.clienteEmail || null,
+    company: buildContactCompany(data),
+    dni: data.clienteDni || null,
+    cuit: data.clienteCuit || null,
+    custom_fields: buildCustomFields(data),
+  };
+  const phone = data.clienteTelefono || data.clienteCelular || null;
+  const { data: created, error } = phone
+    ? await service.from("contacts").upsert({ ...payload, phone }, { onConflict: "workspace_id,phone" }).select("id").single()
+    : await service.from("contacts").insert(payload).select("id").single();
+  if (error || !created) throw new Error("No se pudo crear el cliente.");
+  return created.id as string;
+}
+
 export async function processClientRowBatch(service: ServiceClient, rows: ClaimedRow[]): Promise<void> {
   await processConcurrently(rows, async (row) => {
     try {
-      const data = row.data;
-      const payload = {
-        workspace_id: row.workspace_id,
-        name: buildContactName(data),
-        email: data.clienteEmail || null,
-        company: buildContactCompany(data),
-        dni: data.clienteDni || null,
-        cuit: data.clienteCuit || null,
-        custom_fields: buildCustomFields(data),
-      };
-
-      let contactId: string;
-      if (row.contact_action === "update" && row.matched_contact_id) {
-        const { error } = await service.from("contacts").update(payload).eq("id", row.matched_contact_id);
-        if (error) throw new Error("No se pudo actualizar el cliente.");
-        contactId = row.matched_contact_id;
-      } else {
-        const phone = data.clienteTelefono || data.clienteCelular || null;
-        const { data: created, error } = phone
-          ? await service.from("contacts").upsert({ ...payload, phone }, { onConflict: "workspace_id,phone" }).select("id").single()
-          : await service.from("contacts").insert(payload).select("id").single();
-        if (error || !created) throw new Error("No se pudo crear el cliente.");
-        contactId = created.id as string;
-      }
-
+      const contactId = await resolveContactId(service, row);
       const nextStatus = row.policy_action === "skip" ? "policies_done" : "clients_done";
       await service.from("import_job_rows").update({ contact_id: contactId, status: nextStatus }).eq("id", row.id);
     } catch (err) {
+      if (err instanceof ContactNotReadyError) {
+        await service.from("import_job_rows").update({ status: "pending" }).eq("id", row.id);
+        return;
+      }
       await markError(service, "import_job_rows", row.id, err);
     }
   });
