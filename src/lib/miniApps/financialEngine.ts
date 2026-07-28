@@ -65,4 +65,34 @@ export function simulateRetirement(input: RetirementSimulationInput): Retirement
   };
 }
 
+export interface RetirementYearPoint {
+  /** Years elapsed since today (0 = now). */
+  year: number;
+  edad: number;
+  /** Cumulative amount the visitor personally contributed through this year. */
+  aportado: number;
+  /** Total projected value through this year (base rate) — aportado + intereses. */
+  total: number;
+  /** total - aportado, i.e. the portion the market/interest contributed. */
+  intereses: number;
+}
+
+/** Year-by-year breakdown for the results screen's chart — same pure
+ * compounding math as simulateRetirement (base rate only, one point per
+ * year), just not collapsed to a single final number. No I/O, safe for a
+ * client bundle; never used for the authoritative lead-persistence
+ * recompute (ingest.ts calls simulateRetirement for that), only for the
+ * visual growth/aportes-vs-intereses charts. */
+export function simulateRetirementSeries(input: RetirementSimulationInput): RetirementYearPoint[] {
+  const years = Math.max(Math.round(input.edadRetiro - input.edad), 0);
+  const baseRate = Math.max(input.annualReturnRatePct, MIN_RETURN_RATE_PCT);
+  const points: RetirementYearPoint[] = [];
+  for (let y = 0; y <= years; y++) {
+    const total = futureValueOfMonthlySavings(input.ahorroMensual, y * 12, baseRate);
+    const aportado = input.ahorroMensual * y * 12;
+    points.push({ year: y, edad: input.edad + y, aportado: Math.round(aportado), total: Math.round(total), intereses: Math.round(total - aportado) });
+  }
+  return points;
+}
+
 export const DEFAULT_ANNUAL_RETURN_RATE_PCT = 8;
