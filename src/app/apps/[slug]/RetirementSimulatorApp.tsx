@@ -7,7 +7,6 @@ import {
   ArrowRight,
   CalendarClock,
   CheckCircle2,
-  ChevronDown,
   Compass,
   Handshake,
   HeartPulse,
@@ -320,7 +319,6 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const [phase, setPhase] = useState<Phase>("wizard");
   const [resultStepIndex, setResultStepIndex] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [edad, setEdad] = useState(35);
   const [edadRetiro, setEdadRetiro] = useState(65);
   const [ahorroMensual, setAhorroMensual] = useState(4000);
@@ -835,61 +833,49 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => setDetailsOpen((v) => !v)}
-                    className="mt-5 flex w-full items-center justify-center gap-1.5 text-[13px] font-medium"
-                    style={{ color: "var(--ma-text-muted)" }}
-                  >
-                    Ver el desglose completo
-                    <ChevronDown className={`size-4 transition-transform duration-200 ${detailsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-                  </button>
-
-                  {detailsOpen && (
-                    <div className="mt-4 flex flex-col gap-5 motion-safe:animate-[fade-in-up_0.3s_ease]">
-                      <div className="grid grid-cols-2 gap-3">
-                        <StatCard emoji="💰" label="Capital aportado" value={formatCurrency(capitalAportado)} />
-                        <StatCard emoji="📈" label="Rendimiento esperado" value={`${config.annualReturnRatePct}% anual`} />
-                        <StatCard emoji="🎯" label="Edad de retiro" value={`${clampedRetiro} años`} />
-                        <StatCard emoji="💵" label="Ingreso mensual estimado" value={formatCurrency(result.rentaMensualEstimada)} />
-                      </div>
-
-                      <div
-                        className="rounded-2xl p-5 sm:p-6"
-                        style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}
-                      >
-                        <div className="mb-1 flex items-center gap-2">
-                          <TrendingUp className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
-                          <h3 className="text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
-                            Cómo crece tu fondo, año a año
-                          </h3>
-                        </div>
-                        <p className="mb-4 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
-                          Lo que vos aportás vs. lo que te da el interés compuesto.
-                        </p>
-                        <RetirementGrowthChart series={series} />
-                        <div className="mt-2 flex flex-wrap justify-center gap-5 text-[12.5px]" style={{ color: "var(--ma-text-muted)" }}>
-                          <span className="flex items-center gap-1.5">
-                            <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-primary)" }} /> Aportado
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-secondary)" }} /> Interés compuesto
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3">
-                        <ScenarioChip label="Conservador" value={formatCurrency(result.fondoRangoBajo)} />
-                        <ScenarioChip label="Moderado" value={formatCurrency(result.fondoEstimado)} highlighted />
-                        <ScenarioChip label="Optimista" value={formatCurrency(result.fondoRangoAlto)} />
-                      </div>
-
-                      <p className="px-2 text-center text-[11px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
-                        Simulación con fines ilustrativos. Las cifras son estimaciones y no constituyen asesoría financiera certificada — los
-                        resultados reales dependen del plan que contrates y de las condiciones de mercado.
-                      </p>
+                  <div className="mt-5 flex flex-col gap-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      <StatCard emoji="💰" label="Capital aportado" value={formatCurrency(capitalAportado)} />
+                      <StatCard emoji="📈" label="Rendimiento esperado" value={`${config.annualReturnRatePct}% anual`} />
+                      <StatCard emoji="🎯" label="Edad de retiro" value={`${clampedRetiro} años`} />
+                      <StatCard emoji="💵" label="Ingreso mensual estimado" value={formatCurrency(result.rentaMensualEstimada)} />
                     </div>
-                  )}
+
+                    <div
+                      className="rounded-2xl p-5 sm:p-6"
+                      style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-md)" }}
+                    >
+                      <div className="mb-1 flex items-center gap-2">
+                        <TrendingUp className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
+                        <h3 className="text-[15px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                          Cómo crece tu fondo, año a año
+                        </h3>
+                      </div>
+                      <p className="mb-4 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                        Lo que vos aportás vs. lo que te da el interés compuesto.
+                      </p>
+                      <RetirementGrowthChart series={series} />
+                      <div className="mt-2 flex flex-wrap justify-center gap-5 text-[12.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-primary)" }} /> Aportado
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-full" style={{ background: "var(--ma-chart-series-secondary)" }} /> Interés compuesto
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <ScenarioChip label="Conservador" value={formatCurrency(result.fondoRangoBajo)} />
+                      <ScenarioChip label="Moderado" value={formatCurrency(result.fondoEstimado)} highlighted />
+                      <ScenarioChip label="Optimista" value={formatCurrency(result.fondoRangoAlto)} />
+                    </div>
+
+                    <p className="px-2 text-center text-[11px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                      Simulación con fines ilustrativos. Las cifras son estimaciones y no constituyen asesoría financiera certificada — los
+                      resultados reales dependen del plan que contrates y de las condiciones de mercado.
+                    </p>
+                  </div>
                 </>
               )}
             </div>
