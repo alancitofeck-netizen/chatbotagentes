@@ -18,7 +18,6 @@ import {
   ListChecks,
   Loader2,
   MessageCircle,
-  Pencil,
   PiggyBank,
   Route,
   Share2,
@@ -50,7 +49,6 @@ import {
   OBJETIVO_OPTIONS,
   CUANDO_OPTIONS,
   preocupacionLabel,
-  habloAsesorLabel,
   objetivoLabel,
   cuandoEmpezarLabel,
   habloAsesorFullPhrase,
@@ -94,7 +92,7 @@ const PLAN_DE_ACCION_ITEMS = [
   "Ahora podés revisar un plan personalizado.",
 ];
 
-type WizardStepKey = "intro" | "edad" | "retiro" | "ahorro" | "ingreso" | "nombre" | "whatsapp" | "consentimiento";
+type WizardStepKey = "intro" | "edad" | "retiro" | "ahorro" | "ingreso" | "nombre" | "whatsapp" | "calificacion" | "consentimiento";
 type Phase = "wizard" | "calculando" | "resultado";
 
 /** Animated count-up for the headline fund number — mirrors the reference
@@ -381,7 +379,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const steps = useMemo<WizardStepKey[]>(() => {
     const list: WizardStepKey[] = ["intro", "edad", "retiro", "ahorro"];
     if (config.showIngresoActual) list.push("ingreso");
-    list.push("nombre", "whatsapp", "consentimiento");
+    list.push("nombre", "whatsapp", "calificacion", "consentimiento");
     return list;
   }, [config.showIngresoActual]);
 
@@ -404,8 +402,6 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const [objetivo, setObjetivo] = useState<string | null>(null);
   const [cuandoEmpezar, setCuandoEmpezar] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
-  const [qualificationConfirmed, setQualificationConfirmed] = useState(false);
-  const [editingQualification, setEditingQualification] = useState(false);
 
   const currentStep = steps[stepIndex];
   const progressPct = phase === "wizard" ? Math.round((stepIndex / steps.length) * 100) : 100;
@@ -461,15 +457,15 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const mejoraRetrasandoRetiroPct =
     result.fondoEstimado > 0 ? Math.round(((scenarioRetiroTardio.fondoEstimado - result.fondoEstimado) / result.fondoEstimado) * 100) : 0;
 
-  // Live client-side preview of the diagnosis — recomputed on every answer
-  // change so the visitor genuinely sees their answers change the text.
-  // The server independently recomputes the same thing at save time
+  // The qualification questions are answered earlier, as their own wizard
+  // step, before the visitor ever sees a number — so by the time phase
+  // becomes "resultado" the diagnosis below is already fully personalized,
+  // no separate form/summary toggle needed on this screen. The server
+  // independently recomputes the same thing when the answers are saved
   // (ingest.ts's recomputeDiagnosis) as the authoritative, persisted copy —
   // same "client previews, server is the source of truth" pattern already
   // used for the financial numbers themselves.
   const qualification: QualificationAnswers = { preocupacion, habloAsesor, objetivo, cuandoEmpezar };
-  const allAnswered = Boolean(preocupacion && habloAsesor && objetivo && cuandoEmpezar);
-  const showQualificationSummary = qualificationConfirmed && !editingQualification;
 
   const preparation = getPreparationLevel({ aniosParaRetiro, ahorroMensual, replacementPct });
   const { strengths, opportunities } = getStrengthsAndOpportunities({
@@ -511,32 +507,6 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
     }
     setStepIndex((i) => Math.min(steps.length - 1, i + 1));
   }
-
-  // Sin un paso "Seguir" que agrupe las 4 respuestas en un solo envío, se
-  // sincronizan solas cada vez que cambia alguna — debounced (no en cada
-  // click) para que dos respuestas seguidas nunca disparen dos requests
-  // superpuestos: cada uno hace su propio read-then-write de `data`, y si se
-  // solapan, el que termina último puede pisar al que tenía más respuestas.
-  // Con debounce, un usuario real siempre termina de elegir antes de que se
-  // dispare el envío, así que nunca hay dos en vuelo al mismo tiempo.
-  const qualificationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (phase !== "resultado" || !leadIdRef.current) return;
-    const answers: { preocupacion?: string; habloAsesor?: string; objetivo?: string; cuandoEmpezar?: string } = {};
-    if (preocupacion) answers.preocupacion = preocupacion;
-    if (habloAsesor) answers.habloAsesor = habloAsesor;
-    if (objetivo) answers.objetivo = objetivo;
-    if (cuandoEmpezar) answers.cuandoEmpezar = cuandoEmpezar;
-    if (Object.keys(answers).length === 0) return;
-    if (qualificationDebounceRef.current) clearTimeout(qualificationDebounceRef.current);
-    const leadId = leadIdRef.current;
-    qualificationDebounceRef.current = setTimeout(() => {
-      submitMiniAppLeadQualificationFromHostedPage(leadId, answers).catch(() => {});
-    }, 800);
-    return () => {
-      if (qualificationDebounceRef.current) clearTimeout(qualificationDebounceRef.current);
-    };
-  }, [phase, preocupacion, habloAsesor, objetivo, cuandoEmpezar]);
 
   async function handleShare() {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -584,6 +554,21 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
         return;
       }
       leadIdRef.current = outcome.leadId ?? null;
+      // The qualification answers were already collected as their own
+      // wizard step (before consentimiento) — fire-and-forget the save now
+      // that the lead exists, same posture as the visit-tracking fetch:
+      // never blocks the reveal, never surfaces an error to the visitor.
+      // The results screen itself reads {preocupacion, habloAsesor,
+      // objetivo, cuandoEmpezar} straight from local state, so it's already
+      // fully personalized on first render regardless of this call's timing.
+      if (outcome.leadId && (preocupacion || habloAsesor || objetivo || cuandoEmpezar)) {
+        const answers: { preocupacion?: string; habloAsesor?: string; objetivo?: string; cuandoEmpezar?: string } = {};
+        if (preocupacion) answers.preocupacion = preocupacion;
+        if (habloAsesor) answers.habloAsesor = habloAsesor;
+        if (objetivo) answers.objetivo = objetivo;
+        if (cuandoEmpezar) answers.cuandoEmpezar = cuandoEmpezar;
+        submitMiniAppLeadQualificationFromHostedPage(outcome.leadId, answers).catch(() => {});
+      }
       // Deliberate short pause — "loading antes del resultado" per spec,
       // and it gives the count-up entrance somewhere natural to start from.
       await new Promise((r) => setTimeout(r, 1300));
@@ -755,6 +740,32 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </StepShell>
             )}
 
+            {currentStep === "calificacion" && (
+              <StepShell icon={Lightbulb} title="Antes de tu diagnóstico, contanos un poco más" subtitle="Tus respuestas nos ayudan a armar un diagnóstico realmente personalizado — es opcional.">
+                <div className="flex flex-col gap-5">
+                  <SingleChoiceQuestion
+                    label="¿Cuál es hoy tu mayor preocupación?"
+                    options={PREOCUPACION_OPTIONS}
+                    value={preocupacion}
+                    onChange={setPreocupacion}
+                  />
+                  <SingleChoiceQuestion
+                    label="¿Ya hablaste antes con un asesor financiero?"
+                    options={HABLO_ASESOR_OPTIONS}
+                    value={habloAsesor}
+                    onChange={setHabloAsesor}
+                  />
+                  <SingleChoiceQuestion label="¿Qué te gustaría lograr?" options={OBJETIVO_OPTIONS} value={objetivo} onChange={setObjetivo} />
+                  <SingleChoiceQuestion
+                    label="¿Cuándo te gustaría comenzar?"
+                    options={CUANDO_OPTIONS}
+                    value={cuandoEmpezar}
+                    onChange={setCuandoEmpezar}
+                  />
+                </div>
+              </StepShell>
+            )}
+
             {currentStep === "consentimiento" && (
               <StepShell icon={ShieldCheck} title="Último paso" subtitle="Confirmá que podemos contactarte con tu resultado.">
                 <label
@@ -884,7 +895,11 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                   { label: `Si retrasaras tu retiro un año, a los ${clampedRetiro + 1}`, value: scenarioRetiroTardio.fondoEstimado },
                   { label: `Si tu rendimiento anual fuera 1 punto mayor (${config.annualReturnRatePct + 1}%)`, value: scenarioMejorRendimiento.fondoEstimado },
                 ].map(({ label, value }) => (
-                  <div key={label} className="rounded-xl p-4" style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}>
+                  <div
+                    key={label}
+                    className="rounded-xl p-4 transition-transform duration-150 hover:-translate-y-0.5"
+                    style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}
+                  >
                     <p className="text-[13.5px] font-medium" style={{ color: "var(--ma-text-color)" }}>
                       {label}
                     </p>
@@ -904,90 +919,10 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 4. Formulario de calificación — antes del diagnóstico, no
-             * después: las respuestas alimentan el diagnóstico de abajo. Una
-             * vez respondidas las 4, se reemplaza por un resumen con checks
-             * (no un candado permanente — "Editar respuestas" la reabre). */}
-            <div
-              className="rounded-2xl p-6 sm:p-7"
-              style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
-            >
-              {showQualificationSummary ? (
-                <>
-                  <div className="mb-1 flex items-center justify-between gap-3">
-                    <h3 className="text-[16px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
-                      Información utilizada para personalizar tu diagnóstico
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setEditingQualification(true)}
-                      className="flex shrink-0 items-center gap-1 text-[12.5px] font-medium underline underline-offset-2"
-                      style={{ color: "var(--ma-button-primary-bg)" }}
-                    >
-                      <Pencil className="size-3" aria-hidden="true" /> Editar respuestas
-                    </button>
-                  </div>
-                  <ul className="mt-3 flex flex-col gap-2">
-                    {[
-                      `Mayor preocupación: ${preocupacionLabel(preocupacion)}`,
-                      `Objetivo: ${objetivoLabel(objetivo)}`,
-                      `Urgencia: ${cuandoEmpezarLabel(cuandoEmpezar)}`,
-                      `Experiencia con asesor: ${habloAsesorLabel(habloAsesor)}`,
-                    ].map((text) => (
-                      <li key={text} className="flex items-start gap-2 text-[13.5px]" style={{ color: "var(--ma-text-color)" }}>
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: "var(--ma-chart-series-secondary)" }} aria-hidden="true" />
-                        {text}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
-                    Antes de tu diagnóstico, contanos un poco más
-                  </h3>
-                  <p className="mt-1.5 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
-                    Tus respuestas se usan para construir el diagnóstico personalizado que ves más abajo.
-                  </p>
-                  <div className="mt-5 flex flex-col gap-5">
-                    <SingleChoiceQuestion
-                      label="¿Cuál es hoy tu mayor preocupación?"
-                      options={PREOCUPACION_OPTIONS}
-                      value={preocupacion}
-                      onChange={setPreocupacion}
-                    />
-                    <SingleChoiceQuestion
-                      label="¿Ya hablaste antes con un asesor financiero?"
-                      options={HABLO_ASESOR_OPTIONS}
-                      value={habloAsesor}
-                      onChange={setHabloAsesor}
-                    />
-                    <SingleChoiceQuestion label="¿Qué te gustaría lograr?" options={OBJETIVO_OPTIONS} value={objetivo} onChange={setObjetivo} />
-                    <SingleChoiceQuestion
-                      label="¿Cuándo te gustaría comenzar?"
-                      options={CUANDO_OPTIONS}
-                      value={cuandoEmpezar}
-                      onChange={setCuandoEmpezar}
-                    />
-                  </div>
-                  {allAnswered && (
-                    <div className="mt-5">
-                      <MiniAppButton
-                        type="button"
-                        onClick={() => {
-                          setQualificationConfirmed(true);
-                          setEditingQualification(false);
-                        }}
-                      >
-                        Confirmar respuestas <ArrowRight className="size-4" aria-hidden="true" />
-                      </MiniAppButton>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* 5. Tu perfil de retiro — ficha profesional, no una tabla técnica */}
+            {/* 4. Tu perfil de retiro — ficha profesional, no una tabla técnica.
+             * Las respuestas de calificación ya se recolectaron como parte
+             * del wizard (antes de aceptar términos), así que esta ficha
+             * arranca completa desde el primer render de este resultado. */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1011,7 +946,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </div>
             </div>
 
-            {/* 6. Tu diagnóstico (resumen ejecutivo) */}
+            {/* 5. Tu diagnóstico (resumen ejecutivo) */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1027,7 +962,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 7. Nivel de preparación */}
+            {/* 6. Nivel de preparación */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1044,7 +979,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 8. Fortalezas detectadas */}
+            {/* 7. Fortalezas detectadas */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1062,7 +997,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 9. Aspectos para mejorar */}
+            {/* 8. Aspectos para mejorar */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1080,7 +1015,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 10. Qué significa este resultado */}
+            {/* 9. Qué significa este resultado */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1134,7 +1069,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               )}
             </div>
 
-            {/* 11. Comparación con el objetivo */}
+            {/* 10. Comparación con el objetivo */}
             {ingresoRecomendado !== null && (
               <div
                 className="rounded-2xl p-6 sm:p-7"
@@ -1172,7 +1107,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                   </div>
                 </div>
                 <div
-                  className="mt-4 rounded-xl p-4"
+                  className="mt-4 rounded-xl p-4 transition-transform duration-150 hover:-translate-y-0.5"
                   style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}
                 >
                   <div className="flex items-baseline justify-between gap-3">
@@ -1192,7 +1127,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </div>
             )}
 
-            {/* 12. Resumen de tu diagnóstico — bisagra hacia el plan de acción */}
+            {/* 11. Resumen de tu diagnóstico — bisagra hacia el plan de acción */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1205,7 +1140,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 13. Nuestra recomendación para vos */}
+            {/* 12. Nuestra recomendación para vos */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1221,7 +1156,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 14. Educación financiera */}
+            {/* 13. Educación financiera */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1264,7 +1199,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 15. Próximos pasos */}
+            {/* 14. Próximos pasos */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1285,7 +1220,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 16. Tu hoja de ruta para el retiro — antes del CTA (bug de orden ya corregido) */}
+            {/* 15. Tu hoja de ruta para el retiro — antes del CTA (bug de orden ya corregido) */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1306,7 +1241,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 17. Cierre / CTA */}
+            {/* 16. Cierre / CTA */}
             {!confirmed ? (
               <div
                 className="flex flex-col items-center gap-4 rounded-2xl p-7 text-center sm:p-9"
@@ -1424,7 +1359,7 @@ function StatCard({ emoji, label, value }: { emoji: string; label: string; value
 function ScenarioChip({ label, value, highlighted }: { label: string; value: string; highlighted?: boolean }) {
   return (
     <div
-      className="rounded-xl p-3 text-center"
+      className="rounded-xl p-3 text-center transition-transform duration-150 hover:-translate-y-0.5"
       style={
         highlighted
           ? { border: "1px solid var(--ma-button-primary-bg)", background: soften("--ma-button-primary-bg", 10) }
@@ -1445,7 +1380,10 @@ function ScenarioChip({ label, value, highlighted }: { label: string; value: str
  * `<dl>` technical table (spec: "ficha profesional", not a data dump). */
 function ProfileField({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
-    <div className="rounded-xl p-3" style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}>
+    <div
+      className="rounded-xl p-3 transition-transform duration-150 hover:-translate-y-0.5"
+      style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}
+    >
       <p className="text-[11px] font-medium uppercase tracking-wide" style={{ color: "var(--ma-text-muted)" }}>
         {label}
       </p>
