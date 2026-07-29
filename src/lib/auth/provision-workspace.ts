@@ -20,11 +20,12 @@ function slugify(base: string) {
  * Role is "agent", never "owner" — the platform has exactly one global
  * Owner (public.platform_admins, manually assigned), and every self-service
  * signup only ever administers their own Workspace as an agent (per the
- * corrected architecture: no automatic Owner assignment, ever). CRM and
- * Asesores are enabled immediately, not left for the new agent to toggle —
- * module activation is owner/admin-only (requireManagerRole,
- * src/lib/settings/actions.ts), and a solo agent-only workspace has no
- * owner/admin member who could ever turn them on otherwise.
+ * corrected architecture: no automatic Owner assignment, ever). CRM,
+ * Asesores and Mini Apps are enabled immediately, not left for the new
+ * agent to toggle — module activation is owner/admin-only
+ * (requireManagerRole, src/lib/settings/actions.ts), and a solo
+ * agent-only workspace has no owner/admin member who could ever turn them
+ * on otherwise.
  *
  * Returns the resolved workspace id (existing or newly created) — used by
  * the Google sign-in callback (src/app/api/auth/google/callback/route.ts)
@@ -68,6 +69,7 @@ export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: s
   const { error: modulesError } = await supabase.from("workspace_modules").insert([
     { workspace_id: workspace.id, module_key: "crm", enabled: true },
     { workspace_id: workspace.id, module_key: "advisors", enabled: true },
+    { workspace_id: workspace.id, module_key: "mini_apps", enabled: true },
   ]);
 
   if (modulesError) {
