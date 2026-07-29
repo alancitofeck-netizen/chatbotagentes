@@ -13,6 +13,7 @@ import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { updateMiniApp, updateMiniAppBranding, regenerateApiKey, deleteMiniApp } from "@/lib/miniApps/actions";
 import { createClient } from "@/lib/supabase/client";
 import { isValidHexColor } from "@/lib/miniApps/paletteEngine";
+import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { LogoCropDialog } from "../LogoCropDialog";
 import { MiniAppPalettePreview } from "../MiniAppPalettePreview";
 
@@ -61,16 +62,25 @@ export function ConfiguracionTab({
   const [secondaryHexInput, setSecondaryHexInput] = useState(miniApp.branding.secondaryColor);
   const [logoUrl, setLogoUrl] = useState(miniApp.branding.logoUrl);
   const [showLogoDialog, setShowLogoDialog] = useState(false);
-  const [annualReturnRatePct, setAnnualReturnRatePct] = useState(miniApp.config.annualReturnRatePct);
-  const [showIngresoActual, setShowIngresoActual] = useState(miniApp.config.showIngresoActual);
-  const [labelEdad, setLabelEdad] = useState(miniApp.config.fieldLabels.edad ?? "Tu edad actual");
-  const [labelEdadRetiro, setLabelEdadRetiro] = useState(miniApp.config.fieldLabels.edadRetiro ?? "¿A qué edad te querés retirar?");
+
+  const isSimulador = miniApp.templateKey === "simulador_retiro";
+  const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
+  const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
+  const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
+  const [labelEdadRetiro, setLabelEdadRetiro] = useState(
+    isSimulador ? (miniApp.config.fieldLabels.edadRetiro ?? "¿A qué edad te querés retirar?") : "¿A qué edad te querés retirar?",
+  );
   const [labelAhorroMensual, setLabelAhorroMensual] = useState(
-    miniApp.config.fieldLabels.ahorroMensual ?? "¿Cuánto podés ahorrar por mes? (MXN)",
+    isSimulador ? (miniApp.config.fieldLabels.ahorroMensual ?? "¿Cuánto podés ahorrar por mes? (MXN)") : "¿Cuánto podés ahorrar por mes? (MXN)",
   );
   const [labelIngresoActual, setLabelIngresoActual] = useState(
-    miniApp.config.fieldLabels.ingresoActual ?? "Tu ingreso mensual actual (MXN, opcional)",
+    isSimulador ? (miniApp.config.fieldLabels.ingresoActual ?? "Tu ingreso mensual actual (MXN, opcional)") : "Tu ingreso mensual actual (MXN, opcional)",
   );
+
+  const [whatsappAsesor, setWhatsappAsesor] = useState(!isSimulador ? miniApp.config.whatsappAsesor : "");
+  const [avisoPrivacidadUrl, setAvisoPrivacidadUrl] = useState(!isSimulador ? miniApp.config.avisoPrivacidadUrl : "");
+  const [licenseBadge, setLicenseBadge] = useState(!isSimulador ? miniApp.config.licenseBadge : "");
+
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
   const endpointUrl = typeof window !== "undefined" ? `${window.location.origin}/api/public/mini-apps/${miniApp.slug}/leads` : "";
@@ -87,11 +97,13 @@ export function ConfiguracionTab({
           allowedOrigins: allowedOrigins.split(/[\n,]/).map((o) => o.trim()).filter(Boolean),
           externalUrl,
           status,
-          config: {
-            annualReturnRatePct,
-            showIngresoActual,
-            fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
-          },
+          config: isSimulador
+            ? {
+                annualReturnRatePct,
+                showIngresoActual,
+                fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
+              }
+            : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -276,31 +288,56 @@ export function ConfiguracionTab({
 
           <div className="my-1 h-px bg-border-default" />
 
-          <Input
-            label="Tasa de rendimiento anual esperada (%)"
-            type="number"
-            min={1}
-            max={20}
-            value={String(annualReturnRatePct)}
-            onChange={(e) => setAnnualReturnRatePct(Number(e.target.value) || annualReturnRatePct)}
-          />
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Campos del simulador</p>
-          <Input label="Etiqueta — Edad" value={labelEdad} onChange={(e) => setLabelEdad(e.target.value)} />
-          <Input label="Etiqueta — Edad de retiro" value={labelEdadRetiro} onChange={(e) => setLabelEdadRetiro(e.target.value)} />
-          <Input label="Etiqueta — Ahorro mensual" value={labelAhorroMensual} onChange={(e) => setLabelAhorroMensual(e.target.value)} />
-          <div className="flex items-center justify-between gap-3">
-            <Input
-              label="Etiqueta — Ingreso actual"
-              value={labelIngresoActual}
-              onChange={(e) => setLabelIngresoActual(e.target.value)}
-              disabled={!showIngresoActual}
-              containerClassName="flex-1"
-            />
-            <label className="mt-6 flex items-center gap-1.5 text-xs text-neutral-500">
-              <input type="checkbox" checked={showIngresoActual} onChange={(e) => setShowIngresoActual(e.target.checked)} />
-              Mostrar
-            </label>
-          </div>
+          {isSimulador ? (
+            <>
+              <Input
+                label="Tasa de rendimiento anual esperada (%)"
+                type="number"
+                min={1}
+                max={20}
+                value={String(annualReturnRatePct)}
+                onChange={(e) => setAnnualReturnRatePct(Number(e.target.value) || annualReturnRatePct)}
+              />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Campos del simulador</p>
+              <Input label="Etiqueta — Edad" value={labelEdad} onChange={(e) => setLabelEdad(e.target.value)} />
+              <Input label="Etiqueta — Edad de retiro" value={labelEdadRetiro} onChange={(e) => setLabelEdadRetiro(e.target.value)} />
+              <Input label="Etiqueta — Ahorro mensual" value={labelAhorroMensual} onChange={(e) => setLabelAhorroMensual(e.target.value)} />
+              <div className="flex items-center justify-between gap-3">
+                <Input
+                  label="Etiqueta — Ingreso actual"
+                  value={labelIngresoActual}
+                  onChange={(e) => setLabelIngresoActual(e.target.value)}
+                  disabled={!showIngresoActual}
+                  containerClassName="flex-1"
+                />
+                <label className="mt-6 flex items-center gap-1.5 text-xs text-neutral-500">
+                  <input type="checkbox" checked={showIngresoActual} onChange={(e) => setShowIngresoActual(e.target.checked)} />
+                  Mostrar
+                </label>
+              </div>
+            </>
+          ) : (
+            <>
+              <Input
+                label="WhatsApp del asesor (solo dígitos, con código de país)"
+                value={whatsappAsesor}
+                onChange={(e) => setWhatsappAsesor(e.target.value)}
+                placeholder="5215512345678"
+              />
+              <Input
+                label="URL del Aviso de Privacidad"
+                value={avisoPrivacidadUrl}
+                onChange={(e) => setAvisoPrivacidadUrl(e.target.value)}
+                placeholder="https://..."
+              />
+              <Input
+                label="Cédula / credencial (opcional)"
+                value={licenseBadge}
+                onChange={(e) => setLicenseBadge(e.target.value)}
+                placeholder="Cédula CNSF vigente"
+              />
+            </>
+          )}
           <p className="text-xs text-neutral-500">
             Los cambios de esta sección (excepto logo y color, que se guardan al instante) se aplican al tocar &quot;Guardar cambios&quot; en Datos generales.
           </p>

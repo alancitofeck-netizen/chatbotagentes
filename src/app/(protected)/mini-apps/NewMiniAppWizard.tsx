@@ -12,12 +12,13 @@ import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { createMiniApp, updateMiniAppBranding } from "@/lib/miniApps/actions";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR, isValidHexColor } from "@/lib/miniApps/paletteEngine";
+import type { MiniAppTemplateKey } from "@/lib/miniApps/queries";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
 const TEMPLATES = [
   { key: "simulador_retiro", label: "Simulador de Retiro", available: true },
-  { key: "calculadora", label: "Calculadora (Próximamente)", available: false },
+  { key: "calculadora_brecha_retiro", label: "Calculadora de Brecha de Retiro", available: true },
   { key: "formulario", label: "Formulario (Próximamente)", available: false },
   { key: "landing", label: "Landing (Próximamente)", available: false },
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
@@ -62,7 +63,7 @@ export function NewMiniAppWizard({
   const [created, setCreated] = useState<{ slug: string; apiKey: string } | null>(null);
 
   // Paso 1
-  const [templateKey] = useState<"simulador_retiro">("simulador_retiro");
+  const [templateKey, setTemplateKey] = useState<MiniAppTemplateKey>("simulador_retiro");
 
   // Paso 2
   const [name, setName] = useState("");
@@ -78,13 +79,18 @@ export function NewMiniAppWizard({
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [showLogoDialog, setShowLogoDialog] = useState(false);
 
-  // Paso 3
+  // Paso 3 (Simulador de Retiro)
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(true);
   const [labelEdad, setLabelEdad] = useState("Tu edad actual");
   const [labelEdadRetiro, setLabelEdadRetiro] = useState("¿A qué edad te querés retirar?");
   const [labelAhorroMensual, setLabelAhorroMensual] = useState("¿Cuánto podés ahorrar por mes? (MXN)");
   const [labelIngresoActual, setLabelIngresoActual] = useState("Tu ingreso mensual actual (MXN, opcional)");
+
+  // Paso 3 (Calculadora de Brecha de Retiro)
+  const [whatsappAsesor, setWhatsappAsesor] = useState("");
+  const [avisoPrivacidadUrl, setAvisoPrivacidadUrl] = useState("");
+  const [licenseBadge, setLicenseBadge] = useState("");
 
   function handleLogoCropped(blob: Blob) {
     setLogoBlob(blob);
@@ -99,11 +105,14 @@ export function NewMiniAppWizard({
     }
     setIsPending(true);
     try {
-      const config = {
-        annualReturnRatePct,
-        showIngresoActual,
-        fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
-      };
+      const config =
+        templateKey === "calculadora_brecha_retiro"
+          ? { whatsappAsesor, avisoPrivacidadUrl, licenseBadge }
+          : {
+              annualReturnRatePct,
+              showIngresoActual,
+              fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
+            };
       const result = await createMiniApp({
         name,
         description,
@@ -178,12 +187,21 @@ export function NewMiniAppWizard({
         {step === 0 && (
           <div className="grid grid-cols-2 gap-3">
             {TEMPLATES.map((t) => (
-              <div
+              <button
                 key={t.key}
-                className={`rounded-lg border p-4 text-sm ${t.available ? "border-accent-500 bg-accent-50 font-medium text-accent-700" : "border-border-default text-neutral-400"}`}
+                type="button"
+                disabled={!t.available}
+                onClick={() => t.available && setTemplateKey(t.key as MiniAppTemplateKey)}
+                className={`rounded-lg border p-4 text-left text-sm ${
+                  !t.available
+                    ? "border-border-default text-neutral-400"
+                    : templateKey === t.key
+                      ? "border-accent-500 bg-accent-50 font-medium text-accent-700"
+                      : "border-border-default hover:border-accent-300"
+                }`}
               >
                 {t.label}
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -280,7 +298,7 @@ export function NewMiniAppWizard({
           </div>
         )}
 
-        {step === 2 && (
+        {step === 2 && templateKey === "simulador_retiro" && (
           <div className="flex flex-col gap-4">
             <Input
               label="Tasa de rendimiento anual esperada (%)"
@@ -321,12 +339,45 @@ export function NewMiniAppWizard({
           </div>
         )}
 
+        {step === 2 && templateKey === "calculadora_brecha_retiro" && (
+          <div className="flex flex-col gap-4">
+            <Input
+              label="WhatsApp del asesor (solo dígitos, con código de país)"
+              value={whatsappAsesor}
+              onChange={(e) => setWhatsappAsesor(e.target.value)}
+              placeholder="5215512345678"
+            />
+            <Input
+              label="URL del Aviso de Privacidad"
+              value={avisoPrivacidadUrl}
+              onChange={(e) => setAvisoPrivacidadUrl(e.target.value)}
+              placeholder="https://..."
+            />
+            <Input
+              label="Cédula / credencial (opcional)"
+              value={licenseBadge}
+              onChange={(e) => setLicenseBadge(e.target.value)}
+              placeholder="Cédula CNSF vigente"
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS, opcional)</label>
+              <textarea
+                value={allowedOrigins}
+                onChange={(e) => setAllowedOrigins(e.target.value)}
+                placeholder={"Solo si además querés aceptar leads desde un dominio externo"}
+                rows={2}
+                className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+              />
+            </div>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="flex flex-col gap-3 rounded-md border border-border-default bg-surface-2 p-4 text-sm">
             <p>
               <strong>{name || "(sin nombre)"}</strong> — {description || "sin descripción"}
             </p>
-            <p className="text-neutral-500">Tasa de rendimiento: {annualReturnRatePct}%</p>
+            {templateKey === "simulador_retiro" && <p className="text-neutral-500">Tasa de rendimiento: {annualReturnRatePct}%</p>}
             <p className="text-neutral-500">Se va a publicar en tu propia URL de Growth Link al confirmar.</p>
           </div>
         )}

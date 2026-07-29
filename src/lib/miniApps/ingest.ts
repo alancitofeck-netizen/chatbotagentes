@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { verifyApiKey } from "@/lib/miniApps/apiKey";
 import { simulateRetirement, recommendedMonthlyIncome, DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
+import { calculateBrechaRetiro, REGIMEN_LABELS, type Regimen } from "@/lib/miniApps/brechaEngine";
 import {
   getPreparationLevel,
   getStrengthsAndOpportunities,
@@ -192,6 +193,28 @@ async function processLeadSubmission(
     data.fondo_rango_bajo = result.fondoRangoBajo;
     data.fondo_rango_alto = result.fondoRangoAlto;
     data.renta_mensual_estimada = result.rentaMensualEstimada;
+  } else if (app.template_key === "calculadora_brecha_retiro") {
+    const regimenRaw = typeof body.regimen === "string" ? body.regimen : "";
+    const regimen: Regimen | null = regimenRaw === "73" || regimenRaw === "97" || regimenRaw === "unknown" ? regimenRaw : null;
+    const edad = toFiniteNumber(body.edad);
+    const retiroDeseado = toFiniteNumber(body.retiro_deseado);
+    const sueldoMensual = toFiniteNumber(body.sueldo_mensual);
+    const semanasCotizadas = body.semanas_cotizadas == null ? null : toFiniteNumber(body.semanas_cotizadas);
+    const ahorroMensual = toFiniteNumber(body.ahorro_mensual) ?? 0;
+    if (!regimen || edad === null || retiroDeseado === null || sueldoMensual === null) {
+      return { ok: false, status: 400, error: "invalid_brecha_inputs", allowedOrigins };
+    }
+    const result = calculateBrechaRetiro({ regimen, edad, retiroDeseado, sueldoMensual, semanasCotizadas, ahorroMensual });
+
+    data.regimen = REGIMEN_LABELS[regimen];
+    data.edad = edad;
+    data.retiro_deseado = retiroDeseado;
+    data.sueldo_mensual = sueldoMensual;
+    if (semanasCotizadas !== null) data.semanas_cotizadas = semanasCotizadas;
+    if (ahorroMensual !== 0) data.ahorro_mensual = ahorroMensual;
+    data.pension_estimada = Math.round(result.have);
+    data.meta = Math.round(result.need);
+    data.brecha = Math.round(result.gap);
   }
 
   const supabase = createServiceRoleClient();

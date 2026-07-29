@@ -5,7 +5,7 @@ import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from "@/lib/miniApps/paletteEngine";
 import { templateKeysForCategory, type MiniAppTemplateCategory } from "@/lib/miniApps/templateCatalog";
 
-export type MiniAppTemplateKey = "simulador_retiro";
+export type MiniAppTemplateKey = "simulador_retiro" | "calculadora_brecha_retiro";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -22,23 +22,45 @@ export interface MiniAppListItem {
   createdAt: string;
 }
 
-export interface MiniAppDetail {
-  id: string;
-  workspaceId: string;
-  name: string;
-  description: string | null;
-  templateKey: MiniAppTemplateKey;
-  slug: string;
-  externalUrl: string | null;
-  assignedAgentId: string | null;
-  assignedAgentName: string | null;
-  allowedOrigins: string[];
-  apiKeyLast4: string;
-  status: MiniAppStatus;
-  branding: MiniAppBranding;
-  config: MiniAppFieldConfig;
-  createdAt: string;
+/** Config for the "Calculadora de Brecha de Retiro" template — the
+ * advisor's WhatsApp for the deep-link CTA, an external privacy-notice URL,
+ * and an optional professional license/credential badge (mirrors the
+ * Simulador's own default-to-template-label badge behavior when unset). */
+export interface CalculadoraBrechaConfig {
+  whatsappAsesor: string;
+  avisoPrivacidadUrl: string;
+  licenseBadge: string;
+  assignedAgentName?: string;
 }
+
+export interface MiniAppConfigByTemplate {
+  simulador_retiro: MiniAppFieldConfig;
+  calculadora_brecha_retiro: CalculadoraBrechaConfig;
+}
+
+/** True discriminated union on `templateKey` (not two independent optional
+ * `config` shapes) so `if (app.templateKey === "simulador_retiro")` narrows
+ * `app.config` automatically wherever this type is consumed (page.tsx,
+ * ConfiguracionTab.tsx, NewMiniAppWizard.tsx). */
+export type MiniAppDetail<K extends MiniAppTemplateKey = MiniAppTemplateKey> = {
+  [T in K]: {
+    id: string;
+    workspaceId: string;
+    name: string;
+    description: string | null;
+    templateKey: T;
+    slug: string;
+    externalUrl: string | null;
+    assignedAgentId: string | null;
+    assignedAgentName: string | null;
+    allowedOrigins: string[];
+    apiKeyLast4: string;
+    status: MiniAppStatus;
+    branding: MiniAppBranding;
+    config: MiniAppConfigByTemplate[T];
+    createdAt: string;
+  };
+}[K];
 
 export interface MiniAppLeadRow {
   id: string;
@@ -113,6 +135,32 @@ export async function getMiniAppsList(workspaceId: string): Promise<MiniAppListI
   }));
 }
 
+/** Per-template default-filling for `config` — dispatches by `templateKey`
+ * so getMiniAppDetail/getPublicMiniAppBySlug don't each hand-duplicate this
+ * per-field-default block per template (2 call sites today, would become 4
+ * without this). */
+function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
+  templateKey: T,
+  raw: Record<string, unknown>,
+): MiniAppConfigByTemplate[T] {
+  if (templateKey === "calculadora_brecha_retiro") {
+    const config: CalculadoraBrechaConfig = {
+      whatsappAsesor: typeof raw.whatsappAsesor === "string" ? raw.whatsappAsesor : "",
+      avisoPrivacidadUrl: typeof raw.avisoPrivacidadUrl === "string" ? raw.avisoPrivacidadUrl : "",
+      licenseBadge: typeof raw.licenseBadge === "string" ? raw.licenseBadge : "",
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  const config: MiniAppFieldConfig = {
+    annualReturnRatePct: typeof raw.annualReturnRatePct === "number" ? raw.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT,
+    showIngresoActual: typeof raw.showIngresoActual === "boolean" ? raw.showIngresoActual : true,
+    fieldLabels: (raw.fieldLabels as MiniAppFieldConfig["fieldLabels"]) ?? {},
+    assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+  };
+  return config as MiniAppConfigByTemplate[T];
+}
+
 export async function getMiniAppDetail(workspaceId: string, miniAppId: string): Promise<MiniAppDetail | null> {
   const supabase = await createClient();
   const [{ data: app }, memberNames] = await Promise.all([
@@ -129,14 +177,14 @@ export async function getMiniAppDetail(workspaceId: string, miniAppId: string): 
   if (!app) return null;
 
   const branding = (app.branding as Partial<MiniAppBranding>) ?? {};
-  const config = (app.config as Partial<MiniAppFieldConfig>) ?? {};
+  const templateKey = app.template_key as MiniAppTemplateKey;
 
   return {
     id: app.id as string,
     workspaceId: app.workspace_id as string,
     name: app.name as string,
     description: app.description as string | null,
-    templateKey: app.template_key as MiniAppTemplateKey,
+    templateKey,
     slug: app.slug as string,
     externalUrl: app.external_url as string | null,
     assignedAgentId: app.assigned_agent_id as string | null,
@@ -149,14 +197,9 @@ export async function getMiniAppDetail(workspaceId: string, miniAppId: string): 
       primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR,
       secondaryColor: branding.secondaryColor ?? DEFAULT_SECONDARY_COLOR,
     },
-    config: {
-      annualReturnRatePct: config.annualReturnRatePct ?? DEFAULT_ANNUAL_RETURN_RATE_PCT,
-      showIngresoActual: config.showIngresoActual ?? true,
-      fieldLabels: config.fieldLabels ?? {},
-      assignedAgentName: config.assignedAgentName,
-    },
+    config: normalizeConfigForTemplate(templateKey, (app.config as Record<string, unknown>) ?? {}),
     createdAt: app.created_at as string,
-  };
+  } as MiniAppDetail;
 }
 
 export interface MiniAppLeadFilters {
@@ -276,14 +319,19 @@ export interface MiniAppFieldConfig {
   assignedAgentName?: string;
 }
 
-export interface PublicMiniAppView {
-  slug: string;
-  name: string;
-  description: string | null;
-  templateKey: MiniAppTemplateKey;
-  branding: MiniAppBranding;
-  config: MiniAppFieldConfig;
-}
+/** Same discriminated-union treatment as MiniAppDetail — `config`'s type
+ * depends on `templateKey`, so page.tsx's own `if (app.templateKey ===
+ * "simulador_retiro")` branch narrows `app.config` automatically. */
+export type PublicMiniAppView<K extends MiniAppTemplateKey = MiniAppTemplateKey> = {
+  [T in K]: {
+    slug: string;
+    name: string;
+    description: string | null;
+    templateKey: T;
+    branding: MiniAppBranding;
+    config: MiniAppConfigByTemplate[T];
+  };
+}[K];
 
 /** Public-safe projection for the Growth-Link-hosted page
  * (src/app/apps/[slug]/) — always via createServiceRoleClient() (no
@@ -301,25 +349,20 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
   if (!data || data.status !== "active") return null;
 
   const branding = (data.branding as Partial<MiniAppBranding>) ?? {};
-  const config = (data.config as Partial<MiniAppFieldConfig>) ?? {};
+  const templateKey = data.template_key as MiniAppTemplateKey;
 
   return {
     slug: data.slug as string,
     name: data.name as string,
     description: data.description as string | null,
-    templateKey: data.template_key as MiniAppTemplateKey,
+    templateKey,
     branding: {
       logoUrl: branding.logoUrl ?? null,
       primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR,
       secondaryColor: branding.secondaryColor ?? DEFAULT_SECONDARY_COLOR,
     },
-    config: {
-      annualReturnRatePct: config.annualReturnRatePct ?? DEFAULT_ANNUAL_RETURN_RATE_PCT,
-      showIngresoActual: config.showIngresoActual ?? true,
-      fieldLabels: config.fieldLabels ?? {},
-      assignedAgentName: config.assignedAgentName,
-    },
-  };
+    config: normalizeConfigForTemplate(templateKey, (data.config as Record<string, unknown>) ?? {}),
+  } as PublicMiniAppView;
 }
 
 // ---------------------------------------------------------------------------

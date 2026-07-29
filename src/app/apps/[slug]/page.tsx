@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPublicMiniAppBySlug } from "@/lib/miniApps/queries";
 import { generateMiniAppPalette, toCssDeclarations } from "@/lib/miniApps/paletteEngine";
 import { RetirementSimulatorApp } from "./RetirementSimulatorApp";
+import { CalculadoraBrechaApp } from "./CalculadoraBrechaApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -41,6 +42,15 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
       <>
         <style>{themeCss}</style>
         <RetirementSimulatorApp app={app} />
+      </>
+    );
+  }
+
+  if (app.templateKey === "calculadora_brecha_retiro") {
+    return (
+      <>
+        <style>{themeCss}</style>
+        <CalculadoraBrechaApp app={app} />
       </>
     );
   }

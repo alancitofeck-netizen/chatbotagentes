@@ -24,6 +24,7 @@ export const TEMPLATE_CATEGORIES: { key: MiniAppTemplateCategory; label: string 
 
 export const TEMPLATE_KEY_META: Record<MiniAppTemplateKey, { label: string; category: MiniAppTemplateCategory }> = {
   simulador_retiro: { label: "Simulador de Retiro", category: "simuladores" },
+  calculadora_brecha_retiro: { label: "Calculadora de Brecha de Retiro", category: "calculadoras" },
 };
 
 export function templateKeysForCategory(category: MiniAppTemplateCategory): MiniAppTemplateKey[] {

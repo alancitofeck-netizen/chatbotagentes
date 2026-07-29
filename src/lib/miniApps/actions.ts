@@ -20,6 +20,7 @@ import {
   type MiniAppLeadFilters,
   type MiniAppBranding,
   type MiniAppFieldConfig,
+  type CalculadoraBrechaConfig,
 } from "@/lib/miniApps/queries";
 import { getWorkspaceMembersList } from "@/lib/settings/queries";
 import {
@@ -87,7 +88,7 @@ export interface CreateMiniAppInput {
   assignedAgentId: string | null;
   allowedOrigins: string[];
   externalUrl: string;
-  config: MiniAppFieldConfig;
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig;
 }
 
 /** Resolves the assigned agent's display name once, under a real
@@ -97,8 +98,13 @@ export interface CreateMiniAppInput {
  * read it straight from the mini_apps row via a service-role client,
  * without needing a second, auth-gated RPC call from an anonymous request
  * (see submitMiniAppLeadFromHostedPage's own comment for why that RPC
- * can't be called from there). */
-async function resolveConfigWithAgentName(workspaceId: string, assignedAgentId: string | null, config: MiniAppFieldConfig) {
+ * can't be called from there). Template-agnostic — just an object spread,
+ * works identically regardless of which config shape it's handed. */
+async function resolveConfigWithAgentName(
+  workspaceId: string,
+  assignedAgentId: string | null,
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig,
+) {
   if (!assignedAgentId) return config;
   const members = await getWorkspaceMembersList(workspaceId);
   const agentName = members.find((m) => m.memberId === assignedAgentId)?.fullName;
@@ -149,7 +155,7 @@ export interface UpdateMiniAppInput {
   allowedOrigins: string[];
   externalUrl: string;
   status: "active" | "inactive";
-  config: MiniAppFieldConfig;
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig;
 }
 
 export async function updateMiniApp(id: string, input: UpdateMiniAppInput): Promise<void> {
