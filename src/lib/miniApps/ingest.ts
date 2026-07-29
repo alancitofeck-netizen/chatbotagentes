@@ -2,7 +2,23 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { verifyApiKey } from "@/lib/miniApps/apiKey";
-import { simulateRetirement, DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
+import { simulateRetirement, recommendedMonthlyIncome, DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
+import {
+  getPreparationLevel,
+  getStrengthsAndOpportunities,
+  getExecutiveSummary,
+  getDiagnosisSummary,
+  getPersonalizedRecommendation,
+  type QualificationAnswers,
+} from "@/lib/miniApps/resultDiagnostics";
+import {
+  PREOCUPACION_OPTIONS,
+  HABLO_ASESOR_OPTIONS,
+  OBJETIVO_OPTIONS,
+  CUANDO_OPTIONS,
+  labelFor,
+  type QualificationOption,
+} from "@/lib/miniApps/qualificationOptions";
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "fecha",
@@ -284,21 +300,127 @@ async function linkLeadToContact(
   }
 }
 
+export interface QualificationAnswerInput {
+  preocupacion?: string | null;
+  habloAsesor?: string | null;
+  objetivo?: string | null;
+  cuandoEmpezar?: string | null;
+}
+
+interface CodeLabel {
+  code: string;
+  label: string;
+}
+
+type StoredQualification = Record<"preocupacion" | "habloAsesor" | "objetivo" | "cuandoEmpezar", CodeLabel | null>;
+
+function toCodeLabel(options: QualificationOption[], code: string | null | undefined): CodeLabel | null {
+  if (!code) return null;
+  const label = labelFor(options, code);
+  return label ? { code, label } : null;
+}
+
+/** Re-derives the full diagnosis (preparation level, strengths/
+ * opportunities, executive summary, recommendation, diagnosis summary) from
+ * the lead's already-authoritative financial fields (written by
+ * processLeadSubmission's own recompute, never trusted from the client) +
+ * the qualification answers just saved — never trusts anything the client
+ * might have computed for these texts either, same "server recomputes"
+ * posture as the financial numbers themselves. Degrades gracefully with
+ * partial/missing qualification answers (the compositional clause
+ * functions in resultDiagnostics.ts simply omit what isn't known yet). */
+function recomputeDiagnosis(existing: Record<string, unknown>, qualification: StoredQualification) {
+  const edad = toFiniteNumber(existing.edad) ?? 0;
+  const edadRetiro = toFiniteNumber(existing.edad_retiro) ?? edad;
+  const ahorroMensual = toFiniteNumber(existing.ahorro_mensual) ?? 0;
+  const ingresoActual = toFiniteNumber(existing.ingreso_actual);
+  const fondoEstimado = toFiniteNumber(existing.fondo_estimado) ?? 0;
+  const rentaMensualEstimada = toFiniteNumber(existing.renta_mensual_estimada) ?? 0;
+  const annualReturnRatePct =
+    typeof (existing as { annual_return_rate_pct?: unknown }).annual_return_rate_pct === "number"
+      ? (existing as { annual_return_rate_pct: number }).annual_return_rate_pct
+      : DEFAULT_ANNUAL_RETURN_RATE_PCT;
+
+  const aniosParaRetiro = Math.max(edadRetiro - edad, 0);
+  const ingresoRecomendado = ingresoActual !== null && ingresoActual > 0 ? recommendedMonthlyIncome(ingresoActual) : null;
+  const replacementPct =
+    ingresoRecomendado !== null && ingresoRecomendado > 0 ? Math.min(200, Math.round((rentaMensualEstimada / ingresoRecomendado) * 100)) : null;
+
+  const retiroTardio = simulateRetirement({ edad, edadRetiro: edadRetiro + 1, ahorroMensual, annualReturnRatePct });
+  const mejoraRetrasandoRetiroPct = fondoEstimado > 0 ? Math.round(((retiroTardio.fondoEstimado - fondoEstimado) / fondoEstimado) * 100) : 0;
+
+  const qualificationAnswers: QualificationAnswers = {
+    preocupacion: qualification.preocupacion?.code ?? null,
+    habloAsesor: qualification.habloAsesor?.code ?? null,
+    objetivo: qualification.objetivo?.code ?? null,
+    cuandoEmpezar: qualification.cuandoEmpezar?.code ?? null,
+  };
+
+  const preparation = getPreparationLevel({ aniosParaRetiro, ahorroMensual, replacementPct });
+  const { strengths, opportunities } = getStrengthsAndOpportunities({
+    aniosParaRetiro,
+    ahorroMensual,
+    replacementPct,
+    mejoraRetrasandoRetiroPct,
+    qualification: qualificationAnswers,
+  });
+  const executiveSummary = getExecutiveSummary(preparation.level, qualificationAnswers);
+  const diagnosisSummary = getDiagnosisSummary(preparation.level, qualificationAnswers);
+  const recommendation = getPersonalizedRecommendation({
+    edad,
+    aniosParaRetiro,
+    ahorroMensual,
+    stars: preparation.stars,
+    preocupacion: qualificationAnswers.preocupacion,
+  });
+
+  return {
+    preparationLevel: preparation.level,
+    stars: preparation.stars,
+    preparationLabel: preparation.label,
+    preparationReason: preparation.reason,
+    executiveSummary,
+    strengths,
+    opportunities,
+    recommendation,
+    diagnosisSummary,
+    computedAt: new Date().toISOString(),
+  };
+}
+
 /** Appends the "calificación de lead" question answers (asked during the
  * results reveal, i.e. AFTER the lead already exists) into the same lead's
- * `data` jsonb — best-effort, same posture as linkLeadToContact: a failure
- * here must never surface to the visitor, the lead itself is already
- * durably saved by this point. Read-then-write merge (not a raw `data ||
- * jsonb` update) is fine here: single-visitor, single-write flow, no
- * meaningful concurrent-write risk. */
-export async function appendMiniAppLeadQualification(leadId: string, answers: Record<string, unknown>): Promise<void> {
+ * `data` jsonb, resolving each code to its human-readable label ("guardar
+ * exactamente lo que seleccionó la persona", not just the internal code),
+ * and recomputes the full diagnosis (server-authoritative, same "never
+ * trust the client's own computed text" posture as the financial numbers)
+ * so the CRM always has a durable, up-to-date snapshot. Best-effort, same
+ * posture as linkLeadToContact: a failure here must never surface to the
+ * visitor, the lead itself is already durably saved by this point.
+ * Read-then-write merge (not a raw `data || jsonb` update) is fine here:
+ * single-visitor, single-write flow, no meaningful concurrent-write risk. */
+export async function appendMiniAppLeadQualification(leadId: string, answers: QualificationAnswerInput): Promise<void> {
   const supabase = createServiceRoleClient();
   try {
     const { data: row } = await supabase.from("mini_app_leads").select("data").eq("id", leadId).maybeSingle();
     const existing = (row?.data as Record<string, unknown> | null) ?? {};
+    const existingQualification = (existing.qualification as Partial<StoredQualification> | undefined) ?? {};
+
+    const qualification: StoredQualification = {
+      preocupacion:
+        answers.preocupacion !== undefined ? toCodeLabel(PREOCUPACION_OPTIONS, answers.preocupacion) : (existingQualification.preocupacion ?? null),
+      habloAsesor:
+        answers.habloAsesor !== undefined ? toCodeLabel(HABLO_ASESOR_OPTIONS, answers.habloAsesor) : (existingQualification.habloAsesor ?? null),
+      objetivo: answers.objetivo !== undefined ? toCodeLabel(OBJETIVO_OPTIONS, answers.objetivo) : (existingQualification.objetivo ?? null),
+      cuandoEmpezar:
+        answers.cuandoEmpezar !== undefined ? toCodeLabel(CUANDO_OPTIONS, answers.cuandoEmpezar) : (existingQualification.cuandoEmpezar ?? null),
+    };
+
+    const diagnosis = recomputeDiagnosis(existing, qualification);
+
     await supabase
       .from("mini_app_leads")
-      .update({ data: { ...existing, ...answers } })
+      .update({ data: { ...existing, qualification, diagnosis } })
       .eq("id", leadId);
   } catch (err) {
     console.error("[mini-apps] failed to append lead qualification:", err);

@@ -18,6 +18,7 @@ import {
   ListChecks,
   Loader2,
   MessageCircle,
+  Pencil,
   PiggyBank,
   Route,
   Share2,
@@ -25,6 +26,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  User,
   Wallet,
   X,
 } from "lucide-react";
@@ -35,11 +37,24 @@ import {
   simulateRetirementSeries,
 } from "@/lib/miniApps/financialEngine";
 import {
+  getDiagnosisSummary,
   getExecutiveSummary,
   getPersonalizedRecommendation,
   getPreparationLevel,
   getStrengthsAndOpportunities,
+  type QualificationAnswers,
 } from "@/lib/miniApps/resultDiagnostics";
+import {
+  PREOCUPACION_OPTIONS,
+  HABLO_ASESOR_OPTIONS,
+  OBJETIVO_OPTIONS,
+  CUANDO_OPTIONS,
+  preocupacionLabel,
+  habloAsesorLabel,
+  objetivoLabel,
+  cuandoEmpezarLabel,
+  habloAsesorFullPhrase,
+} from "@/lib/miniApps/qualificationOptions";
 import { submitMiniAppLeadFromHostedPage, submitMiniAppLeadQualificationFromHostedPage } from "@/lib/miniApps/actions";
 import type { PublicMiniAppView } from "@/lib/miniApps/queries";
 import { RetirementGrowthChart } from "./RetirementResultCharts";
@@ -57,30 +72,6 @@ function soften(cssVar: string, percent: number): string {
 }
 
 const AHORRO_CHIPS = [2000, 4000, 6000, 10000, 15000];
-
-const PREOCUPACION_OPTIONS = [
-  { value: "no_se_cuanto", label: "No sé cuánto voy a recibir." },
-  { value: "retirarme_antes", label: "Quiero retirarme antes." },
-  { value: "pension_insuficiente", label: "Mi pensión será insuficiente." },
-  { value: "proteger_familia", label: "Quiero proteger a mi familia." },
-  { value: "solo_conocer", label: "Solo quería conocer mi situación." },
-];
-const HABLO_ASESOR_OPTIONS = [
-  { value: "si", label: "Sí" },
-  { value: "no", label: "No" },
-];
-const OBJETIVO_OPTIONS = [
-  { value: "mejorar_retiro", label: "Mejorar mi retiro." },
-  { value: "reducir_impuestos", label: "Reducir impuestos." },
-  { value: "invertir_mejor", label: "Invertir mejor." },
-  { value: "proteger_patrimonio", label: "Proteger mi patrimonio." },
-  { value: "no_seguro", label: "No estoy seguro." },
-];
-const CUANDO_OPTIONS = [
-  { value: "esta_semana", label: "Esta semana." },
-  { value: "este_mes", label: "Este mes." },
-  { value: "mas_adelante", label: "Más adelante." },
-];
 
 const EDUCATIONAL_TIPS = [
   "Revisar la estrategia de retiro con una mirada actualizada.",
@@ -413,6 +404,8 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const [objetivo, setObjetivo] = useState<string | null>(null);
   const [cuandoEmpezar, setCuandoEmpezar] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [qualificationConfirmed, setQualificationConfirmed] = useState(false);
+  const [editingQualification, setEditingQualification] = useState(false);
 
   const currentStep = steps[stepIndex];
   const progressPct = phase === "wizard" ? Math.round((stepIndex / steps.length) * 100) : 100;
@@ -468,10 +461,27 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const mejoraRetrasandoRetiroPct =
     result.fondoEstimado > 0 ? Math.round(((scenarioRetiroTardio.fondoEstimado - result.fondoEstimado) / result.fondoEstimado) * 100) : 0;
 
+  // Live client-side preview of the diagnosis — recomputed on every answer
+  // change so the visitor genuinely sees their answers change the text.
+  // The server independently recomputes the same thing at save time
+  // (ingest.ts's recomputeDiagnosis) as the authoritative, persisted copy —
+  // same "client previews, server is the source of truth" pattern already
+  // used for the financial numbers themselves.
+  const qualification: QualificationAnswers = { preocupacion, habloAsesor, objetivo, cuandoEmpezar };
+  const allAnswered = Boolean(preocupacion && habloAsesor && objetivo && cuandoEmpezar);
+  const showQualificationSummary = qualificationConfirmed && !editingQualification;
+
   const preparation = getPreparationLevel({ aniosParaRetiro, ahorroMensual, replacementPct });
-  const { strengths, opportunities } = getStrengthsAndOpportunities({ aniosParaRetiro, ahorroMensual, replacementPct, mejoraRetrasandoRetiroPct });
-  const executiveSummary = getExecutiveSummary(preparation.level);
-  const recommendation = getPersonalizedRecommendation({ aniosParaRetiro, ahorroMensual, stars: preparation.stars });
+  const { strengths, opportunities } = getStrengthsAndOpportunities({
+    aniosParaRetiro,
+    ahorroMensual,
+    replacementPct,
+    mejoraRetrasandoRetiroPct,
+    qualification,
+  });
+  const executiveSummary = getExecutiveSummary(preparation.level, qualification);
+  const diagnosisSummary = getDiagnosisSummary(preparation.level, qualification);
+  const recommendation = getPersonalizedRecommendation({ edad, aniosParaRetiro, ahorroMensual, stars: preparation.stars, preocupacion });
 
   const roadmap = useMemo(() => {
     const items: { icon: string; text: string }[] = [
@@ -512,11 +522,11 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
   const qualificationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (phase !== "resultado" || !leadIdRef.current) return;
-    const answers: Record<string, unknown> = {};
-    if (preocupacion) answers.preocupacion_principal = preocupacion;
-    if (habloAsesor) answers.hablo_con_asesor_antes = habloAsesor;
-    if (objetivo) answers.objetivo_principal = objetivo;
-    if (cuandoEmpezar) answers.cuando_quiere_empezar = cuandoEmpezar;
+    const answers: { preocupacion?: string; habloAsesor?: string; objetivo?: string; cuandoEmpezar?: string } = {};
+    if (preocupacion) answers.preocupacion = preocupacion;
+    if (habloAsesor) answers.habloAsesor = habloAsesor;
+    if (objetivo) answers.objetivo = objetivo;
+    if (cuandoEmpezar) answers.cuandoEmpezar = cuandoEmpezar;
     if (Object.keys(answers).length === 0) return;
     if (qualificationDebounceRef.current) clearTimeout(qualificationDebounceRef.current);
     const leadId = leadIdRef.current;
@@ -816,7 +826,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 2. Gráficos, escenarios y proyecciones — se mantienen tal cual, ahora justo debajo de la pensión */}
+            {/* 2. Gráficos y escenarios */}
             <div className="grid grid-cols-2 gap-3">
               <StatCard emoji="💰" label="Capital aportado" value={formatCurrency(capitalAportado)} />
               <StatCard emoji="📈" label="Rendimiento esperado" value={`${config.annualReturnRatePct}% anual`} />
@@ -854,7 +864,154 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               <ScenarioChip label="Optimista" value={formatCurrency(result.fondoRangoAlto)} />
             </div>
 
-            {/* 3. Resumen ejecutivo */}
+            {/* 3. ¿Qué pasaría si...? */}
+            <div
+              className="rounded-2xl p-6 sm:p-7"
+              style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+            >
+              <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                ¿Qué pasaría si...?
+              </h3>
+              <p className="mt-1.5 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                Ejemplos orientativos de cómo pequeños ajustes moverían tu proyección, usando la misma simulación.
+              </p>
+              <div className="mt-4 flex flex-col gap-3">
+                {[
+                  { label: `Si ahorraras un 10% más (${formatCurrency(ahorroBump)} extra al mes)`, value: scenarioMasAhorro.fondoEstimado },
+                  ...(edadInicioDemorado > edad
+                    ? [{ label: `Si empezaras recién en ${edadInicioDemorado - edad} años en vez de hoy mismo`, value: scenarioEsperar.fondoEstimado }]
+                    : []),
+                  { label: `Si retrasaras tu retiro un año, a los ${clampedRetiro + 1}`, value: scenarioRetiroTardio.fondoEstimado },
+                  { label: `Si tu rendimiento anual fuera 1 punto mayor (${config.annualReturnRatePct + 1}%)`, value: scenarioMejorRendimiento.fondoEstimado },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-xl p-4" style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}>
+                    <p className="text-[13.5px] font-medium" style={{ color: "var(--ma-text-color)" }}>
+                      {label}
+                    </p>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-[12px]" style={{ color: "var(--ma-text-muted)" }}>
+                        Hoy: {formatCurrency(result.fondoEstimado)}
+                      </span>
+                      <span className="font-mono text-[15px] font-semibold" style={{ color: "var(--ma-button-primary-bg)" }}>
+                        {formatCurrency(value)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-[11.5px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                Son ejemplos ilustrativos con la misma proyección de tu simulación — un análisis personalizado puede mostrarte más alternativas.
+              </p>
+            </div>
+
+            {/* 4. Formulario de calificación — antes del diagnóstico, no
+             * después: las respuestas alimentan el diagnóstico de abajo. Una
+             * vez respondidas las 4, se reemplaza por un resumen con checks
+             * (no un candado permanente — "Editar respuestas" la reabre). */}
+            <div
+              className="rounded-2xl p-6 sm:p-7"
+              style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+            >
+              {showQualificationSummary ? (
+                <>
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <h3 className="text-[16px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                      Información utilizada para personalizar tu diagnóstico
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setEditingQualification(true)}
+                      className="flex shrink-0 items-center gap-1 text-[12.5px] font-medium underline underline-offset-2"
+                      style={{ color: "var(--ma-button-primary-bg)" }}
+                    >
+                      <Pencil className="size-3" aria-hidden="true" /> Editar respuestas
+                    </button>
+                  </div>
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {[
+                      `Mayor preocupación: ${preocupacionLabel(preocupacion)}`,
+                      `Objetivo: ${objetivoLabel(objetivo)}`,
+                      `Urgencia: ${cuandoEmpezarLabel(cuandoEmpezar)}`,
+                      `Experiencia con asesor: ${habloAsesorLabel(habloAsesor)}`,
+                    ].map((text) => (
+                      <li key={text} className="flex items-start gap-2 text-[13.5px]" style={{ color: "var(--ma-text-color)" }}>
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: "var(--ma-chart-series-secondary)" }} aria-hidden="true" />
+                        {text}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                    Antes de tu diagnóstico, contanos un poco más
+                  </h3>
+                  <p className="mt-1.5 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
+                    Tus respuestas se usan para construir el diagnóstico personalizado que ves más abajo.
+                  </p>
+                  <div className="mt-5 flex flex-col gap-5">
+                    <SingleChoiceQuestion
+                      label="¿Cuál es hoy tu mayor preocupación?"
+                      options={PREOCUPACION_OPTIONS}
+                      value={preocupacion}
+                      onChange={setPreocupacion}
+                    />
+                    <SingleChoiceQuestion
+                      label="¿Ya hablaste antes con un asesor financiero?"
+                      options={HABLO_ASESOR_OPTIONS}
+                      value={habloAsesor}
+                      onChange={setHabloAsesor}
+                    />
+                    <SingleChoiceQuestion label="¿Qué te gustaría lograr?" options={OBJETIVO_OPTIONS} value={objetivo} onChange={setObjetivo} />
+                    <SingleChoiceQuestion
+                      label="¿Cuándo te gustaría comenzar?"
+                      options={CUANDO_OPTIONS}
+                      value={cuandoEmpezar}
+                      onChange={setCuandoEmpezar}
+                    />
+                  </div>
+                  {allAnswered && (
+                    <div className="mt-5">
+                      <MiniAppButton
+                        type="button"
+                        onClick={() => {
+                          setQualificationConfirmed(true);
+                          setEditingQualification(false);
+                        }}
+                      >
+                        Confirmar respuestas <ArrowRight className="size-4" aria-hidden="true" />
+                      </MiniAppButton>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* 5. Tu perfil de retiro — ficha profesional, no una tabla técnica */}
+            <div
+              className="rounded-2xl p-6 sm:p-7"
+              style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+            >
+              <div className="mb-1 flex items-center gap-2">
+                <User className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
+                <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                  Tu perfil de retiro
+                </h3>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <ProfileField label="Edad" value={`${edad} años`} />
+                <ProfileField label="Edad de retiro" value={`${clampedRetiro} años`} />
+                {ingresoActual > 0 && <ProfileField label="Ingreso mensual" value={formatCurrency(ingresoActual)} />}
+                <ProfileField label="Ahorro mensual" value={formatCurrency(ahorroMensual)} />
+                <ProfileField label="Escenario seleccionado" value="Moderado" />
+                <ProfileField label="Objetivo" value={objetivoLabel(objetivo) ?? "Sin responder todavía"} muted={!objetivo} />
+                <ProfileField label="Mayor preocupación" value={preocupacionLabel(preocupacion) ?? "Sin responder todavía"} muted={!preocupacion} />
+                <ProfileField label="Urgencia" value={cuandoEmpezarLabel(cuandoEmpezar) ?? "Sin responder todavía"} muted={!cuandoEmpezar} />
+                <ProfileField label="Experiencia previa" value={habloAsesorFullPhrase(habloAsesor)} muted={!habloAsesor} />
+              </div>
+            </div>
+
+            {/* 6. Tu diagnóstico (resumen ejecutivo) */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -870,7 +1027,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 4. Nivel de preparación */}
+            {/* 7. Nivel de preparación */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -887,7 +1044,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 5. Fortalezas detectadas */}
+            {/* 8. Fortalezas detectadas */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -905,7 +1062,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 6. Aspectos para mejorar */}
+            {/* 9. Aspectos para mejorar */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -923,7 +1080,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 7. Qué significa este resultado */}
+            {/* 10. Qué significa este resultado */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -977,7 +1134,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               )}
             </div>
 
-            {/* 8. Comparación con el objetivo */}
+            {/* 11. Comparación con el objetivo */}
             {ingresoRecomendado !== null && (
               <div
                 className="rounded-2xl p-6 sm:p-7"
@@ -1035,47 +1192,20 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </div>
             )}
 
-            {/* 9. ¿Qué pasaría si...? */}
+            {/* 12. Resumen de tu diagnóstico — bisagra hacia el plan de acción */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
             >
               <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
-                ¿Qué pasaría si...?
+                Resumen de tu diagnóstico
               </h3>
-              <p className="mt-1.5 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
-                Ejemplos orientativos de cómo pequeños ajustes moverían tu proyección, usando la misma simulación.
-              </p>
-              <div className="mt-4 flex flex-col gap-3">
-                {[
-                  { label: `Si ahorraras un 10% más (${formatCurrency(ahorroBump)} extra al mes)`, value: scenarioMasAhorro.fondoEstimado },
-                  ...(edadInicioDemorado > edad
-                    ? [{ label: `Si empezaras recién en ${edadInicioDemorado - edad} años en vez de hoy mismo`, value: scenarioEsperar.fondoEstimado }]
-                    : []),
-                  { label: `Si retrasaras tu retiro un año, a los ${clampedRetiro + 1}`, value: scenarioRetiroTardio.fondoEstimado },
-                  { label: `Si tu rendimiento anual fuera 1 punto mayor (${config.annualReturnRatePct + 1}%)`, value: scenarioMejorRendimiento.fondoEstimado },
-                ].map(({ label, value }) => (
-                  <div key={label} className="rounded-xl p-4" style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}>
-                    <p className="text-[13.5px] font-medium" style={{ color: "var(--ma-text-color)" }}>
-                      {label}
-                    </p>
-                    <div className="mt-2 flex items-baseline justify-between">
-                      <span className="text-[12px]" style={{ color: "var(--ma-text-muted)" }}>
-                        Hoy: {formatCurrency(result.fondoEstimado)}
-                      </span>
-                      <span className="font-mono text-[15px] font-semibold" style={{ color: "var(--ma-button-primary-bg)" }}>
-                        {formatCurrency(value)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-4 text-[11.5px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
-                Son ejemplos ilustrativos con la misma proyección de tu simulación — un análisis personalizado puede mostrarte más alternativas.
+              <p className="mt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
+                {diagnosisSummary}
               </p>
             </div>
 
-            {/* 10. Recomendaciones personalizadas */}
+            {/* 13. Nuestra recomendación para vos */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1091,7 +1221,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </p>
             </div>
 
-            {/* 11. Educación financiera */}
+            {/* 14. Educación financiera */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1134,41 +1264,7 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 12. Preguntas finales */}
-            <div
-              className="rounded-2xl p-6 sm:p-7"
-              style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
-            >
-              <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
-                Antes de continuar, contanos un poco más
-              </h3>
-              <p className="mt-1.5 text-[13px]" style={{ color: "var(--ma-text-muted)" }}>
-                Es opcional, pero ayuda a que tu asesor llegue mejor preparado a la conversación.
-              </p>
-              <div className="mt-5 flex flex-col gap-5">
-                <SingleChoiceQuestion
-                  label="¿Cuál es hoy tu mayor preocupación?"
-                  options={PREOCUPACION_OPTIONS}
-                  value={preocupacion}
-                  onChange={setPreocupacion}
-                />
-                <SingleChoiceQuestion
-                  label="¿Ya hablaste antes con un asesor financiero?"
-                  options={HABLO_ASESOR_OPTIONS}
-                  value={habloAsesor}
-                  onChange={setHabloAsesor}
-                />
-                <SingleChoiceQuestion label="¿Qué te gustaría lograr?" options={OBJETIVO_OPTIONS} value={objetivo} onChange={setObjetivo} />
-                <SingleChoiceQuestion
-                  label="¿Cuándo te gustaría comenzar?"
-                  options={CUANDO_OPTIONS}
-                  value={cuandoEmpezar}
-                  onChange={setCuandoEmpezar}
-                />
-              </div>
-            </div>
-
-            {/* 13. Plan de acción */}
+            {/* 15. Próximos pasos */}
             <div
               className="rounded-2xl p-6 sm:p-7"
               style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
@@ -1189,7 +1285,28 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
               </ul>
             </div>
 
-            {/* 14. Cierre */}
+            {/* 16. Tu hoja de ruta para el retiro — antes del CTA (bug de orden ya corregido) */}
+            <div
+              className="rounded-2xl p-6 sm:p-7"
+              style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
+            >
+              <div className="mb-1 flex items-center gap-2">
+                <Route className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
+                <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
+                  Tu hoja de ruta para el retiro
+                </h3>
+              </div>
+              <ul className="mt-4 flex flex-col gap-3">
+                {roadmap.map(({ icon, text }) => (
+                  <li key={text} className="flex items-start gap-3 text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
+                    <span className="text-lg leading-none">{icon}</span>
+                    <span className="pt-0.5">{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 17. Cierre / CTA */}
             {!confirmed ? (
               <div
                 className="flex flex-col items-center gap-4 rounded-2xl p-7 text-center sm:p-9"
@@ -1238,27 +1355,6 @@ export function RetirementSimulatorApp({ app }: { app: PublicMiniAppView }) {
                 </p>
               </div>
             )}
-
-            {/* 15. Tu hoja de ruta para el retiro */}
-            <div
-              className="rounded-2xl p-6 sm:p-7"
-              style={{ background: "var(--ma-background-surface)", border: "1px solid var(--ma-border)", boxShadow: "var(--ma-shadow-lg)" }}
-            >
-              <div className="mb-1 flex items-center gap-2">
-                <Route className="size-4" style={{ color: "var(--ma-icon-color)" }} aria-hidden="true" />
-                <h3 className="text-[17px] font-semibold" style={{ color: "var(--ma-title-color)" }}>
-                  Tu hoja de ruta para el retiro
-                </h3>
-              </div>
-              <ul className="mt-4 flex flex-col gap-3">
-                {roadmap.map(({ icon, text }) => (
-                  <li key={text} className="flex items-start gap-3 text-[13.5px]" style={{ color: "var(--ma-text-muted)" }}>
-                    <span className="text-lg leading-none">{icon}</span>
-                    <span className="pt-0.5">{text}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
 
             <p className="px-2 text-center text-[11px] leading-relaxed" style={{ color: "var(--ma-text-muted)" }}>
               Simulación con fines ilustrativos. Las cifras son estimaciones y no constituyen asesoría financiera certificada — los resultados
@@ -1339,6 +1435,21 @@ function ScenarioChip({ label, value, highlighted }: { label: string; value: str
         {label}
       </p>
       <p className="mt-1 font-mono text-[13px] font-semibold tabular-nums" style={{ color: "var(--ma-title-color)" }}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/** One field of "Tu perfil de retiro" — a card grid, deliberately not a
+ * `<dl>` technical table (spec: "ficha profesional", not a data dump). */
+function ProfileField({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="rounded-xl p-3" style={{ background: "var(--ma-background-surface-alt)", border: "1px solid var(--ma-border)" }}>
+      <p className="text-[11px] font-medium uppercase tracking-wide" style={{ color: "var(--ma-text-muted)" }}>
+        {label}
+      </p>
+      <p className="mt-1 text-[13.5px] font-semibold" style={{ color: muted ? "var(--ma-text-muted)" : "var(--ma-title-color)" }}>
         {value}
       </p>
     </div>

@@ -22,7 +22,13 @@ import {
   type MiniAppFieldConfig,
 } from "@/lib/miniApps/queries";
 import { getWorkspaceMembersList } from "@/lib/settings/queries";
-import { ingestMiniAppLeadFromHostedPage, appendMiniAppLeadQualification, MINI_APP_CONTACT_SOURCE, type IngestResult } from "@/lib/miniApps/ingest";
+import {
+  ingestMiniAppLeadFromHostedPage,
+  appendMiniAppLeadQualification,
+  MINI_APP_CONTACT_SOURCE,
+  type IngestResult,
+  type QualificationAnswerInput,
+} from "@/lib/miniApps/ingest";
 import { resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
 import { getDefaultOutboundBusinessNumber, getOrCreateOpenConversationForContact } from "@/lib/messaging/conversations";
 import type { MiniAppLeadStatus, MiniAppTemplateKey } from "@/lib/miniApps/queries";
@@ -412,6 +418,6 @@ export async function submitMiniAppLeadFromHostedPage(slug: string, payload: Rec
  * onto that same lead — fire-and-forget from the client, same posture as
  * the visit-tracking fetch: never blocks the reveal, never surfaces an
  * error to the visitor. */
-export async function submitMiniAppLeadQualificationFromHostedPage(leadId: string, answers: Record<string, unknown>): Promise<void> {
+export async function submitMiniAppLeadQualificationFromHostedPage(leadId: string, answers: QualificationAnswerInput): Promise<void> {
   await appendMiniAppLeadQualification(leadId, answers);
 }

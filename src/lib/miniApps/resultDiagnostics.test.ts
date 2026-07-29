@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getDiagnosisSummary,
   getExecutiveSummary,
   getPersonalizedRecommendation,
   getPreparationLevel,
@@ -71,26 +72,58 @@ describe("getExecutiveSummary", () => {
     expect(new Set(summaries).size).toBe(levels.length);
     for (const s of summaries) expect(s.length).toBeGreaterThan(20);
   });
+
+  it("genuinely changes the text depending on the qualification answer", () => {
+    const base = getExecutiveSummary("regular", null);
+    const withPension = getExecutiveSummary("regular", { preocupacion: "pension_insuficiente", habloAsesor: null, objetivo: null, cuandoEmpezar: null });
+    const withSoloConocer = getExecutiveSummary("regular", { preocupacion: "solo_conocer", habloAsesor: null, objetivo: null, cuandoEmpezar: null });
+    expect(withPension).not.toBe(base);
+    expect(withSoloConocer).not.toBe(base);
+    expect(withPension).not.toBe(withSoloConocer);
+  });
+});
+
+describe("getDiagnosisSummary", () => {
+  it("differs based on objetivo and cuandoEmpezar", () => {
+    const a = getDiagnosisSummary("regular", { preocupacion: null, habloAsesor: null, objetivo: "mejorar_retiro", cuandoEmpezar: "esta_semana" });
+    const b = getDiagnosisSummary("regular", { preocupacion: null, habloAsesor: null, objetivo: "no_seguro", cuandoEmpezar: "mas_adelante" });
+    expect(a).not.toBe(b);
+  });
+
+  it("still returns a coherent paragraph with no answers yet", () => {
+    const s = getDiagnosisSummary("excelente", null);
+    expect(s.length).toBeGreaterThan(20);
+  });
 });
 
 describe("getPersonalizedRecommendation", () => {
   it("prioritizes 'near retirement' above everything else", () => {
-    const rec = getPersonalizedRecommendation({ aniosParaRetiro: 5, ahorroMensual: 9000, stars: 5 });
+    const rec = getPersonalizedRecommendation({ edad: 58, aniosParaRetiro: 5, ahorroMensual: 9000, stars: 5 });
     expect(rec).toMatch(/cerca del retiro/i);
   });
 
-  it("flags low savings when not near retirement", () => {
-    const rec = getPersonalizedRecommendation({ aniosParaRetiro: 20, ahorroMensual: 1000, stars: 2 });
+  it("prioritizes an explicit 'retire early' intent above the low-savings flag", () => {
+    const rec = getPersonalizedRecommendation({ edad: 40, aniosParaRetiro: 20, ahorroMensual: 1000, stars: 2, preocupacion: "retirarme_antes" });
+    expect(rec).toMatch(/retirarte antes/i);
+  });
+
+  it("flags low savings when not near retirement and no 'retire early' intent", () => {
+    const rec = getPersonalizedRecommendation({ edad: 40, aniosParaRetiro: 20, ahorroMensual: 1000, stars: 2 });
     expect(rec).toMatch(/aporte mensual/i);
   });
 
   it("suggests consolidating for a strong profile", () => {
-    const rec = getPersonalizedRecommendation({ aniosParaRetiro: 20, ahorroMensual: 8000, stars: 5 });
+    const rec = getPersonalizedRecommendation({ edad: 40, aniosParaRetiro: 20, ahorroMensual: 8000, stars: 5 });
     expect(rec).toMatch(/consolidarlo/i);
   });
 
+  it("suggests optimizing strategy for someone over 55 with an average profile", () => {
+    const rec = getPersonalizedRecommendation({ edad: 58, aniosParaRetiro: 12, ahorroMensual: 4000, stars: 3 });
+    expect(rec).toMatch(/optimizar la estrategia/i);
+  });
+
   it("suggests leveraging time for a young, average profile", () => {
-    const rec = getPersonalizedRecommendation({ aniosParaRetiro: 25, ahorroMensual: 4000, stars: 3 });
+    const rec = getPersonalizedRecommendation({ edad: 32, aniosParaRetiro: 25, ahorroMensual: 4000, stars: 3 });
     expect(rec).toMatch(/tiempo de sobra/i);
   });
 });

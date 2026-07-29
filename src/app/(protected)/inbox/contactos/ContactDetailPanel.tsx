@@ -18,6 +18,7 @@ import { toggleContactTag } from "@/lib/inbox/actions";
 import { getContactEventsAction } from "@/lib/calendar/actions";
 import { getContactMiniAppOriginsAction } from "@/lib/miniApps/actions";
 import { TEMPLATE_KEY_META } from "@/lib/miniApps/templateCatalog";
+import { RetirementDiagnosisSummary, isRetirementDiagnosisShape } from "./RetirementDiagnosisSummary";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 
 function formatEventDate(iso: string) {
@@ -335,18 +336,22 @@ export function ContactDetailPanel({
                             Ver mini app <ExternalLink size={11} aria-hidden="true" />
                           </a>
                         )}
-                        {fields.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">Datos y resultado</p>
-                            <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                              {fields.map(([k, v]) => (
-                                <div key={k} className="flex items-center justify-between gap-2">
-                                  <dt className="text-neutral-500">{humanizeFieldKey(k)}</dt>
-                                  <dd className="font-medium text-foreground">{formatFieldValue(v)}</dd>
-                                </div>
-                              ))}
-                            </dl>
-                          </div>
+                        {origin.templateKey === "simulador_retiro" && isRetirementDiagnosisShape(origin.data) ? (
+                          <RetirementDiagnosisSummary data={origin.data} />
+                        ) : (
+                          fields.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">Datos y resultado</p>
+                              <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                {fields.map(([k, v]) => (
+                                  <div key={k} className="flex items-center justify-between gap-2">
+                                    <dt className="text-neutral-500">{humanizeFieldKey(k)}</dt>
+                                    <dd className="font-medium text-foreground">{formatFieldValue(v)}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            </div>
+                          )
                         )}
                       </li>
                     );
