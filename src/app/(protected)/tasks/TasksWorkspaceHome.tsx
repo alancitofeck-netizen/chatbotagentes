@@ -1,16 +1,17 @@
 import Link from "next/link";
-import { FileSpreadsheet, Inbox, LayoutDashboard, MessageCircle, ShieldAlert, Sparkles, Zap } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { AlertTriangle, CheckCircle2, Clock, ListTodo } from "lucide-react";
+import type { TaskGroup, GroupStats } from "@/lib/tasks/groups/queries";
+import { GROUP_COLOR_META } from "@/components/tasks/groupColorMeta";
 
 export interface TasksHomeStats {
   greetingName: string;
-  criticalTasksToday: number;
-  meetingsToday: number;
-  pendingConversations: number;
-  policiesToReview: number;
+  pending: number;
+  highPriority: number;
+  dueToday: number;
+  completedThisWeek: number;
 }
 
-function StatChip({ icon: Icon, label, value, tone }: { icon: typeof Zap; label: string; value: number; tone: "critical" | "neutral" }) {
+function StatChip({ icon: Icon, label, value, tone }: { icon: typeof ListTodo; label: string; value: number; tone: "critical" | "neutral" }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-xs)]">
       <span
@@ -30,22 +31,42 @@ function StatChip({ icon: Icon, label, value, tone }: { icon: typeof Zap; label:
   );
 }
 
-const QUICK_ACTIONS = [
-  { label: "Ver Dashboard general", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Importador de Cartera", href: "/advisors/import", icon: FileSpreadsheet },
-  { label: "Ir al Inbox", href: "/inbox", icon: Inbox },
-  { label: "Configurar WhatsApp", href: "/profile?tab=integrations", icon: MessageCircle },
-];
+/** Exported so Favoritos (`/tasks/favorites`) reuses the identical card
+ * instead of a near-duplicate. Archivados uses its own variant since it
+ * needs a "Desarchivar" action button, not a plain link-through. */
+export function GroupCard({ group, stats }: { group: TaskGroup; stats: GroupStats }) {
+  return (
+    <Link
+      href={`/tasks/groups/${group.id}`}
+      className="flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-xs)] transition-shadow hover:shadow-[var(--elevation-sm)]"
+    >
+      <div className="flex items-center gap-2.5">
+        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-[17px] ${GROUP_COLOR_META[group.color].bg}`}>
+          {group.icon}
+        </span>
+        <p className="truncate text-sm font-semibold text-foreground">{group.name}</p>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+        <div className="h-full rounded-full bg-accent-500" style={{ width: `${stats.progressPct}%` }} />
+      </div>
+      <p className="text-xs text-neutral-500">
+        {stats.progressPct}% · {stats.completed}/{stats.total} completadas
+      </p>
+    </Link>
+  );
+}
 
-/** "Buenos días {nombre}" home screen (Sección 7 del rediseño) — the
- * Workspace module's landing page, before drilling into any of the 4 task
- * views. Every stat below comes from a real query (page.tsx), reusing
- * getDashboardKpis' meetingsToday (already excludes event_type='task') and
- * insights' getUnansweredConversations rather than recomputing either. The
- * quick-actions row only links to features that actually exist today — the
- * "Enviar propuesta" example from the brief has no real counterpart in the
- * product yet, so it's replaced with real shortcuts instead of a fake one. */
-export function TasksWorkspaceHome({ stats }: { stats: TasksHomeStats }) {
+/** "Buenos días" home screen — Sección "Dashboard principal" del rediseño
+ * Grupos: solo información de tareas, nunca métricas de Inbox/CRM/Calendario/
+ * Pólizas (esas viven en sus propios módulos). Todos los stats vienen del
+ * mismo getTasks(workspaceId) ya usado en el resto del módulo. */
+export function TasksWorkspaceHome({
+  stats,
+  recentGroups,
+}: {
+  stats: TasksHomeStats;
+  recentGroups: { group: TaskGroup; stats: GroupStats }[];
+}) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
 
@@ -55,39 +76,27 @@ export function TasksWorkspaceHome({ stats }: { stats: TasksHomeStats }) {
         <h1 className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.02em] text-foreground">
           {greeting}, {stats.greetingName} 👋
         </h1>
-        <p className="mt-1 text-sm text-neutral-500">Esto es lo que tenés hoy en tu Workspace.</p>
+        <p className="mt-1 text-sm text-neutral-500">Esto es lo que tenés pendiente en tu Workspace.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatChip icon={Zap} label="Tareas críticas" value={stats.criticalTasksToday} tone={stats.criticalTasksToday > 0 ? "critical" : "neutral"} />
-        <StatChip icon={LayoutDashboard} label="Reuniones hoy" value={stats.meetingsToday} tone="neutral" />
-        <StatChip icon={MessageCircle} label="Conversaciones pendientes" value={stats.pendingConversations} tone="neutral" />
-        <StatChip icon={ShieldAlert} label="Pólizas para revisar" value={stats.policiesToReview} tone="neutral" />
+        <StatChip icon={ListTodo} label="Tareas pendientes" value={stats.pending} tone="neutral" />
+        <StatChip icon={AlertTriangle} label="Alta prioridad" value={stats.highPriority} tone={stats.highPriority > 0 ? "critical" : "neutral"} />
+        <StatChip icon={Clock} label="Vencen hoy" value={stats.dueToday} tone={stats.dueToday > 0 ? "critical" : "neutral"} />
+        <StatChip icon={CheckCircle2} label="Completadas esta semana" value={stats.completedThisWeek} tone="neutral" />
       </div>
 
-      <Card>
-        <div className="flex items-center gap-2 pb-3">
-          <Sparkles size={15} className="text-accent-500" aria-hidden="true" />
-          <h2 className="text-[13px] font-semibold text-foreground">Accesos rápidos</h2>
-        </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {QUICK_ACTIONS.map(({ label, href, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-2.5 rounded-lg border border-border-default px-3.5 py-2.5 text-sm text-foreground hover:border-accent-500 hover:bg-surface-2"
-            >
-              <Icon size={16} className="text-neutral-500" aria-hidden="true" />
-              {label}
-            </Link>
-          ))}
-        </div>
-      </Card>
-
       <div>
-        <Link href="/tasks?view=list" className="text-sm font-medium text-accent-600 hover:underline">
-          Ver todas mis tareas →
-        </Link>
+        <h2 className="mb-3 text-[13px] font-semibold text-foreground">Grupos recientes</h2>
+        {recentGroups.length === 0 ? (
+          <p className="text-sm text-neutral-500">Todavía no creaste ningún grupo — usá &ldquo;Nuevo&rdquo; para empezar.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {recentGroups.map(({ group, stats: gStats }) => (
+              <GroupCard key={group.id} group={group} stats={gStats} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

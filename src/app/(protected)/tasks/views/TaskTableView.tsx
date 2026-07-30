@@ -120,7 +120,9 @@ export function TaskTableView({
                   "—"
                 )}
               </td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-xs text-neutral-500">{formatRelativeTime(task.updatedAt)}</td>
+              <td className="whitespace-nowrap px-3 py-2.5 text-xs text-neutral-500" suppressHydrationWarning>
+                {formatRelativeTime(task.updatedAt)}
+              </td>
             </tr>
           ))}
         </tbody>

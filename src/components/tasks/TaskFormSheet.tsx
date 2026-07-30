@@ -38,6 +38,7 @@ function combineDueAt(date: string, time: string): string | null {
  * the field list the user actually asked for in each mode. */
 export function TaskFormSheet({
   current,
+  groupId,
   members,
   contactOptions,
   conversationOptions,
@@ -47,6 +48,9 @@ export function TaskFormSheet({
   onSaved,
 }: {
   current: TaskItem | null;
+  /** The group this task is created into — only read on create; editing an
+   * existing task never changes its group_id through this form. */
+  groupId?: string;
   members: MemberOption[];
   contactOptions: TaskOption[];
   conversationOptions: TaskOption[];
@@ -79,6 +83,7 @@ export function TaskFormSheet({
       assignedTo,
       relatedType: relatedType || null,
       relatedId: relatedType ? relatedId || null : null,
+      groupId,
     };
 
     startTransition(async () => {

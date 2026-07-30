@@ -28,6 +28,7 @@ export interface TaskTagItem {
 
 export interface TaskItem {
   id: string;
+  groupId: string | null;
   title: string;
   description: string | null;
   descriptionJson: unknown | null;
@@ -56,6 +57,7 @@ export interface TaskItem {
 
 interface TaskRow {
   id: string;
+  group_id: string | null;
   title: string;
   description: string | null;
   description_json: unknown | null;
@@ -74,7 +76,7 @@ interface TaskRow {
 }
 
 const TASK_SELECT =
-  "id, title, description, description_json, priority, status, due_at, assigned_to, created_by, related_type, related_id, position, is_favorite, created_at, updated_at, completed_at";
+  "id, group_id, title, description, description_json, priority, status, due_at, assigned_to, created_by, related_type, related_id, position, is_favorite, created_at, updated_at, completed_at";
 
 /** Single dispatcher for resolving a display label for any relation entity
  * type — shared by the legacy related_type/related_id column, the new
@@ -248,6 +250,7 @@ async function mapTaskRows(
     const c = counts.get(r.id) ?? { checklistTotal: 0, checklistDone: 0, commentCount: 0, attachmentCount: 0 };
     return {
       id: r.id,
+      groupId: r.group_id,
       title: r.title,
       description: r.description,
       descriptionJson: r.description_json,
@@ -284,11 +287,10 @@ export interface TaskFilters {
   priority?: TaskPriority;
   assignedMemberId?: string;
   search?: string;
-  /** Sidebar quick views (Sección 6 del rediseño) — "Hoy"/"Esta semana" filter
-   * on due_at, "Favoritos" filters is_favorite. All three are real filters,
-   * not placeholders. */
+  /** Cross-group Agenda page (Hoy/Esta semana) filters on due_at — task-level
+   * favorites moved to group-level favorites with the Grupos redesign (see
+   * task_groups.is_favorite), so this no longer needs a favoritesOnly flag. */
   dueRange?: "today" | "week";
-  favoritesOnly?: boolean;
 }
 
 function startOfDay(d: Date): Date {
@@ -312,7 +314,6 @@ export async function getTasks(workspaceId: string, filters: TaskFilters = {}): 
   if (filters.priority) query = query.eq("priority", filters.priority);
   if (filters.assignedMemberId) query = query.eq("assigned_to", filters.assignedMemberId);
   if (filters.search?.trim()) query = query.ilike("title", `%${filters.search.trim()}%`);
-  if (filters.favoritesOnly) query = query.eq("is_favorite", true);
   if (filters.dueRange) {
     const todayStart = startOfDay(new Date());
     if (filters.dueRange === "today") {
@@ -325,6 +326,27 @@ export async function getTasks(workspaceId: string, filters: TaskFilters = {}): 
       query = query.gte("due_at", todayStart.toISOString()).lt("due_at", weekEnd.toISOString());
     }
   }
+
+  const { data } = await query;
+  return mapTaskRows(supabase, workspaceId, (data ?? []) as TaskRow[]);
+}
+
+/** The Grupos redesign's primary read path — a group's page never browses
+ * the whole workspace, only its own tasks. Same filter shape as getTasks. */
+export async function getTasksByGroup(workspaceId: string, groupId: string, filters: TaskFilters = {}): Promise<TaskItem[]> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .eq("workspace_id", workspaceId)
+    .eq("group_id", groupId)
+    .order("due_at", { ascending: true, nullsFirst: false });
+
+  if (filters.status) query = query.eq("status", filters.status);
+  if (filters.priority) query = query.eq("priority", filters.priority);
+  if (filters.assignedMemberId) query = query.eq("assigned_to", filters.assignedMemberId);
+  if (filters.search?.trim()) query = query.ilike("title", `%${filters.search.trim()}%`);
 
   const { data } = await query;
   return mapTaskRows(supabase, workspaceId, (data ?? []) as TaskRow[]);
@@ -616,25 +638,6 @@ export async function getEventOptions(workspaceId: string): Promise<TaskOption[]
     const date = new Date(b.start_time as string).toLocaleDateString("es", { day: "numeric", month: "short" });
     return { id: b.id as string, label: `${(b.subject as string) || "Evento"} (${date})` };
   });
-}
-
-/** "Pólizas para revisar" stat chip on the Workspace home (Sección 7 del
- * rediseño) — policies whose renewal_date falls within the next 30 days.
- * Lives here (not src/lib/advisors/queries.ts) since it's consumed only by
- * the Tasks module's home page, not by the Asesores module itself. */
-export async function getPoliciesToReviewCount(workspaceId: string): Promise<number> {
-  const supabase = await createClient();
-  const today = new Date();
-  const in30Days = new Date(today);
-  in30Days.setDate(in30Days.getDate() + 30);
-  const { count } = await supabase
-    .from("advisor_policies")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId)
-    .not("renewal_date", "is", null)
-    .gte("renewal_date", today.toISOString().slice(0, 10))
-    .lte("renewal_date", in30Days.toISOString().slice(0, 10));
-  return count ?? 0;
 }
 
 export async function getDocumentOptions(workspaceId: string): Promise<TaskOption[]> {

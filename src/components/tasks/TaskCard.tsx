@@ -83,7 +83,16 @@ export function TaskCard({
         {task.dueAt && (
           <span className={cn("inline-flex items-center gap-1", isOverdue && "font-medium text-error-strong")}>
             <Clock className="size-3.5" aria-hidden="true" />
-            {formatRelativeTime(task.dueAt)}
+            {/* formatRelativeTime renders text that legitimately drifts between
+             * server-render and client-hydrate (a few seconds apart) — without
+             * this, the mismatch throws React error #418, which tears down and
+             * remounts the client tree, discarding any in-flight state update
+             * (confirmed live: a checkbox click's setState got silently lost
+             * this way — same root cause already documented for a router.push
+             * case elsewhere in this app). suppressHydrationWarning is React's
+             * own escape hatch for exactly this "content expected to differ"
+             * scenario, not a workaround. */}
+            <span suppressHydrationWarning>{formatRelativeTime(task.dueAt)}</span>
           </span>
         )}
         {task.assignedTo && (
@@ -116,7 +125,9 @@ export function TaskCard({
             {task.attachmentCount}
           </span>
         )}
-        <span className="ml-auto text-neutral-400">{formatRelativeTime(task.updatedAt)}</span>
+        <span className="ml-auto text-neutral-400" suppressHydrationWarning>
+          {formatRelativeTime(task.updatedAt)}
+        </span>
       </div>
     </div>
   );

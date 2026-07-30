@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
+import { getOrCreateDefaultGroup } from "@/lib/tasks/groups/actions";
 import {
   getContactRelatedTasks,
   getOpportunityTasks,
@@ -12,6 +13,7 @@ import {
   getTaskComments,
   getTaskDetail,
   getTasks,
+  getTasksByGroup,
   type RelationEntityType,
   type TaskFilters,
   type TaskPriority,
@@ -31,6 +33,11 @@ export interface TaskInput {
   assignedTo: string;
   relatedType: TaskRelatedType | null;
   relatedId: string | null;
+  /** Omitted (or null) by call sites that don't know about Grupos yet
+   * (CardDetailSheet's opportunity mini-form, ConversationThread's "Crear
+   * tarea") — createTask resolves those to the workspace's auto-provisioned
+   * "General" group so nothing becomes an orphaned task. */
+  groupId?: string | null;
 }
 
 /** Agents can only assign tasks to themselves — "si tiene permisos"
@@ -61,12 +68,14 @@ export async function createTask(input: TaskInput) {
   if (!title) throw new Error("El título es obligatorio.");
 
   const assignedTo = await resolveAssignedTo(role, input.assignedTo, ownMemberId);
+  const groupId = input.groupId ?? (await getOrCreateDefaultGroup(workspaceId));
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("tasks")
     .insert({
       workspace_id: workspaceId,
+      group_id: groupId,
       created_by: ownMemberId,
       assigned_to: assignedTo,
       title,
@@ -384,6 +393,11 @@ export async function getTaskByIdAction(taskId: string) {
 export async function getOpportunityTasksAction(opportunityId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getOpportunityTasks(workspaceId, opportunityId);
+}
+
+export async function getTasksByGroupAction(groupId: string, filters: TaskFilters = {}) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getTasksByGroup(workspaceId, groupId, filters);
 }
 
 export async function getContactRelatedTasksAction(contactId: string) {
