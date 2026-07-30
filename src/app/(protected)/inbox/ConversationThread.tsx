@@ -15,6 +15,7 @@ import {
   CheckCheck,
   Clock,
   Info,
+  ListTodo,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -23,6 +24,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/toast/toast";
 import type { ConversationDetail, MessageItem } from "@/lib/inbox/queries";
 import { approveDraftMessage, editDraftMessage, rejectDraftMessage } from "@/lib/inbox/actions";
+import { createTask } from "@/lib/tasks/actions";
 import { cn } from "@/lib/utils/cn";
 
 /** Optimistic-only state, never persisted as-is — `localStatus` is distinct
@@ -113,6 +115,39 @@ export function ConversationThread({
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [draftEditText, setDraftEditText] = useState("");
   const [draftActionPending, setDraftActionPending] = useState<string | null>(null);
+
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [creatingTask, setCreatingTask] = useState(false);
+
+  /** "Desde una conversación puedo crear tareas automáticamente" — a minimal
+   * inline quick-add (title only, same "title + optional due date" mini-form
+   * CardDetailSheet's own "Tareas" tab already uses for opportunities),
+   * rather than pulling TaskFormSheet's full members/contactOptions props
+   * into this already-large component. relatedType is fixed to this
+   * conversation; the rest are TaskInput defaults resolved server-side. */
+  async function handleCreateTaskFromConversation() {
+    if (!detail || !newTaskTitle.trim()) return;
+    setCreatingTask(true);
+    try {
+      await createTask({
+        title: newTaskTitle.trim(),
+        description: "",
+        priority: "medium",
+        dueAt: null,
+        assignedTo: "",
+        relatedType: "conversation",
+        relatedId: detail.id,
+      });
+      toast.success("Tarea creada.");
+      setNewTaskTitle("");
+      setShowTaskForm(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo crear la tarea.");
+    } finally {
+      setCreatingTask(false);
+    }
+  }
 
   async function handleApproveDraft(messageId: string) {
     setDraftActionPending(messageId);
@@ -380,15 +415,47 @@ export function ConversationThread({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onOpenInfo}
-          aria-label="Ver detalles del contacto"
-          className="flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2 lg:hidden"
-        >
-          <Info size={14} /> Detalles
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowTaskForm((v) => !v)}
+            aria-label="Crear tarea desde esta conversación"
+            title="Crear tarea"
+            className="flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2"
+          >
+            <ListTodo size={14} /> Crear tarea
+          </button>
+          <button
+            type="button"
+            onClick={onOpenInfo}
+            aria-label="Ver detalles del contacto"
+            className="flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2 lg:hidden"
+          >
+            <Info size={14} /> Detalles
+          </button>
+        </div>
       </div>
+
+      {showTaskForm && (
+        <div className="flex items-center gap-2 border-b border-border-default bg-surface-1 px-5 py-2.5">
+          <input
+            autoFocus
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCreateTaskFromConversation()}
+            placeholder="Título de la tarea…"
+            className="flex-1 rounded-sm border border-border-strong bg-surface-1 px-3 py-1.5 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+          />
+          <button
+            type="button"
+            disabled={creatingTask || !newTaskTitle.trim()}
+            onClick={handleCreateTaskFromConversation}
+            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-600 disabled:opacity-40"
+          >
+            Crear
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {allMessages.length === 0 ? (

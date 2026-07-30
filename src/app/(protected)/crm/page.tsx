@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { forbidden } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import { isPlatformAdmin as checkIsPlatformAdmin } from "@/lib/auth/roles";
 import { getCrmBoard, getCrmPipelines } from "@/lib/crm/queries";
@@ -29,6 +29,10 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   // ?tab=agents URL, not just a hidden tab (CrmAtsTabStrip.tsx).
   const { tab } = await searchParams;
   if (isRealAgent && tab === "agents") forbidden();
+  // "Tareas" was promoted out of this tab strip into its own top-level
+  // Workspace module (/tasks, same promotion CrmAtsTabStrip.tsx already
+  // documents for KPIs) — this keeps old ?tab=tasks bookmarks/links alive.
+  if (tab === "tasks") redirect("/tasks");
 
   const isPlatformAdmin = await checkIsPlatformAdmin();
 

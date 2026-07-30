@@ -10,6 +10,7 @@ import {
   Inbox,
   Kanban,
   LayoutDashboard,
+  ListTodo,
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -44,12 +45,21 @@ export interface NavItem {
  * KpisSection component, same queries, not workspace_modules-gated (it
  * never was even as a CRM tab; `KpisSection` shows its own "conectá tu
  * hoja" empty state internally when there's no Google Sheets connection
- * yet, same as Inbox/Calendario/Documentos being always-on links). */
+ * yet, same as Inbox/Calendario/Documentos being always-on links).
+ *
+ * "Tareas" follows that same promotion pattern: it used to be a tab inside
+ * CRM (CrmAtsTabStrip.tsx) and is now its own top-level module (/tasks),
+ * redesigned into a full Notion/Linear-style workspace, per explicit user
+ * request. Unlike KPIs it IS workspace_modules-gated (docs/blueprint
+ * 03-modules.md's 3-layer enforcement), because unlike KPIs it has real
+ * data of its own (tasks/checklists/comments/files) rather than just an
+ * external-connection empty state. */
 export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
   return [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Inbox", href: "/inbox", icon: Inbox, comingSoon: false },
     { label: "Calendario", href: "/calendar", icon: CalendarDays, comingSoon: false },
+    { label: "Tareas", href: "/tasks", icon: ListTodo, comingSoon: !enabledModules.has("tasks") },
     { label: "Documentos", href: "/documents", icon: Folder, comingSoon: false },
     { label: "CRM", href: "/crm", icon: Kanban, comingSoon: !enabledModules.has("crm") },
     { label: "Asesores", href: "/advisors", icon: ShieldCheck, comingSoon: !enabledModules.has("advisors") },

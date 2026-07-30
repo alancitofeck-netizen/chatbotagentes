@@ -7,12 +7,15 @@ import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { getCrmBoard, getCrmPipelines, getOpportunityActivity, getOpportunityDetail } from "@/lib/crm/queries";
 import { getCrmAnalyticsRangeData, resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
 import { syncCloseDateEvent, updateCloseEventStatus, deleteCloseDateEvent } from "@/lib/crm/calendarSync";
+import { logActivity } from "@/lib/activity/log";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 /** Feeds CardDetailSheet's "Historial" tab — `audit_log` already existed
  * (0020_agent_engine_core.sql, built for the AI engine) but no CRM mutation
- * ever wrote to it, so an opportunity's history tab was always just a stub. */
+ * ever wrote to it, so an opportunity's history tab was always just a stub.
+ * Thin wrapper over the generic `logActivity` (src/lib/activity/log.ts),
+ * extracted for reuse by the Tasks module — no behavior change here. */
 async function logOpportunityActivity(
   supabase: SupabaseServerClient,
   workspaceId: string,
@@ -21,15 +24,7 @@ async function logOpportunityActivity(
   metadata: Record<string, unknown> = {},
 ) {
   const memberId = await getCurrentMemberId(workspaceId);
-  await supabase.from("audit_log").insert({
-    workspace_id: workspaceId,
-    actor_type: "user",
-    actor_id: memberId,
-    action,
-    entity_type: "opportunity",
-    entity_id: opportunityId,
-    metadata,
-  });
+  await logActivity(supabase, workspaceId, memberId, "opportunity", opportunityId, action, metadata);
 }
 
 async function getStageInfo(

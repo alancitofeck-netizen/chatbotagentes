@@ -9,7 +9,6 @@ const CRM_TABS = [
   { key: "analytics", label: "Analytics", href: "/crm?tab=analytics" },
   { key: "agents", label: "Agentes", href: "/crm?tab=agents", managerOnly: true },
   { key: "agentes-ia", label: "Agentes IA", href: "/crm?tab=agentes-ia" },
-  { key: "tasks", label: "Tareas", href: "/crm?tab=tasks" },
 ] as const;
 
 /**

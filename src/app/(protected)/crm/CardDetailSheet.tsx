@@ -392,6 +392,9 @@ export function CardDetailSheet({
                               </p>
                               {task.dueAt && <p className="text-xs text-neutral-500">Vence: {formatEventDate(task.dueAt)}</p>}
                             </div>
+                            <Link href={`/tasks/${task.id}`} className="shrink-0 text-[12px] text-accent-600 hover:underline">
+                              Abrir en Workspace →
+                            </Link>
                           </li>
                         ))}
                       </ul>

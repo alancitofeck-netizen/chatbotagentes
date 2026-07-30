@@ -1,0 +1,120 @@
+/* Tiptap ships no default styling — no @tailwindcss/typography plugin exists
+ * in this project (confirmed absent), so the block content gets its own
+ * small, scoped stylesheet instead of pulling in a new Tailwind plugin for
+ * one editor. */
+
+.content {
+  outline: none;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-foreground);
+  min-height: 120px;
+}
+
+.content p {
+  margin: 0.4em 0;
+}
+
+.content h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+}
+
+.content h2 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 0.7em 0 0.3em;
+}
+
+.content h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.6em 0 0.3em;
+}
+
+.content ul,
+.content ol {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+
+.content ul {
+  list-style: disc;
+}
+
+.content ol {
+  list-style: decimal;
+}
+
+.content blockquote {
+  margin: 0.5em 0;
+  padding-left: 0.9em;
+  border-left: 3px solid var(--color-border-strong);
+  color: var(--color-neutral-500, #6b7280);
+}
+
+.content pre {
+  margin: 0.5em 0;
+  padding: 0.7em 0.9em;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.content code {
+  font-family: var(--font-mono);
+}
+
+.content p code {
+  background: var(--color-surface-3);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+
+.content hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1px solid var(--color-border-default);
+}
+
+.content a {
+  color: var(--color-accent-500);
+  text-decoration: underline;
+}
+
+.content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+
+.content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.content ul[data-type="taskList"] li > label {
+  margin-top: 0.25em;
+  user-select: none;
+}
+
+.content ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+.content ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--color-neutral-400, #9ca3af);
+  text-decoration: line-through;
+}
+
+.content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--color-neutral-400, #9ca3af);
+}

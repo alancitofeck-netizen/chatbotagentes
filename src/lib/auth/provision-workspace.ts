@@ -21,8 +21,8 @@ function slugify(base: string) {
  * Owner (public.platform_admins, manually assigned), and every self-service
  * signup only ever administers their own Workspace as an agent (per the
  * corrected architecture: no automatic Owner assignment, ever). CRM,
- * Asesores and Mini Apps are enabled immediately, not left for the new
- * agent to toggle — module activation is owner/admin-only
+ * Asesores, Mini Apps and Tareas (Workspace) are enabled immediately, not
+ * left for the new agent to toggle — module activation is owner/admin-only
  * (requireManagerRole, src/lib/settings/actions.ts), and a solo
  * agent-only workspace has no owner/admin member who could ever turn them
  * on otherwise.
@@ -70,6 +70,7 @@ export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: s
     { workspace_id: workspace.id, module_key: "crm", enabled: true },
     { workspace_id: workspace.id, module_key: "advisors", enabled: true },
     { workspace_id: workspace.id, module_key: "mini_apps", enabled: true },
+    { workspace_id: workspace.id, module_key: "tasks", enabled: true },
   ]);
 
   if (modulesError) {

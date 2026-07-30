@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-const MODULE_KEYS = ["crm", "ats", "advisors", "mini_apps"] as const;
+const MODULE_KEYS = ["crm", "ats", "advisors", "mini_apps", "tasks"] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
 export interface ModuleStatus {

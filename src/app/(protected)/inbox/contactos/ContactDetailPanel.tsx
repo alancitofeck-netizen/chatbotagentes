@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CalendarDays, ExternalLink, Smartphone } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, ExternalLink, ListTodo, Smartphone } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -13,9 +14,12 @@ import type { ContactDetail } from "@/lib/contacts/queries";
 import type { WorkspaceTag } from "@/lib/inbox/queries";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import type { ContactMiniAppOrigin } from "@/lib/miniApps/queries";
+import type { TaskItem } from "@/lib/tasks/queries";
 import { addContactNote, updateContact } from "@/lib/contacts/actions";
 import { toggleContactTag } from "@/lib/inbox/actions";
 import { getContactEventsAction } from "@/lib/calendar/actions";
+import { getContactRelatedTasksAction } from "@/lib/tasks/actions";
+import { PRIORITY_META, STATUS_META } from "@/components/tasks/priorityMeta";
 import { getContactMiniAppOriginsAction } from "@/lib/miniApps/actions";
 import { TEMPLATE_KEY_META } from "@/lib/miniApps/templateCatalog";
 import { RetirementDiagnosisSummary, isRetirementDiagnosisShape } from "./RetirementDiagnosisSummary";
@@ -86,6 +90,8 @@ export function ContactDetailPanel({
   const [eventsLoaded, setEventsLoaded] = useState(false);
   const [origins, setOrigins] = useState<ContactMiniAppOrigin[]>([]);
   const [originsLoaded, setOriginsLoaded] = useState(false);
+  const [relatedTasks, setRelatedTasks] = useState<TaskItem[]>([]);
+  const [relatedTasksLoaded, setRelatedTasksLoaded] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -95,6 +101,14 @@ export function ContactDetailPanel({
       setEventsLoaded(true);
     });
   }, [tab, eventsLoaded, detail]);
+
+  useEffect(() => {
+    if (tab !== "tareas" || relatedTasksLoaded || !detail) return;
+    getContactRelatedTasksAction(detail.id).then((fresh) => {
+      setRelatedTasks(fresh);
+      setRelatedTasksLoaded(true);
+    });
+  }, [tab, relatedTasksLoaded, detail]);
 
   useEffect(() => {
     if (tab !== "origen" || originsLoaded || !detail) return;
@@ -169,6 +183,7 @@ export function ContactDetailPanel({
             <TabsTrigger value="resumen">Resumen</TabsTrigger>
             <TabsTrigger value="notas">Notas</TabsTrigger>
             <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
+            <TabsTrigger value="tareas">Tareas</TabsTrigger>
             <TabsTrigger value="historial">Historial</TabsTrigger>
             <TabsTrigger value="origen">Origen del Lead</TabsTrigger>
           </TabsList>
@@ -274,6 +289,34 @@ export function ContactDetailPanel({
                       </li>
                     );
                   })}
+                </ul>
+              )}
+            </TabsContent>
+
+            <TabsContent value="tareas">
+              {!relatedTasksLoaded ? (
+                <Skeleton className="h-16 w-full" />
+              ) : relatedTasks.length === 0 ? (
+                <p className="text-sm text-neutral-500">Sin tareas relacionadas todavía.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {relatedTasks.map((t) => (
+                    <li key={t.id} className="flex items-center gap-2 rounded-md bg-surface-2 p-3">
+                      <ListTodo size={15} className="shrink-0 text-neutral-400" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate text-sm ${t.status === "completed" ? "text-neutral-400 line-through" : "text-foreground"}`}>
+                          {t.title}
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                          <Badge variant={STATUS_META[t.status].badgeVariant}>{STATUS_META[t.status].label}</Badge>
+                          <Badge variant={PRIORITY_META[t.priority].badgeVariant}>{PRIORITY_META[t.priority].label}</Badge>
+                        </div>
+                      </div>
+                      <Link href={`/tasks/${t.id}`} className="shrink-0 text-[12px] text-accent-600 hover:underline">
+                        Abrir →
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               )}
             </TabsContent>
