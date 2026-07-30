@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import { CalendarDays, CheckCircle2, Circle, Download, Trash2, Upload } from "lucide-react";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
-import { createClient } from "@/lib/supabase/client";
+import { uploadDocumentFile } from "@/lib/documents/uploadClient";
 import { fileTypeMetaFor, formatFileSize } from "@/components/documents/documentIcons";
 import type { OpportunityDetail, OpportunityActivityEntry } from "@/lib/crm/queries";
 import type { CalendarEvent } from "@/lib/calendar/queries";
@@ -165,12 +165,11 @@ export function CardDetailSheet({
   async function handleUploadFiles(files: FileList | null) {
     if (!files || files.length === 0 || !opportunityId || !detail) return;
     setUploading(true);
-    const supabase = createClient();
     for (const file of Array.from(files)) {
       const documentId = crypto.randomUUID();
       const storagePath = `${detail.workspaceId}/${documentId}/${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
-      if (uploadError) {
+      const uploaded = await uploadDocumentFile(storagePath, file);
+      if (!uploaded) {
         toast.error(`No se pudo subir ${file.name}.`);
         continue;
       }

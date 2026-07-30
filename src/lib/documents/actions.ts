@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import {
   getDocumentById,
@@ -180,7 +181,13 @@ export async function duplicateDocument(documentId: string): Promise<{ id: strin
   if (fetchError || !original) throw new Error("Documento no encontrado.");
 
   const newStoragePath = `${workspaceId}/${crypto.randomUUID()}/${original.name}`;
-  const { error: copyError } = await supabase.storage.from("documents").copy(original.storage_path, newStoragePath);
+  // Storage's own RLS is bypassed via the service-role client — this
+  // project's Storage service doesn't verify the current JWT signing key
+  // and rejects every auth.uid()-based check (see
+  // supabase/migrations/0070_task_group_covers_final.sql). The .eq(
+  // "workspace_id", workspaceId) fetch above is the real authorization
+  // check; it already ran on the RLS-scoped client.
+  const { error: copyError } = await createServiceRoleClient().storage.from("documents").copy(original.storage_path, newStoragePath);
   if (copyError) throw new Error("No se pudo duplicar el archivo.");
 
   const nameParts = original.name.split(".");
@@ -236,7 +243,7 @@ export async function deleteDocumentPermanently(documentId: string): Promise<voi
   const { workspaceId } = await requireActiveWorkspace();
   const supabase = await createClient();
   const { data: doc } = await supabase.from("documents").select("storage_path").eq("id", documentId).eq("workspace_id", workspaceId).single();
-  if (doc?.storage_path) await supabase.storage.from("documents").remove([doc.storage_path]);
+  if (doc?.storage_path) await createServiceRoleClient().storage.from("documents").remove([doc.storage_path]);
   const { error } = await supabase.from("documents").delete().eq("id", documentId).eq("workspace_id", workspaceId);
   if (error) throw new Error("No se pudo eliminar el documento definitivamente.");
   revalidateDocuments();
@@ -270,15 +277,18 @@ export async function unshareDocument(documentId: string, memberId: string): Pro
   revalidateDocuments();
 }
 
-/** Short-lived signed URL — the requesting client's own session (RLS on
- * storage.objects) already gates this to workspace members, same as any
- * other read path in this module; no service-role needed. */
+/** Short-lived signed URL. The .eq("workspace_id", workspaceId) lookup above
+ * is the real authorization gate (scoped to the caller's own workspace) —
+ * createSignedUrl itself runs on the service-role client because Storage's
+ * own RLS doesn't verify this project's current JWT signing key and would
+ * otherwise reject the call outright (see
+ * supabase/migrations/0070_task_group_covers_final.sql). */
 export async function getDownloadUrl(documentId: string): Promise<string | null> {
   const { workspaceId } = await requireActiveWorkspace();
   const supabase = await createClient();
   const { data: doc } = await supabase.from("documents").select("storage_path").eq("id", documentId).eq("workspace_id", workspaceId).single();
   if (!doc?.storage_path) return null;
-  const { data, error } = await supabase.storage.from("documents").createSignedUrl(doc.storage_path, 60);
+  const { data, error } = await createServiceRoleClient().storage.from("documents").createSignedUrl(doc.storage_path, 60);
   if (error) return null;
   return data.signedUrl;
 }

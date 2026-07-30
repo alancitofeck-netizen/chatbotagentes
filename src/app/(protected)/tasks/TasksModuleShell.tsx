@@ -15,7 +15,13 @@ import { TaskAiPanel } from "./TaskAiPanel";
  * slim top bar ("Nuevo"/IA toggle) wrapping whatever page is active. Each
  * page under /tasks/* provides its own heading/content below this bar — this
  * component deliberately renders no page title of its own. */
-export function TasksModuleShell({ groups, children }: { groups: TaskGroup[]; children: ReactNode }) {
+export function TasksModuleShell({
+  groups,
+  children,
+}: {
+  groups: TaskGroup[];
+  children: ReactNode;
+}) {
   const router = useRouter();
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -48,7 +54,9 @@ export function TasksModuleShell({ groups, children }: { groups: TaskGroup[]; ch
       </div>
 
       {aiPanelOpen && <TaskAiPanel onClose={() => setAiPanelOpen(false)} />}
-      {showGroupForm && <GroupFormDialog current={null} onClose={() => setShowGroupForm(false)} onSaved={handleGroupCreated} />}
+      {showGroupForm && (
+        <GroupFormDialog current={null} onClose={() => setShowGroupForm(false)} onSaved={handleGroupCreated} />
+      )}
       {showTemplatePicker && <TemplatePickerDialog onClose={() => setShowTemplatePicker(false)} onCreated={handleGroupCreated} />}
     </div>
   );

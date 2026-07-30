@@ -12,5 +12,9 @@ export default async function TasksLayout({ children }: { children: ReactNode })
   const { workspaceId } = await requireActiveWorkspace();
   const groups = await getTaskGroups(workspaceId);
 
-  return <TasksModuleShell groups={groups}>{children}</TasksModuleShell>;
+  return (
+    <TasksModuleShell groups={groups}>
+      {children}
+    </TasksModuleShell>
+  );
 }

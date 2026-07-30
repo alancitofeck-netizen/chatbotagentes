@@ -20,7 +20,7 @@ import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { toast } from "@/components/toast/toast";
-import { createClient } from "@/lib/supabase/client";
+import { uploadDocumentFile } from "@/lib/documents/uploadClient";
 import { cn } from "@/lib/utils/cn";
 import type { DocumentItem, DocumentView, FolderNode } from "@/lib/documents/queries";
 import {
@@ -175,7 +175,6 @@ export function DocumentsShell({
     const targetFolderId = view === "all" ? folderId : null;
     setUploads(list.map((f) => ({ name: f.name, status: "uploading" as const })));
 
-    const supabase = createClient();
     for (const file of list) {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
       if (!ACCEPTED_EXTENSIONS.includes(ext)) {
@@ -185,8 +184,8 @@ export function DocumentsShell({
       }
       const documentId = crypto.randomUUID();
       const storagePath = `${workspaceId}/${documentId}/${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
-      if (uploadError) {
+      const uploaded = await uploadDocumentFile(storagePath, file);
+      if (!uploaded) {
         setUploads((prev) => prev.map((u) => (u.name === file.name ? { ...u, status: "error" } : u)));
         toast.error(`No se pudo subir ${file.name}.`);
         continue;

@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import { cn } from "@/lib/utils/cn";
-import { createClient } from "@/lib/supabase/client";
 import type { GroupColor, TaskGroup } from "@/lib/tasks/groups/queries";
 import { createTaskGroup, updateTaskGroup } from "@/lib/tasks/groups/actions";
 import { GROUP_COLOR_KEYS, GROUP_COLOR_META, GROUP_ICON_PRESETS } from "./groupColorMeta";
@@ -40,16 +39,21 @@ export function GroupFormDialog({
 
   async function uploadCover(groupId: string): Promise<string | null> {
     if (!coverFile) return current?.coverImageUrl ?? null;
-    const supabase = createClient();
-    const ext = coverFile.name.split(".").pop() || "jpg";
-    const path = `${groupId}/cover.${ext}`;
-    const { error } = await supabase.storage.from("task-group-covers").upload(path, coverFile, { upsert: true });
-    if (error) {
+    // Uploaded through /api/tasks/groups/[groupId]/cover instead of calling
+    // Storage directly from the browser — this project's Storage service
+    // doesn't verify its own current JWT signing key, so a direct
+    // supabase.storage.from(...).upload() always authenticates as Postgres
+    // role `anon` and gets rejected by RLS (see
+    // supabase/migrations/0070_task_group_covers_final.sql).
+    const body = new FormData();
+    body.append("file", coverFile);
+    const res = await fetch(`/api/tasks/groups/${groupId}/cover`, { method: "POST", body });
+    if (!res.ok) {
       toast.error("No se pudo subir la portada.");
       return current?.coverImageUrl ?? null;
     }
-    const { data } = supabase.storage.from("task-group-covers").getPublicUrl(path);
-    return `${data.publicUrl}?v=${Date.now()}`;
+    const { url } = (await res.json()) as { url: string };
+    return url;
   }
 
   function handleSubmit(e: React.FormEvent) {

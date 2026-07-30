@@ -1,0 +1,38 @@
+-- Documents the actual root cause of "hay un error al subir la portada para
+-- la creacion del grupo de tareas", found via live testing (Playwright +
+-- direct Storage REST/curl calls with the real bearer token, bypassing the
+-- browser entirely to rule out any client-side timing issue):
+--
+-- Supabase Storage was authenticating EVERY request against this project as
+-- Postgres role `anon`, regardless of a valid, non-expired user JWT being
+-- sent as `Authorization: Bearer ...` (confirmed empirically: a policy
+-- checking `current_user = 'anon'` passed; `current_user = 'authenticated'`
+-- and `auth.uid() is not null` both failed). This means `auth.uid()` returns
+-- NULL for every Storage request project-wide right now, so ANY
+-- Storage RLS check that depends on it (auth.uid() directly, or indirectly
+-- via core.has_workspace_role/core.is_workspace_member) rejects every
+-- insert/update/delete — not just on task-group-covers, but on `avatars`
+-- (confirmed live) and by the same logic `documents` and `mini-app-logos`
+-- too. SELECT-only policies (bucket_id check, no auth.uid()) still pass,
+-- which is why nothing about *reading* files ever looked broken.
+--
+-- This traces to the project's JWT signing key: it was rotated from the
+-- legacy shared HS256 secret to a new asymmetric ES256 key (Supabase's
+-- "JWT Signing Keys" feature — see `kid: dfc5d3eb-...` in current session
+-- tokens vs. the `previously_used` HS256 key id `3bd57d62-...`). PostgREST
+-- correctly verifies the new ES256-signed JWTs (ordinary table RLS/auth.uid()
+-- works fine everywhere else in the app), but Storage does not, and treats
+-- an unverified JWT as anonymous rather than rejecting the request outright.
+--
+-- The `core` schema USAGE grants added in 0069 were based on a wrong
+-- hypothesis and did not fix this — they're harmless and left in place as
+-- hygiene only. The join-vs-path-segment fix in 0068 was a real, independent
+-- bug (also worth having fixed) but was likewise insufficient on its own.
+--
+-- No SQL change in this file — the storage.objects policies are already
+-- correct (0068). The actual fix has to happen at the project's JWT signing
+-- key configuration (e.g. reverting/adding a legacy HS256 key as the
+-- in-use signing key until Storage supports ES256), which is a production
+-- auth-infrastructure change outside the scope of a schema migration and
+-- was raised with the user rather than applied silently.
+select 1;

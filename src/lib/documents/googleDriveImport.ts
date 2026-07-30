@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import {
   getValidGoogleDriveAccessToken,
@@ -96,7 +97,11 @@ async function importOrReuseDriveFile(
 
   const documentId = crypto.randomUUID();
   const storagePath = `${workspaceId}/${documentId}/${name}`;
-  const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, buffer, { contentType: mimeType });
+  // Service-role client for the actual Storage write — see
+  // supabase/migrations/0070_task_group_covers_final.sql for why Storage's
+  // own RLS rejects every auth.uid()-based check on this project right now.
+  const storageClient = createServiceRoleClient();
+  const { error: uploadError } = await storageClient.storage.from("documents").upload(storagePath, buffer, { contentType: mimeType });
   if (uploadError) throw new Error(`No se pudo subir «${name}» a Storage.`);
 
   const { data, error } = await supabase
@@ -118,7 +123,7 @@ async function importOrReuseDriveFile(
     .select("id")
     .single();
   if (error || !data) {
-    await supabase.storage.from("documents").remove([storagePath]);
+    await storageClient.storage.from("documents").remove([storagePath]);
     throw new Error(`No se pudo registrar «${name}».`);
   }
   return { documentId: data.id as string, reused: false };
@@ -258,7 +263,7 @@ export async function exportDocumentToDriveAction(
     .single();
   if (fetchError || !doc) throw new Error("Documento no encontrado.");
 
-  const { data: blob, error: downloadError } = await supabase.storage.from("documents").download(doc.storage_path);
+  const { data: blob, error: downloadError } = await createServiceRoleClient().storage.from("documents").download(doc.storage_path);
   if (downloadError || !blob) throw new Error("No se pudo leer el archivo del CRM.");
 
   const buffer = await blob.arrayBuffer();

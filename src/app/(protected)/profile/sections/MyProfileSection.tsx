@@ -83,7 +83,6 @@ export function MyProfileSection({ profile, onChanged }: { profile: MyProfile; o
 
       <AvatarUploadDialog
         open={photoOpen}
-        userId={profile.userId}
         onClose={() => setPhotoOpen(false)}
         onUploaded={(url) => {
           setAvatarUrl(url);

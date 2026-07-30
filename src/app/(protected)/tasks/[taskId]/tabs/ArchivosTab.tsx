@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 import { Download, Trash2, Upload } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/toast/toast";
-import { createClient } from "@/lib/supabase/client";
+import { uploadDocumentFile } from "@/lib/documents/uploadClient";
 import { fileTypeMetaFor, formatFileSize } from "@/components/documents/documentIcons";
 import type { DocumentItem } from "@/lib/documents/queries";
 import { getDocumentsByRelatedAction, getDownloadUrl, recordUploadedDocument, trashDocument } from "@/lib/documents/actions";
 
 /** "Archivos" tab — identical mechanism to CardDetailSheet's own "Archivos"
- * tab for opportunities: browser uploads straight to Supabase Storage
- * (bucket `documents`, 0019_documents_module.sql's RLS), then
- * recordUploadedDocument just records the row with related_type='task'. */
+ * tab for opportunities: uploads through /api/documents/upload (see
+ * src/lib/documents/uploadClient.ts), then recordUploadedDocument just
+ * records the row with related_type='task'. */
 export function ArchivosTab({ taskId, workspaceId }: { taskId: string; workspaceId: string }) {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -28,12 +28,11 @@ export function ArchivosTab({ taskId, workspaceId }: { taskId: string; workspace
   async function handleUploadFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setUploading(true);
-    const supabase = createClient();
     for (const file of Array.from(files)) {
       const documentId = crypto.randomUUID();
       const storagePath = `${workspaceId}/${documentId}/${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
-      if (uploadError) {
+      const uploaded = await uploadDocumentFile(storagePath, file);
+      if (!uploaded) {
         toast.error(`No se pudo subir ${file.name}.`);
         continue;
       }

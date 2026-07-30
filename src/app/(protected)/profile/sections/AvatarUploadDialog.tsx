@@ -5,7 +5,6 @@ import Cropper, { type Area } from "react-easy-crop";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
-import { createClient } from "@/lib/supabase/client";
 import { updateMyAvatar } from "@/lib/profile/actions";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -41,15 +40,15 @@ async function getCroppedBlob(imageSrc: string, area: Area): Promise<Blob> {
  * 0049_user_avatars.sql), overwritten on every re-upload (upsert), so
  * there's never more than one object per user and every other module that
  * shows this user's avatar (via public.workspace_member_names) picks up the
- * change automatically the next time it refetches. */
+ * change automatically the next time it refetches. The userId segment of
+ * that path is resolved server-side (/api/profile/avatar) from the
+ * authenticated session, not passed in from here. */
 export function AvatarUploadDialog({
   open,
-  userId,
   onClose,
   onUploaded,
 }: {
   open: boolean;
-  userId: string;
   onClose: () => void;
   onUploaded: (url: string) => void;
 }) {
@@ -97,18 +96,14 @@ export function AvatarUploadDialog({
     setIsSaving(true);
     try {
       const blob = await getCroppedBlob(imageSrc, croppedArea);
-      const supabase = createClient();
-      const path = `${userId}/avatar.webp`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, blob, { upsert: true, contentType: "image/webp", cacheControl: "3600" });
-      if (uploadError) throw new Error("No se pudo subir la imagen.");
-
-      const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(path);
-      // Cache-bust — the path is fixed/reused, so without this a browser or
-      // CDN that already cached the previous photo at this exact URL would
-      // keep showing it after a re-upload.
-      const url = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+      const body = new FormData();
+      body.append("file", blob, "avatar.webp");
+      const res = await fetch("/api/profile/avatar", { method: "POST", body });
+      if (!res.ok) throw new Error("No se pudo subir la imagen.");
+      // Cache-bust — the path is fixed/reused, so without the ?v= a browser
+      // or CDN that already cached the previous photo at this exact URL
+      // would keep showing it after a re-upload (the route appends it).
+      const { url } = (await res.json()) as { url: string };
 
       await updateMyAvatar(url);
       toast.success("Foto de perfil actualizada.");
