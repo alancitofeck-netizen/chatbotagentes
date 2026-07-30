@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarDays,
   Folder,
+  GraduationCap,
   Inbox,
   Kanban,
   LayoutDashboard,
@@ -53,7 +54,13 @@ export interface NavItem {
  * request. Unlike KPIs it IS workspace_modules-gated (docs/blueprint
  * 03-modules.md's 3-layer enforcement), because unlike KPIs it has real
  * data of its own (tasks/checklists/comments/files) rather than just an
- * external-connection empty state. */
+ * external-connection empty state.
+ *
+ * "Classroom" is a different case again: it's a GLOBAL course catalog (one
+ * shared curriculum teaching Growth Link itself), not per-workspace content,
+ * so it's never workspace_modules-gated either — always a real link, same
+ * as KPIs/Inbox/Calendario/Documentos, per explicit user request (see
+ * supabase/migrations/0071_classroom_module.sql). */
 export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
   return [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -65,6 +72,7 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     { label: "Asesores", href: "/advisors", icon: ShieldCheck, comingSoon: !enabledModules.has("advisors") },
     { label: "Mini Apps", href: "/mini-apps", icon: AppWindow, comingSoon: !enabledModules.has("mini_apps") },
     { label: "KPIs", href: "/kpis", icon: BarChart3, comingSoon: false },
+    { label: "Classroom", href: "/classroom", icon: GraduationCap, comingSoon: false },
   ];
 }
 
