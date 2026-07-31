@@ -97,7 +97,8 @@ export function ConfiguracionTab({
   const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/apps/${miniApp.slug}` : "";
   const curlExample = `curl -X POST "${endpointUrl}" \\\n  -H "Content-Type: application/json" \\\n  -H "X-Api-Key: <tu-api-key>" \\\n  -d '{"nombre":"Prueba","whatsapp":"5215512345678","consentimiento":true,"consentimiento_fecha":"2026-01-01T00:00:00.000Z","fecha":"2026-01-01T00:00:00.000Z"}'`;
   const sdkOrigin = typeof window !== "undefined" ? window.location.origin : "";
-  const sdkSnippet = `<script src="${sdkOrigin}/api/public/sdk.js"></script>\n<script>\n  GrowthLink.init({\n    apiKey: "<tu-api-key>",\n    endpoint: "${endpointUrl}",\n  });\n</script>\n\n<!-- Cuando tu app quiera enviar un lead: -->\n<script>\n  GrowthLink.captureLead({\n    name: "Juan Pérez",\n    phone: "5215512345678",\n    email: "juan@ejemplo.com",\n    company: "Acme",\n    notes: "Interesado en el plan premium",\n  });\n</script>`;
+  const sdkSnippet = `<script src="${sdkOrigin}/api/public/sdk.js"></script>\n<script>\n  GrowthLink.init({\n    appId: "${miniApp.slug}",\n    apiKey: "<tu-api-key>",\n  });\n</script>`;
+  const advancedSdkSnippet = `<!-- Uso avanzado (opcional) — por defecto cualquier <form> o botón\n     "Guardar/Continuar/Enviar/Calcular/Finalizar/..." ya sincroniza solo. -->\n<script>\n  // Capturar un formulario/contenedor puntual a mano:\n  GrowthLink.captureForm(document.querySelector("#miFormulario"));\n\n  // O enviar un lead con forma fija:\n  GrowthLink.captureLead({\n    name: "Juan Pérez",\n    phone: "5215512345678",\n    email: "juan@ejemplo.com",\n    company: "Acme",\n    notes: "Interesado en el plan premium",\n  });\n</script>`;
 
   function handleSave() {
     startTransition(async () => {
@@ -437,8 +438,14 @@ export function ConfiguracionTab({
             <summary className="cursor-pointer text-neutral-500">Ver snippet de integración (SDK JavaScript)</summary>
             <pre className="mt-2 overflow-x-auto rounded-md bg-surface-3 p-3 text-xs text-foreground">{sdkSnippet}</pre>
             <p className="mt-2 text-xs text-neutral-500">
-              El desarrollador de la app externa solo pega este snippet — no necesita conocer cómo funciona el CRM.
+              Pegá esto antes de <code>{"</body>"}</code> en el HTML de tu app — a partir de ahí, cualquier formulario (sin importar el nombre del
+              botón: Guardar, Continuar, Enviar, Calcular, Finalizar...) sincroniza solo con el CRM, sin escribir código adicional. El{" "}
+              <code>{"<script src>"}</code> tiene que ser una URL absoluta (no relativa) para que el SDK pueda ubicarse solo.
             </p>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-neutral-500">Uso avanzado / manual</summary>
+              <pre className="mt-2 overflow-x-auto rounded-md bg-surface-3 p-3 text-xs text-foreground">{advancedSdkSnippet}</pre>
+            </details>
           </details>
           <details className="text-sm">
             <summary className="cursor-pointer text-neutral-500">Ver ejemplo de request (curl)</summary>

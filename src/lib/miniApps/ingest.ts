@@ -125,6 +125,21 @@ function toFiniteNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Prefers whatever `agente` the submission itself sent (trimmed), falling
+ * back to the mini app's own assigned advisor (`config.assignedAgentName`,
+ * cached at creation/update time under a real authenticated session — see
+ * createMiniApp/updateMiniApp in actions.ts). Shared by both entry points
+ * (public API-key route and the Growth-Link-hosted page) so an externally
+ * embedded Mini App's SDK — which has no way to know the assigned advisor's
+ * name — still gets it recorded automatically, same as the hosted page
+ * already did before this was consolidated here. */
+function resolveAgenteName(rawAgente: unknown, config: Record<string, unknown>): string | null {
+  const trimmed = typeof rawAgente === "string" ? rawAgente.trim() : "";
+  if (trimmed) return trimmed;
+  const cached = typeof config.assignedAgentName === "string" ? config.assignedAgentName.trim() : "";
+  return cached || null;
+}
+
 interface ProcessLeadOptions {
   /** True for the Growth-Link-hosted page's own submission path — same-
    * origin by construction, so there's no third-party Origin header to
@@ -168,6 +183,14 @@ async function processLeadSubmission(
   const data: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (!KNOWN_TOP_LEVEL_FIELDS.has(key)) data[key] = value;
+  }
+
+  // Mini App version — authoritative from the app's own config, never
+  // trusted from the client (same posture as the financial recomputes
+  // below). Only present for hostingMode "upload" apps (bundleVersion is
+  // undefined for "url"-mode apps, so this is a no-op there).
+  if (typeof app.config?.bundleVersion === "number") {
+    data.bundle_version = app.config.bundleVersion;
   }
 
   // Authoritative recompute — never trust whatever fondo_estimado/etc. the
@@ -250,7 +273,7 @@ async function processLeadSubmission(
       workspace_id: app.workspace_id,
       mini_app_id: app.id,
       origen_app: typeof body.origen_app === "string" && body.origen_app.trim() ? body.origen_app.trim() : app.name,
-      agente: typeof body.agente === "string" ? body.agente.trim() || null : null,
+      agente: resolveAgenteName(body.agente, app.config),
       nombre,
       whatsapp,
       consentimiento: true,

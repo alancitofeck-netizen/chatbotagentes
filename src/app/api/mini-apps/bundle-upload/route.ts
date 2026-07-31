@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   // /api/documents/upload/route.ts).
   const { data: miniApp } = await service
     .from("mini_apps")
-    .select("id, workspace_id, slug, config")
+    .select("id, workspace_id, slug, config, allowed_origins")
     .eq("id", miniAppId)
     .eq("workspace_id", active.workspaceId)
     .maybeSingle();
@@ -110,7 +110,22 @@ export async function POST(request: NextRequest) {
     indexPath: parsed.bundle.indexPath,
     bundleVersion,
   };
-  await service.from("mini_apps").update({ config: nextConfig, updated_at: new Date().toISOString() }).eq("id", miniAppId);
+
+  // A bundle served inside the sandboxed iframe (LinkedAppLanding.tsx, no
+  // allow-same-origin) has an opaque origin, so its own fetch() calls send
+  // a literal `Origin: null` — isOriginAllowed (ingest.ts) requires an
+  // exact match against allowed_origins, which is empty by default (no
+  // third-party origin was ever relevant before uploads existed). Without
+  // this, the GrowthLink SDK's automatic form capture would 403 on every
+  // hosted bundle. This doesn't weaken the allow-list for hostingMode
+  // "url" apps (real third-party sites keep sending their own real Origin).
+  const existingOrigins = (miniApp.allowed_origins as string[] | null) ?? [];
+  const nextOrigins = existingOrigins.includes("null") ? existingOrigins : [...existingOrigins, "null"];
+
+  await service
+    .from("mini_apps")
+    .update({ config: nextConfig, allowed_origins: nextOrigins, updated_at: new Date().toISOString() })
+    .eq("id", miniAppId);
 
   // Same proxy route the public /apps/{slug} page uses (see that route's own
   // comment) — Supabase Storage's public URL would serve index.html as

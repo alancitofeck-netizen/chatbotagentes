@@ -42,4 +42,4 @@ export const DEFAULT_LINKED_APP_ICON: LinkedAppIconKey = "Link2";
  * pulls in next/server, meant for the server route context only). Bump
  * whenever the SDK snippet changes in a way that matters to an
  * already-integrated external app. */
-export const SDK_VERSION = "1.0.0";
+export const SDK_VERSION = "2.0.0";

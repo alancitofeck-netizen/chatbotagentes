@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
@@ -403,27 +402,14 @@ export async function startMiniAppLeadConversation(leadId: string): Promise<{ co
  * (src/app/apps/[slug]/) — deliberately NOT gated by requireActiveWorkspace
  * (the caller is an anonymous visitor, not a logged-in member) and doesn't
  * require the API key the public Route Handler needs (see the comment on
- * resolveAuthorizedMiniApp in ingest.ts for why). If the mini app has no
- * `agente` in the submitted payload, defaults it to the assigned advisor's
- * name cached in `config.assignedAgentName` at creation/update time
- * (createMiniApp/updateMiniApp resolve it under a real authenticated
- * session, where workspace_member_names' own is_workspace_member() check
- * passes — that RPC would return nothing called from here, since a
- * service-role request has no auth.uid() for it to match against). */
+ * resolveAuthorizedMiniApp in ingest.ts for why). `agente` defaulting to the
+ * assigned advisor's name (`config.assignedAgentName`) now lives in
+ * processLeadSubmission itself (ingest.ts's `resolveAgenteName`) — shared
+ * with the public API-key route too, so this no longer needs its own
+ * config fetch. */
 export async function submitMiniAppLeadFromHostedPage(slug: string, payload: Record<string, unknown>): Promise<IngestResult> {
-  const supabase = createServiceRoleClient();
-  const { data: app } = await supabase.from("mini_apps").select("config").eq("slug", slug).maybeSingle();
-
-  const cachedAgentName = (app?.config as { assignedAgentName?: string } | null)?.assignedAgentName;
-  const agente = typeof payload.agente === "string" && payload.agente ? payload.agente : cachedAgentName;
-
   const headerList = await headers();
-  return ingestMiniAppLeadFromHostedPage(
-    slug,
-    { ...payload, agente },
-    headerList.get("x-forwarded-for"),
-    headerList.get("user-agent"),
-  );
+  return ingestMiniAppLeadFromHostedPage(slug, payload, headerList.get("x-forwarded-for"), headerList.get("user-agent"));
 }
 
 /** Appends the "calificación de lead" answers (asked during the results

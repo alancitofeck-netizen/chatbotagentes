@@ -162,13 +162,14 @@ export function LinkAppWizard({
   if (created) {
     const publicUrl = `${window.location.origin}/apps/${created.slug}`;
     const endpointUrl = `${window.location.origin}/api/public/mini-apps/${created.slug}/leads`;
-    const sdkSnippet = `<script src="${window.location.origin}/api/public/sdk.js"></script>\n<script>\n  GrowthLink.init({\n    apiKey: "${created.apiKey}",\n    endpoint: "${endpointUrl}",\n  });\n</script>`;
+    const sdkSnippet = `<script src="${window.location.origin}/api/public/sdk.js"></script>\n<script>\n  GrowthLink.init({\n    appId: "${created.slug}",\n    apiKey: "${created.apiKey}",\n  });\n</script>`;
     return (
       <Sheet open onClose={onClose} title="App vinculada" className="max-w-2xl">
         <div className="flex flex-col gap-4 p-5">
           <p className="text-sm text-neutral-500">
-            Guardá esta API key ahora — no se va a poder ver de nuevo. El desarrollador de la app externa solo necesita pegar el snippet de abajo,
-            no necesita conocer cómo funciona el CRM.
+            Guardá esta API key ahora — no se va a poder ver de nuevo. El desarrollador de la app externa solo necesita pegar el snippet de abajo
+            antes de <code>{"</body>"}</code> — a partir de ahí, cualquier formulario de esa página sincroniza solo con el CRM, sin escribir código
+            adicional.
           </p>
           <CopyableField label="App ID" value={created.slug} />
           <CopyableField label="Endpoint" value={endpointUrl} />
