@@ -20,6 +20,7 @@ import {
   labelFor,
   type QualificationOption,
 } from "@/lib/miniApps/qualificationOptions";
+import { extractInsuranceProspectFields } from "@/lib/insuranceProspects/fieldDictionary";
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "fecha",
@@ -276,7 +277,11 @@ async function processLeadSubmission(
   }
 
   if (insertedLead) {
-    await linkLeadToContact(supabase, app.workspace_id, nombre, whatsapp, insertedLead.id as string);
+    const leadId = insertedLead.id as string;
+    const contactId = await linkLeadToContact(supabase, app.workspace_id, nombre, whatsapp, leadId);
+    if (contactId) {
+      await syncInsuranceProspect(supabase, app.workspace_id, contactId, app.id, app.name, leadId, data);
+    }
   }
 
   return { ok: true, duplicate: insertError?.code === "23505", allowedOrigins, leadId: insertedLead?.id as string | undefined };
@@ -294,7 +299,7 @@ async function linkLeadToContact(
   nombre: string,
   whatsapp: string,
   leadId: string,
-): Promise<void> {
+): Promise<string | undefined> {
   try {
     const { data: upserted } = await supabase
       .from("contacts")
@@ -318,8 +323,82 @@ async function linkLeadToContact(
     if (contactId) {
       await supabase.from("mini_app_leads").update({ contact_id: contactId }).eq("id", leadId);
     }
+    return contactId;
   } catch (err) {
     console.error("[mini-apps] failed to link lead to contact:", err);
+    return undefined;
+  }
+}
+
+/** "Posibles Pólizas" auto-creation hook — fires for ANY mini app submission
+ * (regardless of template_key) whose payload happens to contain 1+
+ * recognized insurance-prospect field (fieldDictionary.ts) — no per-template
+ * check, so a future insurance-quote Mini App works the moment it starts
+ * sending these fields, same principle "Contactos de Apps" already
+ * established. Best-effort, same posture as linkLeadToContact: never fails
+ * the lead submission itself. Existing-row fields are never overwritten
+ * (only nulls get filled) — same "first touch wins" philosophy as
+ * linkLeadToContact's ignoreDuplicates, so a second, sparser submission from
+ * the same contact can never erase richer data already on file. */
+async function syncInsuranceProspect(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  workspaceId: string,
+  contactId: string,
+  miniAppId: string,
+  miniAppName: string,
+  leadId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const { columns, extra, hasAny } = extractInsuranceProspectFields(data);
+    if (!hasAny) return;
+
+    const { data: existingRow } = await supabase
+      .from("insurance_prospects")
+      .select("id, extra_fields, " + Object.keys(columns).join(", "))
+      .eq("workspace_id", workspaceId)
+      .eq("contact_id", contactId)
+      .maybeSingle();
+    const existing = existingRow as unknown as Record<string, unknown> | null;
+
+    if (!existing) {
+      const { data: created } = await supabase
+        .from("insurance_prospects")
+        .insert({
+          workspace_id: workspaceId,
+          contact_id: contactId,
+          mini_app_id: miniAppId,
+          mini_app_lead_id: leadId,
+          origen_app_nombre: miniAppName,
+          ...columns,
+          extra_fields: extra,
+        })
+        .select("id")
+        .single();
+      if (created) {
+        await supabase.from("notes").insert({
+          workspace_id: workspaceId,
+          notable_type: "insurance_prospect",
+          notable_id: created.id as string,
+          body: `Completó la Mini App "${miniAppName}".`,
+        });
+      }
+      return;
+    }
+
+    const fillOnly: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(columns)) {
+      if (existing[key] === null || existing[key] === undefined) fillOnly[key] = value;
+    }
+    const mergedExtra = { ...extra, ...((existing.extra_fields as Record<string, unknown> | null) ?? {}) };
+    if (Object.keys(fillOnly).length > 0 || Object.keys(extra).length > 0) {
+      await supabase
+        .from("insurance_prospects")
+        .update({ ...fillOnly, extra_fields: mergedExtra, updated_at: new Date().toISOString() })
+        .eq("id", existing.id as string);
+    }
+  } catch (err) {
+    console.error("[insurance-prospects] failed to sync prospect:", err);
   }
 }
 

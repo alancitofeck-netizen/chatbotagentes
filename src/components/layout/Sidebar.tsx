@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   ListTodo,
   ShieldCheck,
+  Umbrella,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -71,6 +72,12 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     { label: "CRM", href: "/crm", icon: Kanban, comingSoon: !enabledModules.has("crm") },
     { label: "Asesores", href: "/advisors", icon: ShieldCheck, comingSoon: !enabledModules.has("advisors") },
     { label: "Mini Apps", href: "/mini-apps", icon: AppWindow, comingSoon: !enabledModules.has("mini_apps") },
+    {
+      label: "Posibles Pólizas",
+      href: "/posibles-polizas",
+      icon: Umbrella,
+      comingSoon: !enabledModules.has("insurance_prospects"),
+    },
     { label: "KPIs", href: "/kpis", icon: BarChart3, comingSoon: false },
     { label: "Classroom", href: "/classroom", icon: GraduationCap, comingSoon: false },
   ];

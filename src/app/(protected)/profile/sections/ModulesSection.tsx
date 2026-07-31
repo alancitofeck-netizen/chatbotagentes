@@ -13,6 +13,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   advisors: { name: "Asesores", description: "Pólizas y clientes para agentes de seguros y asesores financieros." },
   mini_apps: { name: "Mini Apps", description: "Simuladores y formularios públicos que capturan leads para el CRM." },
   tasks: { name: "Tareas", description: "Workspace de productividad: tareas, checklists, comentarios y archivos." },
+  insurance_prospects: { name: "Posibles Pólizas", description: "Prospectos de seguro capturados desde Mini Apps, calculadoras y formularios." },
 };
 
 export function ModulesSection({
