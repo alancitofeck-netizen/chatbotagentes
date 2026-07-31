@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AppWindow, Plus } from "lucide-react";
+import { AppWindow, Link2, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +10,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import type { MiniAppListItem } from "@/lib/miniApps/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { getMiniAppsListAction } from "@/lib/miniApps/actions";
+import { TEMPLATE_KEY_META } from "@/lib/miniApps/templateCatalog";
 import { NewMiniAppWizard } from "./NewMiniAppWizard";
+import { LinkAppWizard } from "./LinkAppWizard";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
@@ -27,6 +29,7 @@ export function MiniAppsListShell({
 }) {
   const [miniApps, setMiniApps] = useState(initialMiniApps);
   const [showCreate, setShowCreate] = useState(false);
+  const [showLinkApp, setShowLinkApp] = useState(false);
 
   async function refetch() {
     setMiniApps(await getMiniAppsListAction());
@@ -44,7 +47,11 @@ export function MiniAppsListShell({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={() => setShowLinkApp(true)}>
+          <Link2 size={16} aria-hidden="true" />
+          Vincular App
+        </Button>
         <Button onClick={() => setShowCreate(true)}>
           <Plus size={16} aria-hidden="true" />
           Nueva Mini App
@@ -66,6 +73,9 @@ export function MiniAppsListShell({
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h3 className="text-[15px] font-semibold text-foreground">{app.name}</h3>
+                    <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+                      {TEMPLATE_KEY_META[app.templateKey]?.label ?? app.templateKey}
+                    </p>
                     {app.description && <p className="mt-0.5 text-[13px] text-neutral-500">{app.description}</p>}
                   </div>
                   <Badge variant={app.status === "active" ? "success" : "neutral"}>
@@ -84,6 +94,7 @@ export function MiniAppsListShell({
       )}
 
       {showCreate && <NewMiniAppWizard members={members} onClose={() => setShowCreate(false)} onCreated={refetch} />}
+      {showLinkApp && <LinkAppWizard members={members} onClose={() => setShowLinkApp(false)} onCreated={refetch} />}
     </div>
   );
 }

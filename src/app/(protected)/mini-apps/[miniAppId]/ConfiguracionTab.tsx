@@ -16,6 +16,7 @@ import { isValidHexColor } from "@/lib/miniApps/paletteEngine";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { LogoCropDialog } from "../LogoCropDialog";
 import { MiniAppPalettePreview } from "../MiniAppPalettePreview";
+import { LINKED_APP_TYPE_OPTIONS, LINKED_APP_ICON_OPTIONS, DEFAULT_LINKED_APP_ICON, type LinkedAppType } from "@/lib/miniApps/linkedAppOptions";
 
 function CopyableLine({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -64,6 +65,8 @@ export function ConfiguracionTab({
   const [showLogoDialog, setShowLogoDialog] = useState(false);
 
   const isSimulador = miniApp.templateKey === "simulador_retiro";
+  const isCalculadora = miniApp.templateKey === "calculadora_brecha_retiro";
+  const isLinkedApp = miniApp.templateKey === "app_vinculada";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -77,15 +80,20 @@ export function ConfiguracionTab({
     isSimulador ? (miniApp.config.fieldLabels.ingresoActual ?? "Tu ingreso mensual actual (MXN, opcional)") : "Tu ingreso mensual actual (MXN, opcional)",
   );
 
-  const [whatsappAsesor, setWhatsappAsesor] = useState(!isSimulador ? miniApp.config.whatsappAsesor : "");
-  const [avisoPrivacidadUrl, setAvisoPrivacidadUrl] = useState(!isSimulador ? miniApp.config.avisoPrivacidadUrl : "");
-  const [licenseBadge, setLicenseBadge] = useState(!isSimulador ? miniApp.config.licenseBadge : "");
+  const [whatsappAsesor, setWhatsappAsesor] = useState(isCalculadora ? miniApp.config.whatsappAsesor : "");
+  const [avisoPrivacidadUrl, setAvisoPrivacidadUrl] = useState(isCalculadora ? miniApp.config.avisoPrivacidadUrl : "");
+  const [licenseBadge, setLicenseBadge] = useState(isCalculadora ? miniApp.config.licenseBadge : "");
+
+  const [linkedAppType, setLinkedAppType] = useState<LinkedAppType>(isLinkedApp ? miniApp.config.linkedAppType : "otro");
+  const [linkedAppIcon, setLinkedAppIcon] = useState(isLinkedApp ? miniApp.config.icon : DEFAULT_LINKED_APP_ICON);
 
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
   const endpointUrl = typeof window !== "undefined" ? `${window.location.origin}/api/public/mini-apps/${miniApp.slug}/leads` : "";
   const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/apps/${miniApp.slug}` : "";
   const curlExample = `curl -X POST "${endpointUrl}" \\\n  -H "Content-Type: application/json" \\\n  -H "X-Api-Key: <tu-api-key>" \\\n  -d '{"nombre":"Prueba","whatsapp":"5215512345678","consentimiento":true,"consentimiento_fecha":"2026-01-01T00:00:00.000Z","fecha":"2026-01-01T00:00:00.000Z"}'`;
+  const sdkOrigin = typeof window !== "undefined" ? window.location.origin : "";
+  const sdkSnippet = `<script src="${sdkOrigin}/api/public/sdk.js"></script>\n<script>\n  GrowthLink.init({\n    apiKey: "<tu-api-key>",\n    endpoint: "${endpointUrl}",\n  });\n</script>\n\n<!-- Cuando tu app quiera enviar un lead: -->\n<script>\n  GrowthLink.captureLead({\n    name: "Juan Pérez",\n    phone: "5215512345678",\n    email: "juan@ejemplo.com",\n    company: "Acme",\n    notes: "Interesado en el plan premium",\n  });\n</script>`;
 
   function handleSave() {
     startTransition(async () => {
@@ -103,7 +111,9 @@ export function ConfiguracionTab({
                 showIngresoActual,
                 fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
               }
-            : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+            : isLinkedApp
+              ? { linkedAppType, icon: linkedAppIcon }
+              : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -189,7 +199,11 @@ export function ConfiguracionTab({
               <option value="inactive">Inactiva</option>
             </Select>
           </div>
-          <Input label="URL donde vive la mini app" value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} />
+          <Input
+            label={isLinkedApp ? "URL de la aplicación externa" : "URL donde vive la mini app"}
+            value={externalUrl}
+            onChange={(e) => setExternalUrl(e.target.value)}
+          />
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS)</label>
             <textarea
@@ -316,6 +330,23 @@ export function ConfiguracionTab({
                 </label>
               </div>
             </>
+          ) : isLinkedApp ? (
+            <>
+              <Select label="Tipo de aplicación" value={linkedAppType} onChange={(e) => setLinkedAppType(e.target.value as LinkedAppType)}>
+                {LINKED_APP_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <Select label="Ícono" value={linkedAppIcon} onChange={(e) => setLinkedAppIcon(e.target.value)}>
+                {LINKED_APP_ICON_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </>
           ) : (
             <>
               <Input
@@ -369,6 +400,13 @@ export function ConfiguracionTab({
               Regenerar API Key
             </Button>
           )}
+          <details className="text-sm">
+            <summary className="cursor-pointer text-neutral-500">Ver snippet de integración (SDK JavaScript)</summary>
+            <pre className="mt-2 overflow-x-auto rounded-md bg-surface-3 p-3 text-xs text-foreground">{sdkSnippet}</pre>
+            <p className="mt-2 text-xs text-neutral-500">
+              El desarrollador de la app externa solo pega este snippet — no necesita conocer cómo funciona el CRM.
+            </p>
+          </details>
           <details className="text-sm">
             <summary className="cursor-pointer text-neutral-500">Ver ejemplo de request (curl)</summary>
             <pre className="mt-2 overflow-x-auto rounded-md bg-surface-3 p-3 text-xs text-foreground">{curlExample}</pre>

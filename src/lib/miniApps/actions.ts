@@ -21,6 +21,7 @@ import {
   type MiniAppBranding,
   type MiniAppFieldConfig,
   type CalculadoraBrechaConfig,
+  type LinkedAppConfig,
 } from "@/lib/miniApps/queries";
 import { getWorkspaceMembersList } from "@/lib/settings/queries";
 import {
@@ -88,7 +89,7 @@ export interface CreateMiniAppInput {
   assignedAgentId: string | null;
   allowedOrigins: string[];
   externalUrl: string;
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig;
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig;
 }
 
 /** Resolves the assigned agent's display name once, under a real
@@ -103,7 +104,7 @@ export interface CreateMiniAppInput {
 async function resolveConfigWithAgentName(
   workspaceId: string,
   assignedAgentId: string | null,
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig,
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig,
 ) {
   if (!assignedAgentId) return config;
   const members = await getWorkspaceMembersList(workspaceId);
@@ -117,6 +118,9 @@ export async function createMiniApp(input: CreateMiniAppInput): Promise<{ id: st
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "mini_apps");
   if (!input.name.trim()) throw new Error("El nombre es obligatorio.");
+  if (input.templateKey === "app_vinculada" && !input.externalUrl.trim()) {
+    throw new Error("La URL de la aplicación externa es obligatoria para vincular una app.");
+  }
 
   const createdBy = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
@@ -155,7 +159,7 @@ export interface UpdateMiniAppInput {
   allowedOrigins: string[];
   externalUrl: string;
   status: "active" | "inactive";
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig;
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig;
 }
 
 export async function updateMiniApp(id: string, input: UpdateMiniAppInput): Promise<void> {

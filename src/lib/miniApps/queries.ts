@@ -4,8 +4,9 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from "@/lib/miniApps/paletteEngine";
 import { templateKeysForCategory, type MiniAppTemplateCategory } from "@/lib/miniApps/templateCatalog";
+import { DEFAULT_LINKED_APP_ICON, type LinkedAppType } from "@/lib/miniApps/linkedAppOptions";
 
-export type MiniAppTemplateKey = "simulador_retiro" | "calculadora_brecha_retiro";
+export type MiniAppTemplateKey = "simulador_retiro" | "calculadora_brecha_retiro" | "app_vinculada";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -33,9 +34,21 @@ export interface CalculadoraBrechaConfig {
   assignedAgentName?: string;
 }
 
+/** Config for "App Vinculada" (botón "Vincular App", Fase 1: vincular por
+ * URL) — `linkedAppType`/`icon` are purely descriptive (drive the badge/icon
+ * shown on the card and public landing page), never used to pick a
+ * rendering component: every app_vinculada mini app renders the exact same
+ * LinkedAppLanding regardless of type. */
+export interface LinkedAppConfig {
+  linkedAppType: LinkedAppType;
+  icon: string;
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
+  app_vinculada: LinkedAppConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -148,6 +161,14 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
       whatsappAsesor: typeof raw.whatsappAsesor === "string" ? raw.whatsappAsesor : "",
       avisoPrivacidadUrl: typeof raw.avisoPrivacidadUrl === "string" ? raw.avisoPrivacidadUrl : "",
       licenseBadge: typeof raw.licenseBadge === "string" ? raw.licenseBadge : "",
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "app_vinculada") {
+    const config: LinkedAppConfig = {
+      linkedAppType: typeof raw.linkedAppType === "string" ? (raw.linkedAppType as LinkedAppType) : "otro",
+      icon: typeof raw.icon === "string" ? raw.icon : DEFAULT_LINKED_APP_ICON,
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];
@@ -328,6 +349,7 @@ export type PublicMiniAppView<K extends MiniAppTemplateKey = MiniAppTemplateKey>
     name: string;
     description: string | null;
     templateKey: T;
+    externalUrl: string | null;
     branding: MiniAppBranding;
     config: MiniAppConfigByTemplate[T];
   };
@@ -343,7 +365,7 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
   const supabase = createServiceRoleClient();
   const { data } = await supabase
     .from("mini_apps")
-    .select("slug, name, description, template_key, status, branding, config")
+    .select("slug, name, description, template_key, external_url, status, branding, config")
     .eq("slug", slug)
     .maybeSingle();
   if (!data || data.status !== "active") return null;
@@ -356,6 +378,7 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
     name: data.name as string,
     description: data.description as string | null,
     templateKey,
+    externalUrl: data.external_url as string | null,
     branding: {
       logoUrl: branding.logoUrl ?? null,
       primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR,

@@ -12,7 +12,7 @@ import type { MiniAppTemplateKey } from "@/lib/miniApps/queries";
  * queries.ts's "server-only" boundary — it needs to render client-side
  * (the category filter pills in ContactsShell.tsx).
  */
-export type MiniAppTemplateCategory = "simuladores" | "calculadoras" | "quizzes" | "formularios" | "landing_pages";
+export type MiniAppTemplateCategory = "simuladores" | "calculadoras" | "quizzes" | "formularios" | "landing_pages" | "vinculadas";
 
 export const TEMPLATE_CATEGORIES: { key: MiniAppTemplateCategory; label: string }[] = [
   { key: "simuladores", label: "Simuladores" },
@@ -20,11 +20,13 @@ export const TEMPLATE_CATEGORIES: { key: MiniAppTemplateCategory; label: string 
   { key: "quizzes", label: "Quizzes" },
   { key: "formularios", label: "Formularios" },
   { key: "landing_pages", label: "Landing Pages" },
+  { key: "vinculadas", label: "Apps Vinculadas" },
 ];
 
 export const TEMPLATE_KEY_META: Record<MiniAppTemplateKey, { label: string; category: MiniAppTemplateCategory }> = {
   simulador_retiro: { label: "Simulador de Retiro", category: "simuladores" },
   calculadora_brecha_retiro: { label: "Calculadora de Brecha de Retiro", category: "calculadoras" },
+  app_vinculada: { label: "App Vinculada", category: "vinculadas" },
 };
 
 export function templateKeysForCategory(category: MiniAppTemplateCategory): MiniAppTemplateKey[] {
