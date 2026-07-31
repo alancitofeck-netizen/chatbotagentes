@@ -34,14 +34,21 @@ export interface CalculadoraBrechaConfig {
   assignedAgentName?: string;
 }
 
-/** Config for "App Vinculada" (botón "Vincular App", Fase 1: vincular por
- * URL) — `linkedAppType`/`icon` are purely descriptive (drive the badge/icon
- * shown on the card and public landing page), never used to pick a
- * rendering component: every app_vinculada mini app renders the exact same
- * LinkedAppLanding regardless of type. */
+/** Config for "App Vinculada" (botón "Vincular App") — `linkedAppType`/
+ * `icon` are purely descriptive (drive the badge/icon shown on the card and
+ * public landing page), never used to pick a rendering component: every
+ * app_vinculada mini app renders the exact same LinkedAppLanding regardless
+ * of type. `hostingMode` picks between the two ways this template's
+ * external_url-less landing page can work: `"url"` (Fase 1 — links out to
+ * an externally-hosted app) or `"upload"` (Fase 2 — GrowthLink hosts the
+ * uploaded HTML/ZIP itself, rendered via a sandboxed iframe; `indexPath`/
+ * `bundleVersion` only apply to that mode — see bundle-upload/route.ts). */
 export interface LinkedAppConfig {
   linkedAppType: LinkedAppType;
   icon: string;
+  hostingMode: "url" | "upload";
+  indexPath?: string;
+  bundleVersion?: number;
   assignedAgentName?: string;
 }
 
@@ -169,6 +176,9 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
     const config: LinkedAppConfig = {
       linkedAppType: typeof raw.linkedAppType === "string" ? (raw.linkedAppType as LinkedAppType) : "otro",
       icon: typeof raw.icon === "string" ? raw.icon : DEFAULT_LINKED_APP_ICON,
+      hostingMode: raw.hostingMode === "upload" ? "upload" : "url",
+      indexPath: typeof raw.indexPath === "string" ? raw.indexPath : undefined,
+      bundleVersion: typeof raw.bundleVersion === "number" ? raw.bundleVersion : undefined,
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];
@@ -350,6 +360,11 @@ export type PublicMiniAppView<K extends MiniAppTemplateKey = MiniAppTemplateKey>
     description: string | null;
     templateKey: T;
     externalUrl: string | null;
+    /** Relative proxy URL for the uploaded bundle's index.html (hostingMode
+     * "upload" only, else null) — see getPublicMiniAppBySlug's own comment
+     * for why this is the bundle-asset proxy route and not a direct
+     * Storage URL. */
+    bundlePublicUrl: string | null;
     branding: MiniAppBranding;
     config: MiniAppConfigByTemplate[T];
   };
@@ -359,7 +374,11 @@ export type PublicMiniAppView<K extends MiniAppTemplateKey = MiniAppTemplateKey>
  * (src/app/apps/[slug]/) — always via createServiceRoleClient() (no
  * session for an anonymous visitor), and the select list is deliberately
  * narrow: never api_key_hash, allowed_origins, assigned_agent_id, or
- * workspace_id. Returns null for a missing slug or an inactive mini app
+ * workspace_id. `bundlePublicUrl` (for hostingMode "upload") is a relative
+ * URL to the bundle-asset proxy route (src/app/api/public/mini-apps/[slug]/
+ * bundle/[...path]/route.ts), keyed by slug — it resolves workspace_id/id
+ * server-side on its own, so neither ever needs to reach this view or the
+ * client at all. Returns null for a missing slug or an inactive mini app
  * (the page treats both as notFound()). */
 export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAppView | null> {
   const supabase = createServiceRoleClient();
@@ -372,6 +391,15 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
 
   const branding = (data.branding as Partial<MiniAppBranding>) ?? {};
   const templateKey = data.template_key as MiniAppTemplateKey;
+  const config = normalizeConfigForTemplate(templateKey, (data.config as Record<string, unknown>) ?? {});
+
+  let bundlePublicUrl: string | null = null;
+  if (templateKey === "app_vinculada") {
+    const linkedConfig = config as LinkedAppConfig;
+    if (linkedConfig.hostingMode === "upload" && linkedConfig.indexPath) {
+      bundlePublicUrl = `/api/public/mini-apps/${slug}/bundle/${linkedConfig.indexPath}?v=${linkedConfig.bundleVersion ?? 0}`;
+    }
+  }
 
   return {
     slug: data.slug as string,
@@ -379,12 +407,13 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
     description: data.description as string | null,
     templateKey,
     externalUrl: data.external_url as string | null,
+    bundlePublicUrl,
     branding: {
       logoUrl: branding.logoUrl ?? null,
       primaryColor: branding.primaryColor ?? DEFAULT_PRIMARY_COLOR,
       secondaryColor: branding.secondaryColor ?? DEFAULT_SECONDARY_COLOR,
     },
-    config: normalizeConfigForTemplate(templateKey, (data.config as Record<string, unknown>) ?? {}),
+    config,
   } as PublicMiniAppView;
 }
 

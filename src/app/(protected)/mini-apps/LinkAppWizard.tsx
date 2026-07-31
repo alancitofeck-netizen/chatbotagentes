@@ -12,8 +12,10 @@ import { createMiniApp, updateMiniAppBranding } from "@/lib/miniApps/actions";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR, isValidHexColor } from "@/lib/miniApps/paletteEngine";
 import { LINKED_APP_TYPE_OPTIONS, LINKED_APP_ICON_OPTIONS, DEFAULT_LINKED_APP_ICON, type LinkedAppType } from "@/lib/miniApps/linkedAppOptions";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
+import { BundleDropzone, type BundleUploadResult } from "./BundleDropzone";
+import { BundlePreviewModal } from "./BundlePreviewModal";
 
-const STEPS = ["Información", "Vincular URL", "Integración"] as const;
+const STEPS = ["Información", "Vincular aplicación", "Integración"] as const;
 
 function CopyableField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -71,14 +73,64 @@ export function LinkAppWizard({
   const [primaryHexInput, setPrimaryHexInput] = useState(DEFAULT_PRIMARY_COLOR);
   const [secondaryHexInput, setSecondaryHexInput] = useState(DEFAULT_SECONDARY_COLOR);
 
-  // Paso 2 — Vincular URL
+  // Paso 2 — Vincular aplicación
+  const [hostingMode, setHostingMode] = useState<"url" | "upload">("url");
   const [externalUrl, setExternalUrl] = useState("");
   const [allowedOrigins, setAllowedOrigins] = useState("");
+  const [uploadedApp, setUploadedApp] = useState<{ id: string; slug: string; apiKey: string } | null>(null);
+  const [uploadedBundle, setUploadedBundle] = useState<BundleUploadResult | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  function parsedAllowedOrigins() {
+    return allowedOrigins
+      .split(/[\n,]/)
+      .map((o) => o.trim())
+      .filter(Boolean);
+  }
+
+  // Se llama la primera vez que el usuario suelta un archivo válido en la
+  // pestaña "Subir archivo" — crea la mini app ya mismo (en vez de esperar al
+  // botón "Vincular" final) para poder subir el bundle contra un miniAppId
+  // real y mostrar una "Vista previa" que es el render de producción, no una
+  // maqueta. Si ya existe (reemplazo de archivo antes de terminar el
+  // asistente), devuelve el mismo id.
+  async function ensureUploadedMiniAppId(): Promise<string> {
+    if (uploadedApp) return uploadedApp.id;
+    if (!name.trim()) throw new Error("Completá el nombre en el paso 1 antes de subir un archivo.");
+    const result = await createMiniApp({
+      name,
+      description,
+      templateKey: "app_vinculada",
+      assignedAgentId: assignedAgentId || null,
+      allowedOrigins: parsedAllowedOrigins(),
+      externalUrl: "",
+      config: { linkedAppType, icon, hostingMode: "upload" },
+    });
+    await updateMiniAppBranding(result.id, { logoUrl: null, primaryColor, secondaryColor });
+    setUploadedApp(result);
+    return result.id;
+  }
 
   async function handlePublish() {
     if (!name.trim()) {
       toast.error("El nombre es obligatorio.");
       setStep(0);
+      return;
+    }
+    if (hostingMode === "upload") {
+      if (!uploadedApp) {
+        toast.error("Subí un archivo antes de continuar.");
+        setStep(1);
+        return;
+      }
+      setIsPending(true);
+      try {
+        await updateMiniAppBranding(uploadedApp.id, { logoUrl: null, primaryColor, secondaryColor });
+        setCreated(uploadedApp);
+        onCreated();
+      } finally {
+        setIsPending(false);
+      }
       return;
     }
     if (!externalUrl.trim()) {
@@ -93,12 +145,9 @@ export function LinkAppWizard({
         description,
         templateKey: "app_vinculada",
         assignedAgentId: assignedAgentId || null,
-        allowedOrigins: allowedOrigins
-          .split(/[\n,]/)
-          .map((o) => o.trim())
-          .filter(Boolean),
+        allowedOrigins: parsedAllowedOrigins(),
         externalUrl,
-        config: { linkedAppType, icon },
+        config: { linkedAppType, icon, hostingMode: "url" },
       });
       await updateMiniAppBranding(result.id, { logoUrl: null, primaryColor, secondaryColor });
       setCreated(result);
@@ -236,19 +285,48 @@ export function LinkAppWizard({
 
         {step === 1 && (
           <div className="flex flex-col gap-4">
-            <Input
-              label="URL de la aplicación externa"
-              value={externalUrl}
-              onChange={(e) => setExternalUrl(e.target.value)}
-              placeholder="https://miapp.netlify.app"
-            />
-            <p className="text-xs text-neutral-500">
-              GrowthLink no aloja esta aplicación, solo la conecta — la página pública de esta mini app va a llevar a tus prospectos directo a esta
-              URL.
-            </p>
-            <div className="rounded-lg border border-dashed border-border-default p-4 text-sm text-neutral-400">
-              Subir archivo (HTML/ZIP) — Próximamente
+            <div role="tablist" className="flex gap-2 border-b border-border-default">
+              {(["url", "upload"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setHostingMode(mode)}
+                  className={`px-3 py-2 text-sm font-medium ${
+                    hostingMode === mode ? "border-b-2 border-accent-500 text-foreground" : "text-neutral-500 hover:text-foreground"
+                  }`}
+                >
+                  {mode === "url" ? "○ Desde URL" : "● Subir archivo"}
+                </button>
+              ))}
             </div>
+
+            {hostingMode === "url" ? (
+              <>
+                <Input
+                  label="URL de la aplicación externa"
+                  value={externalUrl}
+                  onChange={(e) => setExternalUrl(e.target.value)}
+                  placeholder="https://miapp.netlify.app"
+                />
+                <p className="text-xs text-neutral-500">
+                  GrowthLink no aloja esta aplicación, solo la conecta — la página pública de esta mini app va a llevar a tus prospectos directo a
+                  esta URL.
+                </p>
+              </>
+            ) : (
+              <>
+                <BundleDropzone
+                  ensureMiniAppId={ensureUploadedMiniAppId}
+                  onUploaded={setUploadedBundle}
+                  onPreview={setPreviewUrl}
+                />
+                <p className="text-xs text-neutral-500">
+                  Subí un .html o un .zip (con index.html en la raíz) — GrowthLink lo aloja, sin depender de Netlify, Vercel ni GitHub Pages. Es el
+                  mismo mecanismo si venís de descargar un ZIP generado por Claude: arrastralo acá y publicalo.
+                </p>
+              </>
+            )}
+
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS, opcional)</label>
               <textarea
@@ -267,9 +345,19 @@ export function LinkAppWizard({
             <p>
               <strong>{name || "(sin nombre)"}</strong> — {description || "sin descripción"}
             </p>
-            <p className="text-neutral-500">Se conecta a: {externalUrl || "(sin URL)"}</p>
+            {hostingMode === "upload" ? (
+              <p className="text-neutral-500">
+                {uploadedBundle
+                  ? `Aplicación publicada por GrowthLink — archivo principal: ${uploadedBundle.indexPath} (v${uploadedBundle.bundleVersion}).`
+                  : "Todavía no subiste ningún archivo — volvé al paso anterior."}
+              </p>
+            ) : (
+              <p className="text-neutral-500">Se conecta a: {externalUrl || "(sin URL)"}</p>
+            )}
             <p className="text-neutral-500">
-              Al confirmar, GrowthLink genera el App ID, la API Key y el snippet de integración — los vas a ver en la pantalla siguiente.
+              {hostingMode === "upload"
+                ? "GrowthLink ya generó el App ID, la API Key y activó la captura de leads — al confirmar vas a ver el resumen de integración."
+                : "Al confirmar, GrowthLink genera el App ID, la API Key y el snippet de integración — los vas a ver en la pantalla siguiente."}
             </p>
           </div>
         )}
@@ -289,6 +377,7 @@ export function LinkAppWizard({
           )}
         </div>
       </div>
+      {previewUrl && <BundlePreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />}
     </Sheet>
   );
 }

@@ -118,8 +118,11 @@ export async function createMiniApp(input: CreateMiniAppInput): Promise<{ id: st
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "mini_apps");
   if (!input.name.trim()) throw new Error("El nombre es obligatorio.");
-  if (input.templateKey === "app_vinculada" && !input.externalUrl.trim()) {
-    throw new Error("La URL de la aplicación externa es obligatoria para vincular una app.");
+  if (input.templateKey === "app_vinculada") {
+    const config = input.config as Partial<LinkedAppConfig>;
+    if (config.hostingMode !== "upload" && !input.externalUrl.trim()) {
+      throw new Error("La URL de la aplicación externa es obligatoria para vincular una app.");
+    }
   }
 
   const createdBy = await getCurrentMemberId(workspaceId);

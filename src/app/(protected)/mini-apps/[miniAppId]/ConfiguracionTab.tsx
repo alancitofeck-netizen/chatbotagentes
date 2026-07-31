@@ -17,6 +17,8 @@ import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { LogoCropDialog } from "../LogoCropDialog";
 import { MiniAppPalettePreview } from "../MiniAppPalettePreview";
 import { LINKED_APP_TYPE_OPTIONS, LINKED_APP_ICON_OPTIONS, DEFAULT_LINKED_APP_ICON, type LinkedAppType } from "@/lib/miniApps/linkedAppOptions";
+import { BundleDropzone } from "../BundleDropzone";
+import { BundlePreviewModal } from "../BundlePreviewModal";
 
 function CopyableLine({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -88,6 +90,8 @@ export function ConfiguracionTab({
   const [linkedAppIcon, setLinkedAppIcon] = useState(isLinkedApp ? miniApp.config.icon : DEFAULT_LINKED_APP_ICON);
 
   const [isSavingBranding, setIsSavingBranding] = useState(false);
+  const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const endpointUrl = typeof window !== "undefined" ? `${window.location.origin}/api/public/mini-apps/${miniApp.slug}/leads` : "";
   const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/apps/${miniApp.slug}` : "";
@@ -112,7 +116,18 @@ export function ConfiguracionTab({
                 fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
               }
             : isLinkedApp
-              ? { linkedAppType, icon: linkedAppIcon }
+              ? {
+                  linkedAppType,
+                  icon: linkedAppIcon,
+                  // config es un reemplazo completo, no un merge (ver
+                  // updateMiniApp) — hay que reenviar estos tres campos para
+                  // no perder la publicación alojada al guardar Datos
+                  // generales (los actualiza bundle-upload/route.ts, no este
+                  // formulario).
+                  hostingMode: miniApp.config.hostingMode,
+                  indexPath: miniApp.config.indexPath,
+                  bundleVersion: miniApp.config.bundleVersion,
+                }
               : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
@@ -199,11 +214,13 @@ export function ConfiguracionTab({
               <option value="inactive">Inactiva</option>
             </Select>
           </div>
-          <Input
-            label={isLinkedApp ? "URL de la aplicación externa" : "URL donde vive la mini app"}
-            value={externalUrl}
-            onChange={(e) => setExternalUrl(e.target.value)}
-          />
+          {!isUploadedApp && (
+            <Input
+              label={isLinkedApp ? "URL de la aplicación externa" : "URL donde vive la mini app"}
+              value={externalUrl}
+              onChange={(e) => setExternalUrl(e.target.value)}
+            />
+          )}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS)</label>
             <textarea
@@ -383,6 +400,22 @@ export function ConfiguracionTab({
         </div>
       </Card>
 
+      {isUploadedApp && (
+        <Card>
+          <CardHeader title="Aplicación alojada" />
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-foreground">
+              Versión actual: <strong>v{miniApp.config.bundleVersion ?? 0}</strong> — archivo principal: {miniApp.config.indexPath}
+            </p>
+            <p className="text-xs text-neutral-500">
+              Subí un nuevo .html o .zip para reemplazar la versión publicada — la URL pública, la API Key, los leads y las estadísticas se mantienen
+              intactos.
+            </p>
+            <BundleDropzone ensureMiniAppId={async () => miniApp.id} onUploaded={() => { toast.success("Nueva versión publicada."); router.refresh(); }} onPreview={setPreviewUrl} />
+          </div>
+        </Card>
+      )}
+
       <Card>
         <CardHeader title="Endpoint (integraciones externas avanzadas)" />
         <div className="flex flex-col gap-3">
@@ -413,6 +446,8 @@ export function ConfiguracionTab({
           </details>
         </div>
       </Card>
+
+      {previewUrl && <BundlePreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />}
 
       {showLogoDialog && (
         <LogoCropDialog
