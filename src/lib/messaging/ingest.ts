@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_BUFFER_WINDOW_SECONDS } from "@/lib/ai/bufferConfig";
+import { notify } from "@/lib/notifications/service";
 
 /**
  * Provider-agnostic inbound message ingestion — extracted from
@@ -104,7 +105,7 @@ export async function ingestInboundWhatsAppMessage(
   // 2. Conversation: find an open one for this contact, create only if missing.
   const { data: existingConversation, error: findConversationError } = await supabase
     .from("conversations")
-    .select("id")
+    .select("id, assigned_user_id")
     .eq("workspace_id", workspaceId)
     .eq("contact_id", contactId)
     .eq("status", "open")
@@ -181,6 +182,21 @@ export async function ingestInboundWhatsAppMessage(
   });
   if (bufferError) {
     console.error(`[ingest] failed to push message ${messageId} into conversation_buffers:`, bufferError);
+  }
+
+  // Only notify when the conversation already has a human assigned — an
+  // unassigned conversation has no single natural recipient in Fase 1 (no
+  // "team inbox" broadcast concept yet), same scoping the plan called out.
+  const assignedUserId = existingConversation?.assigned_user_id as string | null | undefined;
+  if (assignedUserId) {
+    await notify({
+      workspaceId,
+      memberId: assignedUserId,
+      eventType: "message_received",
+      title: "Nuevo mensaje",
+      message: `${profileName?.trim() || fromPhone}: ${messageBody.slice(0, 120)}`,
+      actionUrl: "/inbox",
+    });
   }
 
   return { messageId, conversationId, contactId };

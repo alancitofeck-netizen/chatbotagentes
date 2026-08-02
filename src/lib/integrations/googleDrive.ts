@@ -2,6 +2,8 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { recordGrantedScopes } from "@/lib/integrations/googleAccount";
+import { getCurrentMemberId } from "@/lib/auth/session";
+import { notifyManagers } from "@/lib/notifications/service";
 
 const PROVIDER = "google_drive";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -128,6 +130,13 @@ export async function connectGoogleDrive(workspaceId: string, code: string, redi
 export async function disconnectGoogleDrive(workspaceId: string): Promise<void> {
   const supabase = await createClient();
   await supabase.rpc("disconnect_oauth_integration", { p_workspace_id: workspaceId, p_provider: PROVIDER });
+
+  const ownMemberId = await getCurrentMemberId(workspaceId);
+  await notifyManagers(
+    workspaceId,
+    { eventType: "integration_disconnected", title: "Integración desconectada", message: "Google Drive se desconectó.", actionUrl: "/profile" },
+    ownMemberId,
+  );
 }
 
 export interface GoogleDriveStatus {

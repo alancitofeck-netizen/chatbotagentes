@@ -1,6 +1,7 @@
 import type { ToolContext } from "@/lib/ai/tools/shared";
 import { crossTenantRejection } from "@/lib/ai/tools/shared";
 import { ACTION_EXECUTORS, type AutomationAction } from "@/lib/automations/executors";
+import { notify } from "@/lib/notifications/service";
 
 /** `run_automation` — side-effecting. Executes an `automations` row's
  * `actions` (src/lib/automations/actions.ts) by dispatching each one
@@ -22,7 +23,7 @@ export async function runAutomation(args: Record<string, unknown>, ctx: ToolCont
 
   const { data: automation } = await ctx.supabase
     .from("automations")
-    .select("id, actions, enabled")
+    .select("id, name, actions, enabled")
     .eq("id", automationId)
     .eq("workspace_id", ctx.workspaceId)
     .maybeSingle();
@@ -44,6 +45,29 @@ export async function runAutomation(args: Record<string, unknown>, ctx: ToolCont
     console.error(`[runAutomation] action failed (automation=${automationId}, type=${actions[i]?.type}):`, outcome.reason);
     return { actionType: actions[i]?.type, ok: false, error: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason) };
   });
+
+  // `automations` has no per-row owner (0006_automations.sql — workspace-level
+  // rule, not a personal one), so the natural recipient in Fase 1 is whoever
+  // is assigned to the conversation this run happened in — same scoping
+  // ingest.ts/send.ts already use. Unassigned conversations get no
+  // notification rather than a broadcast to the whole workspace.
+  const { data: conversation } = await ctx.supabase
+    .from("conversations")
+    .select("assigned_user_id")
+    .eq("id", ctx.conversationId)
+    .maybeSingle();
+  const assignedUserId = conversation?.assigned_user_id as string | null | undefined;
+  if (assignedUserId) {
+    const anyFailed = results.some((r) => !r.ok);
+    await notify({
+      workspaceId: ctx.workspaceId,
+      memberId: assignedUserId,
+      eventType: anyFailed ? "automation_failed" : "automation_executed",
+      title: anyFailed ? "Automatización con errores" : "Automatización ejecutada",
+      message: `"${automation.name}" — ${results.filter((r) => r.ok).length}/${results.length} acciones OK`,
+      actionUrl: "/profile?tab=automations",
+    });
+  }
 
   return { executed: results };
 }

@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getYCloudCredentials, normalizeE164 } from "@/lib/integrations/ycloud";
 import { resolveMessagingProviderForConversation } from "@/lib/messaging/resolveProvider";
 import { sendViaWorker } from "@/lib/whatsappWeb/workerClient";
+import { notify } from "@/lib/notifications/service";
 
 export type SendSenderType = "agent" | "ai" | "system";
 
@@ -34,7 +35,38 @@ const FREE_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
  * paths (Fase 3/4/5 del Motor de IA) reuse this instead of duplicating —
  * or silently skipping — any of it.
  */
+/** Thin wrapper around the real send logic (renamed below) purely to notify
+ * on failure without threading a notify() call through every one of its
+ * ~8 early-return branches — the recipient is whichever human should know:
+ * the agent who tried to send it themselves, falling back to the
+ * conversation's assigned agent for ai/system-originated sends. */
 export async function sendOutboundWhatsAppMessage(input: SendOutboundMessageInput): Promise<SendOutboundMessageResult> {
+  const result = await sendOutboundWhatsAppMessageInner(input);
+  if (!result.ok) {
+    const recipientId =
+      input.senderType === "agent" && input.senderId
+        ? input.senderId
+        : await getConversationAssignedUserId(input.supabase, input.conversationId);
+    if (recipientId) {
+      await notify({
+        workspaceId: input.workspaceId,
+        memberId: recipientId,
+        eventType: "message_send_failed",
+        title: "Error al enviar un mensaje",
+        message: `No se pudo enviar el mensaje (${result.error}).`,
+        actionUrl: "/inbox",
+      });
+    }
+  }
+  return result;
+}
+
+async function getConversationAssignedUserId(supabase: SupabaseClient, conversationId: string): Promise<string | null> {
+  const { data } = await supabase.from("conversations").select("assigned_user_id").eq("id", conversationId).maybeSingle();
+  return (data?.assigned_user_id as string | null | undefined) ?? null;
+}
+
+async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput): Promise<SendOutboundMessageResult> {
   const { supabase, workspaceId, conversationId, content, senderType, senderId } = input;
 
   if (content.length > 4096) {

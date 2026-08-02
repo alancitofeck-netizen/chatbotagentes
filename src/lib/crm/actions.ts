@@ -8,6 +8,7 @@ import { getCrmBoard, getCrmPipelines, getOpportunityActivity, getOpportunityDet
 import { getCrmAnalyticsRangeData, resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
 import { syncCloseDateEvent, updateCloseEventStatus, deleteCloseDateEvent } from "@/lib/crm/calendarSync";
 import { logActivity } from "@/lib/activity/log";
+import { notify } from "@/lib/notifications/service";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -333,9 +334,26 @@ export async function moveOpportunityCard(pipelineItemId: string, stageId: strin
   // The card stays linked to its close-date event across any stage move
   // (nothing here touches related_id) — only its status needs to follow
   // won/lost, so this is the lightweight patch, not a full syncCloseDateEvent.
-  const { data: opp } = await supabase.from("opportunities").select("calendar_event_id").eq("id", item.item_id).maybeSingle();
+  const { data: opp } = await supabase
+    .from("opportunities")
+    .select("calendar_event_id, title, owner_id")
+    .eq("id", item.item_id)
+    .maybeSingle();
   if (opp?.calendar_event_id) {
     await updateCloseEventStatus(workspaceId, opp.calendar_event_id as string, Boolean(destinationStage?.is_won), Boolean(destinationStage?.is_lost));
+  }
+
+  if (item.stage_id !== stageId && opp?.owner_id) {
+    const eventType = status === "won" ? "lead_won" : status === "lost" ? "lead_lost" : "lead_stage_changed";
+    const title = status === "won" ? "Lead ganado" : status === "lost" ? "Lead perdido" : "Lead movido de etapa";
+    await notify({
+      workspaceId,
+      memberId: opp.owner_id as string,
+      eventType,
+      title,
+      message: `${opp.title} → ${destinationStage?.name ?? "otra etapa"}`,
+      actionUrl: `/crm?opportunity=${item.item_id}`,
+    });
   }
 
   revalidatePath("/crm");
@@ -354,6 +372,21 @@ export async function addOpportunityNote(opportunityId: string, body: string) {
     notable_id: opportunityId,
     body: body.trim(),
   });
+
+  const [{ data: opp }, ownMemberId] = await Promise.all([
+    supabase.from("opportunities").select("title, owner_id").eq("id", opportunityId).maybeSingle(),
+    getCurrentMemberId(workspaceId),
+  ]);
+  if (opp?.owner_id && opp.owner_id !== ownMemberId) {
+    await notify({
+      workspaceId,
+      memberId: opp.owner_id as string,
+      eventType: "lead_comment_added",
+      title: "Nuevo comentario",
+      message: `${opp.title}: ${body.trim().slice(0, 120)}`,
+      actionUrl: `/crm?opportunity=${opportunityId}`,
+    });
+  }
 
   revalidatePath("/crm");
 }
@@ -455,6 +488,17 @@ export async function createOpportunity(input: LeadFormInput, stageId?: string) 
     title: input.title.trim(),
   });
 
+  if (input.ownerId) {
+    await notify({
+      workspaceId,
+      memberId: input.ownerId,
+      eventType: "lead_assigned",
+      title: "Nuevo lead asignado",
+      message: `${input.name.trim()} — ${input.title.trim()}`,
+      actionUrl: `/crm?opportunity=${opportunity.id}`,
+    });
+  }
+
   if (input.expectedCloseDate) {
     const [stageInfo, ownerName] = await Promise.all([
       getStageInfo(supabase, targetStageId),
@@ -498,7 +542,7 @@ export async function updateOpportunity(opportunityId: string, contactId: string
 
   const { data: existing } = await supabase
     .from("opportunities")
-    .select("calendar_event_id, pipeline_item_id")
+    .select("calendar_event_id, pipeline_item_id, owner_id")
     .eq("id", opportunityId)
     .eq("workspace_id", workspaceId)
     .maybeSingle();
@@ -533,6 +577,17 @@ export async function updateOpportunity(opportunityId: string, contactId: string
   await logOpportunityActivity(supabase, workspaceId, opportunityId, "opportunity_updated", {
     title: input.title.trim(),
   });
+
+  if (input.ownerId && input.ownerId !== existing?.owner_id) {
+    await notify({
+      workspaceId,
+      memberId: input.ownerId,
+      eventType: "lead_assigned",
+      title: "Nuevo lead asignado",
+      message: `${input.name.trim()} — ${input.title.trim()}`,
+      actionUrl: `/crm?opportunity=${opportunityId}`,
+    });
+  }
 
   // Keeps the dedicated close-date event (if any) in sync with this edit —
   // creates it if a date was just set for the first time, updates it if
@@ -673,6 +728,17 @@ export async function bulkAssignOwner(opportunityIds: string[], ownerId: string 
   const supabase = await createClient();
 
   await supabase.from("opportunities").update({ owner_id: ownerId }).in("id", opportunityIds).eq("workspace_id", workspaceId);
+
+  if (ownerId) {
+    await notify({
+      workspaceId,
+      memberId: ownerId,
+      eventType: "lead_assigned",
+      title: "Nuevo lead asignado",
+      message: opportunityIds.length === 1 ? "Te asignaron 1 lead" : `Te asignaron ${opportunityIds.length} leads`,
+      actionUrl: "/crm",
+    });
+  }
 
   revalidatePath("/crm");
 }

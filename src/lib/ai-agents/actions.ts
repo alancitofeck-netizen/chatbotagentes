@@ -19,6 +19,7 @@ import {
 import { getDocuments } from "@/lib/documents/queries";
 import { ingestKnowledgeDocument } from "@/lib/ai-agents/knowledgeBase";
 import { runSandboxTurn } from "@/lib/ai/agentRuntime";
+import { notifyManagers } from "@/lib/notifications/service";
 
 const AI_AGENTS_PATH = "/crm";
 
@@ -62,6 +63,18 @@ export async function createAiAgent(input: { name: string; description: string; 
     status: "draft",
     version: 1,
   });
+
+  const ownMemberId = await getCurrentMemberId(workspaceId);
+  await notifyManagers(
+    workspaceId,
+    {
+      eventType: "ai_agent_created",
+      title: "Agente IA creado",
+      message: input.name.trim(),
+      actionUrl: "/crm",
+    },
+    ownMemberId,
+  );
 
   revalidatePath(AI_AGENTS_PATH);
   return { id: agent.id as string };

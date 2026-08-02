@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
+import { notify } from "@/lib/notifications/service";
 import { getOrCreateDefaultGroup } from "@/lib/tasks/groups/actions";
 import {
   getContactRelatedTasks,
@@ -55,6 +56,28 @@ function revalidateTaskPaths() {
   revalidatePath("/tasks");
 }
 
+/** Shared by createTask and addTaskRelation — both are ways a task ends up
+ * linked to an opportunity, and either should notify the lead's owner
+ * (unless they're the one creating/linking the task themselves). */
+async function notifyLeadTaskCreated(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  opportunityId: string,
+  taskTitle: string,
+  actorMemberId: string | null,
+) {
+  const { data: opp } = await supabase.from("opportunities").select("title, owner_id").eq("id", opportunityId).maybeSingle();
+  if (!opp?.owner_id || opp.owner_id === actorMemberId) return;
+  await notify({
+    workspaceId,
+    memberId: opp.owner_id as string,
+    eventType: "lead_task_created",
+    title: "Tarea creada para un lead",
+    message: `${opp.title}: ${taskTitle}`,
+    actionUrl: `/crm?opportunity=${opportunityId}`,
+  });
+}
+
 /** createTask/updateTask/completeTask are already plain, importable server
  * functions — the natural extension point for a future automations engine
  * (Sección 10 del rediseño: "lead ganado → crear tarea → ...") to call
@@ -91,6 +114,9 @@ export async function createTask(input: TaskInput) {
   if (error || !data) throw new Error("No se pudo crear la tarea.");
 
   await logActivity(supabase, workspaceId, ownMemberId, "task", data.id as string, "task_created");
+  if (input.relatedType === "opportunity" && input.relatedId) {
+    await notifyLeadTaskCreated(supabase, workspaceId, input.relatedId, title, ownMemberId);
+  }
   revalidateTaskPaths();
   return { id: data.id as string };
 }
@@ -323,6 +349,10 @@ export async function addTaskRelation(taskId: string, type: RelationEntityType, 
     throw new Error("No se pudo agregar la relación.");
   }
   await logActivity(supabase, workspaceId, ownMemberId, "task", taskId, "task_relation_added", { type });
+  if (type === "opportunity") {
+    const { data: task } = await supabase.from("tasks").select("title").eq("id", taskId).maybeSingle();
+    await notifyLeadTaskCreated(supabase, workspaceId, relatedId, (task?.title as string | undefined) ?? "Tarea", ownMemberId);
+  }
   revalidatePath(`/tasks/${taskId}`);
 }
 

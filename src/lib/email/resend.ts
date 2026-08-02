@@ -74,3 +74,59 @@ export async function sendOtpEmail(params: {
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+function notificationEmailHtml(title: string, message: string, actionUrl: string | null): string {
+  const button = actionUrl
+    ? `<tr><td style="padding:8px 32px 32px;text-align:center;">
+        <a href="${actionUrl}" style="display:inline-block;padding:12px 24px;background:#7c3aed;border-radius:8px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">Ver en Growth Link</a>
+      </td></tr>`
+    : "";
+  return `<!doctype html>
+<html lang="es">
+  <body style="margin:0;padding:32px 16px;background:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+    <table role="presentation" width="100%" style="max-width:420px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;">
+      <tr><td style="padding:32px 32px 8px;text-align:center;">
+        <p style="margin:0;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#7c3aed;">Growth Link</p>
+      </td></tr>
+      <tr><td style="padding:8px 32px 0;text-align:center;">
+        <h1 style="margin:0;font-size:18px;color:#18181b;">${title}</h1>
+        <p style="margin:12px 0 8px;font-size:14px;color:#71717a;line-height:1.5;">${message}</p>
+      </td></tr>
+      ${button}
+    </table>
+  </body>
+</html>`;
+}
+
+/** Fase 3 del sistema de notificaciones (src/lib/notifications/service.ts) —
+ * único punto que envía el canal "email" de una notificación, para no tener
+ * el armado de HTML duplicado en cada call site. `actionUrl` se resuelve a
+ * absoluto acá (las notificaciones in-app lo guardan relativo, ej.
+ * "/crm?opportunity=...", porque son para next/navigation's router.push, no
+ * para un link de email que se abre fuera de la app). */
+export async function sendNotificationEmail(params: {
+  to: string;
+  title: string;
+  message: string;
+  actionUrl: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const fromEmail = process.env.FROM_EMAIL;
+  if (!fromEmail) return { ok: false, error: "FROM_EMAIL no está configurada." };
+
+  // Same production URL already hardcoded in 0029_pgcron_buffer_flush.sql —
+  // no NEXT_PUBLIC_APP_URL/VERCEL_URL convention exists anywhere else in
+  // this project to read it from instead.
+  const absoluteActionUrl = params.actionUrl ? new URL(params.actionUrl, "https://chatbotagentes.vercel.app").toString() : null;
+
+  const { error } = await getResendClient().emails.send({
+    from: fromEmail,
+    to: params.to,
+    subject: params.title,
+    html: notificationEmailHtml(params.title, params.message, absoluteActionUrl),
+    text: `${params.title}\n\n${params.message}${absoluteActionUrl ? `\n\n${absoluteActionUrl}` : ""}`,
+  });
+  if (error) console.error("[resend] notification email send failed:", error.message);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}

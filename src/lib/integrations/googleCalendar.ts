@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import { recordGrantedScopes } from "@/lib/integrations/googleAccount";
+import { getCurrentMemberId } from "@/lib/auth/session";
+import { notifyManagers } from "@/lib/notifications/service";
 
 const PROVIDER = "google_calendar";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -120,6 +122,13 @@ export async function connectGoogleCalendar(workspaceId: string, code: string, r
 export async function disconnectGoogleCalendar(workspaceId: string): Promise<void> {
   const supabase = await createClient();
   await supabase.rpc("disconnect_oauth_integration", { p_workspace_id: workspaceId, p_provider: PROVIDER });
+
+  const ownMemberId = await getCurrentMemberId(workspaceId);
+  await notifyManagers(
+    workspaceId,
+    { eventType: "integration_disconnected", title: "Integración desconectada", message: "Google Calendar se desconectó.", actionUrl: "/profile" },
+    ownMemberId,
+  );
 }
 
 export interface GoogleCalendarStatus {

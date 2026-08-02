@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole, requireNotSupervising } from "@/lib/auth/roles";
+import { notifyManagers } from "@/lib/notifications/service";
 import { getOpenRouterIntegration, getWhatsAppIntegration } from "@/lib/integrations/queries";
 import { disconnectGoogleCalendar, getGoogleCalendarStatus, importGoogleEvents } from "@/lib/integrations/googleCalendar";
 import { disconnectGoogleDrive, getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
@@ -64,6 +65,13 @@ export async function disconnectWhatsAppIntegration() {
   const { error } = await supabase.rpc("disconnect_whatsapp_integration", { p_workspace_id: workspaceId });
   if (error) throw new Error("No se pudo desconectar la integración de WhatsApp.");
 
+  const ownMemberId = await getCurrentMemberId(workspaceId);
+  await notifyManagers(
+    workspaceId,
+    { eventType: "integration_disconnected", title: "Integración desconectada", message: "WhatsApp (YCloud) se desconectó.", actionUrl: "/profile" },
+    ownMemberId,
+  );
+
   revalidatePath("/profile");
 }
 
@@ -106,6 +114,13 @@ export async function disconnectOpenRouterIntegration() {
   const supabase = await createClient();
   const { error } = await supabase.rpc("disconnect_openrouter_integration", { p_workspace_id: workspaceId });
   if (error) throw new Error("No se pudo desconectar la integración de OpenRouter.");
+
+  const ownMemberId = await getCurrentMemberId(workspaceId);
+  await notifyManagers(
+    workspaceId,
+    { eventType: "integration_disconnected", title: "Integración desconectada", message: "OpenRouter se desconectó.", actionUrl: "/profile" },
+    ownMemberId,
+  );
 
   revalidatePath("/profile");
 }

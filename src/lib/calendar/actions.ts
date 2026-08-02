@@ -12,6 +12,7 @@ import {
   type EventType,
 } from "@/lib/calendar/queries";
 import { pushEventToGoogle, deleteEventFromGoogle } from "@/lib/integrations/googleCalendar";
+import { notify } from "@/lib/notifications/service";
 
 const MANAGER_ROLES = ["owner", "admin"];
 const MAX_RECURRENCE_INSTANCES = 52;
@@ -178,6 +179,8 @@ export async function updateEvent(eventId: string, input: EventInput) {
   const assignedTo = await resolveAssignedTo(role, input.assignedTo, ownMemberId);
   const supabase = await createClient();
 
+  const { data: before } = await supabase.from("bookings").select("start_time").eq("id", eventId).eq("workspace_id", workspaceId).maybeSingle();
+
   const { data: updateData, error: updateError } = await supabase
     .from("bookings")
     .update({
@@ -209,6 +212,17 @@ export async function updateEvent(eventId: string, input: EventInput) {
   // rather than trusting input.startTime blindly — pure defense in depth,
   // both are the same value at this exact point in the request.
   await syncOpportunityFromEvent(workspaceId, eventId, updateData.start_time);
+
+  if (before?.start_time && before.start_time !== updateData.start_time && assignedTo !== ownMemberId) {
+    await notify({
+      workspaceId,
+      memberId: assignedTo,
+      eventType: "meeting_rescheduled",
+      title: "Reunión reprogramada",
+      message: `${title} — nuevo horario: ${new Date(updateData.start_time).toLocaleString("es")}`,
+      actionUrl: "/calendar",
+    });
+  }
 
   getEventById(workspaceId, eventId).then((event) => {
     if (event) void pushEventToGoogle(workspaceId, event);
@@ -247,13 +261,27 @@ export async function moveEvent(eventId: string, startTime: string, endTime: str
 
 export async function cancelEvent(eventId: string) {
   const { workspaceId } = await requireActiveWorkspace();
+  const ownMemberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
+
+  const { data: event } = await supabase.from("bookings").select("subject, owner_id").eq("id", eventId).eq("workspace_id", workspaceId).maybeSingle();
 
   await supabase
     .from("bookings")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", eventId)
     .eq("workspace_id", workspaceId);
+
+  if (event?.owner_id && event.owner_id !== ownMemberId) {
+    await notify({
+      workspaceId,
+      memberId: event.owner_id as string,
+      eventType: "meeting_cancelled",
+      title: "Reunión cancelada",
+      message: (event.subject as string) ?? "Un evento del calendario fue cancelado.",
+      actionUrl: "/calendar",
+    });
+  }
 
   revalidateEventPaths();
 }

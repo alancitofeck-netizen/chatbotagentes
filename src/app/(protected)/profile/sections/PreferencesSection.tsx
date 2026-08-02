@@ -1,22 +1,23 @@
 "use client";
 
-import { Bell, Volume2, Globe, Inbox as InboxIcon } from "lucide-react";
+import { Volume2, Globe, Inbox as InboxIcon } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ThemeToggle } from "@/lib/theme/ThemeToggle";
 import { useTheme } from "@/lib/theme/ThemeProvider";
+import { NotificationPreferencesCard } from "./NotificationPreferencesCard";
 
 const PLACEHOLDER_ROWS = [
-  { icon: Bell, label: "Notificaciones", description: "Alertas de nuevos mensajes y menciones." },
   { icon: Volume2, label: "Sonidos", description: "Sonido al recibir un mensaje nuevo." },
   { icon: Globe, label: "Idioma", description: "Idioma de la interfaz." },
   { icon: InboxIcon, label: "Preferencias del inbox", description: "Orden y agrupación por defecto de conversaciones." },
 ];
 
-/** Tema es la única preferencia real hoy (ThemeProvider/ThemeToggle,
- * client-only vía localStorage — sin backend). El resto son placeholders
- * "Próximamente", mismo criterio que ya usa el resto de la app (campana de
- * notificaciones del Navbar, tab Archivos del Inbox) — no hay sistema de
- * notificaciones, multi-idioma ni sonido en ningún lado del proyecto. */
+/** Tema es la única preferencia real vía localStorage (ThemeProvider/
+ * ThemeToggle, sin backend); Notificaciones (NotificationPreferencesCard) es
+ * real vía notification_preferences (Fase 3 del sistema de notificaciones).
+ * El resto son placeholders "Próximamente", mismo criterio que ya usa el
+ * resto de la app (tab Archivos del Inbox) — no hay multi-idioma ni sonido
+ * en ningún lado del proyecto. */
 export function PreferencesSection() {
   const { theme } = useTheme();
 
@@ -32,6 +33,8 @@ export function PreferencesSection() {
           <ThemeToggle />
         </div>
       </Card>
+
+      <NotificationPreferencesCard />
 
       <Card>
         <CardHeader title="Otras preferencias" />

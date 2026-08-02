@@ -6,6 +6,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { getWorkspaceMembersList, getWorkspaceModuleStatus, type ModuleKey } from "@/lib/settings/queries";
+import { notify, notifyMany } from "@/lib/notifications/service";
 
 const VALID_ROLES = ["owner", "admin", "agent"] as const;
 type Role = (typeof VALID_ROLES)[number];
@@ -87,7 +88,33 @@ export async function inviteMember(email: string, role: Role) {
     throw new Error("No se pudo agregar el miembro.");
   }
 
+  const actingMemberId = await getCurrentMemberId(workspaceId);
+  const recipients = await getManagerMemberIds(workspaceId, actingMemberId);
+  if (recipients.length > 0) {
+    await notifyMany(recipients, {
+      workspaceId,
+      eventType: "member_added",
+      title: "Nuevo agente agregado",
+      message: `${trimmedEmail} se unió al workspace como ${role}.`,
+      actionUrl: "/settings",
+    });
+  }
+
   revalidatePath("/settings");
+}
+
+/** Owners/admins are the natural recipients for team-membership events —
+ * there's no per-workspace "who manages this" single owner concept beyond
+ * role, and these events (member added/removed) are workspace-wide, not
+ * about one specific lead/conversation like the other categories. */
+async function getManagerMemberIds(workspaceId: string, excludeMemberId?: string | null) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("workspace_members")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .in("role", ["owner", "admin"]);
+  return ((data ?? []) as { id: string }[]).map((m) => m.id).filter((id) => id !== excludeMemberId);
 }
 
 async function countOwners(workspaceId: string) {
@@ -158,6 +185,15 @@ export async function updateMemberRole(memberId: string, role: Role) {
       metadata: { from_owner_member_id: ownMemberId, to_owner_member_id: memberId },
     });
 
+    await notify({
+      workspaceId,
+      memberId,
+      eventType: "member_role_changed",
+      title: "Cambio de rol",
+      message: "Ahora sos el Owner de este workspace.",
+      actionUrl: "/settings",
+    });
+
     revalidatePath("/settings");
     revalidatePath("/crm");
     return;
@@ -184,6 +220,15 @@ export async function updateMemberRole(memberId: string, role: Role) {
     metadata: { from_role: target.role, to_role: role },
   });
 
+  await notify({
+    workspaceId,
+    memberId,
+    eventType: "member_role_changed",
+    title: "Cambio de rol",
+    message: `Tu rol ahora es ${role}.`,
+    actionUrl: "/settings",
+  });
+
   revalidatePath("/settings");
   revalidatePath("/crm");
 }
@@ -200,6 +245,22 @@ export async function removeMember(memberId: string) {
   }
 
   const supabase = await createClient();
+  const { data: names } = await supabase.rpc("workspace_member_names", { ws_id: workspaceId });
+  const targetName = ((names ?? []) as { member_id: string; full_name: string }[]).find((m) => m.member_id === memberId)?.full_name;
+
   await supabase.from("workspace_members").delete().eq("id", memberId).eq("workspace_id", workspaceId);
+
+  const actingMemberId = await getCurrentMemberId(workspaceId);
+  const recipients = await getManagerMemberIds(workspaceId, actingMemberId);
+  if (recipients.length > 0) {
+    await notifyMany(recipients, {
+      workspaceId,
+      eventType: "member_removed",
+      title: "Agente eliminado",
+      message: `${targetName ?? "Un agente"} fue eliminado del workspace.`,
+      actionUrl: "/settings",
+    });
+  }
+
   revalidatePath("/settings");
 }
