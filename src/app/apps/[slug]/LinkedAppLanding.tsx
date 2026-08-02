@@ -111,7 +111,7 @@ function ExternalAppLanding({ app }: { app: PublicMiniAppView<"app_vinculada"> }
   const Icon = ICON_COMPONENTS[app.config.icon as LinkedAppIconKey] ?? Link2;
 
   return (
-    <div data-mini-app-theme="true" className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:py-12">
+    <div data-mini-app-theme="true" className="relative flex min-h-dvh items-center justify-center px-4 py-8 sm:py-12">
       <DecorativeBackground />
       <div className="flex w-full max-w-md flex-col gap-4">
         <AgentBar app={app} badgeLabel="Vinculada" />

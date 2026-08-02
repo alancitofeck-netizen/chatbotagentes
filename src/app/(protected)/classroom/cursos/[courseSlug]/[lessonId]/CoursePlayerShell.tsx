@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Paperclip, Target } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, ListVideo, Paperclip, Target } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils/cn";
 import { VideoPlayer } from "@/components/classroom/VideoPlayer";
 import { ChapterLessonNav } from "@/components/classroom/ChapterLessonNav";
 import { CommentThread } from "@/components/classroom/CommentThread";
@@ -52,6 +54,7 @@ export function CoursePlayerShell({
   authorName: string | null;
 }) {
   const levelMeta = COURSE_LEVEL_META[course.level];
+  const [navOpen, setNavOpen] = useState(false);
 
   return (
     <div className="flex h-full">
@@ -63,7 +66,47 @@ export function CoursePlayerShell({
         <ChapterLessonNav chapters={chapters} courseSlug={course.slug} activeLessonId={lesson.id} />
       </aside>
 
+      {/* Mobile drawer for the chapter/lesson nav above — same overlay +
+         `inert` + transition pattern as MobileNav.tsx (Fase 1) and
+         TasksSidebar.tsx (Fase 2). Without this, switching lessons on
+         mobile required navigating back to the course page — the nav was
+         simply unreachable below `lg`. */}
+      <div
+        className={cn(
+          "fixed inset-0 z-50 bg-neutral-950/40 transition-opacity duration-300 ease-[var(--ease-out)] lg:hidden",
+          navOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onClick={() => setNavOpen(false)}
+        aria-hidden="true"
+      />
+      <div
+        inert={!navOpen}
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col gap-2 overflow-y-auto bg-surface-1 p-3 shadow-[var(--elevation-lg)] lg:hidden",
+          "transition-transform duration-300 ease-[var(--ease-out)]",
+          navOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <Link
+          href={`/classroom/cursos/${course.slug}`}
+          className="mb-1 flex items-center gap-1.5 px-2 text-sm font-medium text-neutral-500 hover:text-foreground"
+        >
+          <ArrowLeft size={14} aria-hidden="true" />
+          <span className="truncate">{course.title}</span>
+        </Link>
+        <ChapterLessonNav chapters={chapters} courseSlug={course.slug} activeLessonId={lesson.id} />
+      </div>
+
       <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto p-6 sm:p-8">
+        <button
+          type="button"
+          onClick={() => setNavOpen(true)}
+          className="flex items-center gap-2 self-start rounded-md border border-border-strong px-3 py-2 text-[13px] font-medium text-foreground hover:bg-surface-2 lg:hidden"
+        >
+          <ListVideo size={15} aria-hidden="true" />
+          Lecciones
+        </button>
+
         <VideoPlayer
           videoUrl={lesson.videoUrl ?? ""}
           lessonId={lesson.id}
@@ -98,6 +141,20 @@ export function CoursePlayerShell({
           )}
         </div>
 
+        {/* Same info as the right sidebar (hidden below `xl`) — inline
+           instead of a second drawer, since it's secondary reading, not
+           navigation. */}
+        <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-surface-1 p-3 xl:hidden">
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="font-medium text-foreground">Progreso del curso</span>
+            <span className="text-neutral-500">{courseProgress.progressPct}%</span>
+          </div>
+          <ProgressBar value={courseProgress.progressPct} />
+          <span className="text-xs text-neutral-500">
+            {courseProgress.completedCount} de {courseProgress.totalCount} videos
+          </span>
+        </div>
+
         {resources.length > 0 && (
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold text-foreground">Archivos adjuntos</h3>
@@ -107,7 +164,14 @@ export function CoursePlayerShell({
                   <Paperclip size={13} className="shrink-0 text-neutral-400" aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">{r.label}</span>
                   {r.fileSizeBytes && <span className="text-xs text-neutral-400">{formatFileSize(r.fileSizeBytes)}</span>}
-                  <a href={r.fileUrl} target="_blank" rel="noreferrer" download className="text-neutral-500 hover:text-foreground" aria-label="Descargar">
+                  <a
+                    href={r.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    download
+                    className="flex size-9 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground"
+                    aria-label="Descargar"
+                  >
                     <Download size={15} aria-hidden="true" />
                   </a>
                 </li>

@@ -2,11 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { Fab } from "@/components/ui/Fab";
 import { KanbanSquare, Settings } from "lucide-react";
 import { toast } from "@/components/toast/toast";
 import type { CrmBoard, CrmPipelineOption, OpportunityCard, OpportunityTag } from "@/lib/crm/queries";
@@ -28,7 +27,6 @@ import { filterAndSortBoard } from "@/lib/crm/boardFilters";
 import { BoardActionBar, EMPTY_FILTERS, type BoardFilters, type SortOption } from "./BoardActionBar";
 import { BoardKpiHeader } from "./BoardKpiHeader";
 import { KanbanBoard } from "./KanbanBoard";
-import { OpportunityCardView } from "./OpportunityCardView";
 import { OpportunityTable } from "./OpportunityTable";
 import { CardDetailSheet } from "./CardDetailSheet";
 import { LeadFormSheet } from "./LeadFormSheet";
@@ -96,7 +94,6 @@ export function CrmBoardShell({
   );
   const [importOpen, setImportOpen] = useState(false);
   const [isCreatingPipeline, startCreatePipeline] = useTransition();
-  const mobileSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   function handleCreatePipeline() {
     startCreatePipeline(async () => {
@@ -245,6 +242,10 @@ export function CrmBoardShell({
     refreshBoard();
   }
 
+  function handleNewLead() {
+    setLeadForm({ card: null, defaultStageId: board?.stages[0]?.id ?? null });
+  }
+
   async function handleExport() {
     const csv = await exportOpportunitiesCsv();
     if (!csv) {
@@ -334,7 +335,7 @@ export function CrmBoardShell({
           selectionMode={selectionMode}
           onToggleSelectionMode={toggleSelectionMode}
           selectedCount={selectedIds.size}
-          onNewLead={() => setLeadForm({ card: null, defaultStageId: board.stages[0]?.id ?? null })}
+          onNewLead={handleNewLead}
           onImport={() => setImportOpen(true)}
           onExport={handleExport}
           onBulkMoveStage={handleBulkMoveStage}
@@ -347,23 +348,27 @@ export function CrmBoardShell({
       {/* No fixed-height/overflow-hidden box here on purpose — the board grows
          naturally (stages stacked top-to-bottom, see KanbanBoard's orientation="rows")
          and the page itself scrolls (via the (protected) layout's <main overflow-y-auto>),
-         instead of confining everything to a small internally-scrolling strip. */}
-      <div className="hidden sm:block">
-        {view === "kanban" ? (
-          <KanbanBoard
-            stages={board.stages}
-            cardsByStage={filtered.cardsByStage}
-            avgOpenValue={avgOpenValue}
-            selectionMode={selectionMode}
-            selectedIds={selectedIds}
-            onToggleSelect={toggleSelect}
-            onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
-            onEdit={(card) => setLeadForm({ card, defaultStageId: null })}
-            onNote={(card) => setDetailState({ id: card.id, tab: "notas" })}
-            onChanged={refreshBoard}
-          />
-        ) : (
-          <div className="px-4 pb-4 sm:px-6 lg:px-8">
+         instead of confining everything to a small internally-scrolling strip.
+         Below `sm`, KanbanBoard switches itself to horizontal-scrolling columns
+         with real touch drag-and-drop (see src/app/(protected)/crm/KanbanBoard.tsx
+         useIsMobile), so it's shown regardless of the desktop kanban/tabla toggle —
+         a wide table is never the right mobile view, the touch-friendly kanban is. */}
+      {view === "kanban" ? (
+        <KanbanBoard
+          stages={board.stages}
+          cardsByStage={filtered.cardsByStage}
+          avgOpenValue={avgOpenValue}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
+          onEdit={(card) => setLeadForm({ card, defaultStageId: null })}
+          onNote={(card) => setDetailState({ id: card.id, tab: "notas" })}
+          onChanged={refreshBoard}
+        />
+      ) : (
+        <>
+          <div className="hidden px-4 pb-4 sm:block sm:px-6 lg:px-8">
             <OpportunityTable
               cards={filtered.flat}
               stages={board.stages}
@@ -375,40 +380,24 @@ export function CrmBoardShell({
               onDelete={handleDeleteOne}
             />
           </div>
-        )}
-      </div>
+          <div className="sm:hidden">
+            <KanbanBoard
+              stages={board.stages}
+              cardsByStage={filtered.cardsByStage}
+              avgOpenValue={avgOpenValue}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+              onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
+              onEdit={(card) => setLeadForm({ card, defaultStageId: null })}
+              onNote={(card) => setDetailState({ id: card.id, tab: "notas" })}
+              onChanged={refreshBoard}
+            />
+          </div>
+        </>
+      )}
 
-      {/* Mobile (<sm): dragging a Kanban isn't practical on a touch-scrolled narrow
-         viewport — same rich cards, stacked as a single scrollable list instead.
-         Wrapped in an inert DndContext/SortableContext purely so OpportunityCardView's
-         useSortable() has the context it expects; there's no stage to drop into here,
-         so onDragEnd is intentionally a no-op — a released card just springs back. */}
-      <div className="px-4 pb-4 sm:hidden">
-        {filtered.flat.length === 0 ? (
-          <EmptyState icon={KanbanSquare} title="Sin resultados" description="Ningún lead coincide con los filtros aplicados." />
-        ) : (
-          <DndContext sensors={mobileSensors}>
-            <SortableContext items={filtered.flat.map((c) => c.pipelineItemId)} strategy={verticalListSortingStrategy}>
-              <div className="flex flex-col gap-3">
-                {filtered.flat.map((card) => (
-                  <OpportunityCardView
-                    key={card.id}
-                    card={card}
-                    stages={board.stages}
-                    avgOpenValue={avgOpenValue}
-                    selectionMode={selectionMode}
-                    selected={selectedIds.has(card.id)}
-                    onToggleSelect={() => toggleSelect(card.id)}
-                    onOpen={() => (selectionMode ? toggleSelect(card.id) : setDetailState({ id: card.id, tab: "resumen" }))}
-                    onEdit={() => setLeadForm({ card, defaultStageId: null })}
-                    onNote={() => setDetailState({ id: card.id, tab: "notas" })}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        )}
-      </div>
+      <Fab aria-label="Nuevo lead" title="Nuevo lead" onClick={handleNewLead} />
 
       <CardDetailSheet
         key={detailState?.id ?? "closed"}

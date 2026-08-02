@@ -14,8 +14,8 @@ const ACTIVITY_EVENTS = ["mousemove", "keydown", "click", "scroll"] as const;
  * "online"/"away" on a per-workspace Supabase Realtime Presence channel
  * (ephemeral, no table involved) and periodically persists last_active_at
  * (0039/0040 migrations) as the fallback shown once nobody is connected.
- * Not mounted while isSupervising (ReminderWatcher/layout.tsx) — a platform
- * admin viewing someone else's workspace isn't "present" there. */
+ * Not mounted while isSupervising (see layout.tsx) — a platform admin
+ * viewing someone else's workspace isn't "present" there. */
 export function PresenceHeartbeat({ workspaceId, memberId }: { workspaceId: string; memberId: string | null }) {
   useEffect(() => {
     if (!memberId) return;

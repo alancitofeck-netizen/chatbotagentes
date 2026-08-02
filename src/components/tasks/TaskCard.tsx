@@ -50,7 +50,7 @@ export function TaskCard({
             type="checkbox"
             checked={selected}
             onChange={onToggleSelect}
-            className="mt-0.5 size-4 shrink-0 rounded border-border-strong accent-[var(--color-accent-500)]"
+            className="mt-0.5 size-4 max-sm:size-6 shrink-0 rounded border-border-strong accent-[var(--color-accent-500)]"
           />
         ) : (
           <input
@@ -58,7 +58,7 @@ export function TaskCard({
             checked={task.status === "completed"}
             onChange={onToggleComplete}
             disabled={task.status === "completed" || !onToggleComplete}
-            className="mt-0.5 size-4 shrink-0 rounded border-border-strong accent-[var(--color-accent-500)]"
+            className="mt-0.5 size-4 max-sm:size-6 shrink-0 rounded border-border-strong accent-[var(--color-accent-500)]"
             aria-label="Marcar como completada"
           />
         )}

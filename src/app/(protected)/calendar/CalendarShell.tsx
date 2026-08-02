@@ -18,6 +18,8 @@ import { EventDetailDrawer } from "@/components/calendar/EventDetailDrawer";
 import { CalendarSidebar } from "@/components/calendar/CalendarSidebar";
 import { CalendarSelectionBar } from "@/components/calendar/CalendarSelectionBar";
 import { categoryFor, type CategoryKey } from "@/components/calendar/eventTypeMeta";
+import { Fab } from "@/components/ui/Fab";
+import { useIsMobile } from "@/lib/utils/useMediaQuery";
 
 type ViewKey = "day" | "week" | "month" | "agenda";
 const VIEWS: { key: ViewKey; label: string }[] = [
@@ -83,8 +85,12 @@ export function CalendarShell({
   // fix as ProfileShell/CrmPageShell this session, so links like the
   // Dashboard's "Ver calendario" (or a future deep link) land correctly even
   // when Next.js reuses an already-mounted /calendar instance.
+  // Below `md`, a week/month grid isn't a good landing view — default to
+  // Agenda instead when the URL doesn't already say otherwise (an explicit
+  // `?view=` — e.g. from a deep link — is always respected either way).
+  const isMobile = useIsMobile();
   const requestedView = searchParams.get("view");
-  const view: ViewKey = VIEWS.some((v) => v.key === requestedView) ? (requestedView as ViewKey) : "week";
+  const view: ViewKey = VIEWS.some((v) => v.key === requestedView) ? (requestedView as ViewKey) : isMobile ? "agenda" : "week";
   const dateParam = searchParams.get("date");
   const date = dateParam ? parseLocalDate(dateParam) : new Date(initialDateISO);
 
@@ -249,7 +255,7 @@ export function CalendarShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="border-b border-border-default bg-surface-1">
-          <div className="flex items-center justify-between px-6 pt-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 sm:px-6 sm:pt-5">
             <div className="flex items-center gap-2.5">
               <span className="flex size-9 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
                 <CalendarDays size={18} aria-hidden="true" />
@@ -261,14 +267,17 @@ export function CalendarShell({
                 <ListChecks size={17} aria-hidden="true" />
                 Acciones masivas
               </Button>
-              <Button size="lg" onClick={() => setSheetState({ mode: "create", defaultStart: date })}>
+              {/* Below `md` the FAB (rendered near the end of this component)
+                 covers "nuevo evento" — keeping this button too would just be
+                 a second entry point crowding an already-tight header. */}
+              <Button size="lg" onClick={() => setSheetState({ mode: "create", defaultStart: date })} className="hidden md:inline-flex">
                 <Plus size={17} aria-hidden="true" />
                 Nuevo evento
               </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 px-6 pb-4 pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-4 pt-3 sm:px-6">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-0.5 rounded-full border border-border-default bg-surface-1 p-1 shadow-[var(--elevation-xs)]">
                 <button
@@ -361,6 +370,8 @@ export function CalendarShell({
           )}
         </div>
       </div>
+
+      <Fab aria-label="Nuevo evento" title="Nuevo evento" onClick={() => setSheetState({ mode: "create", defaultStart: date })} />
 
       {sheetState?.mode === "view" && (
         <EventDetailDrawer

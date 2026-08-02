@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import { Sparkles, PanelLeft } from "lucide-react";
 import type { TaskGroup } from "@/lib/tasks/groups/queries";
 import { GroupFormDialog } from "@/components/tasks/GroupFormDialog";
 import { TemplatePickerDialog } from "@/components/tasks/TemplatePickerDialog";
@@ -26,6 +26,7 @@ export function TasksModuleShell({
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   function handleGroupCreated(groupId: string) {
     setShowGroupForm(false);
@@ -36,19 +37,35 @@ export function TasksModuleShell({
 
   return (
     <div className="flex h-full">
-      <TasksSidebar initialGroups={groups} onNewGroup={() => setShowGroupForm(true)} />
+      <TasksSidebar
+        initialGroups={groups}
+        onNewGroup={() => setShowGroupForm(true)}
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <div className="flex items-center justify-end gap-2 border-b border-border-default px-4 py-2.5 sm:px-6 lg:px-8">
-          <NewItemMenu onNewGroup={() => setShowGroupForm(true)} onNewTemplate={() => setShowTemplatePicker(true)} />
+        <div className="flex items-center justify-between gap-2 border-b border-border-default px-4 py-2.5 sm:px-6 lg:justify-end lg:px-8">
           <button
             type="button"
-            onClick={() => setAiPanelOpen((v) => !v)}
-            title="Asistente IA"
-            className="flex size-9 items-center justify-center rounded-md border border-border-strong text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+            onClick={() => setMobileSidebarOpen(true)}
+            title="Grupos"
+            aria-label="Abrir grupos de tareas"
+            className="flex size-9 items-center justify-center rounded-md border border-border-strong text-neutral-500 hover:bg-surface-2 hover:text-foreground lg:hidden"
           >
-            <Sparkles size={16} aria-hidden="true" />
+            <PanelLeft size={16} aria-hidden="true" />
           </button>
+          <div className="flex items-center gap-2">
+            <NewItemMenu onNewGroup={() => setShowGroupForm(true)} onNewTemplate={() => setShowTemplatePicker(true)} />
+            <button
+              type="button"
+              onClick={() => setAiPanelOpen((v) => !v)}
+              title="Asistente IA"
+              className="flex size-9 items-center justify-center rounded-md border border-border-strong text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+            >
+              <Sparkles size={16} aria-hidden="true" />
+            </button>
+          </div>
         </div>
         {children}
       </div>

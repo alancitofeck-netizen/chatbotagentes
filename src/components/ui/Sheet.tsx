@@ -13,8 +13,12 @@ interface SheetProps {
   className?: string;
 }
 
-/** Right-side slide-in panel — used for the CRM card detail view instead of a
- * modal, so it doesn't block the board underneath (14-design-system.md §10). */
+/** Right-side slide-in panel on desktop; bottom sheet on mobile (optimización
+ * mobile plan §3) — one component, not two, so every existing caller (CRM
+ * card detail, lead form, etc.) gets the mobile treatment for free. Below
+ * `sm` the panel anchors to the bottom, capped at 92vh instead of forced
+ * full-height, with rounded top corners; at `sm:` and up it's the original
+ * right-anchored full-height panel, unchanged (14-design-system.md §10). */
 export function Sheet({ open, onClose, title, children, className }: SheetProps) {
   useEffect(() => {
     if (!open) return;
@@ -28,7 +32,7 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-stretch sm:justify-end">
       <button
         aria-label="Cerrar panel"
         onClick={onClose}
@@ -45,7 +49,10 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
           // classes — whichever utility Tailwind happens to emit later in
           // the stylesheet would win, regardless of prop order. Only fall
           // back to the default width when the caller didn't pass one.
-          "relative flex h-full w-full flex-col bg-surface-1 shadow-[var(--elevation-lg)]",
+          // `w-full` + a phone-width viewport already keeps this narrower
+          // than any typical `max-w-*` a caller passes, so that constraint
+          // only actually bites at `sm:` and up, unprefixed on purpose.
+          "relative flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-surface-1 shadow-[var(--elevation-lg)] sm:h-full sm:max-h-full sm:rounded-none",
           className ?? "max-w-md",
         )}
       >

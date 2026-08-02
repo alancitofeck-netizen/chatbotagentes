@@ -20,9 +20,11 @@ const variantClasses: Record<ButtonVariant, string> = {
   destructive: "bg-transparent text-error-strong hover:bg-error-bg",
 };
 
+// max-sm: (mobile only, not sm:-and-up) so desktop density is untouched —
+// `lg` already clears 44px with its existing padding, `sm`/`md` don't.
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "text-[13px] leading-[18px] px-3 py-1.5 rounded-sm gap-1.5",
-  md: "text-sm leading-5 px-4 py-2 rounded-md gap-2",
+  sm: "text-[13px] leading-[18px] px-3 py-1.5 rounded-sm gap-1.5 max-sm:min-h-11",
+  md: "text-sm leading-5 px-4 py-2 rounded-md gap-2 max-sm:min-h-11",
   lg: "text-[15px] leading-6 px-5 py-2.5 rounded-md gap-2",
 };
 

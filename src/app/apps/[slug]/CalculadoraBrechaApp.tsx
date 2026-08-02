@@ -347,7 +347,7 @@ export function CalculadoraBrechaApp({ app }: { app: PublicMiniAppView<"calculad
   return (
     <div
       data-mini-app-theme="true"
-      className={`relative flex min-h-screen justify-center px-4 py-8 sm:py-12 ${phase === "resultado" ? "items-start" : "items-center"}`}
+      className={`relative flex min-h-dvh justify-center px-4 py-8 sm:py-12 ${phase === "resultado" ? "items-start" : "items-center"}`}
     >
       <DecorativeBackground />
       <div className={`flex w-full flex-col gap-4 transition-[max-width] duration-300 ${phase === "resultado" ? "max-w-2xl" : "max-w-md"}`}>

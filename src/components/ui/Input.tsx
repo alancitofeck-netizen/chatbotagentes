@@ -26,7 +26,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           aria-invalid={Boolean(error)}
           aria-describedby={error || hint ? helpId : undefined}
           className={cn(
-            "rounded-sm border bg-surface-1 px-3 py-2 text-sm text-foreground outline-none",
+            // max-sm: not sm: — this must win ON mobile, not from mobile up,
+            // so a caller's own `className` sizing (if any) still wins at sm+.
+            "max-sm:min-h-11 rounded-sm border bg-surface-1 px-3 py-2 text-sm text-foreground outline-none",
             "transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]",
             "placeholder:text-neutral-400",
             "focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100",

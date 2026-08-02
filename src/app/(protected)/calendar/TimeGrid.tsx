@@ -303,7 +303,11 @@ export function TimeGrid({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex min-w-[900px]">
+      {/* Fixed 900px only makes sense for the multi-column Week view — Day
+         view (days.length === 1) forced the same horizontal scroll for a
+         single column with nothing to its right, which is exactly the
+         "sin scroll horizontal" mobile requirement breaking for no reason. */}
+      <div className={cn("flex", days.length > 1 ? "min-w-[900px]" : "min-w-0")}>
         <div className="w-16 shrink-0 pt-[49px]">
           {HOURS.map((h) => (
             <div key={h} style={{ height: HOUR_HEIGHT }} className="pr-3 text-right text-[11px] font-medium text-neutral-400">

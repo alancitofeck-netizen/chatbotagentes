@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   pointerWithin,
   useSensor,
@@ -212,7 +213,18 @@ export function KanbanBoard<T extends KanbanCardBase>({
   const [columns, setColumns] = useState(initialCardsByStage);
   const [activeCard, setActiveCard] = useState<T | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  // MouseSensor (not the previous PointerSensor) + a dedicated TouchSensor —
+  // mixing PointerSensor with TouchSensor is a known dnd-kit footgun (both
+  // can react to the same touch interaction, since PointerSensor listens on
+  // Pointer Events which already subsume touch). Splitting by device lets
+  // each have the RIGHT activation constraint: mouse keeps the original
+  // short distance threshold, touch needs a brief press-and-hold instead —
+  // a bare distance threshold on touch fires on the same gesture the
+  // browser is trying to read as a page/column scroll.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+  );
 
   const cardsById = useMemo(() => {
     const map = new Map<string, T>();

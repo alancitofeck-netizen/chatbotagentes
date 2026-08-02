@@ -202,11 +202,13 @@ Mismos nombres de token, valores distintos (ver `globals.css`) — nunca una seg
 
 ## 14. Responsive
 
-Desktop-first, en este orden de prioridad:
+**Actualizado (iniciativa de optimización mobile)**: la postura "mobile = solo administración básica" queda revertida — decisión consciente anterior, reemplazada por una decisión consciente nueva. Cada módulo del núcleo (Inbox, CRM, ATS, Calendario, Tareas, Dashboard) debe funcionar completo en mobile, sin recortar funcionalidad respecto de desktop, con una experiencia pensada para uso táctil de una mano (no solo CSS responsive) — inspirada en el comportamiento de apps como Notion/Slack/HubSpot/ClickUp. Se implementa por fases, priorizando navegación + CRM primero (ver `10-roadmap.md` y el plan de la iniciativa); este documento se actualiza a medida que cada fase define patrones nuevos reutilizables.
+
+Breakpoints, en este orden de prioridad:
 
 1. **Desktop (≥1280px)**: experiencia completa — Inbox de 3 columnas, dashboards de 12 columnas, sidebar expandida.
 2. **Tablet (768–1279px)**: sidebar colapsa a rail de íconos, panel contextual del Inbox se vuelve un drawer que se abre bajo demanda (no ocupa columna fija), dashboards pasan a 2 columnas.
-3. **Mobile (<768px)**: **solo administración básica** (ajustes, revisar una notificación, aprobar algo puntual) — el Inbox completo, CRM y ATS no se optimizan para mobile en esta fase; se documenta como decisión consciente, no como omisión.
+3. **Mobile (<768px)**: navegación por menú hamburguesa deslizable (`MobileNav.tsx`) en vez de sidebar fija; Inbox alterna entre lista y hilo de conversación en pantalla completa (patrón WhatsApp, no 3 columnas simultáneas); tablas grandes (contactos, candidatos) se reemplazan por listas de cards; el tablero kanban de CRM/ATS mantiene columnas horizontales con scroll táctil en vez de colapsar a lista; dashboards pasan a 1 columna; modales se abren como bottom sheets casi de pantalla completa en vez de diálogos centrados pequeños. Soporta 320–414px sin scroll horizontal.
 
 ## Próximos pasos (fuera de alcance de este documento)
 

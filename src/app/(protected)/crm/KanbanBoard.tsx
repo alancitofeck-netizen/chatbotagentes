@@ -5,6 +5,7 @@ import type { OpportunityCard, PipelineStage } from "@/lib/crm/queries";
 import { moveOpportunityCard } from "@/lib/crm/actions";
 import { toast } from "@/components/toast/toast";
 import { formatCurrency } from "@/lib/utils/format";
+import { useIsMobile } from "@/lib/utils/useMediaQuery";
 import { OpportunityCardView } from "./OpportunityCardView";
 
 export function KanbanBoard({
@@ -38,6 +39,15 @@ export function KanbanBoard({
       });
   }
 
+  // Below `md`: horizontal-scrolling columns (same "orientation=columns" ATS
+  // already uses) with a near-full-width column so the card inside reads as
+  // big and is easy to drag with a thumb — dragging a card between STAGES on
+  // a touch screen only really works column-by-column, "rows" mode's
+  // per-stage horizontal card strip doesn't give a clear drop target on a
+  // narrow viewport. Desktop keeps the original stacked-rows layout
+  // unchanged.
+  const isMobile = useIsMobile();
+
   return (
     <GenericKanbanBoard<OpportunityCard>
       stages={stages}
@@ -61,8 +71,9 @@ export function KanbanBoard({
         const total = cards.reduce((sum, c) => sum + c.value, 0);
         return total > 0 ? formatCurrency(total) : undefined;
       }}
-      orientation="rows"
+      orientation={isMobile ? "columns" : "rows"}
       cardWidth="w-[300px]"
+      columnWidth="w-[min(85vw,320px)]"
     />
   );
 }

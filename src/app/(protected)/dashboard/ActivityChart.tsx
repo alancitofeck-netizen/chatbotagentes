@@ -40,6 +40,7 @@ export function ActivityChart({ initialData }: { initialData: ActivityPoint[] })
     <Card>
       <CardHeader
         title="Revenue Analytics"
+        className="flex-wrap gap-y-2"
         action={
           <div role="group" aria-label="Rango de fechas" className="flex gap-1 rounded-full bg-surface-2 p-1">
             {RANGES.map((r) => (

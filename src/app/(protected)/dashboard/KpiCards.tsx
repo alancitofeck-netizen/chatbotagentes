@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Line, LineChart, ResponsiveContainer } from "recharts";
 import { TrendingDown, TrendingUp, Users, MessageCircle, CalendarClock, DollarSign } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { HorizontalCardScroller } from "@/components/ui/HorizontalCardScroller";
 import type { ActivityPoint, DashboardKpis } from "@/lib/dashboard/queries";
 
 function formatCurrency(value: number) {
@@ -99,7 +100,7 @@ export function KpiCards({ kpis, activity, compact = false }: { kpis: DashboardK
   const delta = kpis.leadsYesterday === 0 ? null : Math.round(((kpis.leadsToday - kpis.leadsYesterday) / kpis.leadsYesterday) * 100);
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <HorizontalCardScroller desktopClassName="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <KpiCard
         icon={<Users className="size-[18px]" aria-hidden="true" />}
         iconBg="bg-accent-100"
@@ -155,6 +156,6 @@ export function KpiCards({ kpis, activity, compact = false }: { kpis: DashboardK
         footnote={`${kpis.conversionRate}% conversión`}
         compact={compact}
       />
-    </div>
+    </HorizontalCardScroller>
   );
 }

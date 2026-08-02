@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { Table2 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { HorizontalCardScroller } from "@/components/ui/HorizontalCardScroller";
 import { Select } from "@/components/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -209,20 +210,20 @@ export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; 
       </div>
 
       {!entries ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <HorizontalCardScroller desktopClassName="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full" />
           ))}
-        </div>
+        </HorizontalCardScroller>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-5">
+        <HorizontalCardScroller desktopClassName="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-5">
           {CARD_DEFS.map((c) => (
             <Card key={c.key}>
               <p className="font-mono text-[22px] font-semibold leading-none text-foreground">{totals[c.key]}</p>
               <p className="mt-1.5 text-[13px] text-neutral-500">{c.label}</p>
             </Card>
           ))}
-        </div>
+        </HorizontalCardScroller>
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>

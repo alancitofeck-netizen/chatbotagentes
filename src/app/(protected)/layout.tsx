@@ -5,7 +5,6 @@ import { isPlatformAdmin as checkIsPlatformAdmin } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
-import { ReminderWatcher } from "@/components/calendar/ReminderWatcher";
 import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
 import { SupervisorModeBanner } from "@/components/platform/SupervisorModeBanner";
 
@@ -47,13 +46,20 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         {activeWorkspace.isSupervising && <SupervisorModeBanner workspaceName={activeWorkspace.name} />}
-        <Navbar workspaceName={activeWorkspace.name} enabledModules={enabledModules} />
+        <Navbar
+          workspaceName={activeWorkspace.name}
+          enabledModules={enabledModules}
+          memberId={memberId}
+          userName={userName}
+          userEmail={user.email ?? ""}
+          userAvatarUrl={userAvatarUrl}
+          isPlatformAdmin={isPlatformAdmin}
+        />
         <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
       </div>
       {!activeWorkspace.isSupervising && (
         <PresenceHeartbeat workspaceId={activeWorkspace.workspaceId} memberId={memberId} />
       )}
-      <ReminderWatcher />
     </div>
   );
 }

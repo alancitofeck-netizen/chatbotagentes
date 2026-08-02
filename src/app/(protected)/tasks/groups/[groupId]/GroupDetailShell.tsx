@@ -12,7 +12,7 @@ import { PRIORITY_META, STATUS_META } from "@/components/tasks/priorityMeta";
 import { GROUP_COLOR_META } from "@/components/tasks/groupColorMeta";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import type { TaskItem, TaskOption } from "@/lib/tasks/queries";
-import { bulkAssignTasks, bulkCompleteTasks, bulkDeleteTasks, completeTask, getTasksByGroupAction } from "@/lib/tasks/actions";
+import { bulkAssignTasks, bulkCompleteTasks, bulkDeleteTasks, completeTask, deleteTask, getTasksByGroupAction } from "@/lib/tasks/actions";
 import type { GroupStats, TaskGroup } from "@/lib/tasks/groups/queries";
 import { archiveGroup, duplicateGroup, getGroupStatsAction, toggleGroupFavorite, unarchiveGroup, updateTaskGroup } from "@/lib/tasks/groups/actions";
 import { TasksViewSwitcher, type TasksView } from "../../TasksViewSwitcher";
@@ -156,6 +156,30 @@ export function GroupDetailShell({
       toast.error("No se pudieron completar las tareas.");
       refetch();
     }
+  }
+
+  /** Single-task delete — for the mobile swipe-left gesture (SwipeableTaskCard),
+   * which has no multi-select context to piggyback bulkDeleteTasks on. Same
+   * optimistic pattern as handleToggleComplete above; deleteTask itself
+   * already relies on RLS to reject a non-owner/admin (see its own comment),
+   * so this surfaces the exact same permission error a desktop delete would. */
+  function handleDeleteSingle(task: TaskItem) {
+    const previousTasks = tasks;
+    setTasks((prev) => {
+      const next = prev.filter((t) => t.id !== task.id);
+      setStats(computeStatsFromTasks(next));
+      return next;
+    });
+    startTransition(async () => {
+      try {
+        await deleteTask(task.id);
+        toast.success("Tarea eliminada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo eliminar la tarea.");
+        setTasks(previousTasks);
+        setStats(computeStatsFromTasks(previousTasks));
+      }
+    });
   }
 
   async function handleBulkDelete() {
@@ -431,6 +455,7 @@ export function GroupDetailShell({
           onToggleSelect={toggleSelect}
           onOpen={handleOpen}
           onToggleComplete={handleToggleComplete}
+          onDelete={handleDeleteSingle}
         />
       )}
       {view === "table" && (

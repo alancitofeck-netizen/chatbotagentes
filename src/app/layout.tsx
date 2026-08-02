@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { themeInitScript } from "@/lib/theme/script";
 import { ToastProvider } from "@/components/toast/ToastProvider";
+import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,6 +36,19 @@ export const metadata: Metadata = {
     description: "Inbox conversacional, CRM y ATS con IA sobre WhatsApp.",
     images: ["/growth_businesss_logo.jpg"],
   },
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Growth Link" },
+};
+
+// Separate from `metadata` per Next.js 13+ convention. `viewportFit: "cover"`
+// is what makes `env(safe-area-inset-*)` resolve to the real notch/home-
+// indicator insets on iPhone instead of 0 — without it, any current or
+// future safe-area padding in the mobile UI would have nothing to react to.
+export const viewport: Viewport = {
+  themeColor: "#6c63ff",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -56,6 +70,7 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <ToastProvider />
+          <ServiceWorkerRegistration />
         </ThemeProvider>
       </body>
     </html>

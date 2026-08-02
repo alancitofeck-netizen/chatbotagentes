@@ -70,7 +70,7 @@ export function AgendaView({
                     type="button"
                     onClick={() => (selectionMode ? onToggleSelect(event.id) : onSelect(event))}
                     className={cn(
-                      "flex w-full items-center gap-4 rounded-xl border-l-[3px] bg-surface-1 px-4 py-3.5 text-left shadow-[var(--elevation-xs)] transition-all duration-150",
+                      "flex max-sm:min-h-14 w-full items-center gap-4 rounded-xl border-l-[3px] bg-surface-1 px-4 py-3.5 text-left shadow-[var(--elevation-xs)] transition-all duration-150",
                       "hover:-translate-y-0.5 hover:shadow-[var(--elevation-sm)]",
                       isCancelled ? "border-l-neutral-300" : meta.border,
                       selectedIds.has(event.id) && "ring-2 ring-accent-500",
