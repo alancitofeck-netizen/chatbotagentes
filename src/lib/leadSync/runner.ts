@@ -17,6 +17,13 @@ export interface LeadSheetConnection {
   pipeline_id: string;
   default_stage_id: string;
   default_owner_id: string | null;
+  /** Hash of the last successfully-read sheet content — the "mecanismo
+   * equivalente" to modifiedTime (ver 0085_lead_sheet_sync_history.sql):
+   * Sheets API v4 has no per-row or per-sheet modifiedTime, only Drive does,
+   * and reading that would need a new OAuth scope + re-consent from every
+   * already-connected workspace. Comparing this hash lets a run skip the
+   * entire row loop when nothing changed, without a new scope. */
+  last_sheet_hash: string | null;
 }
 
 export interface LeadSyncResult {
@@ -28,6 +35,10 @@ export interface LeadSyncResult {
   errors: number;
 }
 
+function sha256(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
+}
+
 async function markConnectionError(supabase: SupabaseClient, connectionId: string, message: string) {
   await supabase
     .from("lead_sheet_connections")
@@ -35,15 +46,11 @@ async function markConnectionError(supabase: SupabaseClient, connectionId: strin
     .eq("id", connectionId);
 }
 
-async function markConnectionOk(supabase: SupabaseClient, connectionId: string, rowCount: number) {
+async function markConnectionOk(supabase: SupabaseClient, connectionId: string, rowCount: number, sheetHash: string | null) {
   await supabase
     .from("lead_sheet_connections")
-    .update({ last_sync_status: "ok", last_sync_error: null, row_count: rowCount })
+    .update({ last_sync_status: "ok", last_sync_error: null, row_count: rowCount, ...(sheetHash ? { last_sheet_hash: sheetHash } : {}) })
     .eq("id", connectionId);
-}
-
-function rowHash(values: Partial<Record<LeadSyncFieldKey, string>>): string {
-  return createHash("sha256").update(JSON.stringify(values)).digest("hex");
 }
 
 /** Best-effort "does this Estado/Agente cell match one of ours" — exact,
@@ -134,7 +141,7 @@ async function processRow(
 
   if (!values.contactName || !values.phone) return "skipped";
   const phone = normalizeE164(values.phone);
-  const hash = rowHash(values);
+  const hash = sha256(JSON.stringify(values));
   const rowKey = values.externalId ? `ext:${values.externalId}` : `row:${sheetRowNumber}`;
 
   const { data: existingRow } = await supabase
@@ -285,17 +292,40 @@ async function processRow(
   return outcome;
 }
 
+async function startRun(supabase: SupabaseClient, connectionId: string, trigger: "cron" | "manual"): Promise<string> {
+  const { data } = await supabase
+    .from("lead_sheet_sync_runs")
+    .insert({ connection_id: connectionId, trigger, status: "running" })
+    .select("id")
+    .single();
+  return data?.id as string;
+}
+
+async function finishRun(
+  supabase: SupabaseClient,
+  runId: string | undefined,
+  patch: { status: "ok" | "error"; error_message?: string; rows_read: number; created_count: number; updated_count: number; skipped_count: number; error_count: number },
+) {
+  if (!runId) return;
+  await supabase.from("lead_sheet_sync_runs").update({ ...patch, finished_at: new Date().toISOString() }).eq("id", runId);
+}
+
 /** Entry point for both the cron path and manual "Sincronizar ahora" — same
  * function backs both, mirroring runKpiSyncForSetter's own doc comment.
  * Never throws: every row is isolated in its own try/catch (one bad row
- * can't abort the rest), and the function itself always resolves to a
- * result object so Promise.allSettled at the call site is purely defensive. */
-export async function runLeadSheetSync(connection: LeadSheetConnection): Promise<LeadSyncResult> {
+ * can't abort the rest, and gets logged to lead_sheet_sync_row_errors so
+ * it's visible in the historial screen, not just console.error), and the
+ * function itself always resolves to a result object so Promise.allSettled
+ * at the call site is purely defensive. */
+export async function runLeadSheetSync(connection: LeadSheetConnection, trigger: "cron" | "manual" = "cron"): Promise<LeadSyncResult> {
   const supabase = createServiceRoleClient();
 
   const accessToken = await getValidGoogleSheetsAccessToken(connection.workspace_id);
   if (!accessToken) {
-    await markConnectionError(supabase, connection.id, "No hay una conexión de Google Sheets activa para este workspace.");
+    const runId = await startRun(supabase, connection.id, trigger);
+    const message = "No hay una conexión de Google Sheets activa para este workspace.";
+    await markConnectionError(supabase, connection.id, message);
+    await finishRun(supabase, runId, { status: "error", error_message: message, rows_read: 0, created_count: 0, updated_count: 0, skipped_count: 0, error_count: 0 });
     return { ok: false, processed: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
   }
 
@@ -303,15 +333,39 @@ export async function runLeadSheetSync(connection: LeadSheetConnection): Promise
   try {
     rows = await fetchSheetValues(accessToken, connection.spreadsheet_id, connection.sheet_name);
   } catch (err) {
-    await markConnectionError(supabase, connection.id, err instanceof Error ? err.message : "No se pudo leer la hoja.");
+    const runId = await startRun(supabase, connection.id, trigger);
+    const message = err instanceof Error ? err.message : "No se pudo leer la hoja.";
+    await markConnectionError(supabase, connection.id, message);
+    await finishRun(supabase, runId, { status: "error", error_message: message, rows_read: 0, created_count: 0, updated_count: 0, skipped_count: 0, error_count: 0 });
     return { ok: false, processed: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
   }
 
   if (rows.length < 2) {
-    await markConnectionOk(supabase, connection.id, 0);
+    await markConnectionOk(supabase, connection.id, 0, sha256(JSON.stringify(rows)));
     return { ok: true, processed: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
   }
 
+  // Sincronización incremental — "mecanismo equivalente" a modifiedTime (ver
+  // el comentario de last_sheet_hash arriba): si el contenido completo de la
+  // hoja es idéntico al de la corrida anterior, no hace falta ni siquiera
+  // recorrer las filas — se registra la corrida igual (para el historial)
+  // pero como un no-op, sin tocar contactos/oportunidades.
+  const sheetHash = sha256(JSON.stringify(rows));
+  if (connection.last_sheet_hash && sheetHash === connection.last_sheet_hash) {
+    const runId = await startRun(supabase, connection.id, trigger);
+    await markConnectionOk(supabase, connection.id, rows.length - 1, sheetHash);
+    await finishRun(supabase, runId, {
+      status: "ok",
+      rows_read: rows.length - 1,
+      created_count: 0,
+      updated_count: 0,
+      skipped_count: rows.length - 1,
+      error_count: 0,
+    });
+    return { ok: true, processed: rows.length - 1, created: 0, updated: 0, skipped: rows.length - 1, errors: 0 };
+  }
+
+  const runId = await startRun(supabase, connection.id, trigger);
   const [headers, ...dataRows] = rows;
   const [{ data: stages }, { data: members }] = await Promise.all([
     supabase.from("pipeline_stages").select("id, name").eq("pipeline_id", connection.pipeline_id),
@@ -324,13 +378,14 @@ export async function runLeadSheetSync(connection: LeadSheetConnection): Promise
   let errors = 0;
 
   for (let i = 0; i < dataRows.length; i++) {
+    const sheetRowNumber = i + 2;
     try {
       const outcome = await processRow(
         supabase,
         connection,
         headers,
         dataRows[i],
-        i + 2,
+        sheetRowNumber,
         (stages ?? []) as { id: string; name: string }[],
         (members ?? []) as { member_id: string; full_name: string }[],
       );
@@ -339,10 +394,26 @@ export async function runLeadSheetSync(connection: LeadSheetConnection): Promise
       else skipped++;
     } catch (err) {
       errors++;
-      console.error(`[leadSync] fila ${i + 2} de la conexión ${connection.id} falló:`, err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[leadSync] fila ${sheetRowNumber} de la conexión ${connection.id} falló:`, err);
+      await supabase.from("lead_sheet_sync_row_errors").insert({
+        run_id: runId,
+        row_number: sheetRowNumber,
+        row_key: dataRows[i]?.[0] ?? null,
+        message: message.slice(0, 1000),
+      });
     }
   }
 
-  await markConnectionOk(supabase, connection.id, dataRows.length);
+  await markConnectionOk(supabase, connection.id, dataRows.length, sheetHash);
+  await finishRun(supabase, runId, {
+    status: errors > 0 ? "error" : "ok",
+    error_message: errors > 0 ? `${errors} fila(s) fallaron.` : undefined,
+    rows_read: dataRows.length,
+    created_count: created,
+    updated_count: updated,
+    skipped_count: skipped,
+    error_count: errors,
+  });
   return { ok: true, processed: dataRows.length, created, updated, skipped, errors };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Plus, RefreshCw, Trash2, Pause, Play } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Pause, Play, History } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { toast } from "@/components/toast/toast";
@@ -14,6 +14,7 @@ import {
   type LeadSheetConnectionRow,
 } from "@/lib/leadSync/actions";
 import { LeadSheetConnectionWizard } from "./LeadSheetConnectionWizard";
+import { LeadSheetSyncHistorySheet } from "./LeadSheetSyncHistorySheet";
 
 const STATUS_BADGE: Record<LeadSheetConnectionRow["lastSyncStatus"], { variant: "success" | "warning" | "error"; label: string }> = {
   ok: { variant: "success", label: "Sincronizado" },
@@ -29,6 +30,7 @@ export function LeadSheetConnectionsManager({ canManage, accountConnected }: { c
   const [connections, setConnections] = useState<LeadSheetConnectionRow[] | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [historyConnection, setHistoryConnection] = useState<LeadSheetConnectionRow | null>(null);
   const [, startTransition] = useTransition();
 
   function refetch() {
@@ -123,6 +125,14 @@ export function LeadSheetConnectionsManager({ canManage, accountConnected }: { c
                   </button>
                   <button
                     type="button"
+                    title="Ver historial"
+                    onClick={() => setHistoryConnection(c)}
+                    className="flex size-8 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground"
+                  >
+                    <History size={14} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
                     title={c.status === "active" ? "Pausar" : "Reanudar"}
                     disabled={!canManage}
                     onClick={() => handleTogglePause(c)}
@@ -153,6 +163,14 @@ export function LeadSheetConnectionsManager({ canManage, accountConnected }: { c
             setWizardOpen(false);
             refetch();
           }}
+        />
+      )}
+
+      {historyConnection && (
+        <LeadSheetSyncHistorySheet
+          connectionId={historyConnection.id}
+          sheetName={historyConnection.sheetName}
+          onClose={() => setHistoryConnection(null)}
         />
       )}
     </div>

@@ -7,7 +7,13 @@ import { requireManagerRole } from "@/lib/auth/roles";
 import { getValidGoogleSheetsAccessToken, fetchSpreadsheetMetadata, fetchSheetValues, parseSpreadsheetId } from "@/lib/integrations/googleSheets";
 import { detectLeadSyncColumnMapping } from "./fieldDictionary";
 import { runLeadSheetSync } from "./runner";
-import { getLeadSheetConnections, getPipelineStageOptions, type LeadSheetConnectionRow } from "./queries";
+import {
+  getLeadSheetConnections,
+  getPipelineStageOptions,
+  getLeadSheetSyncRuns,
+  getLeadSheetSyncRunErrors,
+  type LeadSheetConnectionRow,
+} from "./queries";
 import type { LeadSyncFieldKey } from "./fieldDictionary";
 
 async function requireSheetsToken(workspaceId: string): Promise<string> {
@@ -127,11 +133,25 @@ export async function triggerManualLeadSheetSyncAction(connectionId: string) {
     pipeline_id: data.pipeline_id as string,
     default_stage_id: data.default_stage_id as string,
     default_owner_id: (data.default_owner_id as string | null) ?? null,
+    last_sheet_hash: (data.last_sheet_hash as string | null) ?? null,
   };
 
-  const result = await runLeadSheetSync(connection);
+  const result = await runLeadSheetSync(connection, "manual");
   revalidatePath("/profile");
   return result;
+}
+
+/** Historial pedido por el usuario — lista de corridas (cron o manual) con
+ * conteos de creados/actualizados/omitidos/fallidos por corrida. */
+export async function getLeadSheetSyncRunsAction(connectionId: string) {
+  await requireActiveWorkspace();
+  return getLeadSheetSyncRuns(connectionId);
+}
+
+/** Motivo de cada fila fallida dentro de una corrida puntual. */
+export async function getLeadSheetSyncRunErrorsAction(runId: string) {
+  await requireActiveWorkspace();
+  return getLeadSheetSyncRunErrors(runId);
 }
 
 export type { LeadSheetConnectionRow };

@@ -35,20 +35,25 @@ export async function GET(request: NextRequest) {
     pipeline_id: string;
     default_stage_id: string;
     default_owner_id: string | null;
+    last_sheet_hash: string | null;
   }>;
 
   const results = await Promise.allSettled(
     connections.map((c) =>
-      runLeadSheetSync({
-        id: c.id,
-        workspace_id: c.workspace_id,
-        spreadsheet_id: c.spreadsheet_id,
-        sheet_name: c.sheet_name,
-        column_map: c.column_map,
-        pipeline_id: c.pipeline_id,
-        default_stage_id: c.default_stage_id,
-        default_owner_id: c.default_owner_id,
-      } satisfies LeadSheetConnection),
+      runLeadSheetSync(
+        {
+          id: c.id,
+          workspace_id: c.workspace_id,
+          spreadsheet_id: c.spreadsheet_id,
+          sheet_name: c.sheet_name,
+          column_map: c.column_map,
+          pipeline_id: c.pipeline_id,
+          default_stage_id: c.default_stage_id,
+          default_owner_id: c.default_owner_id,
+          last_sheet_hash: c.last_sheet_hash,
+        } satisfies LeadSheetConnection,
+        "cron",
+      ),
     ),
   );
 
