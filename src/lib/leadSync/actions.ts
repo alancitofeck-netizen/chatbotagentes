@@ -7,13 +7,7 @@ import { requireManagerRole } from "@/lib/auth/roles";
 import { getValidGoogleSheetsAccessToken, fetchSpreadsheetMetadata, fetchSheetValues, parseSpreadsheetId } from "@/lib/integrations/googleSheets";
 import { detectLeadSyncColumnMapping } from "./fieldDictionary";
 import { runLeadSheetSync } from "./runner";
-import {
-  getLeadSheetConnections,
-  getPipelineStageOptions,
-  getLeadSheetSyncRuns,
-  getLeadSheetSyncRunErrors,
-  type LeadSheetConnectionRow,
-} from "./queries";
+import { getLeadSheetConnections, getPipelineStageOptions, getLeadSheetSyncRuns, getLeadSheetSyncRunErrors } from "./queries";
 import type { LeadSyncFieldKey } from "./fieldDictionary";
 
 async function requireSheetsToken(workspaceId: string): Promise<string> {
@@ -153,5 +147,3 @@ export async function getLeadSheetSyncRunErrorsAction(runId: string) {
   await requireActiveWorkspace();
   return getLeadSheetSyncRunErrors(runId);
 }
-
-export type { LeadSheetConnectionRow };

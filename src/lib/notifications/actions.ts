@@ -2,14 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
-import {
-  getNotifications,
-  getUnreadCount,
-  getNotificationPreferences,
-  type NotificationRow,
-  type NotificationPreference,
-} from "@/lib/notifications/queries";
+import { getNotifications, getUnreadCount, getNotificationPreferences } from "@/lib/notifications/queries";
 import type { NotificationCategory } from "@/lib/notifications/catalog";
+import type { NotificationPreference } from "@/lib/notifications/types";
 
 export async function getNotificationsAction(filter?: { unreadOnly?: boolean; category?: NotificationCategory }) {
   return getNotifications(filter);
@@ -85,5 +80,3 @@ export async function updateNotificationPreferenceAction(category: NotificationC
       { onConflict: "member_id,category" },
     );
 }
-
-export type { NotificationRow, NotificationPreference };

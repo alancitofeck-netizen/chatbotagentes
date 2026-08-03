@@ -9,12 +9,11 @@ import {
   markAllReadAction,
   deleteNotificationAction,
   deleteAllNotificationsAction,
-  type NotificationRow,
-  type NotificationPreference,
 } from "@/lib/notifications/actions";
 import { NotificationPanel } from "@/components/layout/NotificationPanel";
 import { showBrowserNotification } from "@/lib/notifications/browserPush";
 import type { NotificationCategory } from "@/lib/notifications/catalog";
+import type { NotificationRow, NotificationPreference } from "@/lib/notifications/types";
 
 const MAX_LIST = 30;
 

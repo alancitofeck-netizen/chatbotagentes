@@ -6,7 +6,7 @@ import { CheckCheck, Trash2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatRelativeTime } from "@/lib/utils/format";
 import { PRIORITY_ICON_CLASS, getEventMeta, type NotificationCategory } from "@/lib/notifications/catalog";
-import type { NotificationRow } from "@/lib/notifications/actions";
+import type { NotificationRow } from "@/lib/notifications/types";
 
 export type PanelFilter = "all" | "unread" | NotificationCategory;
 

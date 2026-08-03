@@ -8,12 +8,9 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import { cn } from "@/lib/utils/cn";
 import { ALL_CATEGORIES, CATEGORY_LABELS, type NotificationCategory } from "@/lib/notifications/catalog";
-import {
-  getNotificationPreferencesAction,
-  updateNotificationPreferenceAction,
-  type NotificationPreference,
-} from "@/lib/notifications/actions";
+import { getNotificationPreferencesAction, updateNotificationPreferenceAction } from "@/lib/notifications/actions";
 import { getBrowserPushPermission, requestBrowserPushPermission, isBrowserPushSupported } from "@/lib/notifications/browserPush";
+import type { NotificationPreference } from "@/lib/notifications/types";
 
 type PreferenceMap = Record<NotificationCategory, NotificationPreference>;
 

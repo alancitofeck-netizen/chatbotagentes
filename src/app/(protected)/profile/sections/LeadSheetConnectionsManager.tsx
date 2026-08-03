@@ -11,8 +11,8 @@ import {
   pauseLeadSheetConnectionAction,
   deleteLeadSheetConnectionAction,
   triggerManualLeadSheetSyncAction,
-  type LeadSheetConnectionRow,
 } from "@/lib/leadSync/actions";
+import type { LeadSheetConnectionRow } from "@/lib/leadSync/types";
 import { LeadSheetConnectionWizard } from "./LeadSheetConnectionWizard";
 import { LeadSheetSyncHistorySheet } from "./LeadSheetSyncHistorySheet";
 

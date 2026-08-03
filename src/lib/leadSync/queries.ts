@@ -2,23 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import type { LeadSyncFieldKey } from "./fieldDictionary";
-
-export interface LeadSheetConnectionRow {
-  id: string;
-  spreadsheetId: string;
-  sheetGid: string | null;
-  sheetName: string;
-  columnMap: Record<string, LeadSyncFieldKey>;
-  pipelineId: string;
-  defaultStageId: string;
-  defaultOwnerId: string | null;
-  status: "active" | "paused";
-  lastSyncedAt: string | null;
-  lastSyncStatus: "pending" | "ok" | "error";
-  lastSyncError: string | null;
-  rowCount: number;
-  lastSheetHash: string | null;
-}
+import type { LeadSheetConnectionRow } from "./types";
 
 function mapRow(row: Record<string, unknown>): LeadSheetConnectionRow {
   return {

@@ -2,19 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { ALL_CATEGORIES, type NotificationCategory } from "@/lib/notifications/catalog";
-
-export interface NotificationRow {
-  id: string;
-  category: NotificationCategory;
-  eventType: string;
-  priority: "info" | "success" | "warning" | "error";
-  title: string;
-  message: string;
-  actionUrl: string | null;
-  metadata: Record<string, unknown>;
-  read: boolean;
-  createdAt: string;
-}
+import type { NotificationRow, NotificationPreference } from "@/lib/notifications/types";
 
 const PAGE_SIZE = 30;
 
@@ -58,12 +46,6 @@ export async function getNotifications(filter?: { unreadOnly?: boolean; category
   const { data, error } = await query;
   if (error || !data) return [];
   return data.map(mapRow);
-}
-
-export interface NotificationPreference {
-  enabled: boolean;
-  email: boolean;
-  push: boolean;
 }
 
 const DEFAULT_PREFERENCE: NotificationPreference = { enabled: true, email: false, push: false };
