@@ -109,13 +109,23 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
 
     client.on("message", async (msg) => {
       if (msg.fromMe) return; // 'message' already excludes fromMe, but stay defensive
-      // Group JIDs end in @g.us (individual chats end in @c.us) — group
-      // messages must never reach the CRM Inbox (explicit product decision):
-      // `msg.from` there is the GROUP's id, not any individual contact's, so
-      // ingesting it created bogus "contacts" that were actually whole
-      // groups and made replies impossible ("X is not a registered WhatsApp
-      // number" — a real production bug this also happened to fix).
-      if (msg.from.endsWith("@g.us")) return;
+      // Group messages must never reach the CRM Inbox (explicit product
+      // decision). Neither `msg.from.endsWith("@g.us")` nor `msg.author`
+      // being set are reliable enough — confirmed in production: WhatsApp's
+      // "LID" (Linked ID) number-privacy addressing shows up on BOTH real
+      // 1:1 contacts (a person with number-privacy enabled messaging
+      // directly — msg.author IS set for these too, even though it's not a
+      // group) and actual group messages, so neither heuristic can tell
+      // them apart. `chat.isGroup` is WhatsApp's own authoritative flag —
+      // fail OPEN (let the message through) if it can't be determined,
+      // since silently dropping a real lead's message is worse than
+      // occasionally letting a group message slip in.
+      try {
+        const chat = await msg.getChat();
+        if (chat.isGroup) return;
+      } catch (err) {
+        console.warn("[whatsAppWebJsProvider] could not resolve chat.isGroup, letting the message through:", err);
+      }
       const wid = client.info?.wid?.user;
       let profileName: string | null = null;
       try {
