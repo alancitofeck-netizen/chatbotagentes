@@ -178,7 +178,18 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
     const managed = this.sessions.get(sessionId);
     if (!managed) throw new Error(`session ${sessionId} has no active client in this process`);
     const digits = to.replace(/[^0-9]/g, "");
-    const result = await managed.client.sendMessage(`${digits}@c.us`, body);
+    // Hand-building `${digits}@c.us` and sending straight to it throws
+    // "No LID for user" inside the page — WhatsApp's client-side code needs
+    // the number resolved through its own contact-lookup first (this is
+    // what populates the LID mapping the newer multi-device protocol needs),
+    // which a locally-constructed JID skips entirely. getNumberId() does
+    // that resolution server-side and returns the canonical id to send to,
+    // or null if the number isn't a registered WhatsApp account at all —
+    // confirmed via a real send failure in production (see git history),
+    // not a shot in the dark.
+    const numberId = await managed.client.getNumberId(digits);
+    if (!numberId) throw new Error(`${to} is not a registered WhatsApp number`);
+    const result = await managed.client.sendMessage(numberId._serialized, body);
     return { externalId: result?.id?._serialized };
   }
 
