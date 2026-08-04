@@ -16,6 +16,20 @@ function requireEnv(name: string): string {
   return value;
 }
 
+const PINO_LEVELS = new Set(["fatal", "error", "warn", "info", "debug", "trace", "silent"]);
+
+/** A malformed LOG_LEVEL (typo, stray whitespace, a CRLF-terminated .env
+ * line pasted from Windows leaving a trailing \r on the value — the actual
+ * cause seen once in deployment) must never crash the whole worker over
+ * something as inconsequential as log verbosity. Falls back to "info" and
+ * logs the problem instead of letting pino throw at construction time. */
+function resolveLogLevel(): string {
+  const raw = (process.env.LOG_LEVEL ?? "info").trim().toLowerCase();
+  if (PINO_LEVELS.has(raw)) return raw;
+  console.error(`[config] LOG_LEVEL="${process.env.LOG_LEVEL}" is not a valid pino level (fatal/error/warn/info/debug/trace/silent) — falling back to "info". Check .env for stray whitespace or CRLF line endings.`);
+  return "info";
+}
+
 export const config = {
   port: Number(process.env.PORT ?? 8080),
   supabaseUrl: requireEnv("SUPABASE_URL"),
@@ -32,6 +46,7 @@ export const config = {
    * measured. Rejecting new sessions past this cap beats an unbounded
    * process count OOM-killing every session at once. */
   maxConcurrentSessions: Number(process.env.WHATSAPP_WEB_MAX_SESSIONS ?? 5),
+  logLevel: resolveLogLevel(),
 } as const;
 
 /** Local directory whatsapp-web.js's RemoteAuth uses for the (transient)

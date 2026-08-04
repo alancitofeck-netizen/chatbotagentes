@@ -4,7 +4,7 @@ import { config } from "./config.js";
 import type { WhatsAppService } from "./whatsAppService.js";
 import { forwardInboundMessage, forwardStatusUpdate } from "./messages.js";
 
-const logger = pino({ level: process.env.LOG_LEVEL ?? "info" });
+const logger = pino({ level: config.logLevel });
 
 /**
  * Pure orchestration — session bookkeeping, reconnect backoff — with zero
