@@ -1,0 +1,440 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
+import { logActivity } from "@/lib/activity/log";
+import { normalizeE164 } from "@/lib/integrations/ycloud";
+import { getOpenRouterCredentials } from "@/lib/integrations/openrouter";
+import {
+  getPolicyList,
+  getPolicyById,
+  getPolicyStageOptions,
+  getPolicyCoverages,
+  getPolicyDashboardKpis,
+  getPoliciesForContact,
+  getPolicyActivity,
+  ensurePolicyPipeline,
+  POLICY_STAGES,
+  type PolicyStatus,
+  type InsuranceType,
+  type PolicyBeneficiary,
+} from "@/lib/policies/queries";
+import { extractTextFromPdf, extractPolicyDataWithAI, type ExtractedPolicyData } from "@/lib/policies/pdfExtraction";
+
+function revalidatePolicies() {
+  revalidatePath("/advisors/polizas");
+}
+
+export async function getPolicyListAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getPolicyList(workspaceId);
+}
+
+export async function getPolicyByIdAction(policyId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getPolicyById(workspaceId, policyId);
+}
+
+export async function getPolicyStageOptionsAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getPolicyStageOptions(workspaceId);
+}
+
+export async function getPolicyCoveragesAction(policyId: string) {
+  return getPolicyCoverages(policyId);
+}
+
+export async function getPolicyDashboardKpisAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getPolicyDashboardKpis(workspaceId);
+}
+
+export async function getPoliciesForContactAction(contactId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getPoliciesForContact(workspaceId, contactId);
+}
+
+export interface PolicyBoard {
+  stages: { id: string; name: string; position: number }[];
+  cardsByStage: Record<string, Awaited<ReturnType<typeof getPolicyList>>>;
+  kpis: Awaited<ReturnType<typeof getPolicyDashboardKpis>>;
+}
+
+/** Un solo round-trip para la página del tablero — mismo criterio que
+ * getAdvisorsBoard (stages + cards agrupadas + KPIs juntos). */
+export async function getPolicyBoardAction(): Promise<PolicyBoard> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const [stages, list, kpis] = await Promise.all([
+    getPolicyStageOptions(workspaceId),
+    getPolicyList(workspaceId),
+    getPolicyDashboardKpis(workspaceId),
+  ]);
+
+  const cardsByStage: PolicyBoard["cardsByStage"] = {};
+  for (const stage of stages) cardsByStage[stage.id] = [];
+  for (const card of list) {
+    if (!cardsByStage[card.stageId]) cardsByStage[card.stageId] = [];
+    cardsByStage[card.stageId].push(card);
+  }
+
+  return { stages, cardsByStage, kpis };
+}
+
+export interface PolicyFormInput {
+  contactId?: string | null;
+  // Si no hay contactId, se busca/crea por estos datos (mismo criterio que
+  // el resto de la app: dedupe por teléfono).
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  policyNumber: string;
+  company: string;
+  product: string;
+  insuranceType: InsuranceType;
+  issueDate: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  premium: number | null;
+  premiumCurrency: string;
+  paymentFrequency: string | null;
+  commissionAmount: number | null;
+  commissionStatus: string | null;
+  sumInsured: number | null;
+  deductible: string | null;
+  beneficiaries: PolicyBeneficiary[];
+  typeDetails: Record<string, unknown>;
+  notes: string;
+  ownerId: string | null;
+}
+
+/** Busca un contacto por teléfono (dedupe ya establecido en toda la app) o
+ * lo crea — mismo patrón que leadSync/runner.ts's processRow. */
+async function findOrCreateContact(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  input: { name?: string; phone?: string; email?: string },
+): Promise<string> {
+  if (input.phone) {
+    const phone = normalizeE164(input.phone);
+    const { data: existing } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("phone", phone).maybeSingle();
+    if (existing) return existing.id as string;
+    const { data: created, error } = await supabase
+      .from("contacts")
+      .insert({ workspace_id: workspaceId, name: input.name?.trim() || phone, phone, email: input.email || null, source: "policy" })
+      .select("id")
+      .single();
+    if (error || !created) throw new Error(error?.message ?? "No se pudo crear el contacto.");
+    return created.id as string;
+  }
+
+  if (input.email) {
+    const { data: existing } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("email", input.email).maybeSingle();
+    if (existing) return existing.id as string;
+  }
+
+  const { data: created, error } = await supabase
+    .from("contacts")
+    .insert({ workspace_id: workspaceId, name: input.name?.trim() || "Cliente sin nombre", email: input.email || null, source: "policy" })
+    .select("id")
+    .single();
+  if (error || !created) throw new Error(error?.message ?? "No se pudo crear el contacto.");
+  return created.id as string;
+}
+
+/** Crea una póliza — manual (formulario completo) o como paso final del
+ * flujo de confirmación de extracción por IA (mismo action, la pantalla de
+ * revisión llega acá con los datos ya editados por el usuario). Crea
+ * cliente/contacto si hace falta, la tarjeta en el pipeline de Pólizas, y
+ * registra la actividad — "todo automáticamente" pedido explícitamente. */
+export async function createPolicyAction(input: PolicyFormInput): Promise<{ id: string; contactId: string }> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  if (!input.company.trim()) throw new Error("La compañía es obligatoria.");
+  const supabase = await createClient();
+
+  const contactId = input.contactId ?? (await findOrCreateContact(supabase, workspaceId, { name: input.contactName, phone: input.contactPhone, email: input.contactEmail }));
+
+  const pipelineId = await ensurePolicyPipeline(workspaceId);
+  const { data: firstStage } = await supabase.from("pipeline_stages").select("id").eq("pipeline_id", pipelineId).order("position", { ascending: true }).limit(1).maybeSingle();
+
+  const { data: policy, error: policyError } = await supabase
+    .from("policies")
+    .insert({
+      workspace_id: workspaceId,
+      contact_id: contactId,
+      owner_id: input.ownerId ?? memberId,
+      created_by: memberId,
+      policy_number: input.policyNumber.trim() || null,
+      company: input.company.trim(),
+      product: input.product.trim() || null,
+      insurance_type: input.insuranceType,
+      status: "cotizacion",
+      issue_date: input.issueDate,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      premium: input.premium,
+      premium_currency: input.premiumCurrency || "USD",
+      payment_frequency: input.paymentFrequency,
+      commission_amount: input.commissionAmount,
+      commission_status: input.commissionStatus,
+      sum_insured: input.sumInsured,
+      deductible: input.deductible,
+      beneficiaries: input.beneficiaries,
+      type_details: input.typeDetails,
+      notes: input.notes.trim() || null,
+      source: "manual",
+    })
+    .select("id")
+    .single();
+  if (policyError || !policy) throw new Error(policyError?.message ?? "No se pudo crear la póliza.");
+
+  if (firstStage) {
+    const { data: item } = await supabase
+      .from("pipeline_items")
+      .insert({ pipeline_id: pipelineId, stage_id: firstStage.id, item_type: "policy", item_id: policy.id, position: 0 })
+      .select("id")
+      .single();
+    if (item) await supabase.from("policies").update({ pipeline_item_id: item.id }).eq("id", policy.id);
+  }
+
+  await logActivity(supabase, workspaceId, memberId, "policy", policy.id as string, "policy_created", { source: "manual", company: input.company });
+
+  revalidatePolicies();
+  void role; // reservado para un futuro gate de permisos más fino
+  return { id: policy.id as string, contactId };
+}
+
+export async function updatePolicyAction(policyId: string, input: Partial<PolicyFormInput>): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (input.policyNumber !== undefined) patch.policy_number = input.policyNumber.trim() || null;
+  if (input.company !== undefined) patch.company = input.company.trim();
+  if (input.product !== undefined) patch.product = input.product.trim() || null;
+  if (input.insuranceType !== undefined) patch.insurance_type = input.insuranceType;
+  if (input.issueDate !== undefined) patch.issue_date = input.issueDate;
+  if (input.startDate !== undefined) patch.start_date = input.startDate;
+  if (input.endDate !== undefined) patch.end_date = input.endDate;
+  if (input.premium !== undefined) patch.premium = input.premium;
+  if (input.premiumCurrency !== undefined) patch.premium_currency = input.premiumCurrency;
+  if (input.paymentFrequency !== undefined) patch.payment_frequency = input.paymentFrequency;
+  if (input.commissionAmount !== undefined) patch.commission_amount = input.commissionAmount;
+  if (input.commissionStatus !== undefined) patch.commission_status = input.commissionStatus;
+  if (input.sumInsured !== undefined) patch.sum_insured = input.sumInsured;
+  if (input.deductible !== undefined) patch.deductible = input.deductible;
+  if (input.beneficiaries !== undefined) patch.beneficiaries = input.beneficiaries;
+  if (input.typeDetails !== undefined) patch.type_details = input.typeDetails;
+  if (input.notes !== undefined) patch.notes = input.notes.trim() || null;
+  if (input.ownerId !== undefined) patch.owner_id = input.ownerId;
+
+  const { error } = await supabase.from("policies").update(patch).eq("id", policyId).eq("workspace_id", workspaceId);
+  if (error) throw new Error("No se pudo actualizar la póliza.");
+  revalidatePolicies();
+}
+
+/** Mueve la tarjeta de etapa y sincroniza policies.status — mismo criterio
+ * que moveOpportunityCard (src/lib/crm/actions.ts): el espejo en la tabla
+ * propia existe para no tener que joinear pipeline_stages en cada query. */
+export async function movePolicyStageAction(pipelineItemId: string, stageId: string, position = 0): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+
+  const { data: policy } = await supabase.from("policies").select("id, status").eq("pipeline_item_id", pipelineItemId).eq("workspace_id", workspaceId).maybeSingle();
+  if (!policy) throw new Error("Póliza no encontrada en este workspace.");
+
+  const { data: stage } = await supabase.from("pipeline_stages").select("name, position").eq("id", stageId).maybeSingle();
+  if (!stage) throw new Error("Etapa no encontrada.");
+
+  const stageKey = POLICY_STAGES.find((s) => s.name === stage.name)?.key as PolicyStatus | undefined;
+
+  await supabase.from("pipeline_items").update({ stage_id: stageId, position }).eq("id", pipelineItemId);
+  await supabase.from("policies").update({ status: stageKey ?? policy.status, updated_at: new Date().toISOString() }).eq("id", policy.id as string);
+
+  await logActivity(supabase, workspaceId, memberId, "policy", policy.id as string, "policy_stage_changed", { stage: stage.name });
+  revalidatePolicies();
+}
+
+export async function deletePolicyAction(policyId: string): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+  const { data: policy } = await supabase.from("policies").select("pipeline_item_id").eq("id", policyId).eq("workspace_id", workspaceId).maybeSingle();
+  await supabase.from("policies").delete().eq("id", policyId).eq("workspace_id", workspaceId);
+  if (policy?.pipeline_item_id) await supabase.from("pipeline_items").delete().eq("id", policy.pipeline_item_id as string);
+  revalidatePolicies();
+}
+
+export async function addPolicyCoverageAction(
+  policyId: string,
+  input: { name: string; sumInsured: number | null; deductible: string | null; limitText: string | null; exclusions: string | null },
+): Promise<void> {
+  if (!input.name.trim()) throw new Error("El nombre de la cobertura es obligatorio.");
+  const supabase = await createClient();
+  const { error } = await supabase.from("policy_coverages").insert({
+    policy_id: policyId,
+    name: input.name.trim(),
+    sum_insured: input.sumInsured,
+    deductible: input.deductible,
+    limit_text: input.limitText,
+    exclusions: input.exclusions,
+  });
+  if (error) throw new Error("No se pudo agregar la cobertura.");
+  revalidatePolicies();
+}
+
+export async function deletePolicyCoverageAction(coverageId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("policy_coverages").delete().eq("id", coverageId);
+  revalidatePolicies();
+}
+
+export async function addPolicyNoteAction(policyId: string, body: string): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (!body.trim()) return;
+  const supabase = await createClient();
+  await supabase.from("notes").insert({ workspace_id: workspaceId, notable_type: "policy", notable_id: policyId, body: body.trim() });
+  revalidatePolicies();
+}
+
+export async function getPolicyActivityAction(policyId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getPolicyActivity(workspaceId, policyId);
+}
+
+export async function getPolicyNotesAction(policyId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("notes")
+    .select("id, body, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("notable_type", "policy")
+    .eq("notable_id", policyId)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((n) => ({ id: n.id as string, body: n.body as string, createdAt: n.created_at as string }));
+}
+
+/** Paso 1 del flujo estrella: el PDF ya se subió a Storage (mismo endpoint
+ * /api/documents/upload que usa el resto de la app) — esto lee su texto y
+ * llama a la IA para estructurarlo. Todavía no crea nada (cliente/póliza);
+ * la pantalla de revisión llama a confirmPolicyFromExtractionAction una vez
+ * que el usuario confirma/edita los datos. */
+export async function extractPolicyFromPdfAction(storagePath: string): Promise<ExtractedPolicyData> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const service = createServiceRoleClient();
+
+  const credentials = await getOpenRouterCredentials(service, workspaceId);
+  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder leer pólizas con IA.");
+
+  const { data: file, error: downloadError } = await service.storage.from("documents").download(storagePath);
+  if (downloadError || !file) throw new Error("No se pudo leer el PDF recién subido.");
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const text = await extractTextFromPdf(buffer);
+  if (!text.trim()) {
+    throw new Error("Este PDF no tiene texto legible (probablemente es una imagen escaneada) — cargá la póliza manualmente por ahora.");
+  }
+
+  return extractPolicyDataWithAI(credentials.apiKey, text);
+}
+
+/** Paso 2: el usuario ya revisó/editó los datos extraídos — crea cliente
+ * (si no existe)/contacto/póliza/adjunta el PDF/deja el timeline inicial,
+ * todo en un solo paso, como se pidió explícitamente. */
+export async function confirmPolicyFromExtractionAction(
+  extracted: ExtractedPolicyData,
+  documentId: string,
+): Promise<{ id: string; contactId: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+
+  const contactId = await findOrCreateContact(supabase, workspaceId, {
+    name: extracted.clientName ?? undefined,
+    phone: extracted.phone ?? undefined,
+    email: extracted.email ?? undefined,
+  });
+
+  // custom_fields no tiene DNI/CUIT/dirección como columnas dedicadas — se
+  // guardan ahí, mismo "columnas fijas + jsonb overflow" que el resto de la
+  // app ya usa para datos variables del contacto.
+  if (extracted.dni || extracted.cuit || extracted.address) {
+    const { data: existingContact } = await supabase.from("contacts").select("custom_fields").eq("id", contactId).maybeSingle();
+    const currentFields = (existingContact?.custom_fields as Record<string, unknown> | null) ?? {};
+    await supabase
+      .from("contacts")
+      .update({
+        custom_fields: {
+          ...currentFields,
+          ...(extracted.dni ? { dni: extracted.dni } : {}),
+          ...(extracted.cuit ? { cuit: extracted.cuit } : {}),
+          ...(extracted.address ? { address: extracted.address } : {}),
+        },
+      })
+      .eq("id", contactId);
+  }
+
+  const typeDetails: Record<string, unknown> = extracted.insuranceType === "auto" ? (extracted.auto ?? {}) : extracted.insuranceType === "hogar" ? (extracted.hogar ?? {}) : {};
+
+  const pipelineId = await ensurePolicyPipeline(workspaceId);
+  const { data: firstStage } = await supabase.from("pipeline_stages").select("id").eq("pipeline_id", pipelineId).order("position", { ascending: true }).limit(1).maybeSingle();
+
+  const { data: policy, error: policyError } = await supabase
+    .from("policies")
+    .insert({
+      workspace_id: workspaceId,
+      contact_id: contactId,
+      owner_id: memberId,
+      created_by: memberId,
+      policy_number: extracted.policyNumber,
+      company: extracted.company ?? "Sin especificar",
+      product: extracted.product,
+      insurance_type: extracted.insuranceType,
+      status: "documentacion",
+      issue_date: extracted.issueDate,
+      start_date: extracted.startDate,
+      end_date: extracted.endDate,
+      premium: extracted.premium,
+      premium_currency: extracted.premiumCurrency ?? "USD",
+      payment_frequency: extracted.paymentFrequency,
+      commission_amount: extracted.commissionAmount,
+      sum_insured: extracted.sumInsured,
+      deductible: extracted.deductible,
+      beneficiaries: extracted.beneficiaries,
+      type_details: typeDetails,
+      source: "pdf_ai",
+      pdf_document_id: documentId,
+    })
+    .select("id")
+    .single();
+  if (policyError || !policy) throw new Error(policyError?.message ?? "No se pudo crear la póliza.");
+  const policyId = policy.id as string;
+
+  if (firstStage) {
+    const { data: item } = await supabase
+      .from("pipeline_items")
+      .insert({ pipeline_id: pipelineId, stage_id: firstStage.id, item_type: "policy", item_id: policyId, position: 0 })
+      .select("id")
+      .single();
+    if (item) await supabase.from("policies").update({ pipeline_item_id: item.id }).eq("id", policyId);
+  }
+
+  for (const coverage of extracted.coverages) {
+    await supabase.from("policy_coverages").insert({
+      policy_id: policyId,
+      name: coverage.name,
+      sum_insured: coverage.sumInsured,
+      deductible: coverage.deductible,
+    });
+  }
+
+  await supabase.from("documents").update({ related_type: "policy", related_id: policyId }).eq("id", documentId);
+
+  await logActivity(supabase, workspaceId, memberId, "policy", policyId, "policy_created_from_pdf", { company: extracted.company });
+
+  revalidatePolicies();
+  return { id: policyId, contactId };
+}
