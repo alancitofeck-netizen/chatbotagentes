@@ -1,22 +1,13 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { POLICY_STAGES, POLICY_STATUS_BADGE_VARIANT, ACTIVE_LIKE_STATUSES, type PolicyStatus, type InsuranceType } from "@/lib/policies/constants";
 
-export const POLICY_STAGES = [
-  { key: "cotizacion", name: "Cotización" },
-  { key: "documentacion", name: "Documentación" },
-  { key: "pendiente_emision", name: "Pendiente de emisión" },
-  { key: "emitida", name: "Emitida" },
-  { key: "activa", name: "Activa" },
-  { key: "renovacion_proxima", name: "Renovación próxima" },
-  { key: "renovacion_enviada", name: "Renovación enviada" },
-  { key: "renovada", name: "Renovada" },
-  { key: "vencida", name: "Vencida" },
-  { key: "cancelada", name: "Cancelada" },
-] as const;
-
-export type PolicyStatus = (typeof POLICY_STAGES)[number]["key"];
-export type InsuranceType = "auto" | "hogar" | "vida" | "otro";
+// Re-exported for every existing server-side import site (actions.ts, etc.)
+// — the real definitions live in constants.ts now so client components can
+// import the values directly from a non-"server-only" module.
+export { POLICY_STAGES, POLICY_STATUS_BADGE_VARIANT, ACTIVE_LIKE_STATUSES };
+export type { PolicyStatus, InsuranceType };
 
 export interface PolicyBeneficiary {
   name: string;
@@ -32,17 +23,22 @@ export interface PolicyListItem {
   policyNumber: string | null;
   contactId: string;
   contactName: string;
+  contactPhone: string | null;
+  contactEmail: string | null;
   company: string;
   product: string | null;
   insuranceType: InsuranceType;
   status: PolicyStatus;
+  startDate: string | null;
   endDate: string | null;
+  paymentFrequency: string | null;
   premium: number | null;
   premiumCurrency: string;
   commissionAmount: number | null;
   commissionStatus: string | null;
   ownerName: string | null;
 }
+
 
 /** Mismo patrón exacto que ensureCrmPipeline (src/lib/crm/actions.ts) /
  * ensurePipeline de Asesores: el pipeline de "Pólizas" se crea perezosamente
@@ -94,7 +90,7 @@ export async function getPolicyStageOptions(workspaceId: string): Promise<{ id: 
 }
 
 const LIST_SELECT =
-  "id, policy_number, contact_id, company, product, insurance_type, status, pipeline_item_id, end_date, premium, premium_currency, commission_amount, commission_status, owner_id, contacts(name)";
+  "id, policy_number, contact_id, company, product, insurance_type, status, pipeline_item_id, start_date, end_date, payment_frequency, premium, premium_currency, commission_amount, commission_status, owner_id, contacts(name, phone, email)";
 
 export async function getPolicyList(workspaceId: string): Promise<PolicyListItem[]> {
   const supabase = await createClient();
@@ -131,11 +127,15 @@ export async function getPolicyList(workspaceId: string): Promise<PolicyListItem
         policyNumber: r.policy_number as string | null,
         contactId: r.contact_id as string,
         contactName: (contact?.name as string | undefined) ?? "—",
+        contactPhone: (contact?.phone as string | undefined) ?? null,
+        contactEmail: (contact?.email as string | undefined) ?? null,
         company: r.company as string,
         product: r.product as string | null,
         insuranceType: r.insurance_type as InsuranceType,
         status: r.status as PolicyStatus,
+        startDate: r.start_date as string | null,
         endDate: r.end_date as string | null,
+        paymentFrequency: r.payment_frequency as string | null,
         premium: r.premium as number | null,
         premiumCurrency: r.premium_currency as string,
         commissionAmount: r.commission_amount as number | null,
@@ -243,6 +243,8 @@ export async function getPolicyCoverages(policyId: string): Promise<PolicyCovera
 }
 
 export interface PolicyDashboardKpis {
+  totalPolicies: number;
+  activeInsurers: number;
   totalActive: number;
   newThisMonth: number;
   renewalsUpcoming30: number;
@@ -260,8 +262,6 @@ export interface PolicyDashboardKpis {
   byCompany: { company: string; count: number }[];
   byType: { type: InsuranceType; count: number }[];
 }
-
-const ACTIVE_LIKE_STATUSES: PolicyStatus[] = ["emitida", "activa", "renovacion_proxima", "renovacion_enviada", "renovada"];
 
 /** Todos los números salen directo de policies — nada inventado. La "tasa de
  * renovación" es renovada / (renovada + vencida + cancelada) del período,
@@ -327,6 +327,8 @@ export async function getPolicyDashboardKpis(workspaceId: string): Promise<Polic
   }
 
   return {
+    totalPolicies: rows.length,
+    activeInsurers: byCompanyMap.size,
     totalActive: active.length,
     newThisMonth,
     renewalsUpcoming30,

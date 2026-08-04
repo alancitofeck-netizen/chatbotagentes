@@ -36,19 +36,26 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+export type DetailTab = "resumen" | "coberturas" | "documentos" | "notas" | "timeline";
+
 export function PolicyDetailSheet({
   policyId,
+  initialTab = "resumen",
   onClose,
   onEdit,
   onDelete,
 }: {
   policyId: string | null;
+  /** Lets a caller (e.g. PolicyTable's "Adjuntar documentos" row action)
+   * jump straight to a tab instead of always landing on Resumen — same
+   * pattern as CRM's CardDetailSheet. */
+  initialTab?: DetailTab;
   onClose: () => void;
   onEdit: (policy: PolicyDetail) => void;
   onDelete: (policyId: string) => void;
 }) {
   const [detail, setDetail] = useState<PolicyDetail | null>(null);
-  const [tab, setTab] = useState("resumen");
+  const [tab, setTab] = useState(initialTab);
   const [coverages, setCoverages] = useState<PolicyCoverage[]>([]);
   const [coveragesLoaded, setCoveragesLoaded] = useState(false);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -197,7 +204,7 @@ export function PolicyDetailSheet({
         </div>
       ) : (
         <div className="px-5 pt-4">
-          <Tabs value={tab} onValueChange={setTab}>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
             <TabsList>
               <TabsTrigger value="resumen">Resumen</TabsTrigger>
               <TabsTrigger value="coberturas">Coberturas</TabsTrigger>

@@ -19,7 +19,7 @@ export default async function PoliciesPage() {
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <div className="flex flex-col gap-1 px-4 sm:px-6 lg:px-8">
         <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Pólizas</h1>
-        <p className="text-sm text-neutral-500">Libro de pólizas emitidas y activas: coberturas, comisiones, vencimientos y renovaciones.</p>
+        <p className="text-sm text-neutral-500">Toda tu cartera en un solo lugar</p>
       </div>
       <PoliciesBoardShell workspaceId={workspaceId} initialBoard={board} members={members} />
     </div>

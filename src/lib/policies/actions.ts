@@ -24,7 +24,7 @@ import {
 import { extractTextFromPdf, extractPolicyDataWithAI, type ExtractedPolicyData } from "@/lib/policies/pdfExtraction";
 
 function revalidatePolicies() {
-  revalidatePath("/advisors/polizas");
+  revalidatePath("/polizas");
 }
 
 export async function getPolicyListAction() {
@@ -265,6 +265,48 @@ export async function deletePolicyAction(policyId: string): Promise<void> {
   await supabase.from("policies").delete().eq("id", policyId).eq("workspace_id", workspaceId);
   if (policy?.pipeline_item_id) await supabase.from("pipeline_items").delete().eq("id", policy.pipeline_item_id as string);
   revalidatePolicies();
+}
+
+const DUPLICATE_SELECT =
+  "contact_id, company, product, insurance_type, owner_id, issue_date, start_date, end_date, premium, premium_currency, payment_frequency, commission_amount, commission_status, sum_insured, deductible, beneficiaries, type_details, notes";
+
+/** Fila nueva a partir de una existente — mismo cliente/aseguradora/
+ * coberturas, pero número de póliza en blanco y arranca en "Cotización"
+ * (nunca duplica un número de póliza real, ya que en la práctica el
+ * duplicado es el punto de partida de una cotización nueva, no una copia
+ * 1:1 de la póliza vigente). Sin formulario intermedio — se crea de una y
+ * se abre su detalle para que el asesor ajuste lo que corresponda. */
+export async function duplicatePolicyAction(policyId: string): Promise<{ id: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+
+  const { data: sourcePolicy } = await supabase.from("policies").select(DUPLICATE_SELECT).eq("id", policyId).eq("workspace_id", workspaceId).maybeSingle();
+  if (!sourcePolicy) throw new Error("Póliza no encontrada.");
+
+  const pipelineId = await ensurePolicyPipeline(workspaceId);
+  const { data: firstStage } = await supabase.from("pipeline_stages").select("id").eq("pipeline_id", pipelineId).order("position", { ascending: true }).limit(1).maybeSingle();
+
+  const { data: policy, error: policyError } = await supabase
+    .from("policies")
+    .insert({ ...sourcePolicy, workspace_id: workspaceId, created_by: memberId, policy_number: null, status: "cotizacion", source: "manual" })
+    .select("id")
+    .single();
+  if (policyError || !policy) throw new Error(policyError?.message ?? "No se pudo duplicar la póliza.");
+
+  if (firstStage) {
+    const { data: item } = await supabase
+      .from("pipeline_items")
+      .insert({ pipeline_id: pipelineId, stage_id: firstStage.id, item_type: "policy", item_id: policy.id, position: 0 })
+      .select("id")
+      .single();
+    if (item) await supabase.from("policies").update({ pipeline_item_id: item.id }).eq("id", policy.id);
+  }
+
+  await logActivity(supabase, workspaceId, memberId, "policy", policy.id as string, "policy_created", { source: "duplicate", company: sourcePolicy.company });
+
+  revalidatePolicies();
+  return { id: policy.id as string };
 }
 
 export async function addPolicyCoverageAction(

@@ -12,7 +12,6 @@ interface Section {
 const SECTIONS: Section[] = [
   { label: "Tablero", href: "/advisors", exact: true },
   { label: "Posibles Pólizas", href: "/advisors/posibles-polizas" },
-  { label: "Pólizas", href: "/advisors/polizas" },
 ];
 
 /** Asesores' secondary nav — Posibles Pólizas lives here as a section of
