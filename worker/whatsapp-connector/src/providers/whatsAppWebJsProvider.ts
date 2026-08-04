@@ -109,6 +109,13 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
 
     client.on("message", async (msg) => {
       if (msg.fromMe) return; // 'message' already excludes fromMe, but stay defensive
+      // Group JIDs end in @g.us (individual chats end in @c.us) — group
+      // messages must never reach the CRM Inbox (explicit product decision):
+      // `msg.from` there is the GROUP's id, not any individual contact's, so
+      // ingesting it created bogus "contacts" that were actually whole
+      // groups and made replies impossible ("X is not a registered WhatsApp
+      // number" — a real production bug this also happened to fix).
+      if (msg.from.endsWith("@g.us")) return;
       const wid = client.info?.wid?.user;
       let profileName: string | null = null;
       try {
