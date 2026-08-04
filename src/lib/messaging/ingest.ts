@@ -150,20 +150,32 @@ export async function ingestInboundWhatsAppMessage(
     }
   }
 
-  // 2. Conversation: find an open one for this contact, create only if
+  // 2. Conversation: find an active one for this contact, create only if
   // missing. Skipped entirely if step 0 already resolved it via chat_id.
+  // "Active" = open OR pending_human (same set src/lib/insights/queries.ts
+  // already treats as active) — matching "open" alone was a real bug: an AI
+  // handoff (src/lib/ai/escalation.ts sets pending_human) made every
+  // following message from that contact create a BRAND NEW conversation
+  // instead of continuing the one a human is waiting to answer, silently
+  // fragmenting the thread (found in production: one contact had accrued 18
+  // separate conversations this way). `.limit(1)` instead of
+  // `.maybeSingle()` since existing fragmented data can have more than one
+  // active row for a contact — take the most recently active one rather
+  // than erroring.
   if (!conversationId) {
-    const { data: existingConversation, error: findConversationError } = await supabase
+    const { data: existingConversations, error: findConversationError } = await supabase
       .from("conversations")
       .select("id, assigned_user_id, whatsapp_web_chat_id")
       .eq("workspace_id", workspaceId)
       .eq("contact_id", contactId)
-      .eq("status", "open")
-      .maybeSingle();
+      .in("status", ["open", "pending_human"])
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .limit(1);
     if (findConversationError) {
       console.error("[ingest] failed to look up conversation:", findConversationError);
       return null;
     }
+    const existingConversation = existingConversations?.[0] ?? null;
 
     if (existingConversation) {
       conversationId = existingConversation.id as string;

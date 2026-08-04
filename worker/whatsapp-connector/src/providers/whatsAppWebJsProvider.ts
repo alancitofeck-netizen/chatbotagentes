@@ -126,7 +126,12 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
         console.warn("[whatsAppWebJsProvider] could not resolve chat.isGroup, letting the message through:", err);
       }
       if (msg.isStatus || msg.broadcast) return;
-      if (msg.from.endsWith("@newsletter") || msg.from.endsWith("@broadcast")) return;
+      // Explicit, belt-and-suspenders check — confirmed in production that
+      // a status update slipped past `msg.isStatus` alone and got ingested
+      // as a "contact" literally named "+status" with a new conversation
+      // per status seen (id.remote wasn't exactly "status@broadcast" for
+      // this one, whatever WhatsApp's exact internal representation was).
+      if (msg.from.startsWith("status@") || msg.from.endsWith("@newsletter") || msg.from.endsWith("@broadcast")) return;
 
       // The raw WhatsApp chat id is ALWAYS available and ALWAYS stable —
       // this, not any derived "phone number", is the real identity of a
@@ -134,13 +139,15 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
       // `msg.author` is only set for group messages (already filtered out
       // above), so `msg.from` is the correct 1:1 chat id here.
       const chatId = msg.from;
-      // Only a @c.us-addressed chat corresponds to a real, dialable phone
-      // number. WhatsApp's "LID" (Linked ID) number-privacy addressing
-      // (@lid) has no phone number attached at all — treating its raw
-      // digits as if they were a phone number is exactly the bug this
-      // fixes. `phone` is now either a REAL E.164 number or null, never an
-      // internal identifier.
-      const phone = chatId.endsWith("@c.us") ? `+${chatId.split("@")[0]}` : null;
+      // Only a @c.us-addressed chat with a purely numeric local part is a
+      // real, dialable phone number. Checking the domain suffix ALONE isn't
+      // enough — confirmed in production ("+status" above was @c.us-shaped
+      // but its local part was the literal word "status", not digits).
+      // WhatsApp's "LID" (Linked ID) number-privacy addressing (@lid) has no
+      // phone number attached at all — treating its raw digits as if they
+      // were a phone number is the original bug this whole rewrite fixes.
+      const localPart = chatId.split("@")[0];
+      const phone = chatId.endsWith("@c.us") && /^\d+$/.test(localPart) ? `+${localPart}` : null;
 
       const wid = client.info?.wid?.user;
       let profileName: string | null = null;
