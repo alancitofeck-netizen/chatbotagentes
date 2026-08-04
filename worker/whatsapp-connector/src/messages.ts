@@ -32,7 +32,15 @@ export interface InboundMessageContext {
 
 export async function forwardInboundMessage(
   ctx: InboundMessageContext,
-  message: { fromPhone: string; businessNumber: string; profileName?: string | null; body: string; externalId: string },
+  message: {
+    chatId: string;
+    fromPhone: string | null;
+    businessNumber: string;
+    profileName?: string | null;
+    avatarUrl?: string | null;
+    body: string;
+    externalId: string;
+  },
 ): Promise<void> {
   await postToWebhook({
     workspaceId: ctx.workspaceId,

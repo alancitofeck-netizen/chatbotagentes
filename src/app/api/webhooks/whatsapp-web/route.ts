@@ -42,9 +42,15 @@ interface WhatsAppWebWebhookPayload {
   sessionId: string;
   type: "message" | "status";
   message?: {
-    fromPhone: string;
+    /** Raw WhatsApp chat id — always present, the real identity of the
+     * conversation (see 0086_whatsapp_web_chat_id.sql). */
+    chatId: string;
+    /** Real E.164 phone number, or null when the chat is addressed via
+     * WhatsApp's LID (number-privacy) mode. */
+    fromPhone: string | null;
     businessNumber: string;
     profileName?: string | null;
+    avatarUrl?: string | null;
     body: string;
     externalId: string;
   };
@@ -106,9 +112,11 @@ export async function POST(request: NextRequest) {
     await ingestInboundWhatsAppMessage({
       supabase,
       workspaceId: payload.workspaceId,
+      chatId: payload.message.chatId,
       fromPhone: payload.message.fromPhone,
       businessNumber: payload.message.businessNumber,
       profileName: payload.message.profileName,
+      avatarUrl: payload.message.avatarUrl,
       messageBody: payload.message.body,
       externalId: payload.message.externalId,
       wamid: null,

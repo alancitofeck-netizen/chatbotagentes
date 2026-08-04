@@ -29,9 +29,17 @@ export interface WhatsAppServiceEvents {
   onReady(info: { phoneE164: string | null; deviceName: string | null }): void | Promise<void>;
   onDisconnected(reason: DisconnectKind): void | Promise<void>;
   onInboundMessage(msg: {
-    fromPhone: string;
+    /** The raw WhatsApp chat id (e.g. "5491122334455@c.us" or
+     * "123456789@lid") — always present, always stable, the real identity
+     * of a WhatsApp Web conversation. Never store this as if it were a
+     * phone number. */
+    chatId: string;
+    /** A real E.164 phone number, or null when the chat is addressed via
+     * WhatsApp's LID (number-privacy) mode and no real number is known. */
+    fromPhone: string | null;
     businessNumber: string;
     profileName: string | null;
+    avatarUrl: string | null;
     body: string;
     externalId: string;
   }): void | Promise<void>;

@@ -76,7 +76,7 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
 
   const { data: conversation, error: conversationError } = await supabase
     .from("conversations")
-    .select("id, whatsapp_phone_number_id, contacts(phone, whatsapp_opt_status)")
+    .select("id, whatsapp_phone_number_id, whatsapp_web_chat_id, contacts(phone, whatsapp_opt_status)")
     .eq("id", conversationId)
     .eq("workspace_id", workspaceId)
     .maybeSingle();
@@ -88,8 +88,15 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
   const contact = Array.isArray(conversation.contacts) ? conversation.contacts[0] : conversation.contacts;
   const contactPhone = contact?.phone as string | undefined;
   const optStatus = contact?.whatsapp_opt_status as string | undefined;
+  const chatId = conversation.whatsapp_web_chat_id as string | null;
 
-  if (!contactPhone) {
+  // Phone is required for YCloud (it has no other addressing concept) but
+  // NOT for WhatsApp Web when the conversation already has a known chat id
+  // (see 0086_whatsapp_web_chat_id.sql) — a LID (number-privacy) contact may
+  // never have a real phone number at all, and can still be replied to
+  // directly via chat_id. The provider-specific gate is applied further
+  // down, once the provider itself is resolved.
+  if (!contactPhone && !chatId) {
     return { ok: false, error: "contact_missing_phone" };
   }
   if (optStatus === "unsubscribed") {
@@ -122,7 +129,6 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
   }
 
   const serviceClient = createServiceRoleClient();
-  const toNumber = normalizeE164(contactPhone);
 
   // Provider dispatch — always resolved with a service-role client (see
   // resolveProvider.ts's own comment: a plain Agent's RLS-scoped session
@@ -141,6 +147,11 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
   let sentMessage: { externalId: string | null; wamid: string | null; status: string };
 
   if (resolution.provider === "ycloud") {
+    // Unlike WhatsApp Web, YCloud has no chat-id concept — a real phone
+    // number is the only way to address a send.
+    if (!contactPhone) {
+      return { ok: false, error: "contact_missing_phone" };
+    }
     const credentials = await getYCloudCredentials(serviceClient, workspaceId);
     if (!credentials) {
       console.error(`[send] no active YCloud integration configured for workspace ${workspaceId}.`);
@@ -148,6 +159,7 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
     }
 
     const fromNumber = normalizeE164(conversation.whatsapp_phone_number_id as string);
+    const toNumber = normalizeE164(contactPhone);
 
     let ycloudMessage: { id?: string; wamid?: string; status?: string };
     try {
@@ -175,10 +187,18 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
 
     sentMessage = { externalId: ycloudMessage.id ?? null, wamid: ycloudMessage.wamid ?? null, status: ycloudMessage.status ?? "sent" };
   } else {
+    // Prefer the exact chat id this conversation already has (learned from
+    // an inbound message, see ingest.ts) — no phone-to-JID resolution
+    // needed at all for the normal "reply to someone who already messaged"
+    // case. Only falls back to a phone number for an outbound-first
+    // conversation that has no chat id yet (e.g. a lead created directly in
+    // the CRM who was messaged first, never replied). If neither is
+    // available the earlier `contact_missing_phone` gate already caught it.
+    const target = chatId ?? normalizeE164(contactPhone as string);
     try {
-      const result = await sendViaWorker(resolution.sessionId, toNumber, content);
+      const result = await sendViaWorker(resolution.sessionId, target, content);
       if (!result.ok) {
-        console.error("[send] WhatsApp Web worker reported failure sending to", toNumber);
+        console.error("[send] WhatsApp Web worker reported failure sending to", target);
         return { ok: false, error: "whatsapp_web_send_failed" };
       }
       sentMessage = { externalId: result.externalId ?? null, wamid: null, status: "sent" };

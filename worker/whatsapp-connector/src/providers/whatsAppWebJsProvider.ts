@@ -109,23 +109,39 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
 
     client.on("message", async (msg) => {
       if (msg.fromMe) return; // 'message' already excludes fromMe, but stay defensive
-      // Group messages must never reach the CRM Inbox (explicit product
-      // decision). Neither `msg.from.endsWith("@g.us")` nor `msg.author`
-      // being set are reliable enough — confirmed in production: WhatsApp's
-      // "LID" (Linked ID) number-privacy addressing shows up on BOTH real
-      // 1:1 contacts (a person with number-privacy enabled messaging
-      // directly — msg.author IS set for these too, even though it's not a
-      // group) and actual group messages, so neither heuristic can tell
-      // them apart. `chat.isGroup` is WhatsApp's own authoritative flag —
-      // fail OPEN (let the message through) if it can't be determined,
-      // since silently dropping a real lead's message is worse than
-      // occasionally letting a group message slip in.
+
+      // Group/channel/status messages must never reach the CRM Inbox
+      // (explicit product decision). `chat.isGroup` is WhatsApp's own
+      // authoritative flag for groups — fail OPEN (let the message through)
+      // if the chat can't be resolved, since silently dropping a real
+      // lead's message is worse than occasionally letting one slip in.
+      // Channels/newsletters use a `Channel`-typed chat (a separate
+      // interface from `Chat` in this library version, no `isChannel` on
+      // the type `getChat()` returns here) — the `@newsletter` domain check
+      // below covers those instead.
       try {
         const chat = await msg.getChat();
         if (chat.isGroup) return;
       } catch (err) {
         console.warn("[whatsAppWebJsProvider] could not resolve chat.isGroup, letting the message through:", err);
       }
+      if (msg.isStatus || msg.broadcast) return;
+      if (msg.from.endsWith("@newsletter") || msg.from.endsWith("@broadcast")) return;
+
+      // The raw WhatsApp chat id is ALWAYS available and ALWAYS stable —
+      // this, not any derived "phone number", is the real identity of a
+      // WhatsApp Web conversation (see 0086_whatsapp_web_chat_id.sql).
+      // `msg.author` is only set for group messages (already filtered out
+      // above), so `msg.from` is the correct 1:1 chat id here.
+      const chatId = msg.from;
+      // Only a @c.us-addressed chat corresponds to a real, dialable phone
+      // number. WhatsApp's "LID" (Linked ID) number-privacy addressing
+      // (@lid) has no phone number attached at all — treating its raw
+      // digits as if they were a phone number is exactly the bug this
+      // fixes. `phone` is now either a REAL E.164 number or null, never an
+      // internal identifier.
+      const phone = chatId.endsWith("@c.us") ? `+${chatId.split("@")[0]}` : null;
+
       const wid = client.info?.wid?.user;
       let profileName: string | null = null;
       try {
@@ -134,10 +150,20 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
       } catch {
         // best-effort only — never block ingestion on this
       }
+      let avatarUrl: string | null = null;
+      try {
+        avatarUrl = await client.getProfilePicUrl(chatId);
+      } catch {
+        // No profile picture, or the contact's privacy settings hide it —
+        // not an error, just means no avatar to show.
+      }
+
       await events.onInboundMessage({
-        fromPhone: `+${msg.from.split("@")[0]}`,
+        chatId,
+        fromPhone: phone,
         businessNumber: wid ? `+${wid}` : "",
         profileName,
+        avatarUrl,
         body: msg.body,
         externalId: msg.id._serialized,
       });
@@ -191,24 +217,42 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
     });
   }
 
+  /** `to` is either a raw WhatsApp chat id (contains "@" — the normal case,
+   * the exact id an inbound message from this same chat already gave us, see
+   * `whatsapp_web_chat_id`) or a bare E.164 phone number (starts with "+",
+   * no "@" — only for outbound-first conversations with no prior inbound
+   * message, e.g. a lead created directly in the CRM). Sending straight to
+   * an already-known chat id needs no phone-to-JID resolution AT ALL, which
+   * is what makes this reliable for replies — getNumberId() is only ever
+   * reached for the outbound-first case. */
   async sendText(sessionId: string, to: string, body: string): Promise<{ externalId?: string }> {
     const managed = this.sessions.get(sessionId);
     if (!managed) throw new Error(`session ${sessionId} has no active client in this process`);
+
+    // TEMP DEBUG — remove once the send path is confirmed stable in
+    // production (requested to verify exactly where the flow breaks).
+    console.log(`[whatsAppWebJsProvider] sendText destination received: "${to}"`);
+
+    const chatId = to.includes("@") ? to : null;
+    if (chatId) {
+      console.log(`[whatsAppWebJsProvider] sending directly to known chatId="${chatId}"`);
+      const result = await managed.client.sendMessage(chatId, body);
+      return { externalId: result?.id?._serialized };
+    }
+
     const digits = to.replace(/[^0-9]/g, "");
-    // Direct send first — works for the vast majority of real contacts and
-    // is what the library expects for normal usage. getNumberId() (which
-    // pre-resolves the number through WhatsApp's own lookup) is kept only
-    // as a FALLBACK, not the primary path: confirmed in production that
-    // getNumberId's own internal call (WAWebQueryExistsJob) can itself throw
-    // an opaque, unhelpful error under real-world conditions (rate limiting
-    // or a WhatsApp Web protocol quirk, exact cause unconfirmed) — gating
-    // every single send behind it made getNumberId's own flakiness a single
-    // point of failure for sends that would otherwise have gone through.
+    const jid = `${digits}@c.us`;
+    console.log(`[whatsAppWebJsProvider] no chatId known — phoneNumber="${to}" digits="${digits}" jid="${jid}"`);
     try {
-      const result = await managed.client.sendMessage(`${digits}@c.us`, body);
+      const result = await managed.client.sendMessage(jid, body);
       return { externalId: result?.id?._serialized };
     } catch (directErr) {
-      const numberId = await managed.client.getNumberId(digits).catch(() => null);
+      console.log(`[whatsAppWebJsProvider] direct send to jid="${jid}" failed, falling back to getNumberId(digits="${digits}")`);
+      const numberId = await managed.client.getNumberId(digits).catch((err) => {
+        console.log("[whatsAppWebJsProvider] getNumberId threw:", err);
+        return null;
+      });
+      console.log("[whatsAppWebJsProvider] getNumberId result:", numberId);
       if (!numberId) throw directErr;
       const result = await managed.client.sendMessage(numberId._serialized, body);
       return { externalId: result?.id?._serialized };

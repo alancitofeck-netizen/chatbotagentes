@@ -59,6 +59,9 @@ export function createApp() {
   app.post("/sessions/:sessionId/send", async (req, res) => {
     const { sessionId } = req.params;
     const { to, body } = req.body as { to?: string; body?: string };
+    // TEMP DEBUG — remove once the send path is confirmed stable in
+    // production (requested to verify exactly where the flow breaks).
+    console.log(`[controlApi] /sessions/${sessionId}/send destination received from the API: "${to}"`);
     if (!to || !body) {
       res.status(400).json({ error: "missing_fields" });
       return;
