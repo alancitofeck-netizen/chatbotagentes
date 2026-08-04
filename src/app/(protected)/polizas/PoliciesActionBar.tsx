@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, FileUp, Upload, Download, SlidersHorizontal, KanbanSquare, Table as TableIcon, Calendar } from "lucide-react";
+import { Search, Plus, FileUp, Upload, Download, SlidersHorizontal, KanbanSquare, Table as TableIcon, CalendarDays } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
@@ -9,8 +9,6 @@ import { POLICY_STAGES, type InsuranceType } from "@/lib/policies/constants";
 import { EMPTY_POLICIES_FILTERS, type PoliciesFilters } from "@/lib/policies/boardFilters";
 
 const INSURANCE_TYPE_LABEL: Record<InsuranceType, string> = { auto: "Auto", hogar: "Hogar", vida: "Vida", otro: "Otro" };
-
-const DISABLED_VIEWS = [{ key: "calendar", label: "Calendario", icon: Calendar }];
 
 export function PoliciesActionBar({
   view,
@@ -24,8 +22,8 @@ export function PoliciesActionBar({
   onNewPolicy,
   onUploadPdf,
 }: {
-  view: "kanban" | "table";
-  onViewChange: (v: "kanban" | "table") => void;
+  view: "kanban" | "table" | "calendar";
+  onViewChange: (v: "kanban" | "table" | "calendar") => void;
   search: string;
   onSearchChange: (v: string) => void;
   filters: PoliciesFilters;
@@ -93,11 +91,14 @@ export function PoliciesActionBar({
           >
             <KanbanSquare className="size-4" aria-hidden="true" />
           </button>
-          {DISABLED_VIEWS.map(({ key, label, icon: Icon }) => (
-            <button key={key} type="button" disabled title={`${label} — próximamente`} className="flex size-8 cursor-not-allowed items-center justify-center rounded text-neutral-300">
-              <Icon className="size-4" aria-hidden="true" />
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => onViewChange("calendar")}
+            title="Calendario"
+            className={`flex size-8 items-center justify-center rounded ${view === "calendar" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
+          >
+            <CalendarDays className="size-4" aria-hidden="true" />
+          </button>
         </div>
       </div>
 

@@ -20,6 +20,7 @@ import { PoliciesActionBar } from "./PoliciesActionBar";
 import { PoliciesKpiHeader } from "./PoliciesKpiHeader";
 import { PolicyTable } from "./PolicyTable";
 import { PolicyKanban } from "./PolicyKanban";
+import { PolicyCalendarView } from "./PolicyCalendarView";
 import { PolicyFormSheet } from "./PolicyFormSheet";
 import { PolicyDetailSheet, type DetailTab } from "./PolicyDetailSheet";
 import { PolicyPdfUploadSheet } from "./PolicyPdfUploadSheet";
@@ -34,7 +35,7 @@ export function PoliciesBoardShell({
   members: WorkspaceMemberOption[];
 }) {
   const [board, setBoard] = useState(initialBoard);
-  const [view, setView] = useState<"table" | "kanban">("table");
+  const [view, setView] = useState<"table" | "kanban" | "calendar">("table");
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<PoliciesFilters>(EMPTY_POLICIES_FILTERS);
   const [quickFilter, setQuickFilter] = useState<PolicyQuickFilter>("all");
@@ -124,7 +125,7 @@ export function PoliciesBoardShell({
             />
           </div>
 
-          {view === "table" ? (
+          {view === "table" && (
             <div className="px-4 sm:px-6 lg:px-8">
               <PolicyTable
                 policies={filtered.flat}
@@ -135,13 +136,19 @@ export function PoliciesBoardShell({
                 onCancel={handleCancel}
               />
             </div>
-          ) : (
+          )}
+          {view === "kanban" && (
             <PolicyKanban
               stages={board.stages}
               cardsByStage={filtered.cardsByStage}
               onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
               onChanged={refreshBoard}
             />
+          )}
+          {view === "calendar" && (
+            <div className="px-4 sm:px-6 lg:px-8">
+              <PolicyCalendarView policies={filtered.flat} onOpen={(policy) => setDetailState({ id: policy.id, tab: "resumen" })} />
+            </div>
           )}
         </>
       )}
