@@ -10,8 +10,11 @@ import {
   getWorkspaceMembers,
   getWorkspaceTags,
   getWorkspaceTagsWithUsage,
+  getContactCrmSummary,
+  searchContactsForMerge,
 } from "@/lib/inbox/queries";
 import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
+import { moveOpportunityCard } from "@/lib/crm/actions";
 
 export async function getConversationListAction(filters: { status?: string; search?: string }) {
   const { workspaceId } = await requireActiveWorkspace();
@@ -39,6 +42,48 @@ export async function markConversationRead(conversationId: string) {
 export async function getConversationDetailAction(conversationId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getConversationDetail(workspaceId, conversationId);
+}
+
+export async function getContactCrmSummaryAction(contactId: string, conversationId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getContactCrmSummary(workspaceId, contactId, conversationId);
+}
+
+/** "Mover pipeline" desde el panel del Inbox — misma acción que ya usa el
+ * drag del tablero Kanban de CRM (src/lib/crm/actions.ts), sin duplicar la
+ * lógica de sincronizar opportunities.status con la etapa destino. `position`
+ * fijo en 0: ubica la tarjeta al principio de la etapa destino, igual que
+ * cualquier otro punto de entrada que no sea un drag con posición explícita. */
+export async function movePipelineStageAction(pipelineItemId: string, stageId: string) {
+  await moveOpportunityCard(pipelineItemId, stageId, 0);
+  revalidatePath("/inbox");
+  revalidatePath("/crm");
+}
+
+export async function searchContactsForMergeAction(excludeContactId: string, query: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return searchContactsForMerge(workspaceId, excludeContactId, query);
+}
+
+/** "Fusionar contacto" — la operación real corre atómicamente en
+ * merge_contacts() (0087_merge_contacts.sql), esto solo la invoca y
+ * revalida. Requiere manager porque borra un contacto entero (mismo
+ * criterio que deleteWorkspaceTag más abajo). */
+export async function mergeContactsAction(sourceContactId: string, targetContactId: string) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const supabase = await createClient();
+
+  const { error } = await supabase.rpc("merge_contacts", {
+    p_source_contact_id: sourceContactId,
+    p_target_contact_id: targetContactId,
+  });
+  if (error) throw new Error(error.message || "No se pudo fusionar los contactos.");
+
+  revalidatePath("/inbox");
+  revalidatePath("/inbox/contactos");
+  revalidatePath("/crm");
+  return { workspaceId };
 }
 
 export async function getWorkspaceMembersAction() {

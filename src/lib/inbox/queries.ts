@@ -238,6 +238,186 @@ export async function getConversationDetail(
   };
 }
 
+export interface ContactCrmOpportunity {
+  opportunityId: string;
+  pipelineItemId: string;
+  pipelineId: string;
+  pipelineName: string;
+  stageId: string;
+  stageName: string;
+  stages: { id: string; name: string; position: number }[];
+  value: number;
+  currency: string;
+  ownerId: string | null;
+  ownerName: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface ContactUpcomingBooking {
+  id: string;
+  subject: string;
+  startTime: string;
+  eventType: string;
+}
+
+export interface ContactRelatedTask {
+  id: string;
+  title: string;
+  status: string;
+  dueAt: string | null;
+}
+
+export interface ContactCrmSummary {
+  /** Most recent non-closed opportunity for this contact — a contact can have
+   * several over time (won/lost ones from before), but the Inbox panel only
+   * ever shows the one currently "live" in a pipeline, same "most recent
+   * open thing wins" convention already used for conversations themselves. */
+  opportunity: ContactCrmOpportunity | null;
+  upcomingBookings: ContactUpcomingBooking[];
+  relatedTasks: ContactRelatedTask[];
+  /** Real counts for the "KPIs del contacto" section — never invented
+   * numbers, only what's actually derivable from messages/opportunities. */
+  totalMessages: number;
+  firstContactAt: string | null;
+}
+
+/** Everything the redesigned Inbox contact panel's CRM-linkage/KPI/tasks/
+ * meetings sections need, in one batched call — mirrors getConversationDetail's
+ * own Promise.all batching style. Reuses existing tables/relations (no new
+ * schema): opportunities/pipeline_items/pipeline_stages/pipelines already
+ * power the CRM board (src/lib/crm/queries.ts); tasks/bookings already link
+ * to a contact via related_id/contact_id from the composer's "Crear tarea"
+ * and the booking flow respectively. */
+export async function getContactCrmSummary(workspaceId: string, contactId: string, conversationId: string): Promise<ContactCrmSummary> {
+  const supabase = await createClient();
+
+  const [{ data: opportunities }, { data: bookings }, { data: tasksByConversation }, { count: messageCount }, { data: firstMessage }] =
+    await Promise.all([
+      supabase
+        .from("opportunities")
+        .select("id, pipeline_item_id, title, value, currency, owner_id, status, created_at, pipeline_items(pipeline_id, stage_id)")
+        .eq("workspace_id", workspaceId)
+        .eq("contact_id", contactId)
+        .neq("status", "lost")
+        .order("created_at", { ascending: false })
+        .limit(1),
+      supabase
+        .from("bookings")
+        .select("id, subject, start_time, event_type")
+        .eq("workspace_id", workspaceId)
+        .eq("contact_id", contactId)
+        .gte("start_time", new Date().toISOString())
+        .neq("status", "cancelled")
+        .order("start_time", { ascending: true })
+        .limit(5),
+      supabase
+        .from("tasks")
+        .select("id, title, status, due_at")
+        .eq("workspace_id", workspaceId)
+        .eq("related_type", "conversation")
+        .eq("related_id", conversationId)
+        .is("completed_at", null)
+        .order("due_at", { ascending: true, nullsFirst: false }),
+      supabase.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", conversationId),
+      supabase.from("messages").select("created_at").eq("conversation_id", conversationId).order("created_at", { ascending: true }).limit(1).maybeSingle(),
+    ]);
+
+  const opp = opportunities?.[0] ?? null;
+  let opportunity: ContactCrmOpportunity | null = null;
+  let relatedTasks = (tasksByConversation ?? []).map((t) => ({
+    id: t.id as string,
+    title: t.title as string,
+    status: t.status as string,
+    dueAt: t.due_at as string | null,
+  }));
+
+  if (opp) {
+    const pipelineItem = Array.isArray(opp.pipeline_items) ? opp.pipeline_items[0] : opp.pipeline_items;
+    const pipelineId = pipelineItem?.pipeline_id as string | undefined;
+    const stageId = pipelineItem?.stage_id as string | undefined;
+
+    const [{ data: pipeline }, { data: stages }, { data: owner }, { data: tasksByOpportunity }] = await Promise.all([
+      pipelineId ? supabase.from("pipelines").select("id, name").eq("id", pipelineId).maybeSingle() : Promise.resolve({ data: null }),
+      pipelineId
+        ? supabase.from("pipeline_stages").select("id, name, position").eq("pipeline_id", pipelineId).order("position", { ascending: true })
+        : Promise.resolve({ data: [] }),
+      opp.owner_id ? supabase.rpc("workspace_member_names", { ws_id: workspaceId }) : Promise.resolve({ data: null }),
+      supabase
+        .from("tasks")
+        .select("id, title, status, due_at")
+        .eq("workspace_id", workspaceId)
+        .eq("related_type", "opportunity")
+        .eq("related_id", opp.id as string)
+        .is("completed_at", null)
+        .order("due_at", { ascending: true, nullsFirst: false }),
+    ]);
+
+    const ownerRow = (owner as { member_id: string; full_name: string }[] | null)?.find((m) => m.member_id === opp.owner_id);
+    const currentStage = (stages ?? []).find((s) => s.id === stageId);
+
+    opportunity = {
+      opportunityId: opp.id as string,
+      pipelineItemId: opp.pipeline_item_id as string,
+      pipelineId: pipelineId ?? "",
+      pipelineName: (pipeline?.name as string | undefined) ?? "",
+      stageId: stageId ?? "",
+      stageName: (currentStage?.name as string | undefined) ?? "",
+      stages: (stages ?? []).map((s) => ({ id: s.id as string, name: s.name as string, position: s.position as number })),
+      value: (opp.value as number | null) ?? 0,
+      currency: (opp.currency as string | null) ?? "USD",
+      ownerId: (opp.owner_id as string | null) ?? null,
+      ownerName: ownerRow?.full_name ?? null,
+      status: opp.status as string,
+      createdAt: opp.created_at as string,
+    };
+
+    relatedTasks = [
+      ...relatedTasks,
+      ...(tasksByOpportunity ?? []).map((t) => ({
+        id: t.id as string,
+        title: t.title as string,
+        status: t.status as string,
+        dueAt: t.due_at as string | null,
+      })),
+    ];
+  }
+
+  return {
+    opportunity,
+    upcomingBookings: (bookings ?? []).map((b) => ({
+      id: b.id as string,
+      subject: b.subject as string,
+      startTime: b.start_time as string,
+      eventType: b.event_type as string,
+    })),
+    relatedTasks,
+    totalMessages: messageCount ?? 0,
+    firstContactAt: (firstMessage?.created_at as string | undefined) ?? null,
+  };
+}
+
+/** For "Fusionar contacto" — search candidates by name/phone/email within the
+ * same workspace, excluding the contact being merged FROM. */
+export async function searchContactsForMerge(workspaceId: string, excludeContactId: string, query: string) {
+  const supabase = await createClient();
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const { data } = await supabase
+    .from("contacts")
+    .select("id, name, phone, email")
+    .eq("workspace_id", workspaceId)
+    .neq("id", excludeContactId)
+    .or(`name.ilike.%${trimmed}%,phone.ilike.%${trimmed}%,email.ilike.%${trimmed}%`)
+    .limit(8);
+  return (data ?? []).map((c) => ({
+    id: c.id as string,
+    name: c.name as string,
+    phone: c.phone as string | null,
+    email: c.email as string | null,
+  }));
+}
+
 export interface WorkspaceMemberOption {
   memberId: string;
   fullName: string;

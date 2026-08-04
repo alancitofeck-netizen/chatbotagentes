@@ -19,8 +19,8 @@ const TABS: { key: InboxTab; label: string }[] = [
 ];
 
 const STATUS_DOT: Record<string, string> = {
-  open: "bg-accent-500",
-  pending_human: "bg-warning",
+  open: "bg-blue-500",
+  pending_human: "bg-amber-500",
   closed: "bg-neutral-400",
 };
 
@@ -105,7 +105,7 @@ export function ConversationList({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar contacto, empresa…"
-            className="w-full rounded-full border border-border-strong bg-surface-2 py-2 pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
+            className="w-full rounded-full border border-border-strong bg-surface-2 py-2 pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-blue-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-blue-100"
           />
         </div>
         <div className="flex gap-1 overflow-x-auto">
@@ -116,7 +116,7 @@ export function ConversationList({
               onClick={() => onTabChange(t.key)}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
-                activeTab === t.key ? "bg-accent-500 text-white" : "text-neutral-600 hover:bg-surface-2",
+                activeTab === t.key ? "bg-blue-600 text-white" : "text-neutral-600 hover:bg-surface-2",
               )}
             >
               {t.label}
@@ -153,13 +153,13 @@ export function ConversationList({
                     onClick={() => onSelect(c.id)}
                     className={cn(
                       "group relative flex w-full items-start gap-3 border-b border-border-default py-3 pl-3.5 pr-4 text-left transition-colors",
-                      active ? "bg-accent-50" : "hover:bg-surface-2",
+                      active ? "bg-blue-50" : "hover:bg-surface-2",
                     )}
                   >
                     <span
                       className={cn(
                         "absolute inset-y-0 left-0 w-[3px] rounded-r-full transition-colors",
-                        active ? "bg-accent-500" : "bg-transparent",
+                        active ? "bg-blue-600" : "bg-transparent",
                       )}
                       aria-hidden="true"
                     />
@@ -185,7 +185,7 @@ export function ConversationList({
                           {c.lastMessagePreview}
                         </p>
                         {unread && (
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent-500 text-[10px] font-semibold text-white">
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white">
                             {c.unreadCount > 9 ? "9+" : c.unreadCount}
                           </span>
                         )}

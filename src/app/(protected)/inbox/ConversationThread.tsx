@@ -77,7 +77,7 @@ const QUICK_REPLIES = [
  * — no new status values, just WhatsApp-style tick icons for outbound messages. */
 function MessageStatusIcon({ status, sending }: { status: string | null; sending: boolean }) {
   if (sending) return <Clock className="size-3" aria-hidden="true" />;
-  if (status === "read") return <CheckCheck className="size-3.5 text-accent-200" aria-hidden="true" />;
+  if (status === "read") return <CheckCheck className="size-3.5 text-blue-200" aria-hidden="true" />;
   if (status === "delivered") return <CheckCheck className="size-3.5" aria-hidden="true" />;
   if (status === "sent" || status === "accepted") return <Check className="size-3.5" aria-hidden="true" />;
   return null;
@@ -399,7 +399,10 @@ export function ConversationThread({
           </button>
           <Avatar name={detail.contact.name} src={detail.contact.avatarUrl} size={38} />
           <div>
-            <p className="text-sm font-semibold text-foreground">{detail.contact.name}</p>
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+              {detail.contact.name}
+              <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">WhatsApp</span>
+            </p>
             <p className="flex items-center gap-1.5 text-xs text-neutral-500">
               {detail.contact.company && (
                 <span className="flex items-center gap-1">
@@ -444,13 +447,13 @@ export function ConversationThread({
             onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCreateTaskFromConversation()}
             placeholder="Título de la tarea…"
-            className="flex-1 rounded-sm border border-border-strong bg-surface-1 px-3 py-1.5 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+            className="flex-1 rounded-sm border border-border-strong bg-surface-1 px-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-100"
           />
           <button
             type="button"
             disabled={creatingTask || !newTaskTitle.trim()}
             onClick={handleCreateTaskFromConversation}
-            className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-600 disabled:opacity-40"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-40"
           >
             Crear
           </button>
@@ -483,8 +486,8 @@ export function ConversationThread({
                   )}
                   {isDraft ? (
                     <div className="mt-2 flex justify-end">
-                      <div className="flex max-w-[70%] flex-col gap-1.5 rounded-2xl rounded-br-md border border-dashed border-accent-300 bg-accent-50 px-3.5 py-2 text-sm">
-                        <p className="flex items-center gap-1 text-[11px] font-medium text-accent-700">
+                      <div className="flex max-w-[70%] flex-col gap-1.5 rounded-2xl rounded-br-md border border-dashed border-violet-300 bg-violet-50 px-3.5 py-2 text-sm">
+                        <p className="flex items-center gap-1 text-[11px] font-medium text-violet-700">
                           <Sparkles className="size-3" aria-hidden="true" />
                           Sugerencia de IA — sin enviar
                         </p>
@@ -494,7 +497,7 @@ export function ConversationThread({
                               value={draftEditText}
                               onChange={(e) => setDraftEditText(e.target.value)}
                               rows={3}
-                              className="w-full rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-sm text-foreground outline-none focus:border-accent-500"
+                              className="w-full rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-sm text-foreground outline-none focus:border-violet-500"
                             />
                             <div className="flex justify-end gap-2 text-[11px] font-medium">
                               <button type="button" onClick={() => setEditingDraftId(null)} className="text-neutral-500 hover:underline">
@@ -504,7 +507,7 @@ export function ConversationThread({
                                 type="button"
                                 disabled={draftActionPending === m.id}
                                 onClick={() => handleSaveDraftEdit(m.id)}
-                                className="text-accent-700 hover:underline disabled:opacity-50"
+                                className="text-violet-700 hover:underline disabled:opacity-50"
                               >
                                 Guardar
                               </button>
@@ -518,7 +521,7 @@ export function ConversationThread({
                                 type="button"
                                 disabled={draftActionPending === m.id}
                                 onClick={() => handleRejectDraft(m.id)}
-                                className="text-error-strong hover:underline disabled:opacity-50"
+                                className="text-red-600 hover:underline disabled:opacity-50"
                               >
                                 Rechazar
                               </button>
@@ -534,7 +537,7 @@ export function ConversationThread({
                                 type="button"
                                 disabled={draftActionPending === m.id}
                                 onClick={() => handleApproveDraft(m.id)}
-                                className="text-accent-700 hover:underline disabled:opacity-50"
+                                className="text-violet-700 hover:underline disabled:opacity-50"
                               >
                                 Aprobar y enviar
                               </button>
@@ -550,17 +553,17 @@ export function ConversationThread({
                         className={cn(
                           "px-3.5 py-2 text-sm shadow-[var(--elevation-xs)]",
                           outbound
-                            ? "rounded-2xl rounded-br-md bg-accent-500 text-white"
+                            ? "rounded-2xl rounded-br-md bg-blue-600 text-white"
                             : "rounded-2xl rounded-bl-md bg-surface-1 text-foreground",
                           m.localStatus === "sending" && "opacity-60",
-                          failed && "bg-error-bg text-error-strong",
+                          failed && "bg-red-50 text-red-600",
                         )}
                       >
                         <p className="whitespace-pre-wrap break-words">{m.body}</p>
                         <p
                           className={cn(
                             "mt-1 flex items-center justify-end gap-1 text-[10px]",
-                            failed ? "text-error-strong" : outbound ? "text-white/70" : "text-neutral-500",
+                            failed ? "text-red-600" : outbound ? "text-white/70" : "text-neutral-500",
                           )}
                         >
                           {formatTime(m.createdAt)}
@@ -571,11 +574,11 @@ export function ConversationThread({
                       </div>
                       {failed && (
                         <div className="flex flex-col items-end gap-0.5">
-                          {m.errorReason && <p className="max-w-[220px] text-right text-[11px] text-error-strong">{m.errorReason}</p>}
+                          {m.errorReason && <p className="max-w-[220px] text-right text-[11px] text-red-600">{m.errorReason}</p>}
                           <button
                             type="button"
                             onClick={() => sendMessage(m.body)}
-                            className="flex items-center gap-1 text-[11px] font-medium text-error-strong hover:underline"
+                            className="flex items-center gap-1 text-[11px] font-medium text-red-600 hover:underline"
                           >
                             <AlertTriangle className="size-3" aria-hidden="true" />
                             No se pudo enviar — reintentar
@@ -614,7 +617,7 @@ export function ConversationThread({
               aria-expanded={quickRepliesOpen}
               className={cn(
                 "flex size-9 items-center justify-center rounded-full transition-colors",
-                quickRepliesOpen ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+                quickRepliesOpen ? "bg-violet-100 text-violet-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
               )}
             >
               <Sparkles size={17} />
@@ -652,14 +655,14 @@ export function ConversationThread({
             }}
             placeholder="Escribí un mensaje…"
             rows={1}
-            className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
+            className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-blue-100"
           />
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!messageInput.trim() || isSending}
             aria-label="Enviar mensaje"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send className="size-4" aria-hidden="true" />
           </button>
