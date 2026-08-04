@@ -66,6 +66,7 @@ function SectionHeading({ icon: Icon, children }: { icon: typeof CalendarClock; 
 export function EventFormSheet({
   current,
   defaultStart,
+  defaultContact,
   members,
   conversationOptions,
   opportunityOptions,
@@ -77,6 +78,10 @@ export function EventFormSheet({
 }: {
   current: CalendarEvent | null;
   defaultStart?: Date;
+  /** Precarga el contacto (sin editar un evento existente) — usado por el
+   * botón "Agendar reunión" del Inbox, que abre esta misma sheet con el
+   * contacto de la conversación ya elegido en vez de un formulario en blanco. */
+  defaultContact?: PickedContact | null;
   members: MemberOption[];
   conversationOptions: TaskOption[];
   opportunityOptions: TaskOption[];
@@ -103,9 +108,13 @@ export function EventFormSheet({
   const [meetingUrl, setMeetingUrl] = useState(current?.meetingUrl ?? "");
   const [reminderMinutes, setReminderMinutes] = useState(current?.reminderMinutes != null ? String(current.reminderMinutes) : "");
   const [assignedTo, setAssignedTo] = useState(current?.assignedTo?.memberId ?? ownMemberId ?? "");
-  const [relateTo, setRelateTo] = useState<RelateTo>(current?.contactId ? "contact" : (current?.relatedType ?? ""));
+  const [relateTo, setRelateTo] = useState<RelateTo>(
+    current?.contactId ? "contact" : defaultContact ? "contact" : (current?.relatedType ?? ""),
+  );
   const [contact, setContact] = useState<PickedContact | null>(
-    current?.contactId && current.contactName ? { id: current.contactId, name: current.contactName, company: current.contactCompany } : null,
+    current?.contactId && current.contactName
+      ? { id: current.contactId, name: current.contactName, company: current.contactCompany }
+      : (defaultContact ?? null),
   );
   const [relatedId, setRelatedId] = useState(current?.relatedId ?? "");
   const [recurrenceRule, setRecurrenceRule] = useState<EventInput["recurrenceRule"]>(null);
@@ -304,7 +313,7 @@ export function EventFormSheet({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="resize-none rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+              className="resize-none rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-100"
             />
           </div>
         </div>

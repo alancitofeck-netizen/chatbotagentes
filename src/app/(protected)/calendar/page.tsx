@@ -5,7 +5,7 @@ import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getConversationOptions } from "@/lib/tasks/queries";
 import { getOpportunityOptions } from "@/lib/crm/queries";
 import { addDays, getMonday } from "@/lib/calendar/week";
-import { importGoogleEvents } from "@/lib/integrations/googleCalendar";
+import { importGoogleEvents, getGoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
 import { CalendarShell } from "./CalendarShell";
 
 export const metadata: Metadata = {
@@ -31,12 +31,13 @@ export default async function CalendarPage() {
   const weekStart = getMonday(new Date());
   const weekEnd = addDays(weekStart, 7);
 
-  const [events, members, conversationOptions, opportunityOptions, ownMemberId] = await Promise.all([
+  const [events, members, conversationOptions, opportunityOptions, ownMemberId, googleCalendar] = await Promise.all([
     getCalendarEvents(workspaceId, weekStart.toISOString(), weekEnd.toISOString()),
     getWorkspaceMembers(workspaceId),
     getConversationOptions(workspaceId),
     getOpportunityOptions(workspaceId),
     getCurrentMemberId(workspaceId),
+    getGoogleCalendarStatus(workspaceId),
   ]);
 
   return (
@@ -48,6 +49,7 @@ export default async function CalendarPage() {
       opportunityOptions={opportunityOptions}
       canAssignOthers={role === "owner" || role === "admin"}
       ownMemberId={ownMemberId}
+      googleCalendarConnected={googleCalendar.connected}
     />
   );
 }

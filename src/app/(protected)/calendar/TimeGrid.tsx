@@ -5,6 +5,8 @@ import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSe
 import { cn } from "@/lib/utils/cn";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import { EVENT_TYPE_META } from "@/components/calendar/eventTypeMeta";
+import { meetingChannel } from "@/components/calendar/calendarColors";
+import { Avatar } from "@/components/ui/Avatar";
 import { moveEvent } from "@/lib/calendar/actions";
 
 const START_HOUR = 7;
@@ -99,6 +101,7 @@ function EventBlock({
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: event.id, data: { event } });
   const meta = EVENT_TYPE_META[event.eventType] ?? EVENT_TYPE_META.other;
+  const channel = meetingChannel(event.meetingUrl);
   const today = new Date();
 
   const startMin = Math.min(Math.max(minutesSinceRangeStart(new Date(event.startTime), day), 0), RANGE_MINUTES);
@@ -134,7 +137,7 @@ function EventBlock({
               : cn(meta.border, meta.bg, meta.text),
           isDragging && "opacity-90 shadow-[var(--elevation-lg)]",
           selectionMode && "pr-5",
-          selected && "ring-2 ring-accent-500",
+          selected && "ring-2 ring-blue-500",
         )}
       >
         <div className={cn("truncate font-semibold", compact ? "text-[11px]" : "text-[12px]")}>{event.title}</div>
@@ -143,7 +146,13 @@ function EventBlock({
             {formatTime(event.startTime)} – {formatTime(event.endTime)}
           </div>
         )}
-        {!compact && event.assignedTo && <div className="mt-0.5 truncate text-[10.5px] opacity-70">{event.assignedTo.fullName}</div>}
+        {!compact && (event.assignedTo || event.contactName || channel) && (
+          <div className="mt-1 flex items-center gap-1">
+            {event.assignedTo && <Avatar name={event.assignedTo.fullName} src={event.assignedTo.avatarUrl} size={16} />}
+            {event.contactName && <Avatar name={event.contactName} src={event.contactAvatarUrl} size={16} />}
+            {channel && <span className="truncate text-[10px] opacity-70">{channel.label}</span>}
+          </div>
+        )}
         {!isCancelled && !selectionMode && (
           <ResizeHandle
             onLiveResize={(deltaMinutes) => {
@@ -160,7 +169,7 @@ function EventBlock({
           checked={selected}
           onChange={() => onToggleSelect(event.id)}
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-1.5 top-1.5 z-10 size-3.5 rounded border-border-strong accent-[var(--color-accent-500)]"
+          className="absolute right-1.5 top-1.5 z-10 size-3.5 rounded border-border-strong accent-blue-600"
         />
       )}
     </div>
@@ -204,7 +213,7 @@ function DayColumn({
   return (
     <div
       ref={setNodeRef}
-      className={cn("relative transition-colors", dayIsToday && "bg-accent-50/30", isOver && "bg-accent-100/50")}
+      className={cn("relative transition-colors", dayIsToday && "bg-blue-50/30", isOver && "bg-blue-100/50")}
       style={{ height: GRID_HEIGHT }}
     >
       {HOURS.map((h) => (
@@ -325,14 +334,14 @@ export function TimeGrid({
                 <div
                   className={cn(
                     "flex h-12 flex-col items-center justify-center gap-0.5 border-b border-border-default text-xs",
-                    dayIsToday ? "text-accent-600" : "text-neutral-500",
+                    dayIsToday ? "text-blue-600" : "text-neutral-500",
                   )}
                 >
                   <span className="capitalize">{day.toLocaleDateString("es", { weekday: "short" })}</span>
                   <span
                     className={cn(
                       "flex size-6 items-center justify-center rounded-full text-[13px] font-semibold",
-                      dayIsToday ? "bg-accent-500 text-white" : "text-foreground",
+                      dayIsToday ? "bg-blue-600 text-white" : "text-foreground",
                     )}
                   >
                     {day.getDate()}

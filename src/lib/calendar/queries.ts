@@ -29,6 +29,7 @@ export interface CalendarEvent {
   contactId: string | null;
   contactName: string | null;
   contactCompany: string | null;
+  contactAvatarUrl: string | null;
   assignedTo: { memberId: string; fullName: string; avatarUrl: string | null } | null;
   createdByMemberId: string | null;
   relatedType: EventRelatedType | null;
@@ -67,11 +68,14 @@ interface EventRow {
   recurrence_group_id: string | null;
   created_at: string;
   updated_at: string;
-  contacts: { name: string; company: string | null } | { name: string; company: string | null }[] | null;
+  contacts:
+    | { name: string; company: string | null; avatar_url: string | null }
+    | { name: string; company: string | null; avatar_url: string | null }[]
+    | null;
 }
 
 const EVENT_SELECT =
-  "id, subject, description, event_type, start_time, end_time, timezone, location, meeting_url, status, provider, external_id, reminder_minutes, contact_id, owner_id, created_by, related_type, related_id, recurrence_rule, recurrence_group_id, created_at, updated_at, contacts(name, company)";
+  "id, subject, description, event_type, start_time, end_time, timezone, location, meeting_url, status, provider, external_id, reminder_minutes, contact_id, owner_id, created_by, related_type, related_id, recurrence_rule, recurrence_group_id, created_at, updated_at, contacts(name, company, avatar_url)";
 
 async function resolveRelatedLabels(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -140,6 +144,7 @@ async function mapEventRows(
       contactId: r.contact_id,
       contactName: contact?.name ?? null,
       contactCompany: contact?.company ?? null,
+      contactAvatarUrl: contact?.avatar_url ?? null,
       assignedTo: r.owner_id
         ? {
             memberId: r.owner_id,

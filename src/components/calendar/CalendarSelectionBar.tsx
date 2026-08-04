@@ -18,9 +18,9 @@ export function CalendarSelectionBar({
   onBulkDelete: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-border-default bg-accent-50 px-6 py-2.5 text-sm">
-      <span className="font-medium text-accent-700">{selectedCount} seleccionado(s)</span>
-      <button type="button" onClick={onSelectAllVisible} className="text-xs font-medium text-accent-700 hover:underline">
+    <div className="flex flex-wrap items-center gap-3 border-b border-border-default bg-blue-50 px-6 py-2.5 text-sm">
+      <span className="font-medium text-blue-700">{selectedCount} seleccionado(s)</span>
+      <button type="button" onClick={onSelectAllVisible} className="text-xs font-medium text-blue-700 hover:underline">
         Seleccionar todos visibles
       </button>
       <button

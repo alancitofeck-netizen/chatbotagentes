@@ -75,8 +75,8 @@ export function MiniMonthCalendar({
                 "mx-auto flex size-6 items-center justify-center rounded-full text-[11px] transition-colors",
                 !inMonth && "text-neutral-300",
                 inMonth && !isSelected && "text-foreground hover:bg-surface-3",
-                isToday && !isSelected && "font-semibold text-accent-600",
-                isSelected && "bg-accent-500 font-semibold text-white hover:bg-accent-600",
+                isToday && !isSelected && "font-semibold text-blue-600",
+                isSelected && "bg-blue-500 font-semibold text-white hover:bg-blue-600",
               )}
             >
               {day.getDate()}

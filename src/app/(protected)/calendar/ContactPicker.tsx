@@ -53,7 +53,7 @@ export function ContactPicker({
           <button
             type="button"
             onClick={() => onSelect(null)}
-            className="text-xs text-accent-600 hover:underline"
+            className="text-xs text-blue-600 hover:underline"
           >
             Cambiar
           </button>
@@ -69,7 +69,7 @@ export function ContactPicker({
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => visibleResults.length > 0 && setOpen(true)}
             placeholder="Buscar contacto por nombre, teléfono, empresa…"
-            className="w-full rounded-sm border border-border-strong bg-surface-1 py-2 pl-9 pr-3 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+            className="w-full rounded-sm border border-border-strong bg-surface-1 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-100"
           />
           {open && visibleResults.length > 0 && (
             <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border-default bg-surface-1 shadow-[var(--elevation-md)]">

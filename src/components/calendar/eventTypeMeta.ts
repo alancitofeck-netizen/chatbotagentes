@@ -7,45 +7,49 @@ import type { EventType } from "@/lib/calendar/queries";
  * solid color used for the card's left accent stripe; `bg`/`text`/`dot` are
  * for softer chips (Month view, Agenda, badges); `solid` is the flat swatch
  * color used in the sidebar's category legend. */
+// Paleta propia del Calendario (blue/violet/emerald/amber/red saturados,
+// ver calendarColors.ts) — verde reservado para "seguimiento" (lo más
+// cercano a un estado positivo entre las categorías reales de bookings),
+// nunca como color principal.
 export const EVENT_TYPE_META: Record<
   EventType,
   { label: string; bar: string; border: string; bg: string; text: string; dot: string; solid: string }
 > = {
   meeting: {
     label: "Reunión",
-    bar: "bg-primary-500",
-    border: "border-l-primary-500",
-    bg: "bg-primary-50",
-    text: "text-primary-700",
-    dot: "bg-primary-500",
-    solid: "bg-primary-500",
+    bar: "bg-blue-500",
+    border: "border-l-blue-500",
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    dot: "bg-blue-500",
+    solid: "bg-blue-500",
   },
   follow_up: {
     label: "Seguimiento",
-    bar: "bg-success",
-    border: "border-l-success",
-    bg: "bg-success-bg",
-    text: "text-success-strong",
-    dot: "bg-success",
-    solid: "bg-success",
+    bar: "bg-emerald-500",
+    border: "border-l-emerald-500",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    dot: "bg-emerald-500",
+    solid: "bg-emerald-500",
   },
   call: {
     label: "Llamada",
-    bar: "bg-warning",
-    border: "border-l-warning",
-    bg: "bg-warning-bg",
-    text: "text-warning-strong",
-    dot: "bg-warning",
-    solid: "bg-warning",
+    bar: "bg-amber-500",
+    border: "border-l-amber-500",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    dot: "bg-amber-500",
+    solid: "bg-amber-500",
   },
   demo: {
     label: "Demo",
-    bar: "bg-accent-500",
-    border: "border-l-accent-500",
-    bg: "bg-accent-50",
-    text: "text-accent-700",
-    dot: "bg-accent-500",
-    solid: "bg-accent-500",
+    bar: "bg-violet-500",
+    border: "border-l-violet-500",
+    bg: "bg-violet-50",
+    text: "text-violet-700",
+    dot: "bg-violet-500",
+    solid: "bg-violet-500",
   },
   task: {
     label: "Tarea",
@@ -58,25 +62,25 @@ export const EVENT_TYPE_META: Record<
   },
   other: {
     label: "Otro",
-    bar: "bg-error",
-    border: "border-l-error",
-    bg: "bg-error-bg",
-    text: "text-error-strong",
-    dot: "bg-error",
-    solid: "bg-error",
+    bar: "bg-red-500",
+    border: "border-l-red-500",
+    bg: "bg-red-50",
+    text: "text-red-700",
+    dot: "bg-red-500",
+    solid: "bg-red-500",
   },
   // System-generated placeholder for an opportunity's "fecha de cierre
-  // estimada" (src/lib/crm/calendarSync.ts) — its own color (amber, not one
-  // of the 6 design-system semantic families already claimed by the other
-  // types above) so it reads as distinct from a real scheduled meeting.
+  // estimada" (src/lib/crm/calendarSync.ts) — distinct from "call" now that
+  // both would otherwise land on amber; keeps its own cyan-ish accent so it
+  // still reads as separate from a real scheduled meeting.
   estimated_close: {
     label: "Cierre estimado",
-    bar: "bg-amber-500",
-    border: "border-l-amber-500",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    dot: "bg-amber-500",
-    solid: "bg-amber-500",
+    bar: "bg-sky-500",
+    border: "border-l-sky-500",
+    bg: "bg-sky-50",
+    text: "text-sky-700",
+    dot: "bg-sky-500",
+    solid: "bg-sky-500",
   },
 };
 

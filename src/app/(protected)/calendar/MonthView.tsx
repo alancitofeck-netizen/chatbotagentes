@@ -54,7 +54,7 @@ function EventChip({
           isCancelled ? "border-l-neutral-300 bg-surface-3 text-neutral-400 line-through" : cn(meta.border, meta.bg, meta.text),
           isDragging && "opacity-80 shadow-[var(--elevation-md)]",
           selectionMode && "pr-4",
-          selected && "ring-2 ring-accent-500",
+          selected && "ring-2 ring-blue-500",
         )}
       >
         <span className="truncate text-[11px] font-semibold leading-tight">{event.title}</span>
@@ -66,7 +66,7 @@ function EventChip({
           checked={selected}
           onChange={() => onToggleSelect(event.id)}
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0.5 top-0.5 z-10 size-3 rounded border-border-strong accent-[var(--color-accent-500)]"
+          className="absolute right-0.5 top-0.5 z-10 size-3 rounded border-border-strong accent-blue-600"
         />
       )}
     </div>
@@ -103,7 +103,7 @@ function DayCell({
       className={cn(
         "flex min-h-[124px] flex-col gap-1.5 border-b border-l border-border-default p-2 transition-colors",
         !inMonth && "bg-surface-2/40",
-        isOver && "bg-accent-100/50",
+        isOver && "bg-blue-100/50",
       )}
     >
       <button
@@ -111,7 +111,7 @@ function DayCell({
         onClick={() => onOpenDay(day)}
         className={cn(
           "self-start rounded-full px-2 text-[12px] font-semibold hover:bg-surface-2",
-          isToday ? "bg-accent-500 text-white hover:bg-accent-600" : inMonth ? "text-foreground" : "text-neutral-400",
+          isToday ? "bg-blue-600 text-white hover:bg-blue-700" : inMonth ? "text-foreground" : "text-neutral-400",
         )}
       >
         {day.getDate()}
@@ -131,7 +131,7 @@ function DayCell({
           <button
             type="button"
             onClick={() => onOpenDay(day)}
-            className="px-1.5 text-left text-[11px] font-medium text-neutral-400 hover:text-accent-600"
+            className="px-1.5 text-left text-[11px] font-medium text-neutral-400 hover:text-blue-600"
           >
             +{overflow} más
           </button>

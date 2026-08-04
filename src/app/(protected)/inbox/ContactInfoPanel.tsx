@@ -265,7 +265,10 @@ export function ContactInfoPanel({
           <button type="button" onClick={() => setShowTaskForm((v) => !v)} className={inboxSecondaryButton}>
             <ListTodo size={13} /> Crear tarea
           </button>
-          <Link href="/calendar" className={inboxSecondaryButton}>
+          <Link
+            href={`/calendar?view=day&createContact=${detail.contact.id}&createName=${encodeURIComponent(detail.contact.name)}${detail.contact.company ? `&createCompany=${encodeURIComponent(detail.contact.company)}` : ""}`}
+            className={inboxSecondaryButton}
+          >
             <Calendar size={13} /> Programar reunión
           </Link>
           <button type="button" onClick={() => setMergeOpen(true)} className={inboxSecondaryButton}>

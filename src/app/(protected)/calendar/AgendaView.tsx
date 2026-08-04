@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Avatar } from "@/components/ui/Avatar";
 import { CalendarDays } from "lucide-react";
 import { EVENT_TYPE_META } from "@/components/calendar/eventTypeMeta";
+import { meetingChannel } from "@/components/calendar/calendarColors";
 
 function formatDayHeader(iso: string) {
   return new Date(iso).toLocaleDateString("es", { weekday: "long", day: "2-digit", month: "long" });
@@ -56,6 +57,7 @@ export function AgendaView({
             {dayEvents.map((event) => {
               const meta = EVENT_TYPE_META[event.eventType] ?? EVENT_TYPE_META.other;
               const isCancelled = event.status === "cancelled";
+              const channel = meetingChannel(event.meetingUrl);
               return (
                 <li key={event.id} className="flex items-center gap-2">
                   {selectionMode && (
@@ -63,7 +65,7 @@ export function AgendaView({
                       type="checkbox"
                       checked={selectedIds.has(event.id)}
                       onChange={() => onToggleSelect(event.id)}
-                      className="size-4 shrink-0 rounded border-border-strong accent-[var(--color-accent-500)]"
+                      className="size-4 shrink-0 rounded border-border-strong accent-blue-600"
                     />
                   )}
                   <button
@@ -73,7 +75,7 @@ export function AgendaView({
                       "flex max-sm:min-h-14 w-full items-center gap-4 rounded-xl border-l-[3px] bg-surface-1 px-4 py-3.5 text-left shadow-[var(--elevation-xs)] transition-all duration-150",
                       "hover:-translate-y-0.5 hover:shadow-[var(--elevation-sm)]",
                       isCancelled ? "border-l-neutral-300" : meta.border,
-                      selectedIds.has(event.id) && "ring-2 ring-accent-500",
+                      selectedIds.has(event.id) && "ring-2 ring-blue-500",
                     )}
                   >
                     <div className="w-[92px] shrink-0 text-[13px] font-medium text-neutral-500">{formatTimeRange(event.startTime, event.endTime)}</div>
@@ -83,16 +85,19 @@ export function AgendaView({
                       </p>
                       <p className="mt-0.5 truncate text-[12.5px] text-neutral-500">
                         <span className={cn("mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10.5px] font-medium", meta.bg, meta.text)}>{meta.label}</span>
+                        {channel && (
+                          <span className={cn("mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[10.5px] font-medium", channel.tint, channel.text)}>
+                            {channel.label}
+                          </span>
+                        )}
                         {event.contactName && event.contactName}
                         {event.contactCompany && ` · ${event.contactCompany}`}
                       </p>
                     </div>
-                    {event.assignedTo && (
-                      <div className="hidden shrink-0 items-center gap-2 sm:flex">
-                        <Avatar name={event.assignedTo.fullName} src={event.assignedTo.avatarUrl} size={26} />
-                        <span className="max-w-[110px] truncate text-[12.5px] text-neutral-500">{event.assignedTo.fullName}</span>
-                      </div>
-                    )}
+                    <div className="hidden shrink-0 items-center -space-x-1.5 sm:flex">
+                      {event.contactName && <Avatar name={event.contactName} src={event.contactAvatarUrl} size={26} />}
+                      {event.assignedTo && <Avatar name={event.assignedTo.fullName} src={event.assignedTo.avatarUrl} size={26} />}
+                    </div>
                   </button>
                 </li>
               );

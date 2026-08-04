@@ -13,6 +13,7 @@ import {
 } from "@/lib/calendar/queries";
 import { pushEventToGoogle, deleteEventFromGoogle } from "@/lib/integrations/googleCalendar";
 import { notify } from "@/lib/notifications/service";
+import { getContactCrmSummary } from "@/lib/inbox/queries";
 
 const MANAGER_ROLES = ["owner", "admin"];
 const MAX_RECURRENCE_INSTANCES = 52;
@@ -351,4 +352,14 @@ export async function getContactEventsAction(contactId: string) {
 export async function getUpcomingEventsAction() {
   const { workspaceId } = await requireActiveWorkspace();
   return getUpcomingEvents(workspaceId);
+}
+
+/** Sección CRM del panel de evento (pipeline/etapa/valor/responsable) —
+ * reusa la misma query que ya arma esto para el panel del Inbox
+ * (src/lib/inbox/queries.ts), no una nueva. `conversationId` es opcional:
+ * un evento del Calendario no siempre nace de una conversación puntual, a
+ * diferencia de un mensaje del Inbox. */
+export async function getEventCrmSummaryAction(contactId: string, conversationId: string | null) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getContactCrmSummary(workspaceId, contactId, conversationId ?? "");
 }

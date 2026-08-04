@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronLeft, ChevronRight, ListChecks, Plus } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import { cn } from "@/lib/utils/cn";
 import type { CalendarEvent } from "@/lib/calendar/queries";
@@ -14,10 +13,13 @@ import { TimeGrid } from "./TimeGrid";
 import { MonthView } from "./MonthView";
 import { AgendaView } from "./AgendaView";
 import { EventFormSheet } from "@/components/calendar/EventFormSheet";
+import type { PickedContact } from "./ContactPicker";
 import { EventDetailDrawer } from "@/components/calendar/EventDetailDrawer";
 import { CalendarSidebar } from "@/components/calendar/CalendarSidebar";
 import { CalendarSelectionBar } from "@/components/calendar/CalendarSelectionBar";
 import { categoryFor, type CategoryKey } from "@/components/calendar/eventTypeMeta";
+import { computeDaySummary, computeDayInsights } from "@/components/calendar/calendarInsights";
+import { calPrimaryButton, calSecondaryButton } from "@/components/calendar/calendarColors";
 import { Fab } from "@/components/ui/Fab";
 import { useIsMobile } from "@/lib/utils/useMediaQuery";
 
@@ -70,6 +72,7 @@ export function CalendarShell({
   opportunityOptions,
   canAssignOthers,
   ownMemberId,
+  googleCalendarConnected,
 }: {
   initialDateISO: string;
   initialEvents: CalendarEvent[];
@@ -78,6 +81,7 @@ export function CalendarShell({
   opportunityOptions: TaskOption[];
   canAssignOthers: boolean;
   ownMemberId: string | null;
+  googleCalendarConnected: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -96,7 +100,10 @@ export function CalendarShell({
 
   const [events, setEvents] = useState(initialEvents);
   const [sheetState, setSheetState] = useState<
-    { mode: "view"; event: CalendarEvent } | { mode: "create"; defaultStart?: Date } | { mode: "edit"; event: CalendarEvent } | null
+    | { mode: "view"; event: CalendarEvent }
+    | { mode: "create"; defaultStart?: Date; defaultContact?: PickedContact | null }
+    | { mode: "edit"; event: CalendarEvent }
+    | null
   >(null);
   const [, startTransition] = useTransition();
   // TimeGrid remounts (via a `key` tied to this + the range) instead of
@@ -113,6 +120,7 @@ export function CalendarShell({
   const [showMine, setShowMine] = useState(true);
   const [showTeam, setShowTeam] = useState(true);
   const [activeCategories, setActiveCategories] = useState<Set<CategoryKey>>(new Set(ALL_CATEGORIES));
+  const [search, setSearch] = useState("");
 
   // Multi-select — same shape as CrmBoardShell.tsx's bulk-select (Set of ids
   // + a mode flag), the established pattern for this app rather than a new one.
@@ -197,6 +205,24 @@ export function CalendarShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Deep link from the Inbox's "Agendar reunión" button
+  // (src/app/(protected)/inbox/ContactInfoPanel.tsx) — `?createContact=<id>&createName=...`
+  // opens the create sheet with that contact already picked, instead of a
+  // blank form. Same once-on-mount pattern as the `?event=` reader above.
+  useEffect(() => {
+    const contactId = searchParams.get("createContact");
+    const contactName = searchParams.get("createName");
+    if (!contactId || !contactName) return;
+    Promise.resolve().then(() =>
+      setSheetState({
+        mode: "create",
+        defaultStart: date,
+        defaultContact: { id: contactId, name: contactName, company: searchParams.get("createCompany") },
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function toggleCategory(key: CategoryKey) {
     setActiveCategories((prev) => {
       const next = new Set(prev);
@@ -238,6 +264,21 @@ export function CalendarShell({
 
   const days = view === "day" ? [date] : view === "week" ? Array.from({ length: 7 }, (_, i) => addDays(getMonday(date), i)) : [];
 
+  const searchedEvents = search.trim()
+    ? visibleEvents.filter(
+        (e) =>
+          e.title.toLowerCase().includes(search.trim().toLowerCase()) ||
+          (e.contactName ?? "").toLowerCase().includes(search.trim().toLowerCase()),
+      )
+    : visibleEvents;
+
+  // Today's summary/insights are computed over `events` (unfiltered by
+  // scope/category) — "resumen del día" should reflect everything really on
+  // the calendar today, not just whatever categories happen to be checked.
+  const today = new Date();
+  const todaySummary = computeDaySummary(events, today);
+  const todayInsights = computeDayInsights(events, today);
+
   return (
     <div className="flex h-full">
       <CalendarSidebar
@@ -251,29 +292,38 @@ export function CalendarShell({
         onToggleCategory={toggleCategory}
         upcomingEvent={upcomingEvent}
         onOpenUpcoming={handleSelect}
+        search={search}
+        onSearchChange={setSearch}
+        todaySummary={todaySummary}
+        todayInsights={todayInsights}
+        googleCalendarConnected={googleCalendarConnected}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="border-b border-border-default bg-surface-1">
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 sm:px-6 sm:pt-5">
             <div className="flex items-center gap-2.5">
-              <span className="flex size-9 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
                 <CalendarDays size={18} aria-hidden="true" />
               </span>
               <h1 className="text-[19px] font-semibold text-foreground">Calendario</h1>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant={selectionMode ? "primary" : "secondary"} size="lg" onClick={toggleSelectionMode}>
-                <ListChecks size={17} aria-hidden="true" />
+              <button type="button" onClick={toggleSelectionMode} className={selectionMode ? calPrimaryButton : calSecondaryButton}>
+                <ListChecks size={16} aria-hidden="true" />
                 Acciones masivas
-              </Button>
+              </button>
               {/* Below `md` the FAB (rendered near the end of this component)
                  covers "nuevo evento" — keeping this button too would just be
                  a second entry point crowding an already-tight header. */}
-              <Button size="lg" onClick={() => setSheetState({ mode: "create", defaultStart: date })} className="hidden md:inline-flex">
-                <Plus size={17} aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => setSheetState({ mode: "create", defaultStart: date })}
+                className={cn(calPrimaryButton, "hidden md:inline-flex")}
+              >
+                <Plus size={16} aria-hidden="true" />
                 Nuevo evento
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -339,7 +389,7 @@ export function CalendarShell({
             <TimeGrid
               key={`${start.toISOString()}-${refreshTick}`}
               days={days}
-              events={visibleEvents}
+              events={searchedEvents}
               onSelect={handleSelect}
               onChanged={refetch}
               selectionMode={selectionMode}
@@ -350,7 +400,7 @@ export function CalendarShell({
           {view === "month" && (
             <MonthView
               monthDate={date}
-              events={visibleEvents}
+              events={searchedEvents}
               onSelect={handleSelect}
               onOpenDay={(day) => setUrl("day", day)}
               onChanged={refetch}
@@ -361,7 +411,7 @@ export function CalendarShell({
           )}
           {view === "agenda" && (
             <AgendaView
-              events={visibleEvents}
+              events={searchedEvents}
               onSelect={handleSelect}
               selectionMode={selectionMode}
               selectedIds={selectedIds}
@@ -386,6 +436,7 @@ export function CalendarShell({
         <EventFormSheet
           current={sheetState.mode === "edit" ? sheetState.event : null}
           defaultStart={sheetState.mode === "create" ? sheetState.defaultStart : undefined}
+          defaultContact={sheetState.mode === "create" ? sheetState.defaultContact : undefined}
           members={members}
           conversationOptions={conversationOptions}
           opportunityOptions={opportunityOptions}
