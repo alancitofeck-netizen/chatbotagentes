@@ -39,6 +39,8 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     <div className="flex h-screen overflow-hidden bg-surface-2">
       <Sidebar
         enabledModules={enabledModules}
+        workspaceName={activeWorkspace.name}
+        role={activeWorkspace.role}
         userName={userName}
         userEmail={user.email ?? ""}
         userAvatarUrl={userAvatarUrl}

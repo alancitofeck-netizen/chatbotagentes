@@ -8,12 +8,12 @@ import { Logo } from "@/components/brand/Logo";
 import { Badge } from "@/components/ui/Badge";
 import { ThemeToggle } from "@/lib/theme/ThemeToggle";
 import { cn } from "@/lib/utils/cn";
-import { getNavItems, isNavItemActive } from "./Sidebar";
+import { getNavItems, groupNavItems, isNavItemActive } from "./Sidebar";
 
 export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const navItems = getNavItems(new Set(enabledModules));
+  const groups = groupNavItems(getNavItems(new Set(enabledModules)));
 
   useEffect(() => {
     if (!open) return;
@@ -68,38 +68,50 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
             <X className="size-4" aria-hidden="true" />
           </button>
         </div>
-        <nav className="flex flex-col gap-1">
-          {navItems.map((item) => {
-            const isActive = isNavItemActive(pathname, item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.label}
-                href={item.comingSoon ? "#" : item.href}
-                onClick={(e) => {
-                  if (item.comingSoon) e.preventDefault();
-                  else setOpen(false);
-                }}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
-                  item.comingSoon
-                    ? "cursor-default text-neutral-400"
-                    : isActive
-                      ? "bg-surface-2 text-foreground"
-                      : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
-                )}
-              >
-                <Icon className="size-[18px] shrink-0" aria-hidden="true" />
-                <span className="truncate">{item.label}</span>
-                {item.comingSoon && (
-                  <Badge variant="neutral" className="ml-auto">
-                    Pronto
-                  </Badge>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex flex-col gap-1 overflow-y-auto">
+          {groups.map((group) => (
+            <div key={group.category} className="flex flex-col gap-1">
+              <p role="presentation" className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 first:pt-0">
+                {group.category}
+              </p>
+              {group.items.map((item) => {
+                const isActive = isNavItemActive(pathname, item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.comingSoon ? "#" : item.href}
+                    onClick={(e) => {
+                      if (item.comingSoon) e.preventDefault();
+                      else setOpen(false);
+                    }}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                      item.comingSoon
+                        ? "cursor-default text-neutral-400"
+                        : isActive
+                          ? "bg-surface-2 text-foreground"
+                          : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="size-[18px] shrink-0" aria-hidden="true" />
+                    <span className="truncate">{item.label}</span>
+                    {item.comingSoon && (
+                      <Badge variant="neutral" className="ml-auto">
+                        Pronto
+                      </Badge>
+                    )}
+                    {item.isAI && !item.comingSoon && (
+                      <Badge variant="success" className="ml-auto px-1.5 py-0 text-[10px]">
+                        IA
+                      </Badge>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="mt-auto flex items-center justify-between border-t border-border-default pt-3">
           <span className="text-sm text-neutral-500">Tema</span>

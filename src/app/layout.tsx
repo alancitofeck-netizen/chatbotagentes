@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { themeInitScript } from "@/lib/theme/script";
+import { sidebarPinInitScript } from "@/components/layout/sidebarPinScript";
 import { ToastProvider } from "@/components/toast/ToastProvider";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import "./globals.css";
@@ -65,6 +66,10 @@ export default function RootLayout({
       <head>
         {/* Sets data-theme before hydration to avoid a flash of the wrong theme. */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* Sets data-sidebar-pinned before hydration so a pinned sidebar
+         * doesn't flash at its collapsed width — harmless on public/auth
+         * routes that render no sidebar at all. */}
+        <script dangerouslySetInnerHTML={{ __html: sidebarPinInitScript }} />
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
