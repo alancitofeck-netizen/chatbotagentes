@@ -460,6 +460,65 @@ export async function getPolicyPayments(policyId: string): Promise<PolicyPayment
   }));
 }
 
+const PAYMENT_FREQUENCY_MONTHS: Record<string, number> = { mensual: 1, trimestral: 3, semestral: 6, anual: 12, unico: 0 };
+
+/** Reparte la prima en cuotas iguales entre inicio y vencimiento según la
+ * frecuencia de pago — pura, sin acceso a datos, compartida entre
+ * generatePolicyPaymentScheduleAction (botón manual, actions.ts) y
+ * ensurePolicyPaymentSchedule (automático, ver abajo) para no calcular las
+ * fechas/montos de cuota en dos lugares distintos. */
+export function buildPaymentScheduleRows(policy: {
+  startDate: string | null;
+  endDate: string | null;
+  paymentFrequency: string | null;
+  premium: number | null;
+  premiumCurrency: string;
+}): { due_date: string; amount: number; currency: string }[] {
+  if (!policy.startDate || !policy.endDate) return [];
+
+  const months = PAYMENT_FREQUENCY_MONTHS[policy.paymentFrequency ?? ""] ?? 0;
+  const start = new Date(policy.startDate);
+  const end = new Date(policy.endDate);
+  const dueDates: string[] = [];
+  if (months > 0) {
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      dueDates.push(cursor.toISOString().slice(0, 10));
+      cursor.setMonth(cursor.getMonth() + months);
+    }
+  }
+  if (dueDates.length === 0) dueDates.push(policy.startDate);
+
+  const amountPerInstallment = policy.premium !== null ? Math.round((policy.premium / dueDates.length) * 100) / 100 : 0;
+  return dueDates.map((dueDate) => ({ due_date: dueDate, amount: amountPerInstallment, currency: policy.premiumCurrency }));
+}
+
+/** Genera el cronograma de cuotas automáticamente si la póliza todavía no
+ * tiene ninguna — "silencioso" a propósito (nunca lanza, solo loguea):
+ * llamado desde createPolicyAction (alta nueva) y desde
+ * getCollectionsList (backfill perezoso para pólizas ya existentes, mismo
+ * criterio de "crear en el primer uso real" que ensurePolicyPipeline) —
+ * ninguno de los dos flujos debe romperse si esto falla. El botón manual
+ * "Generar cronograma" (generatePolicyPaymentScheduleAction) sigue
+ * lanzando error normalmente, porque ahí sí hay un usuario esperando una
+ * respuesta directa. */
+export async function ensurePolicyPaymentSchedule(workspaceId: string, policyId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const { data: existing } = await supabase.from("policy_payments").select("id").eq("policy_id", policyId).limit(1);
+    if (existing && existing.length > 0) return;
+
+    const policy = await getPolicyById(workspaceId, policyId);
+    if (!policy) return;
+    const rows = buildPaymentScheduleRows(policy);
+    if (rows.length === 0) return;
+
+    await supabase.from("policy_payments").insert(rows.map((r) => ({ ...r, policy_id: policyId })));
+  } catch (err) {
+    console.error(`[policies] ensurePolicyPaymentSchedule failed for ${policyId}:`, err);
+  }
+}
+
 export interface PolicyCommissionAnalytics {
   totalCommission: number;
   collectedCommission: number;

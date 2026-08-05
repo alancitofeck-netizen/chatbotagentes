@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, AlertTriangle, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils/cn";
 import type { CollectionItem } from "@/lib/collections/queries";
 import { deriveCollectionBucket, COLLECTION_BUCKET_VARIANT } from "@/lib/collections/constants";
+import { formatCurrency } from "@/lib/utils/format";
 import { getMonday, addDays, parseLocalDate } from "@/lib/calendar/week";
 
-const MAX_VISIBLE_PER_DAY = 3;
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 const CHIP_CLASSES: Record<string, { border: string; bg: string; text: string }> = {
@@ -52,6 +52,13 @@ function EntryChip({ item, onOpen }: { item: CollectionItem; onOpen: (item: Coll
   );
 }
 
+/** Celda de día — muestra un resumen agregado (ícono + cantidad + monto),
+ * no una lista de cobros: el objetivo de esta vista es "a quién le toca
+ * pagar cada día" de un vistazo, no reemplazar la Tabla. Un día con algún
+ * cobro vencido se pinta entero en rojo con "Vencido $X" — la señal de
+ * "contactar ya" tiene que verse sin tener que abrir nada. Clic en el
+ * resumen expande la lista real de cobros de ese día (reutiliza EntryChip)
+ * para llegar al detalle de uno puntual. */
 function DayCell({
   day,
   inMonth,
@@ -68,35 +75,59 @@ function DayCell({
   onOpen: (item: CollectionItem) => void;
 }) {
   const isToday = isSameDay(day, new Date());
-  const hasOverflow = entries.length > MAX_VISIBLE_PER_DAY;
-  const visible = expanded ? entries : entries.slice(0, MAX_VISIBLE_PER_DAY);
-  const hiddenCount = entries.length - visible.length;
+  const hasEntries = entries.length > 0;
+  const overdueEntries = entries.filter((e) => deriveCollectionBucket(e.status, e.dueDate) === "vencido");
+  const hasOverdue = overdueEntries.length > 0;
+  const totalAmount = entries.reduce((s, e) => s + e.amount, 0);
+  const overdueAmount = overdueEntries.reduce((s, e) => s + e.amount, 0);
+  const currency = entries[0]?.currency ?? "USD";
 
   return (
-    <div className={cn("flex min-h-[124px] flex-col gap-1.5 border-b border-l border-border-default p-2", !inMonth && "bg-surface-2/40")}>
+    <div
+      className={cn(
+        "flex min-h-[124px] flex-col gap-1.5 border-b border-l border-border-default p-2",
+        !inMonth && "bg-surface-2/40",
+        hasOverdue && "bg-error-bg",
+        isToday && "ring-2 ring-inset ring-accent-500",
+      )}
+    >
       <span
         className={cn(
           "self-start rounded-full px-2 text-[12px] font-semibold",
-          isToday ? "bg-blue-600 text-white" : inMonth ? "text-foreground" : "text-neutral-400",
+          isToday ? "bg-accent-500 text-white" : inMonth ? "text-foreground" : "text-neutral-400",
         )}
       >
         {day.getDate()}
       </span>
-      <div className="flex flex-col gap-1">
-        {visible.map((item) => (
-          <EntryChip key={item.id} item={item} onOpen={onOpen} />
-        ))}
-        {hasOverflow && hiddenCount > 0 && (
-          <button type="button" onClick={onToggleExpand} className="px-1.5 text-left text-[11px] font-medium text-neutral-400 hover:text-accent-700">
-            +{hiddenCount} más
-          </button>
-        )}
-        {hasOverflow && hiddenCount === 0 && (
-          <button type="button" onClick={onToggleExpand} className="px-1.5 text-left text-[11px] font-medium text-neutral-400 hover:text-accent-700">
-            Ver menos
-          </button>
-        )}
-      </div>
+
+      {hasOverdue && (
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          className="flex items-center gap-1 truncate rounded-md px-1.5 py-1 text-left text-[11px] font-semibold text-error-strong"
+        >
+          <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
+          Vencido {formatCurrency(overdueAmount, currency)}
+        </button>
+      )}
+      {!hasOverdue && hasEntries && (
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          className="flex items-center gap-1 truncate rounded-md bg-success-bg px-1.5 py-1 text-left text-[11px] font-semibold text-success-strong"
+        >
+          <Wallet className="size-3.5 shrink-0" aria-hidden="true" />
+          {entries.length} · {formatCurrency(totalAmount, currency)}
+        </button>
+      )}
+
+      {expanded && hasEntries && (
+        <div className="flex flex-col gap-1">
+          {entries.map((item) => (
+            <EntryChip key={item.id} item={item} onOpen={onOpen} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

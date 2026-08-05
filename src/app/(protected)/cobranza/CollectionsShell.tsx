@@ -20,7 +20,7 @@ import { filterCollections, type CollectionsQuickFilter } from "./collectionsFil
 export function CollectionsShell({ initialItems, initialKpis }: { initialItems: CollectionItem[]; initialKpis: CollectionsKpis }) {
   const [items, setItems] = useState(initialItems);
   const [kpis, setKpis] = useState(initialKpis);
-  const [view, setView] = useState<CollectionsView>("table");
+  const [view, setView] = useState<CollectionsView>("calendar");
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState<CollectionsQuickFilter>("all");
   const [detailId, setDetailId] = useState<string | null>(null);

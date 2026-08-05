@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { getPolicyDashboardKpis } from "@/lib/policies/queries";
+import { getPolicyDashboardKpis, ensurePolicyPaymentSchedule } from "@/lib/policies/queries";
 import type { CollectionStatus } from "@/lib/collections/constants";
 
 export { type CollectionStatus };
@@ -60,7 +60,21 @@ export async function getCollectionsList(workspaceId: string): Promise<Collectio
   if (policyIds.length === 0) return [];
 
   const { data: payments } = await supabase.from("policy_payments").select("*").in("policy_id", policyIds).order("due_date", { ascending: true });
-  const rows = payments ?? [];
+  let rows = payments ?? [];
+
+  // Backfill perezoso: una póliza cargada antes de que createPolicyAction
+  // generara el cronograma automáticamente (o cualquier póliza vieja) no
+  // tiene filas en policy_payments todavía — se genera acá, una sola vez
+  // (steady state: todas las pólizas ya tienen cronograma, este bloque no
+  // hace nada). Mismo criterio "crear en el primer uso real" que
+  // ensurePolicyPipeline.
+  const policyIdsWithPayments = new Set(rows.map((r) => r.policy_id as string));
+  const missingPolicyIds = policyIds.filter((id) => !policyIdsWithPayments.has(id));
+  if (missingPolicyIds.length > 0) {
+    await Promise.all(missingPolicyIds.map((id) => ensurePolicyPaymentSchedule(workspaceId, id)));
+    const { data: backfilled } = await supabase.from("policy_payments").select("*").in("policy_id", missingPolicyIds).order("due_date", { ascending: true });
+    rows = [...rows, ...(backfilled ?? [])];
+  }
 
   const ownerIds = [...new Set(policies.map((p) => p.owner_id).filter((id): id is string => Boolean(id)))];
   const { data: memberNames } = ownerIds.length
@@ -145,6 +159,10 @@ export async function getCollectionById(workspaceId: string, paymentId: string):
 export interface CollectionsKpis {
   totalPending: number;
   collectedThisMonth: number;
+  /** % vs. el total cobrado el mes calendario anterior — null cuando no
+   * hay nada cobrado el mes anterior para comparar (evita un "+100%"
+   * engañoso desde cero). */
+  collectedThisMonthChangePct: number | null;
   overdueAmount: number;
   overdueCount: number;
   upcoming7Count: number;
@@ -176,10 +194,15 @@ export async function getCollectionsKpis(workspaceId: string): Promise<Collectio
   now.setHours(0, 0, 0, 0);
   const in7 = new Date(now.getTime() + 7 * 86_400_000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
   const openRows = rows.filter((r) => r.status === "pendiente" || r.status === "en_seguimiento");
   const totalPending = openRows.reduce((s, r) => s + r.amount, 0);
   const collectedThisMonth = rows.filter((r) => r.status === "pagado" && r.paid_at && new Date(r.paid_at) >= monthStart).reduce((s, r) => s + r.amount, 0);
+  const collectedPrevMonth = rows
+    .filter((r) => r.status === "pagado" && r.paid_at && new Date(r.paid_at) >= prevMonthStart && new Date(r.paid_at) < monthStart)
+    .reduce((s, r) => s + r.amount, 0);
+  const collectedThisMonthChangePct = collectedPrevMonth > 0 ? Math.round(((collectedThisMonth - collectedPrevMonth) / collectedPrevMonth) * 100) : null;
 
   const overdueRows = openRows.filter((r) => new Date(r.due_date) < now);
   const overdueAmount = overdueRows.reduce((s, r) => s + r.amount, 0);
@@ -197,6 +220,7 @@ export async function getCollectionsKpis(workspaceId: string): Promise<Collectio
   return {
     totalPending,
     collectedThisMonth,
+    collectedThisMonthChangePct,
     overdueAmount,
     overdueCount,
     upcoming7Count,

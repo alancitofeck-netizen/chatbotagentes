@@ -19,6 +19,8 @@ import {
   getPolicyCommissionAnalytics,
   getPolicyEndorsements,
   ensurePolicyPipeline,
+  ensurePolicyPaymentSchedule,
+  buildPaymentScheduleRows,
   POLICY_STAGES,
   type PolicyStatus,
   type InsuranceType,
@@ -187,6 +189,7 @@ export async function createPolicyAction(input: PolicyFormInput): Promise<{ id: 
   }
 
   await logActivity(supabase, workspaceId, memberId, "policy", policy.id as string, "policy_created", { source: "manual", company: input.company });
+  await ensurePolicyPaymentSchedule(workspaceId, policy.id as string);
 
   revalidatePolicies();
   void role; // reservado para un futuro gate de permisos más fino
@@ -591,11 +594,14 @@ export async function getPolicyPaymentsAction(policyId: string) {
   return getPolicyPayments(policyId);
 }
 
-const FREQUENCY_MONTHS: Record<string, number> = { mensual: 1, trimestral: 3, semestral: 6, anual: 12, unico: 0 };
-
 /** Reparte la prima en cuotas iguales entre inicio y vencimiento según la
  * frecuencia de pago de la póliza — no agrega si ya hay cuotas cargadas
- * (evita duplicar un cronograma generado dos veces por error). */
+ * (evita duplicar un cronograma generado dos veces por error). Desde que
+ * createPolicyAction genera el cronograma automáticamente al crear la
+ * póliza, este botón manual solo hace falta para el caso raro de una
+ * póliza vieja sin cronograma (o una a la que se le borraron todas las
+ * cuotas) — la lógica de fechas/montos vive en buildPaymentScheduleRows
+ * (queries.ts), compartida con ensurePolicyPaymentSchedule. */
 export async function generatePolicyPaymentScheduleAction(policyId: string): Promise<PolicyPayment[]> {
   const { workspaceId } = await requireActiveWorkspace();
   const supabase = await createClient();
@@ -607,29 +613,8 @@ export async function generatePolicyPaymentScheduleAction(policyId: string): Pro
   const { data: existing } = await supabase.from("policy_payments").select("id").eq("policy_id", policyId).limit(1);
   if (existing && existing.length > 0) throw new Error("Esta póliza ya tiene cuotas cargadas.");
 
-  const months = FREQUENCY_MONTHS[policy.paymentFrequency ?? ""] ?? 0;
-  const start = new Date(policy.startDate);
-  const end = new Date(policy.endDate);
-  const dueDates: string[] = [];
-  if (months > 0) {
-    const cursor = new Date(start);
-    while (cursor <= end) {
-      dueDates.push(cursor.toISOString().slice(0, 10));
-      cursor.setMonth(cursor.getMonth() + months);
-    }
-  }
-  if (dueDates.length === 0) dueDates.push(policy.startDate);
-
-  const amountPerInstallment = policy.premium !== null ? Math.round((policy.premium / dueDates.length) * 100) / 100 : 0;
-
-  const { error } = await supabase.from("policy_payments").insert(
-    dueDates.map((dueDate) => ({
-      policy_id: policyId,
-      due_date: dueDate,
-      amount: amountPerInstallment,
-      currency: policy.premiumCurrency,
-    })),
-  );
+  const rows = buildPaymentScheduleRows(policy);
+  const { error } = await supabase.from("policy_payments").insert(rows.map((r) => ({ ...r, policy_id: policyId })));
   if (error) throw new Error("No se pudo generar el cronograma.");
 
   return getPolicyPayments(policyId);

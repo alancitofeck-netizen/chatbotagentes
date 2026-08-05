@@ -17,8 +17,9 @@ export default async function CollectionsPage() {
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <div className="flex flex-col gap-1 px-4 sm:px-6 lg:px-8">
+        <p className="text-xs font-semibold uppercase tracking-wide text-success-strong">Seguimiento proactivo</p>
         <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Cobranza</h1>
-        <p className="text-sm text-neutral-500">Centro financiero de toda la cartera</p>
+        <p className="text-sm text-neutral-500">A quién le toca pagar cada día — con 15 días de anticipación</p>
       </div>
       <CollectionsShell initialItems={items} initialKpis={kpis} />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Wallet, CheckCircle2, AlertTriangle, CalendarClock, Coins, Gauge, Landmark } from "lucide-react";
+import { CheckCircle2, AlertTriangle, CalendarClock, ArrowUp, ArrowDown } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import type { CollectionsKpis } from "@/lib/collections/queries";
@@ -22,7 +22,7 @@ function KpiTile({
   iconColor: string;
   value: string;
   label: string;
-  sublabel?: string;
+  sublabel?: React.ReactNode;
   onClick?: () => void;
   active?: boolean;
 }) {
@@ -55,9 +55,13 @@ function KpiTile({
   );
 }
 
-/** 8 tarjetas pedidas explícitamente en el spec — 4 clickeables (filtran la
- * lista) y 4 informativas (agregados que no mapean a un subconjunto de filas
- * filtrable con sentido, mismo criterio que PoliciesKpiHeader). */
+/** 3 tarjetas — "a quién le toca pagar cada día", no un dashboard financiero
+ * completo (eso vive en las otras vistas: Tabla/Kanban/Prioridad). Las 3 son
+ * clickeables (filtran la lista); las 5 restantes que existían antes (Total
+ * pendiente, Prima mensual/anual, Tasa efectiva, Comisión generada) se
+ * sacaron del header por pedido explícito de simplificar esta pantalla —
+ * los números siguen calculándose en getCollectionsKpis por si una vista
+ * futura los necesita, solo dejaron de mostrarse acá. */
 export function CollectionsKpiHeader({
   kpis,
   quickFilter,
@@ -71,16 +75,29 @@ export function CollectionsKpiHeader({
     onQuickFilterChange(quickFilter === next ? "all" : next);
   }
 
+  const changePct = kpis.collectedThisMonthChangePct;
+
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <KpiTile
-        icon={<Wallet className="size-[18px]" aria-hidden="true" />}
+        icon={<CalendarClock className="size-[18px]" aria-hidden="true" />}
         iconBg="bg-info-bg"
         iconColor="text-info-strong"
-        value={formatCurrency(kpis.totalPending)}
-        label="Total pendiente"
-        onClick={() => toggle("pending")}
-        active={quickFilter === "pending"}
+        value={formatCurrency(kpis.upcoming7Amount)}
+        label="Por cobrar esta semana"
+        sublabel={`${kpis.upcoming7Count} póliza${kpis.upcoming7Count === 1 ? "" : "s"}`}
+        onClick={() => toggle("upcoming")}
+        active={quickFilter === "upcoming"}
+      />
+      <KpiTile
+        icon={<AlertTriangle className="size-[18px]" aria-hidden="true" />}
+        iconBg="bg-error-bg"
+        iconColor="text-error-strong"
+        value={formatCurrency(kpis.overdueAmount)}
+        label="En riesgo (vencidas)"
+        sublabel={`${kpis.overdueCount} póliza${kpis.overdueCount === 1 ? "" : "s"} · contactar ya`}
+        onClick={() => toggle("overdue")}
+        active={quickFilter === "overdue"}
       />
       <KpiTile
         icon={<CheckCircle2 className="size-[18px]" aria-hidden="true" />}
@@ -88,56 +105,16 @@ export function CollectionsKpiHeader({
         iconColor="text-success-strong"
         value={formatCurrency(kpis.collectedThisMonth)}
         label="Cobrado este mes"
+        sublabel={
+          changePct === null ? undefined : (
+            <span className={cn("inline-flex items-center gap-0.5", changePct >= 0 ? "text-success-strong" : "text-error-strong")}>
+              {changePct >= 0 ? <ArrowUp className="size-3" aria-hidden="true" /> : <ArrowDown className="size-3" aria-hidden="true" />}
+              {Math.abs(changePct)}% vs. mes anterior
+            </span>
+          )
+        }
         onClick={() => toggle("paidThisMonth")}
         active={quickFilter === "paidThisMonth"}
-      />
-      <KpiTile
-        icon={<AlertTriangle className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-error-bg"
-        iconColor="text-error-strong"
-        value={formatCurrency(kpis.overdueAmount)}
-        label="Vencido"
-        sublabel={`${kpis.overdueCount} cobro${kpis.overdueCount === 1 ? "" : "s"}`}
-        onClick={() => toggle("overdue")}
-        active={quickFilter === "overdue"}
-      />
-      <KpiTile
-        icon={<CalendarClock className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-warning-bg"
-        iconColor="text-warning-strong"
-        value={formatCurrency(kpis.upcoming7Amount)}
-        label="Próximos 7 días"
-        sublabel={`${kpis.upcoming7Count} cobro${kpis.upcoming7Count === 1 ? "" : "s"}`}
-        onClick={() => toggle("upcoming")}
-        active={quickFilter === "upcoming"}
-      />
-      <KpiTile
-        icon={<Landmark className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-primary-100"
-        iconColor="text-primary-700"
-        value={formatCurrency(kpis.monthlyPremium)}
-        label="Prima mensual"
-      />
-      <KpiTile
-        icon={<Landmark className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-primary-100"
-        iconColor="text-primary-700"
-        value={formatCurrency(kpis.annualPremium)}
-        label="Prima anual"
-      />
-      <KpiTile
-        icon={<Gauge className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-accent-100"
-        iconColor="text-accent-700"
-        value={`${kpis.effectiveCollectionRatePct}%`}
-        label="Tasa efectiva de cobro"
-      />
-      <KpiTile
-        icon={<Coins className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-green-100"
-        iconColor="text-green-700"
-        value={formatCurrency(kpis.commissionGenerated)}
-        label="Comisión generada"
       />
     </div>
   );
