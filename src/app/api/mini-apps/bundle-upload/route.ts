@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getUser, getActiveWorkspaceForUser } from "@/lib/auth/session";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { parseBundle, MAX_BUNDLE_BYTES } from "@/lib/miniApps/bundleParser";
+import { generateApiKey, hashApiKey, lastFour } from "@/lib/miniApps/apiKey";
+import { injectSdkSnippet } from "@/lib/miniApps/sdkInjection";
 
 export const runtime = "nodejs";
 
@@ -80,6 +82,22 @@ export async function POST(request: NextRequest) {
   const parsed = await parseBundle(file.name, bytes);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
+  // A freshly-generated plaintext key only ever exists here, in memory,
+  // before it gets hashed for storage below (apiKey.ts never persists it) —
+  // so this is the one moment the SDK snippet can be embedded with a real,
+  // working key. Regenerated on EVERY upload/replace (not just the first)
+  // so the served bundle's embedded key is always the currently valid one,
+  // and a workspace member never has to paste anything by hand — see
+  // sdkInjection.ts's own comment for the full reasoning.
+  const plaintextApiKey = generateApiKey();
+  const sdkOrigin = request.nextUrl.origin;
+  const indexFile = parsed.bundle.files.find((f) => f.path === parsed.bundle.indexPath);
+  if (indexFile) {
+    const html = new TextDecoder().decode(indexFile.bytes);
+    const injected = injectSdkSnippet(html, { appId: miniApp.slug as string, apiKey: plaintextApiKey, sdkOrigin });
+    indexFile.bytes = new TextEncoder().encode(injected);
+  }
+
   const prefix = `${active.workspaceId}/${miniAppId}`;
 
   // Replace: clear out whatever's there from a previous version first —
@@ -124,7 +142,13 @@ export async function POST(request: NextRequest) {
 
   await service
     .from("mini_apps")
-    .update({ config: nextConfig, allowed_origins: nextOrigins, updated_at: new Date().toISOString() })
+    .update({
+      config: nextConfig,
+      allowed_origins: nextOrigins,
+      api_key_hash: hashApiKey(plaintextApiKey),
+      api_key_last4: lastFour(plaintextApiKey),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", miniAppId);
 
   // Same proxy route the public /apps/{slug} page uses (see that route's own
@@ -142,5 +166,6 @@ export async function POST(request: NextRequest) {
     counts: parsed.bundle.counts,
     totalBytes: parsed.bundle.totalBytes,
     publicUrl,
+    apiKey: plaintextApiKey,
   });
 }

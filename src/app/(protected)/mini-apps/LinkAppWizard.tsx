@@ -166,18 +166,27 @@ export function LinkAppWizard({
     return (
       <Sheet open onClose={onClose} title="App vinculada" className="max-w-2xl">
         <div className="flex flex-col gap-4 p-5">
-          <p className="text-sm text-neutral-500">
-            Guardá esta API key ahora — no se va a poder ver de nuevo. El desarrollador de la app externa solo necesita pegar el snippet de abajo
-            antes de <code>{"</body>"}</code> — a partir de ahí, cualquier formulario de esa página sincroniza solo con el CRM, sin escribir código
-            adicional.
-          </p>
+          {hostingMode === "upload" ? (
+            <p className="text-sm text-neutral-500">
+              Ya insertamos el snippet de integración en tu archivo automáticamente — no hace falta que edites nada. Cualquier formulario de esa
+              página ya sincroniza solo con el CRM.
+            </p>
+          ) : (
+            <p className="text-sm text-neutral-500">
+              Guardá esta API key ahora — no se va a poder ver de nuevo. El desarrollador de la app externa solo necesita pegar el snippet de abajo
+              antes de <code>{"</body>"}</code> — a partir de ahí, cualquier formulario de esa página sincroniza solo con el CRM, sin escribir código
+              adicional.
+            </p>
+          )}
           <CopyableField label="App ID" value={created.slug} />
           <CopyableField label="Endpoint" value={endpointUrl} />
           <CopyableField label="API Key" value={created.apiKey} />
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-neutral-400">Snippet de integración (SDK)</span>
-            <pre className="overflow-x-auto rounded-md border border-border-default bg-surface-2 p-3 text-xs text-foreground">{sdkSnippet}</pre>
-          </div>
+          {hostingMode === "url" && (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium uppercase tracking-wide text-neutral-400">Snippet de integración (SDK)</span>
+              <pre className="overflow-x-auto rounded-md border border-border-default bg-surface-2 p-3 text-xs text-foreground">{sdkSnippet}</pre>
+            </div>
+          )}
           <CopyableField label="Página de aterrizaje pública" value={publicUrl} />
           <Button onClick={onClose}>Listo</Button>
         </div>
@@ -318,7 +327,14 @@ export function LinkAppWizard({
               <>
                 <BundleDropzone
                   ensureMiniAppId={ensureUploadedMiniAppId}
-                  onUploaded={setUploadedBundle}
+                  onUploaded={(result) => {
+                    setUploadedBundle(result);
+                    // El bundle recién subido ya tiene esta key embebida
+                    // (bundle-upload/route.ts la regenera en cada subida) —
+                    // es la única que realmente sirve contra lo que se está
+                    // sirviendo, reemplaza a la de creación inicial.
+                    setUploadedApp((prev) => (prev ? { ...prev, apiKey: result.apiKey } : prev));
+                  }}
                   onPreview={setPreviewUrl}
                 />
                 <p className="text-xs text-neutral-500">

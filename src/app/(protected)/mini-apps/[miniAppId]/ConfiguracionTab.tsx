@@ -169,12 +169,16 @@ export function ConfiguracionTab({
   }
 
   function handleRegenerate() {
-    if (!window.confirm("¿Regenerar la API key? La anterior deja de funcionar de inmediato.")) return;
+    const confirmMessage = isUploadedApp
+      ? "¿Regenerar la API key? La anterior deja de funcionar de inmediato — el archivo publicado se actualiza solo con la nueva key (también sirve para reparar una app que nunca capturó leads correctamente)."
+      : "¿Regenerar la API key? La anterior deja de funcionar de inmediato.";
+    if (!window.confirm(confirmMessage)) return;
     startTransition(async () => {
       try {
         const result = await regenerateApiKey(miniApp.id);
         setRevealedKey(result.apiKey);
-        toast.success("API key regenerada.");
+        toast.success(isUploadedApp ? "API key regenerada y archivo publicado re-sincronizado." : "API key regenerada.");
+        if (isUploadedApp) router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo regenerar la API key.");
       }
@@ -409,8 +413,10 @@ export function ConfiguracionTab({
               Versión actual: <strong>v{miniApp.config.bundleVersion ?? 0}</strong> — archivo principal: {miniApp.config.indexPath}
             </p>
             <p className="text-xs text-neutral-500">
-              Subí un nuevo .html o .zip para reemplazar la versión publicada — la URL pública, la API Key, los leads y las estadísticas se mantienen
-              intactos.
+              Subí un nuevo .html o .zip para reemplazar la versión publicada — la URL pública, los leads y las estadísticas se mantienen intactos.
+              Cada archivo que subís (este o el de arriba) se publica con el snippet del SDK ya insertado automáticamente y una API Key nueva — no
+              hace falta que edites tu HTML a mano. Si esta app nunca capturó leads correctamente, alcanza con volver a subir el mismo archivo, o con
+              &ldquo;Regenerar API Key&rdquo; más abajo, para repararla.
             </p>
             <BundleDropzone ensureMiniAppId={async () => miniApp.id} onUploaded={() => { toast.success("Nueva versión publicada."); router.refresh(); }} onPreview={setPreviewUrl} />
           </div>

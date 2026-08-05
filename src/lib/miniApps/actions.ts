@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
 import { generateApiKey, hashApiKey, lastFour, slugify } from "@/lib/miniApps/apiKey";
+import { injectSdkSnippet } from "@/lib/miniApps/sdkInjection";
 import { createOpportunity, bulkAssignOwner } from "@/lib/crm/actions";
 import {
   getMiniAppLeadDetail,
@@ -208,11 +210,60 @@ export async function updateMiniAppBranding(id: string, branding: MiniAppBrandin
   revalidateMiniAppsPaths(id);
 }
 
+/** For a "Vincular App" hosted by us (config.hostingMode === "upload"), the
+ * currently-serving bundle has the PREVIOUS key baked into its own
+ * GrowthLink.init() snippet (bundle-upload/route.ts always embeds one) —
+ * regenerating the key without also re-patching that snippet would silently
+ * break lead capture on every such app the moment this ran. Downloads the
+ * stored index.html, re-injects with the fresh key (injectSdkSnippet is
+ * idempotent — replaces its own marked block if present, inserts one if this
+ * app predates auto-injection entirely), re-uploads just that one file. This
+ * is also, incidentally, the one-click fix for any "Vincular App" created
+ * before auto-injection existed: just clicking "Regenerar API Key" repairs
+ * it, no need to re-upload the original file. */
+async function resyncUploadedBundleKey(workspaceId: string, miniAppId: string, slug: string, config: Record<string, unknown>, apiKey: string): Promise<void> {
+  const indexPath = typeof config.indexPath === "string" ? config.indexPath : "index.html";
+  const service = createServiceRoleClient();
+  const objectPath = `${workspaceId}/${miniAppId}/${indexPath}`;
+
+  const { data: file, error: downloadError } = await service.storage.from(BUNDLE_BUCKET).download(objectPath);
+  if (downloadError || !file) {
+    console.error(`[mini-apps] resyncUploadedBundleKey: couldn't download ${objectPath}:`, downloadError);
+    return;
+  }
+
+  const headerList = await headers();
+  const host = headerList.get("host") ?? "chatbotagentes.vercel.app";
+  const proto = headerList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const sdkOrigin = `${proto}://${host}`;
+
+  const html = await file.text();
+  const injected = injectSdkSnippet(html, { appId: slug, apiKey, sdkOrigin });
+
+  const { error: uploadError } = await service.storage.from(BUNDLE_BUCKET).upload(objectPath, new TextEncoder().encode(injected), {
+    contentType: "text/html",
+    upsert: true,
+  });
+  if (uploadError) {
+    console.error(`[mini-apps] resyncUploadedBundleKey: couldn't re-upload ${objectPath}:`, uploadError);
+    return;
+  }
+
+  const previousVersion = typeof config.bundleVersion === "number" ? config.bundleVersion : 0;
+  await service
+    .from("mini_apps")
+    .update({ config: { ...config, bundleVersion: previousVersion + 1 } })
+    .eq("id", miniAppId)
+    .eq("workspace_id", workspaceId);
+}
+
 export async function regenerateApiKey(id: string): Promise<{ apiKey: string }> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
   await assertModuleEnabled(workspaceId, "mini_apps");
   const supabase = await createClient();
+
+  const { data: miniApp } = await supabase.from("mini_apps").select("slug, config").eq("id", id).eq("workspace_id", workspaceId).maybeSingle();
 
   const apiKey = generateApiKey();
   await supabase
@@ -221,9 +272,16 @@ export async function regenerateApiKey(id: string): Promise<{ apiKey: string }> 
     .eq("id", id)
     .eq("workspace_id", workspaceId);
 
+  const config = (miniApp?.config as Record<string, unknown>) ?? {};
+  if (miniApp && config.hostingMode === "upload") {
+    await resyncUploadedBundleKey(workspaceId, id, miniApp.slug as string, config, apiKey);
+  }
+
   revalidateMiniAppsPaths(id);
   return { apiKey };
 }
+
+const BUNDLE_BUCKET = "mini-app-bundles";
 
 export async function deleteMiniApp(id: string): Promise<void> {
   const { workspaceId, role } = await requireActiveWorkspace();

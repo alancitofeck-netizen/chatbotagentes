@@ -13,6 +13,11 @@ export interface BundleUploadResult {
   counts: { css: number; js: number; images: number };
   totalBytes: number;
   publicUrl: string;
+  /** Freshly (re)generated on every upload/replace — bundle-upload/route.ts
+   * always embeds this exact key into the uploaded index.html via
+   * injectSdkSnippet, so it's the only value that's actually valid against
+   * the bundle currently being served (see LinkAppWizard.tsx). */
+  apiKey: string;
 }
 
 /** Drag & drop + instant client-side preview, shared between LinkAppWizard's
