@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { diceCoefficient, normalizeForMatch } from "@/lib/advisors/import/fuzzyMatch";
-import { findOrCreateContact } from "@/lib/policies/contactMatch";
+import { findOrCreateContact } from "@/lib/contacts/match";
 import { ensurePolicyPipeline, type InsuranceType } from "@/lib/policies/queries";
 import { POLICY_FIELD_DICTIONARY } from "@/lib/policies/constants";
 import { logActivity } from "@/lib/activity/log";
@@ -140,7 +140,7 @@ export async function importPolicyRows(
         throw new Error("Falta el cliente (nombre, teléfono o email).");
       }
 
-      const contactId = await findOrCreateContact(supabase, workspaceId, { name: contactName, phone: contactPhone, email: contactEmail });
+      const contactId = await findOrCreateContact(supabase, workspaceId, { name: contactName, phone: contactPhone, email: contactEmail }, "import");
 
       const ownerName = field(row, "ownerName")?.trim().toLowerCase();
       const ownerId = (ownerName ? memberIdByName.get(ownerName) : undefined) ?? defaultOwnerId;

@@ -6,7 +6,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
 import { getOpenRouterCredentials } from "@/lib/integrations/openrouter";
-import { findOrCreateContact } from "@/lib/policies/contactMatch";
+import { findOrCreateContact } from "@/lib/contacts/match";
 import {
   getPolicyList,
   getPolicyById,
@@ -141,7 +141,7 @@ export async function createPolicyAction(input: PolicyFormInput): Promise<{ id: 
   if (!input.company.trim()) throw new Error("La compañía es obligatoria.");
   const supabase = await createClient();
 
-  const contactId = input.contactId ?? (await findOrCreateContact(supabase, workspaceId, { name: input.contactName, phone: input.contactPhone, email: input.contactEmail }));
+  const contactId = input.contactId ?? (await findOrCreateContact(supabase, workspaceId, { name: input.contactName, phone: input.contactPhone, email: input.contactEmail }, "policy"));
 
   const pipelineId = await ensurePolicyPipeline(workspaceId);
   const { data: firstStage } = await supabase.from("pipeline_stages").select("id").eq("pipeline_id", pipelineId).order("position", { ascending: true }).limit(1).maybeSingle();
@@ -381,11 +381,12 @@ export async function confirmPolicyFromExtractionAction(
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
 
-  const contactId = await findOrCreateContact(supabase, workspaceId, {
-    name: extracted.clientName ?? undefined,
-    phone: extracted.phone ?? undefined,
-    email: extracted.email ?? undefined,
-  });
+  const contactId = await findOrCreateContact(
+    supabase,
+    workspaceId,
+    { name: extracted.clientName ?? undefined, phone: extracted.phone ?? undefined, email: extracted.email ?? undefined },
+    "policy",
+  );
 
   // custom_fields no tiene DNI/CUIT/dirección como columnas dedicadas — se
   // guardan ahí, mismo "columnas fijas + jsonb overflow" que el resto de la
