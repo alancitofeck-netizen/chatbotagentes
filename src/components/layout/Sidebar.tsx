@@ -19,6 +19,7 @@ import {
   Pin,
   PinOff,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
@@ -112,6 +113,14 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     { label: "Tareas", href: "/tasks", icon: ListTodo, category: "Operación", comingSoon: !enabledModules.has("tasks") },
     { label: "Documentos", href: "/documents", icon: Folder, category: "Operación" },
     { label: "KPIs", href: "/kpis", icon: BarChart3, category: "Inteligencia" },
+    {
+      label: "Crear mi Presentación",
+      href: "/presentaciones",
+      icon: Sparkles,
+      category: "Inteligencia",
+      isAI: true,
+      comingSoon: !enabledModules.has("presentations"),
+    },
     { label: "Classroom", href: "/classroom", icon: GraduationCap, category: "Aprendizaje" },
   ];
 }
