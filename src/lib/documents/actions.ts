@@ -9,6 +9,7 @@ import {
   getDocuments,
   getDocumentsByRelated,
   getFolderTree,
+  getDocumentVersions,
   type DocumentView,
 } from "@/lib/documents/queries";
 
@@ -293,4 +294,50 @@ export async function getDownloadUrl(documentId: string): Promise<string | null>
   const { data, error } = await createServiceRoleClient().storage.from("documents").createSignedUrl(doc.storage_path, 60);
   if (error) return null;
   return data.signedUrl;
+}
+
+export async function getDocumentVersionsAction(documentId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getDocumentVersions(workspaceId, documentId);
+}
+
+/** Sube una nueva versión de un documento existente — el estado ANTERIOR se
+ * archiva en document_versions (0019, nunca conectado a código hasta ahora)
+ * antes de que `documents` pase a apuntar al archivo nuevo, así el resto de
+ * la app (descargas, listados) sigue leyendo siempre la versión vigente sin
+ * ningún cambio. El browser ya subió el archivo nuevo a Storage antes de
+ * llamar esto (mismo flujo en dos pasos que recordUploadedDocument). */
+export async function uploadNewDocumentVersionAction(documentId: string, storagePath: string, sizeBytes: number): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+
+  const { data: doc } = await supabase.from("documents").select("storage_path, size_bytes").eq("id", documentId).eq("workspace_id", workspaceId).maybeSingle();
+  if (!doc) throw new Error("Documento no encontrado.");
+
+  const { data: lastVersion } = await supabase
+    .from("document_versions")
+    .select("version_number")
+    .eq("document_id", documentId)
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextVersionNumber = ((lastVersion?.version_number as number | undefined) ?? 0) + 1;
+
+  const { error: versionError } = await supabase.from("document_versions").insert({
+    document_id: documentId,
+    storage_path: doc.storage_path,
+    size_bytes: doc.size_bytes,
+    version_number: nextVersionNumber,
+    created_by: memberId,
+  });
+  if (versionError) throw new Error("No se pudo archivar la versión anterior.");
+
+  const { error } = await supabase
+    .from("documents")
+    .update({ storage_path: storagePath, size_bytes: sizeBytes, last_modified_by: memberId, updated_at: new Date().toISOString() })
+    .eq("id", documentId);
+  if (error) throw new Error("No se pudo subir la nueva versión.");
+
+  revalidateDocuments();
 }

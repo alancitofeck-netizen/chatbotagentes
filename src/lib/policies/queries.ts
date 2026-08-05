@@ -399,6 +399,7 @@ const POLICY_ACTION_LABEL: Record<string, string> = {
   policy_created_from_pdf: "Póliza creada desde PDF (IA)",
   policy_stage_changed: "Cambió de etapa",
   policy_renewal_automation_fired: "Automatización de renovación disparada",
+  policy_endorsement_added: "Endoso registrado",
 };
 
 /** Mismo patrón que getOpportunityActivity (src/lib/crm/queries.ts) — lee de
@@ -424,6 +425,131 @@ export async function getPolicyActivity(workspaceId: string, policyId: string): 
     action: POLICY_ACTION_LABEL[r.action as string] ?? (r.action as string),
     actorName: r.actor_id ? (nameByMember.get(r.actor_id as string) ?? null) : null,
     metadata: (r.metadata as Record<string, unknown>) ?? {},
+    createdAt: r.created_at as string,
+  }));
+}
+
+export type PolicyPaymentStatus = "pendiente" | "pagado" | "vencido";
+
+export interface PolicyPayment {
+  id: string;
+  dueDate: string;
+  amount: number;
+  currency: string;
+  status: PolicyPaymentStatus;
+  paidAt: string | null;
+  paymentMethod: string | null;
+  notes: string | null;
+}
+
+export async function getPolicyPayments(policyId: string): Promise<PolicyPayment[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("policy_payments").select("*").eq("policy_id", policyId).order("due_date", { ascending: true });
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    dueDate: r.due_date as string,
+    amount: r.amount as number,
+    currency: r.currency as string,
+    status: r.status as PolicyPaymentStatus,
+    paidAt: r.paid_at as string | null,
+    paymentMethod: r.payment_method as string | null,
+    notes: r.notes as string | null,
+  }));
+}
+
+export interface PolicyCommissionAnalytics {
+  totalCommission: number;
+  collectedCommission: number;
+  pendingCommission: number;
+  byCompany: { company: string; amount: number }[];
+  byOwner: { ownerName: string; amount: number }[];
+  byMonth: { month: string; amount: number }[];
+}
+
+const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat("es", { month: "short", year: "2-digit" });
+
+/** Todo derivado de policies.commission_amount/commission_status — sin
+ * tabla nueva, las 3 dimensiones pedidas (aseguradora/asesor/período) son
+ * simples agregaciones sobre los datos ya cargados. Últimos 12 meses por
+ * fecha de creación de la póliza (no hay un concepto de "mes de cobro"
+ * separado de las cuotas, y una póliza puede no tener cuotas cargadas). */
+export async function getPolicyCommissionAnalytics(workspaceId: string): Promise<PolicyCommissionAnalytics> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("policies")
+    .select("company, owner_id, commission_amount, commission_status, created_at")
+    .eq("workspace_id", workspaceId)
+    .not("commission_amount", "is", null);
+  const rows = (data ?? []) as { company: string; owner_id: string | null; commission_amount: number; commission_status: string | null; created_at: string }[];
+
+  const ownerIds = [...new Set(rows.map((r) => r.owner_id).filter((id): id is string => Boolean(id)))];
+  const { data: memberNames } = ownerIds.length
+    ? await supabase.rpc("workspace_member_names", { ws_id: workspaceId })
+    : { data: [] as { member_id: string; full_name: string }[] };
+  const nameByMember = new Map<string, string>((memberNames ?? []).map((m: { member_id: string; full_name: string }) => [m.member_id, m.full_name]));
+
+  const totalCommission = rows.reduce((sum, r) => sum + r.commission_amount, 0);
+  const collectedCommission = rows.filter((r) => r.commission_status === "cobrada").reduce((sum, r) => sum + r.commission_amount, 0);
+  const pendingCommission = rows.filter((r) => r.commission_status === "pendiente").reduce((sum, r) => sum + r.commission_amount, 0);
+
+  const byCompanyMap = new Map<string, number>();
+  const byOwnerMap = new Map<string, number>();
+  const byMonthMap = new Map<string, number>();
+
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    byMonthMap.set(MONTH_LABEL_FORMATTER.format(d), 0);
+  }
+
+  for (const r of rows) {
+    byCompanyMap.set(r.company, (byCompanyMap.get(r.company) ?? 0) + r.commission_amount);
+    const ownerName = r.owner_id ? (nameByMember.get(r.owner_id) ?? "Sin asignar") : "Sin asignar";
+    byOwnerMap.set(ownerName, (byOwnerMap.get(ownerName) ?? 0) + r.commission_amount);
+    const monthKey = MONTH_LABEL_FORMATTER.format(new Date(r.created_at));
+    if (byMonthMap.has(monthKey)) byMonthMap.set(monthKey, (byMonthMap.get(monthKey) ?? 0) + r.commission_amount);
+  }
+
+  return {
+    totalCommission,
+    collectedCommission,
+    pendingCommission,
+    byCompany: [...byCompanyMap.entries()].map(([company, amount]) => ({ company, amount })).sort((a, b) => b.amount - a.amount),
+    byOwner: [...byOwnerMap.entries()].map(([ownerName, amount]) => ({ ownerName, amount })).sort((a, b) => b.amount - a.amount),
+    byMonth: [...byMonthMap.entries()].map(([month, amount]) => ({ month, amount })),
+  };
+}
+
+export interface PolicyEndorsement {
+  id: string;
+  endorsementDate: string;
+  type: string;
+  description: string;
+  createdByName: string | null;
+  createdAt: string;
+}
+
+export async function getPolicyEndorsements(workspaceId: string, policyId: string): Promise<PolicyEndorsement[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("policy_endorsements")
+    .select("id, endorsement_date, type, description, created_by, created_at")
+    .eq("policy_id", policyId)
+    .order("endorsement_date", { ascending: false });
+  const rows = data ?? [];
+
+  const creatorIds = [...new Set(rows.map((r) => r.created_by).filter((id): id is string => Boolean(id)))];
+  const { data: memberNames } = creatorIds.length
+    ? await supabase.rpc("workspace_member_names", { ws_id: workspaceId })
+    : { data: [] as { member_id: string; full_name: string }[] };
+  const nameByMember = new Map<string, string>((memberNames ?? []).map((m: { member_id: string; full_name: string }) => [m.member_id, m.full_name]));
+
+  return rows.map((r) => ({
+    id: r.id as string,
+    endorsementDate: r.endorsement_date as string,
+    type: r.type as string,
+    description: r.description as string,
+    createdByName: r.created_by ? (nameByMember.get(r.created_by as string) ?? null) : null,
     createdAt: r.created_at as string,
   }));
 }

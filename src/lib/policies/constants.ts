@@ -72,6 +72,17 @@ export interface PolicyImportFieldDescriptor {
   synonyms: string[];
 }
 
+export const POLICY_ENDORSEMENT_TYPES = [
+  { key: "cambio_beneficiario", label: "Cambio de beneficiario" },
+  { key: "ajuste_suma_asegurada", label: "Ajuste de suma asegurada" },
+  { key: "cambio_direccion", label: "Cambio de dirección" },
+  { key: "cambio_vehiculo", label: "Cambio de vehículo" },
+  { key: "cambio_prima", label: "Cambio de prima" },
+  { key: "otro", label: "Otro" },
+] as const;
+
+export type PolicyEndorsementType = (typeof POLICY_ENDORSEMENT_TYPES)[number]["key"];
+
 export const POLICY_FIELD_DICTIONARY: PolicyImportFieldDescriptor[] = [
   { key: "contactName", label: "Cliente", synonyms: ["nombre", "cliente", "nombre cliente", "nombre del cliente", "name", "contratante"] },
   { key: "contactPhone", label: "Teléfono", synonyms: ["telefono", "celular", "phone", "whatsapp", "movil"] },

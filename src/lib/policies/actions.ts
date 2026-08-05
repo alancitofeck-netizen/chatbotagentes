@@ -15,11 +15,16 @@ import {
   getPolicyDashboardKpis,
   getPoliciesForContact,
   getPolicyActivity,
+  getPolicyPayments,
+  getPolicyCommissionAnalytics,
+  getPolicyEndorsements,
   ensurePolicyPipeline,
   POLICY_STAGES,
   type PolicyStatus,
   type InsuranceType,
   type PolicyBeneficiary,
+  type PolicyPaymentStatus,
+  type PolicyPayment,
 } from "@/lib/policies/queries";
 import { extractTextFromPdf, extractPolicyDataWithAI, type ExtractedPolicyData } from "@/lib/policies/pdfExtraction";
 import { ensurePolicyAutomationRules, updatePolicyAutomationRule, type PolicyAutomationRulePatch } from "@/lib/policies/automationRules";
@@ -572,4 +577,125 @@ export async function generateRenewalMessageAction(policyId: string, channel: "e
   if (!policy) throw new Error("Póliza no encontrada.");
 
   return generateRenewalMessageWithAI(credentials.apiKey, policy, channel);
+}
+
+// ---------------------------------------------------------------------------
+// Pagos/cuotas — tracking simple de cobranza por póliza (policy_payments,
+// 0097). "Generar cronograma" es un helper de conveniencia, no la única
+// forma de cargar cuotas: el usuario también puede agregar/editar una a
+// mano (pago parcial, cargo extra, etc.).
+// ---------------------------------------------------------------------------
+
+export async function getPolicyPaymentsAction(policyId: string) {
+  return getPolicyPayments(policyId);
+}
+
+const FREQUENCY_MONTHS: Record<string, number> = { mensual: 1, trimestral: 3, semestral: 6, anual: 12, unico: 0 };
+
+/** Reparte la prima en cuotas iguales entre inicio y vencimiento según la
+ * frecuencia de pago de la póliza — no agrega si ya hay cuotas cargadas
+ * (evita duplicar un cronograma generado dos veces por error). */
+export async function generatePolicyPaymentScheduleAction(policyId: string): Promise<PolicyPayment[]> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  const policy = await getPolicyById(workspaceId, policyId);
+  if (!policy) throw new Error("Póliza no encontrada.");
+  if (!policy.startDate || !policy.endDate) throw new Error("La póliza necesita fecha de inicio y vencimiento para generar el cronograma.");
+
+  const { data: existing } = await supabase.from("policy_payments").select("id").eq("policy_id", policyId).limit(1);
+  if (existing && existing.length > 0) throw new Error("Esta póliza ya tiene cuotas cargadas.");
+
+  const months = FREQUENCY_MONTHS[policy.paymentFrequency ?? ""] ?? 0;
+  const start = new Date(policy.startDate);
+  const end = new Date(policy.endDate);
+  const dueDates: string[] = [];
+  if (months > 0) {
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      dueDates.push(cursor.toISOString().slice(0, 10));
+      cursor.setMonth(cursor.getMonth() + months);
+    }
+  }
+  if (dueDates.length === 0) dueDates.push(policy.startDate);
+
+  const amountPerInstallment = policy.premium !== null ? Math.round((policy.premium / dueDates.length) * 100) / 100 : 0;
+
+  const { error } = await supabase.from("policy_payments").insert(
+    dueDates.map((dueDate) => ({
+      policy_id: policyId,
+      due_date: dueDate,
+      amount: amountPerInstallment,
+      currency: policy.premiumCurrency,
+    })),
+  );
+  if (error) throw new Error("No se pudo generar el cronograma.");
+
+  return getPolicyPayments(policyId);
+}
+
+export async function addPolicyPaymentAction(policyId: string, input: { dueDate: string; amount: number; currency: string }): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("policy_payments").insert({
+    policy_id: policyId,
+    due_date: input.dueDate,
+    amount: input.amount,
+    currency: input.currency,
+  });
+  if (error) throw new Error("No se pudo agregar la cuota.");
+  revalidatePolicies();
+}
+
+export async function updatePolicyPaymentStatusAction(paymentId: string, status: PolicyPaymentStatus): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("policy_payments")
+    .update({ status, paid_at: status === "pagado" ? new Date().toISOString() : null, updated_at: new Date().toISOString() })
+    .eq("id", paymentId);
+  if (error) throw new Error("No se pudo actualizar la cuota.");
+  revalidatePolicies();
+}
+
+export async function deletePolicyPaymentAction(paymentId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("policy_payments").delete().eq("id", paymentId);
+  revalidatePolicies();
+}
+
+export async function getPolicyCommissionAnalyticsAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getPolicyCommissionAnalytics(workspaceId);
+}
+
+// ---------------------------------------------------------------------------
+// Endosos — historial formal de cambios contractuales (policy_endorsements,
+// 0098), distinto del Timeline genérico de auditoría.
+// ---------------------------------------------------------------------------
+
+export async function getPolicyEndorsementsAction(policyId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getPolicyEndorsements(workspaceId, policyId);
+}
+
+export async function addPolicyEndorsementAction(policyId: string, input: { endorsementDate: string; type: string; description: string }): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  if (!input.description.trim()) throw new Error("La descripción es obligatoria.");
+  const supabase = await createClient();
+  const { error } = await supabase.from("policy_endorsements").insert({
+    policy_id: policyId,
+    endorsement_date: input.endorsementDate,
+    type: input.type,
+    description: input.description.trim(),
+    created_by: memberId,
+  });
+  if (error) throw new Error("No se pudo agregar el endoso.");
+  await logActivity(supabase, workspaceId, memberId, "policy", policyId, "policy_endorsement_added", { type: input.type });
+  revalidatePolicies();
+}
+
+export async function deletePolicyEndorsementAction(endorsementId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("policy_endorsements").delete().eq("id", endorsementId);
+  revalidatePolicies();
 }

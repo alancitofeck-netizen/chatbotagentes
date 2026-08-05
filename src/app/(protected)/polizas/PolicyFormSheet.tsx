@@ -26,21 +26,33 @@ const PAYMENT_FREQUENCIES = [
   { value: "unico", label: "Pago único" },
 ];
 
+export interface PolicyFormDefaultContact {
+  id?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+}
+
 export function PolicyFormSheet({
   policy,
+  defaultContact,
   members,
   onClose,
   onSaved,
 }: {
   policy: PolicyDetail | null;
+  /** Prellena el cliente cuando se llega desde el deep-link del Inbox
+   * (ContactInfoPanel.tsx's "Nueva póliza", ?createContact=...) — solo
+   * aplica en alta, se ignora si `policy` ya trae sus propios datos. */
+  defaultContact?: PolicyFormDefaultContact | null;
   members: WorkspaceMemberOption[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const isEdit = policy !== null;
-  const [contactName, setContactName] = useState(policy?.contactName ?? "");
-  const [contactPhone, setContactPhone] = useState(policy?.contactPhone ?? "");
-  const [contactEmail, setContactEmail] = useState(policy?.contactEmail ?? "");
+  const [contactName, setContactName] = useState(policy?.contactName ?? defaultContact?.name ?? "");
+  const [contactPhone, setContactPhone] = useState(policy?.contactPhone ?? defaultContact?.phone ?? "");
+  const [contactEmail, setContactEmail] = useState(policy?.contactEmail ?? defaultContact?.email ?? "");
   const [policyNumber, setPolicyNumber] = useState(policy?.policyNumber ?? "");
   const [company, setCompany] = useState(policy?.company ?? "");
   const [product, setProduct] = useState(policy?.product ?? "");
@@ -68,7 +80,7 @@ export function PolicyFormSheet({
     }
 
     const input: PolicyFormInput = {
-      contactId: policy?.contactId ?? null,
+      contactId: policy?.contactId ?? defaultContact?.id ?? null,
       contactName,
       contactPhone,
       contactEmail,

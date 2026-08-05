@@ -16,6 +16,7 @@ import {
   Users2,
   ExternalLink,
   Plus,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
@@ -36,9 +37,14 @@ import {
   movePipelineStageAction,
 } from "@/lib/inbox/actions";
 import { createTask } from "@/lib/tasks/actions";
+import { getPoliciesForContactAction } from "@/lib/policies/actions";
+import type { ContactPolicySummary } from "@/lib/policies/queries";
+import { POLICY_STATUS_BADGE_VARIANT, POLICY_STAGES } from "@/lib/policies/constants";
 import { tagBadgeVariant } from "./tagColor";
 import { MergeContactDialog } from "./MergeContactDialog";
 import { INBOX_PRIMARY, INBOX_SECONDARY, inboxSecondaryButton } from "./inboxColors";
+
+const POLICY_STAGE_NAME_BY_KEY = new Map(POLICY_STAGES.map((s) => [s.key, s.name]));
 
 const STATUS_OPTIONS = [
   { value: "open", label: "Abierta" },
@@ -102,6 +108,8 @@ export function ContactInfoPanel({
 
   const [crm, setCrm] = useState<ContactCrmSummary | null>(null);
   const [crmLoading, setCrmLoading] = useState(false);
+  const [policies, setPolicies] = useState<ContactPolicySummary[] | null>(null);
+  const [policiesLoading, setPoliciesLoading] = useState(false);
   const [movingStage, setMovingStage] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -124,6 +132,32 @@ export function ContactInfoPanel({
     // Realtime effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.id, detail?.contact.id]);
+
+  useEffect(() => {
+    if (!detail) {
+      Promise.resolve().then(() => setPolicies(null));
+      return;
+    }
+    Promise.resolve().then(() => setPoliciesLoading(true));
+    getPoliciesForContactAction(detail.contact.id).then((data) => {
+      setPolicies(data);
+      setPoliciesLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.contact.id]);
+
+  /** "Pedir documentación" (pedido explícito de integración con Inbox) —
+   * copia un mensaje al portapapeles en vez de auto-enviarlo o intentar
+   * inyectarlo en el composer de la conversación: mismo criterio ya usado
+   * en el motor de automatizaciones de Pólizas, el asesor siempre revisa
+   * antes de mandar algo a un cliente. */
+  function handleCopyDocumentRequest(policy: ContactPolicySummary) {
+    if (!detail) return;
+    const label = policy.policyNumber ? `póliza ${policy.policyNumber}` : "tu póliza";
+    const message = `Hola ${detail.contact.name}, para avanzar con ${label} de ${policy.company} necesitamos que nos envíes la documentación pendiente. ¿Podés mandarla cuando puedas?`;
+    navigator.clipboard.writeText(message);
+    toast.success("Mensaje copiado — pegalo en el chat.");
+  }
 
   if (loading) {
     return (
@@ -271,6 +305,12 @@ export function ContactInfoPanel({
           >
             <Calendar size={13} /> Programar reunión
           </Link>
+          <Link
+            href={`/polizas?createContact=${detail.contact.id}&createName=${encodeURIComponent(detail.contact.name)}${detail.contact.phone ? `&createPhone=${encodeURIComponent(detail.contact.phone)}` : ""}${detail.contact.email ? `&createEmail=${encodeURIComponent(detail.contact.email)}` : ""}`}
+            className={inboxSecondaryButton}
+          >
+            <ShieldCheck size={13} /> Nueva póliza
+          </Link>
           <button type="button" onClick={() => setMergeOpen(true)} className={inboxSecondaryButton}>
             <Users2 size={13} /> Fusionar
           </button>
@@ -404,6 +444,43 @@ export function ContactInfoPanel({
                     <p className="text-[11px] text-neutral-500">Cliente desde</p>
                   </div>
                 </div>
+              </section>
+
+              {/* Pólizas — "cada cliente debe mostrar automáticamente todas
+                  sus pólizas" (pedido explícito del módulo Pólizas). */}
+              <section className="flex flex-col gap-2">
+                <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                  <ShieldCheck size={12} /> Pólizas
+                </h3>
+                {policiesLoading ? (
+                  <Skeleton className="h-16 w-full" />
+                ) : policies && policies.length > 0 ? (
+                  <ul className="flex flex-col gap-1.5">
+                    {policies.map((p) => (
+                      <li key={p.id} className={`flex flex-col gap-1 rounded-md ${INBOX_SECONDARY.tint} px-2.5 py-1.5`}>
+                        <Link href={`/polizas?policy=${p.id}`} className="flex flex-col gap-1 hover:opacity-80">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`truncate text-[13px] font-medium ${INBOX_SECONDARY.tintText}`}>{p.company}</span>
+                            <Badge variant={POLICY_STATUS_BADGE_VARIANT[p.status]}>{POLICY_STAGE_NAME_BY_KEY.get(p.status) ?? p.status}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-neutral-500">
+                            <span>{p.product ?? p.policyNumber ?? "—"}</span>
+                            {p.premium !== null && <span>{formatCurrency(p.premium, p.premiumCurrency)}</span>}
+                          </div>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyDocumentRequest(p)}
+                          className="self-start text-[11px] font-medium text-neutral-500 hover:text-foreground hover:underline"
+                        >
+                          Copiar pedido de documentación
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-[13px] text-neutral-500">Este contacto no tiene pólizas cargadas.</p>
+                )}
               </section>
 
               {/* Próximas reuniones */}

@@ -198,3 +198,47 @@ export async function getDocumentById(workspaceId: string, documentId: string, c
   const [item] = await mapDocumentRows(supabase, workspaceId, currentMemberId, [data as DocumentRow]);
   return item;
 }
+
+export interface DocumentVersion {
+  id: string;
+  storagePath: string;
+  sizeBytes: number | null;
+  versionNumber: number;
+  createdByName: string | null;
+  createdAt: string;
+}
+
+/** document_versions (0019_documents_module.sql) existía en el esquema
+ * desde el módulo original de Documentos ("left ready but not fully wired",
+ * según su propio comentario) pero nunca se conectó a ningún código de app
+ * — este es el primer wiring real. Guarda el estado ANTERIOR de un
+ * documento cada vez que se sube una nueva versión (uploadNewDocumentVersion
+ * en actions.ts), así document.storage_path siempre apunta a la versión
+ * vigente sin necesitar un join extra en cada lectura normal. */
+export async function getDocumentVersions(workspaceId: string, documentId: string): Promise<DocumentVersion[]> {
+  const supabase = await createClient();
+  const { data: doc } = await supabase.from("documents").select("id").eq("workspace_id", workspaceId).eq("id", documentId).maybeSingle();
+  if (!doc) return [];
+
+  const { data } = await supabase
+    .from("document_versions")
+    .select("id, storage_path, size_bytes, version_number, created_by, created_at")
+    .eq("document_id", documentId)
+    .order("version_number", { ascending: false });
+  const rows = data ?? [];
+
+  const creatorIds = [...new Set(rows.map((r) => r.created_by).filter((id): id is string => Boolean(id)))];
+  const { data: memberNames } = creatorIds.length
+    ? await supabase.rpc("workspace_member_names", { ws_id: workspaceId })
+    : { data: [] as { member_id: string; full_name: string }[] };
+  const nameByMember = new Map<string, string>((memberNames ?? []).map((m: { member_id: string; full_name: string }) => [m.member_id, m.full_name]));
+
+  return rows.map((r) => ({
+    id: r.id as string,
+    storagePath: r.storage_path as string,
+    sizeBytes: r.size_bytes as number | null,
+    versionNumber: r.version_number as number,
+    createdByName: r.created_by ? (nameByMember.get(r.created_by as string) ?? null) : null,
+    createdAt: r.created_at as string,
+  }));
+}

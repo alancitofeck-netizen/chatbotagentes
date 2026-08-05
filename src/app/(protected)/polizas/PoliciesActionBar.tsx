@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, FileUp, Upload, Download, SlidersHorizontal, KanbanSquare, Table as TableIcon, CalendarDays, Zap, FileSpreadsheet, FileText } from "lucide-react";
+import { Search, Plus, FileUp, Upload, Download, SlidersHorizontal, KanbanSquare, Table as TableIcon, CalendarDays, Zap, FileSpreadsheet, FileText, LineChart } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
@@ -25,8 +25,8 @@ export function PoliciesActionBar({
   onOpenAutomations,
   onOpenImport,
 }: {
-  view: "kanban" | "table" | "calendar";
-  onViewChange: (v: "kanban" | "table" | "calendar") => void;
+  view: "kanban" | "table" | "calendar" | "commissions";
+  onViewChange: (v: "kanban" | "table" | "calendar" | "commissions") => void;
   search: string;
   onSearchChange: (v: string) => void;
   filters: PoliciesFilters;
@@ -117,6 +117,14 @@ export function PoliciesActionBar({
             className={`flex size-8 items-center justify-center rounded ${view === "calendar" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
           >
             <CalendarDays className="size-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewChange("commissions")}
+            title="Comisiones"
+            className={`flex size-8 items-center justify-center rounded ${view === "commissions" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
+          >
+            <LineChart className="size-4" aria-hidden="true" />
           </button>
         </div>
       </div>

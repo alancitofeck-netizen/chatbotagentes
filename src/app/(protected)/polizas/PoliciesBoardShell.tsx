@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ShieldCheck, Plus, FileUp } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -21,11 +22,12 @@ import { PoliciesKpiHeader } from "./PoliciesKpiHeader";
 import { PolicyTable } from "./PolicyTable";
 import { PolicyKanban } from "./PolicyKanban";
 import { PolicyCalendarView } from "./PolicyCalendarView";
-import { PolicyFormSheet } from "./PolicyFormSheet";
+import { PolicyFormSheet, type PolicyFormDefaultContact } from "./PolicyFormSheet";
 import { PolicyDetailSheet, type DetailTab } from "./PolicyDetailSheet";
 import { PolicyPdfUploadSheet } from "./PolicyPdfUploadSheet";
 import { PolicyAutomationsSheet } from "./PolicyAutomationsSheet";
 import { PolicyImportSheet } from "./PolicyImportSheet";
+import { PolicyCommissionsView } from "./PolicyCommissionsView";
 
 export function PoliciesBoardShell({
   workspaceId,
@@ -36,16 +38,48 @@ export function PoliciesBoardShell({
   initialBoard: PolicyBoard;
   members: WorkspaceMemberOption[];
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [board, setBoard] = useState(initialBoard);
-  const [view, setView] = useState<"table" | "kanban" | "calendar">("table");
+  const [view, setView] = useState<"table" | "kanban" | "calendar" | "commissions">("table");
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<PoliciesFilters>(EMPTY_POLICIES_FILTERS);
   const [quickFilter, setQuickFilter] = useState<PolicyQuickFilter>("all");
   const [detailState, setDetailState] = useState<{ id: string; tab?: DetailTab } | null>(null);
-  const [policyForm, setPolicyForm] = useState<{ policy: PolicyDetail | null } | null>(null);
+  const [policyForm, setPolicyForm] = useState<{ policy: PolicyDetail | null; defaultContact?: PolicyFormDefaultContact } | null>(null);
   const [pdfUploadOpen, setPdfUploadOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+
+  // Deep links desde el Inbox (ContactInfoPanel.tsx) — mismo patrón "once on
+  // mount" que CalendarShell.tsx's `?createContact=`/`?event=` readers.
+  // `?policy=<id>` abre el detalle directo; `?createContact=...` abre el
+  // alta con el cliente ya elegido.
+  useEffect(() => {
+    const policyId = searchParams.get("policy");
+    if (policyId) {
+      Promise.resolve().then(() => setDetailState({ id: policyId, tab: "resumen" }));
+      router.replace("/polizas", { scroll: false });
+      return;
+    }
+    const contactId = searchParams.get("createContact");
+    const contactName = searchParams.get("createName");
+    if (contactId || contactName) {
+      Promise.resolve().then(() =>
+        setPolicyForm({
+          policy: null,
+          defaultContact: {
+            id: contactId ?? undefined,
+            name: contactName ?? undefined,
+            phone: searchParams.get("createPhone") ?? undefined,
+            email: searchParams.get("createEmail") ?? undefined,
+          },
+        }),
+      );
+      router.replace("/polizas", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hasPolicies = Object.values(board.cardsByStage).some((cards) => cards.length > 0);
   const companies = useMemo(() => board.kpis.byCompany.map((c) => c.company), [board.kpis.byCompany]);
@@ -156,6 +190,7 @@ export function PoliciesBoardShell({
               <PolicyCalendarView policies={filtered.flat} onOpen={(policy) => setDetailState({ id: policy.id, tab: "resumen" })} />
             </div>
           )}
+          {view === "commissions" && <PolicyCommissionsView />}
         </>
       )}
 
@@ -174,6 +209,7 @@ export function PoliciesBoardShell({
       {policyForm && (
         <PolicyFormSheet
           policy={policyForm.policy}
+          defaultContact={policyForm.defaultContact}
           members={members}
           onClose={() => setPolicyForm(null)}
           onSaved={refreshBoard}
