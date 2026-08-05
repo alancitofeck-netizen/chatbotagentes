@@ -23,6 +23,7 @@ import {
   uploadNewDocumentVersionAction,
 } from "@/lib/documents/actions";
 import type { PolicyDetail, PolicyCoverage, PolicyActivityEntry, PolicyPayment, PolicyPaymentStatus, PolicyEndorsement } from "@/lib/policies/queries";
+import { deriveCollectionBucket, COLLECTION_BUCKET_LABEL, COLLECTION_BUCKET_VARIANT } from "@/lib/collections/constants";
 import { POLICY_DOCUMENT_CATEGORIES, POLICY_ENDORSEMENT_TYPES, type PolicyDocumentCategory } from "@/lib/policies/constants";
 import type { PolicyAnalysis } from "@/lib/policies/aiAnalysis";
 import {
@@ -48,8 +49,6 @@ import { formatCurrency } from "@/lib/utils/format";
 
 const ENDORSEMENT_TYPE_LABEL = new Map<string, string>(POLICY_ENDORSEMENT_TYPES.map((t) => [t.key, t.label]));
 
-const PAYMENT_STATUS_VARIANT: Record<PolicyPaymentStatus, "success" | "warning" | "error"> = { pagado: "success", pendiente: "warning", vencido: "error" };
-const PAYMENT_STATUS_LABEL: Record<PolicyPaymentStatus, string> = { pagado: "Pagado", pendiente: "Pendiente", vencido: "Vencido" };
 
 const CATEGORY_LABEL_BY_KEY = new Map<string, string>(POLICY_DOCUMENT_CATEGORIES.map((c) => [c.key, c.label]));
 
@@ -684,10 +683,9 @@ export function PolicyDetailSheet({
                   ) : (
                     <ul className="flex flex-col gap-2">
                       {payments.map((p) => {
-                        // "Vencido" se calcula acá, no se persiste — evita
-                        // tener que sincronizar un cron aparte solo para
-                        // esto; el badge simplemente refleja la fecha actual.
-                        const displayStatus: PolicyPaymentStatus = p.status === "pendiente" && p.dueDate < new Date().toISOString().slice(0, 10) ? "vencido" : p.status;
+                        // Bucket compartido con Cobranza (src/lib/collections/constants.ts)
+                        // — "vencido"/"proximo" nunca se persisten, se derivan acá.
+                        const bucket = deriveCollectionBucket(p.status, p.dueDate);
                         return (
                           <li key={p.id} className="flex items-center gap-2 rounded-md bg-surface-2 p-3">
                             <button
@@ -702,7 +700,7 @@ export function PolicyDetailSheet({
                               <p className="text-sm text-foreground">{formatDateOnly(p.dueDate)}</p>
                               <p className="text-xs text-neutral-500">{formatCurrency(p.amount, p.currency)}</p>
                             </div>
-                            <Badge variant={PAYMENT_STATUS_VARIANT[displayStatus]}>{PAYMENT_STATUS_LABEL[displayStatus]}</Badge>
+                            <Badge variant={COLLECTION_BUCKET_VARIANT[bucket]}>{COLLECTION_BUCKET_LABEL[bucket]}</Badge>
                             <button
                               type="button"
                               onClick={() => handleDeletePayment(p.id)}

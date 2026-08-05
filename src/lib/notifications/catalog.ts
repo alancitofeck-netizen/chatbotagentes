@@ -18,10 +18,11 @@ import {
   Gauge,
   PlugZap,
   ShieldAlert,
+  CircleDollarSign,
   type LucideIcon,
 } from "lucide-react";
 
-export type NotificationCategory = "crm" | "inbox" | "calendario" | "automatizaciones" | "agentes" | "ia" | "sistema" | "polizas";
+export type NotificationCategory = "crm" | "inbox" | "calendario" | "automatizaciones" | "agentes" | "ia" | "sistema" | "polizas" | "cobranza";
 export type NotificationPriority = "info" | "success" | "warning" | "error";
 
 /** Fase 1 (docs/blueprint no cubre notificaciones — ver plan de
@@ -70,6 +71,9 @@ export const EVENT_CATALOG = {
 
   // Pólizas
   policy_renewal_reminder: { category: "polizas", priority: "warning", icon: ShieldAlert },
+
+  // Cobranza
+  collection_payment_reminder: { category: "cobranza", priority: "warning", icon: CircleDollarSign },
 } as const satisfies Record<string, { category: NotificationCategory; priority: NotificationPriority; icon: LucideIcon }>;
 
 export type NotificationEventType = keyof typeof EVENT_CATALOG;
@@ -83,6 +87,7 @@ export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   ia: "IA",
   sistema: "Sistema",
   polizas: "Pólizas",
+  cobranza: "Cobranza",
 };
 
 export const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS) as NotificationCategory[];

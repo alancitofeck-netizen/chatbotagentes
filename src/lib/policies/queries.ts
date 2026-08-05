@@ -429,7 +429,10 @@ export async function getPolicyActivity(workspaceId: string, policyId: string): 
   }));
 }
 
-export type PolicyPaymentStatus = "pendiente" | "pagado" | "vencido";
+/** "vencido" ya no es un estado persistido (ver 0100_collections_module.sql
+ * — se deriva de due_date en la app, tanto acá como en collections/). Los
+ * valores reales guardables ahora son estos 4. */
+export type PolicyPaymentStatus = "pendiente" | "en_seguimiento" | "pagado" | "cancelado";
 
 export interface PolicyPayment {
   id: string;

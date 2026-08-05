@@ -16,6 +16,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   insurance_prospects: { name: "Posibles Pólizas", description: "Prospectos de seguro capturados desde Mini Apps, calculadoras y formularios." },
   policies: { name: "Pólizas", description: "Gestión completa de pólizas activas: prima, comisión, coberturas, vencimientos y renovaciones." },
   advisory_sessions: { name: "Asesoría Guiada", description: "Asistente interactivo paso a paso para acompañar al asesor durante la reunión con el cliente." },
+  collections: { name: "Cobranza", description: "Centro financiero: pagos, recibos, vencimientos, renovaciones y comisiones de toda la cartera." },
 };
 
 export function ModulesSection({
