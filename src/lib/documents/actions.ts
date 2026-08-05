@@ -115,6 +115,7 @@ export async function recordUploadedDocument(input: {
   storagePath: string;
   relatedType?: string;
   relatedId?: string;
+  docCategory?: string;
 }): Promise<{ id: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const memberId = await getCurrentMemberId(workspaceId);
@@ -133,6 +134,7 @@ export async function recordUploadedDocument(input: {
       source: "upload",
       related_type: input.relatedType ?? null,
       related_id: input.relatedId ?? null,
+      doc_category: input.docCategory ?? null,
     })
     .select("id")
     .single();

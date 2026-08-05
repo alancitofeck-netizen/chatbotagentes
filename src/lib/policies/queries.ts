@@ -398,6 +398,7 @@ const POLICY_ACTION_LABEL: Record<string, string> = {
   policy_created: "Póliza creada",
   policy_created_from_pdf: "Póliza creada desde PDF (IA)",
   policy_stage_changed: "Cambió de etapa",
+  policy_renewal_automation_fired: "Automatización de renovación disparada",
 };
 
 /** Mismo patrón que getOpportunityActivity (src/lib/crm/queries.ts) — lee de

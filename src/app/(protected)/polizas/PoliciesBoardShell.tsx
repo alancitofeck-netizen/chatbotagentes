@@ -25,6 +25,7 @@ import { PolicyFormSheet } from "./PolicyFormSheet";
 import { PolicyDetailSheet, type DetailTab } from "./PolicyDetailSheet";
 import { PolicyPdfUploadSheet } from "./PolicyPdfUploadSheet";
 import { PolicyAutomationsSheet } from "./PolicyAutomationsSheet";
+import { PolicyImportSheet } from "./PolicyImportSheet";
 
 export function PoliciesBoardShell({
   workspaceId,
@@ -44,6 +45,7 @@ export function PoliciesBoardShell({
   const [policyForm, setPolicyForm] = useState<{ policy: PolicyDetail | null } | null>(null);
   const [pdfUploadOpen, setPdfUploadOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const hasPolicies = Object.values(board.cardsByStage).some((cards) => cards.length > 0);
   const companies = useMemo(() => board.kpis.byCompany.map((c) => c.company), [board.kpis.byCompany]);
@@ -125,6 +127,7 @@ export function PoliciesBoardShell({
               onNewPolicy={() => setPolicyForm({ policy: null })}
               onUploadPdf={() => setPdfUploadOpen(true)}
               onOpenAutomations={() => setAutomationsOpen(true)}
+              onOpenImport={() => setImportOpen(true)}
             />
           </div>
 
@@ -182,6 +185,8 @@ export function PoliciesBoardShell({
       )}
 
       <PolicyAutomationsSheet open={automationsOpen} onClose={() => setAutomationsOpen(false)} />
+
+      <PolicyImportSheet open={importOpen} onClose={() => setImportOpen(false)} onImported={refreshBoard} />
     </div>
   );
 }

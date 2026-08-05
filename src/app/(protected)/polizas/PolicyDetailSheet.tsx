@@ -7,13 +7,16 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { toast } from "@/components/toast/toast";
-import { Download, Trash2, Upload, Plus } from "lucide-react";
+import { Download, Trash2, Upload, Plus, Sparkles, Copy, Mail, MessageCircle, Loader2 } from "lucide-react";
 import { uploadDocumentFile } from "@/lib/documents/uploadClient";
 import { fileTypeMetaFor, formatFileSize } from "@/components/documents/documentIcons";
 import type { DocumentItem } from "@/lib/documents/queries";
 import { getDocumentsByRelatedAction, recordUploadedDocument, trashDocument, getDownloadUrl } from "@/lib/documents/actions";
 import type { PolicyDetail, PolicyCoverage, PolicyActivityEntry } from "@/lib/policies/queries";
+import { POLICY_DOCUMENT_CATEGORIES, type PolicyDocumentCategory } from "@/lib/policies/constants";
+import type { PolicyAnalysis } from "@/lib/policies/aiAnalysis";
 import {
   getPolicyByIdAction,
   getPolicyCoveragesAction,
@@ -22,8 +25,12 @@ import {
   getPolicyNotesAction,
   addPolicyNoteAction,
   getPolicyActivityAction,
+  analyzePolicyAction,
+  generateRenewalMessageAction,
 } from "@/lib/policies/actions";
 import { formatCurrency } from "@/lib/utils/format";
+
+const CATEGORY_LABEL_BY_KEY = new Map<string, string>(POLICY_DOCUMENT_CATEGORIES.map((c) => [c.key, c.label]));
 
 const INSURANCE_TYPE_LABEL: Record<string, string> = { auto: "Auto", hogar: "Hogar", vida: "Vida", otro: "Otro" };
 
@@ -36,7 +43,7 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-export type DetailTab = "resumen" | "coberturas" | "documentos" | "notas" | "timeline";
+export type DetailTab = "resumen" | "coberturas" | "documentos" | "notas" | "timeline" | "ia";
 
 export function PolicyDetailSheet({
   policyId,
@@ -68,6 +75,11 @@ export function PolicyDetailSheet({
   const [newCoverageName, setNewCoverageName] = useState("");
   const [newCoverageSum, setNewCoverageSum] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<PolicyDocumentCategory>("poliza_pdf");
+  const [analysis, setAnalysis] = useState<PolicyAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [generatedMessage, setGeneratedMessage] = useState<{ channel: "email" | "whatsapp"; text: string } | null>(null);
+  const [generatingChannel, setGeneratingChannel] = useState<"email" | "whatsapp" | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -166,6 +178,7 @@ export function PolicyDetailSheet({
           storagePath,
           relatedType: "policy",
           relatedId: policyId,
+          docCategory: uploadCategory,
         });
       } catch {
         toast.error(`No se pudo registrar ${file.name}.`);
@@ -194,6 +207,32 @@ export function PolicyDetailSheet({
     });
   }
 
+  function handleAnalyze() {
+    if (!policyId) return;
+    setAnalyzing(true);
+    setAnalysis(null);
+    analyzePolicyAction(policyId)
+      .then(setAnalysis)
+      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo analizar la póliza."))
+      .finally(() => setAnalyzing(false));
+  }
+
+  function handleGenerateMessage(channel: "email" | "whatsapp") {
+    if (!policyId) return;
+    setGeneratingChannel(channel);
+    setGeneratedMessage(null);
+    generateRenewalMessageAction(policyId, channel)
+      .then((text) => setGeneratedMessage({ channel, text }))
+      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo generar el mensaje."))
+      .finally(() => setGeneratingChannel(null));
+  }
+
+  function handleCopyMessage() {
+    if (!generatedMessage) return;
+    navigator.clipboard.writeText(generatedMessage.text);
+    toast.success("Copiado al portapapeles.");
+  }
+
   return (
     <Sheet open={policyId !== null} onClose={onClose} title={detail ? `${detail.company} — ${detail.contactName}` : "Póliza"}>
       {!detail ? (
@@ -211,6 +250,7 @@ export function PolicyDetailSheet({
               <TabsTrigger value="documentos">Documentos</TabsTrigger>
               <TabsTrigger value="notas">Notas</TabsTrigger>
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              <TabsTrigger value="ia">IA</TabsTrigger>
             </TabsList>
 
             <div className="py-4">
@@ -348,6 +388,20 @@ export function PolicyDetailSheet({
 
               <TabsContent value="documentos">
                 <div className="flex flex-col gap-3">
+                  <div className="flex items-end gap-2">
+                    <Select
+                      label="Categoría del archivo a subir"
+                      value={uploadCategory}
+                      onChange={(e) => setUploadCategory(e.target.value as PolicyDocumentCategory)}
+                      containerClassName="flex-1"
+                    >
+                      {POLICY_DOCUMENT_CATEGORIES.map((c) => (
+                        <option key={c.key} value={c.key}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
                   <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border-strong bg-surface-2 p-4 text-sm text-neutral-500 hover:border-accent-500 hover:text-foreground">
                     <Upload size={16} aria-hidden="true" />
                     {uploading ? "Subiendo…" : "Subir archivo"}
@@ -358,37 +412,56 @@ export function PolicyDetailSheet({
                   ) : documents.length === 0 ? (
                     <p className="text-sm text-neutral-500">Sin archivos todavía.</p>
                   ) : (
-                    <ul className="flex flex-col gap-2">
-                      {documents.map((doc) => {
-                        const meta = fileTypeMetaFor(doc.name);
-                        const Icon = meta.icon;
-                        return (
-                          <li key={doc.id} className="flex items-center gap-2 rounded-md bg-surface-2 p-3">
-                            <Icon size={16} className={meta.color} aria-hidden="true" />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm text-foreground">{doc.name}</p>
-                              <p className="text-xs text-neutral-500">{formatFileSize(doc.sizeBytes)}</p>
+                    (() => {
+                      const groups = new Map<string, DocumentItem[]>();
+                      for (const doc of documents) {
+                        const key = doc.docCategory && CATEGORY_LABEL_BY_KEY.has(doc.docCategory) ? doc.docCategory : "sin_categoria";
+                        groups.set(key, [...(groups.get(key) ?? []), doc]);
+                      }
+                      const orderedKeys = [...POLICY_DOCUMENT_CATEGORIES.map((c) => c.key), "sin_categoria"].filter((k) => groups.has(k));
+                      return (
+                        <div className="flex flex-col gap-4">
+                          {orderedKeys.map((key) => (
+                            <div key={key} className="flex flex-col gap-2">
+                              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                                {CATEGORY_LABEL_BY_KEY.get(key) ?? "Sin categoría"}
+                              </p>
+                              <ul className="flex flex-col gap-2">
+                                {groups.get(key)!.map((doc) => {
+                                  const meta = fileTypeMetaFor(doc.name);
+                                  const Icon = meta.icon;
+                                  return (
+                                    <li key={doc.id} className="flex items-center gap-2 rounded-md bg-surface-2 p-3">
+                                      <Icon size={16} className={meta.color} aria-hidden="true" />
+                                      <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm text-foreground">{doc.name}</p>
+                                        <p className="text-xs text-neutral-500">{formatFileSize(doc.sizeBytes)}</p>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDownload(doc.id)}
+                                        className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground"
+                                        aria-label="Descargar"
+                                      >
+                                        <Download size={14} aria-hidden="true" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteDocument(doc.id)}
+                                        className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-error-bg hover:text-error-strong"
+                                        aria-label="Eliminar"
+                                      >
+                                        <Trash2 size={14} aria-hidden="true" />
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDownload(doc.id)}
-                              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground"
-                              aria-label="Descargar"
-                            >
-                              <Download size={14} aria-hidden="true" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteDocument(doc.id)}
-                              className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-error-bg hover:text-error-strong"
-                              aria-label="Eliminar"
-                            >
-                              <Trash2 size={14} aria-hidden="true" />
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                          ))}
+                        </div>
+                      );
+                    })()
                   )}
                 </div>
               </TabsContent>
@@ -433,7 +506,11 @@ export function PolicyDetailSheet({
                   <ul className="flex flex-col gap-3">
                     {activity.map((entry) => (
                       <li key={entry.id} className="flex flex-col gap-0.5 border-l-2 border-border-default pl-3">
-                        <p className="text-sm text-foreground">{entry.action}</p>
+                        <p className="text-sm text-foreground">
+                          {entry.action}
+                          {typeof entry.metadata.rule === "string" ? ` — ${entry.metadata.rule}` : ""}
+                          {typeof entry.metadata.stage === "string" ? ` — ${entry.metadata.stage}` : ""}
+                        </p>
                         <p className="text-xs text-neutral-500">
                           {entry.actorName ?? "Sistema"} · {formatDateTime(entry.createdAt)}
                         </p>
@@ -441,6 +518,117 @@ export function PolicyDetailSheet({
                     ))}
                   </ul>
                 )}
+              </TabsContent>
+
+              <TabsContent value="ia">
+                <div className="flex flex-col gap-4">
+                  {!analysis && !analyzing && (
+                    <div className="flex flex-col items-center gap-3 rounded-md bg-surface-2 p-6 text-center">
+                      <Sparkles className="size-6 text-accent-500" aria-hidden="true" />
+                      <p className="text-sm text-neutral-500">Resumen, coberturas explicadas, riesgos detectados y sugerencias de venta cruzada, generados a partir de los datos reales de esta póliza.</p>
+                      <Button onClick={handleAnalyze}>
+                        <Sparkles className="size-4" aria-hidden="true" />
+                        Analizar con IA
+                      </Button>
+                    </div>
+                  )}
+
+                  {analyzing && (
+                    <div className="flex flex-col items-center gap-3 py-8 text-center">
+                      <Loader2 className="size-6 animate-spin text-accent-500" aria-hidden="true" />
+                      <p className="text-sm text-neutral-500">Analizando…</p>
+                    </div>
+                  )}
+
+                  {analysis && (
+                    <>
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Resumen</p>
+                        <p className="mt-1 text-sm text-foreground">{analysis.summary}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Coberturas</p>
+                        <p className="mt-1 text-sm text-foreground">{analysis.coverageExplanation}</p>
+                      </div>
+                      {analysis.risks.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Riesgos detectados</p>
+                          <ul className="mt-1 flex flex-col gap-1">
+                            {analysis.risks.map((r, i) => (
+                              <li key={i} className="rounded-md bg-warning-bg p-2 text-sm text-warning-strong">
+                                {r}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {analysis.crossSellSuggestions.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Oportunidades de venta cruzada</p>
+                          <ul className="mt-1 flex flex-col gap-2">
+                            {analysis.crossSellSuggestions.map((s, i) => (
+                              <li key={i} className="rounded-md bg-surface-2 p-3">
+                                <p className="text-sm font-medium text-foreground">{s.product}</p>
+                                <p className="text-xs text-neutral-500">{s.reason}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Renovación</p>
+                        <p className="mt-1 text-sm text-foreground">{analysis.renewalSuggestion}</p>
+                      </div>
+                      <Button variant="secondary" size="sm" onClick={handleAnalyze}>
+                        Volver a analizar
+                      </Button>
+                    </>
+                  )}
+
+                  <div className="my-1 h-px bg-border-default" />
+                  <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Generar mensaje de renovación</p>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => handleGenerateMessage("email")} loading={generatingChannel === "email"}>
+                      <Mail className="size-4" aria-hidden="true" />
+                      Email
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => handleGenerateMessage("whatsapp")} loading={generatingChannel === "whatsapp"}>
+                      <MessageCircle className="size-4" aria-hidden="true" />
+                      WhatsApp
+                    </Button>
+                  </div>
+                  {generatedMessage && (
+                    <div className="flex flex-col gap-2">
+                      <textarea
+                        readOnly
+                        value={generatedMessage.text}
+                        rows={6}
+                        className="rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={handleCopyMessage}>
+                          <Copy className="size-4" aria-hidden="true" />
+                          Copiar
+                        </Button>
+                        {generatedMessage.channel === "whatsapp" && detail.contactPhone && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              window.open(
+                                `https://wa.me/${detail.contactPhone!.replace(/\D/g, "")}?text=${encodeURIComponent(generatedMessage.text)}`,
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
+                            }
+                          >
+                            <MessageCircle className="size-4" aria-hidden="true" />
+                            Abrir en WhatsApp
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </div>
           </Tabs>

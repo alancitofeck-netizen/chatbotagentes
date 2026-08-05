@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, FileUp, Upload, Download, SlidersHorizontal, KanbanSquare, Table as TableIcon, CalendarDays, Zap } from "lucide-react";
+import { Search, Plus, FileUp, Upload, Download, SlidersHorizontal, KanbanSquare, Table as TableIcon, CalendarDays, Zap, FileSpreadsheet, FileText } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { POLICY_STAGES, type InsuranceType } from "@/lib/policies/constants";
 import { EMPTY_POLICIES_FILTERS, type PoliciesFilters } from "@/lib/policies/boardFilters";
@@ -22,6 +23,7 @@ export function PoliciesActionBar({
   onNewPolicy,
   onUploadPdf,
   onOpenAutomations,
+  onOpenImport,
 }: {
   view: "kanban" | "table" | "calendar";
   onViewChange: (v: "kanban" | "table" | "calendar") => void;
@@ -34,6 +36,7 @@ export function PoliciesActionBar({
   onNewPolicy: () => void;
   onUploadPdf: () => void;
   onOpenAutomations: () => void;
+  onOpenImport: () => void;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -63,14 +66,24 @@ export function PoliciesActionBar({
           <FileUp className="size-4" aria-hidden="true" />
           Subir PDF
         </Button>
-        <Button size="sm" variant="secondary" disabled title="Importar Excel — próximamente">
+        <Button size="sm" variant="secondary" onClick={onOpenImport}>
           <Upload className="size-4" aria-hidden="true" />
           Importar Excel
         </Button>
-        <Button size="sm" variant="secondary" disabled title="Exportar — próximamente">
-          <Download className="size-4" aria-hidden="true" />
-          Exportar
-        </Button>
+        <DropdownMenu
+          trigger={
+            <span className="inline-flex items-center gap-2">
+              <Download className="size-4" aria-hidden="true" />
+              Exportar
+            </span>
+          }
+          triggerClassName="inline-flex h-8 items-center gap-2 rounded-md border border-border-strong bg-surface-1 px-3 text-sm font-medium text-foreground hover:bg-surface-2"
+          items={[
+            { label: "Excel (.xlsx)", icon: <FileSpreadsheet className="size-4" aria-hidden="true" />, onSelect: () => window.open("/api/policies/export?format=xlsx", "_blank") },
+            { label: "CSV", icon: <FileSpreadsheet className="size-4" aria-hidden="true" />, onSelect: () => window.open("/api/policies/export?format=csv", "_blank") },
+            { label: "PDF", icon: <FileText className="size-4" aria-hidden="true" />, onSelect: () => window.open("/api/policies/export?format=pdf", "_blank") },
+          ]}
+        />
         <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)}>
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}

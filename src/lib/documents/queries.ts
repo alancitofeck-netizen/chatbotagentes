@@ -16,6 +16,7 @@ export interface DocumentItem {
   mimeType: string | null;
   sizeBytes: number | null;
   storagePath: string;
+  docCategory: string | null;
   source: "upload" | "google_drive" | "google_docs" | "google_sheets" | "export";
   externalId: string | null;
   externalUrl: string | null;
@@ -36,6 +37,7 @@ interface DocumentRow {
   mime_type: string | null;
   size_bytes: number | null;
   storage_path: string;
+  doc_category: string | null;
   source: string;
   external_id: string | null;
   external_url: string | null;
@@ -48,7 +50,7 @@ interface DocumentRow {
 }
 
 const DOCUMENT_SELECT =
-  "id, name, folder_id, mime_type, size_bytes, storage_path, source, external_id, external_url, external_metadata, is_trashed, owner_id, last_modified_by, created_at, updated_at";
+  "id, name, folder_id, mime_type, size_bytes, storage_path, doc_category, source, external_id, external_url, external_metadata, is_trashed, owner_id, last_modified_by, created_at, updated_at";
 
 async function mapDocumentRows(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -96,6 +98,7 @@ async function mapDocumentRows(
     mimeType: r.mime_type,
     sizeBytes: r.size_bytes,
     storagePath: r.storage_path,
+    docCategory: r.doc_category,
     source: r.source as DocumentItem["source"],
     externalId: r.external_id,
     externalUrl: r.external_url,

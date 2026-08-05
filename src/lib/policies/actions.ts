@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
-import { normalizeE164 } from "@/lib/integrations/ycloud";
 import { getOpenRouterCredentials } from "@/lib/integrations/openrouter";
+import { findOrCreateContact } from "@/lib/policies/contactMatch";
 import {
   getPolicyList,
   getPolicyById,
@@ -23,6 +23,9 @@ import {
 } from "@/lib/policies/queries";
 import { extractTextFromPdf, extractPolicyDataWithAI, type ExtractedPolicyData } from "@/lib/policies/pdfExtraction";
 import { ensurePolicyAutomationRules, updatePolicyAutomationRule, type PolicyAutomationRulePatch } from "@/lib/policies/automationRules";
+import { isSupportedFileName, isXlsxFileName, listWorkbookSheets, parseExcelSheet, parseCsvFile, type SheetInfo } from "@/lib/advisors/import/parseFile";
+import { detectPolicyColumnMapping, importPolicyRows, type PolicyImportResult } from "@/lib/policies/import";
+import { analyzePolicyWithAI, generateRenewalMessageWithAI, type PolicyAnalysis } from "@/lib/policies/aiAnalysis";
 
 function revalidatePolicies() {
   revalidatePath("/polizas");
@@ -121,39 +124,6 @@ export interface PolicyFormInput {
   ownerId: string | null;
 }
 
-/** Busca un contacto por teléfono (dedupe ya establecido en toda la app) o
- * lo crea — mismo patrón que leadSync/runner.ts's processRow. */
-async function findOrCreateContact(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  workspaceId: string,
-  input: { name?: string; phone?: string; email?: string },
-): Promise<string> {
-  if (input.phone) {
-    const phone = normalizeE164(input.phone);
-    const { data: existing } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("phone", phone).maybeSingle();
-    if (existing) return existing.id as string;
-    const { data: created, error } = await supabase
-      .from("contacts")
-      .insert({ workspace_id: workspaceId, name: input.name?.trim() || phone, phone, email: input.email || null, source: "policy" })
-      .select("id")
-      .single();
-    if (error || !created) throw new Error(error?.message ?? "No se pudo crear el contacto.");
-    return created.id as string;
-  }
-
-  if (input.email) {
-    const { data: existing } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("email", input.email).maybeSingle();
-    if (existing) return existing.id as string;
-  }
-
-  const { data: created, error } = await supabase
-    .from("contacts")
-    .insert({ workspace_id: workspaceId, name: input.name?.trim() || "Cliente sin nombre", email: input.email || null, source: "policy" })
-    .select("id")
-    .single();
-  if (error || !created) throw new Error(error?.message ?? "No se pudo crear el contacto.");
-  return created.id as string;
-}
 
 /** Crea una póliza — manual (formulario completo) o como paso final del
  * flujo de confirmación de extracción por IA (mismo action, la pantalla de
@@ -491,4 +461,115 @@ export async function confirmPolicyFromExtractionAction(
 
   revalidatePolicies();
   return { id: policyId, contactId };
+}
+
+// ---------------------------------------------------------------------------
+// Importar Excel/CSV — versión reducida del wizard de 8 pasos de Asesores
+// (src/app/(protected)/advisors/import): reusa sus mismos parsers/matching
+// difuso puros, pero corre síncrono en 3 pasos (subir → mapear → confirmar),
+// sin job persistente ni progreso en tiempo real — razonable para una carga
+// puntual desde Pólizas, no para "migrar toda la cartera histórica" (ese
+// caso, si hace falta, es su propio job igual que el de Asesores). Límite de
+// 1000 filas por Server Action call para quedar cómodo dentro del tiempo de
+// ejecución de una función de Vercel sin necesitar un job en background.
+// ---------------------------------------------------------------------------
+
+const MAX_IMPORT_ROWS = 1000;
+
+export interface PolicyImportPreview {
+  needsSheetSelection: boolean;
+  sheets: SheetInfo[];
+  headers: string[];
+  rows: Record<string, string>[];
+  totalRows: number;
+  suggestedMapping: Record<string, string | null>;
+}
+
+async function buildPreview(headers: string[], rows: Record<string, string>[], totalRows: number): Promise<PolicyImportPreview> {
+  const suggestions = detectPolicyColumnMapping(headers);
+  return {
+    needsSheetSelection: false,
+    sheets: [],
+    headers,
+    rows,
+    totalRows,
+    suggestedMapping: Object.fromEntries(suggestions.map((s) => [s.header, s.fieldKey])),
+  };
+}
+
+export async function parsePolicyImportFileAction(formData: FormData): Promise<PolicyImportPreview> {
+  await requireActiveWorkspace();
+  const file = formData.get("file") as File | null;
+  if (!file) throw new Error("No se recibió ningún archivo.");
+  if (!isSupportedFileName(file.name)) throw new Error("Formato no soportado — usá .xlsx o .csv.");
+
+  const buffer = await file.arrayBuffer();
+
+  if (isXlsxFileName(file.name)) {
+    const sheets = await listWorkbookSheets(buffer);
+    if (sheets.length > 1) {
+      return { needsSheetSelection: true, sheets, headers: [], rows: [], totalRows: 0, suggestedMapping: {} };
+    }
+    const table = await parseExcelSheet(buffer, sheets[0]?.name ?? "", MAX_IMPORT_ROWS);
+    return buildPreview(table.headers, table.rows, table.totalRows);
+  }
+
+  const text = await file.text();
+  const table = parseCsvFile(text, MAX_IMPORT_ROWS);
+  return buildPreview(table.headers, table.rows, table.totalRows);
+}
+
+export async function parsePolicyImportSheetAction(formData: FormData, sheetName: string): Promise<PolicyImportPreview> {
+  await requireActiveWorkspace();
+  const file = formData.get("file") as File | null;
+  if (!file) throw new Error("No se recibió ningún archivo.");
+  const buffer = await file.arrayBuffer();
+  const table = await parseExcelSheet(buffer, sheetName, MAX_IMPORT_ROWS);
+  return buildPreview(table.headers, table.rows, table.totalRows);
+}
+
+export async function confirmPolicyImportAction(
+  rows: Record<string, string>[],
+  mapping: Record<string, string | null>,
+): Promise<PolicyImportResult> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const result = await importPolicyRows(workspaceId, memberId, rows, mapping, memberId);
+  revalidatePolicies();
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// IA avanzada — Analizar póliza + generar mensajes de renovación. Bajo
+// demanda (el usuario aprieta un botón), nunca automático — un llamado a
+// OpenRouter tiene costo real por token. Sin puntajes/probabilidades
+// numéricas fabricadas, ver la nota en aiAnalysis.ts.
+// ---------------------------------------------------------------------------
+
+export async function analyzePolicyAction(policyId: string): Promise<PolicyAnalysis> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const service = createServiceRoleClient();
+  const credentials = await getOpenRouterCredentials(service, workspaceId);
+  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder analizar pólizas con IA.");
+
+  const policy = await getPolicyById(workspaceId, policyId);
+  if (!policy) throw new Error("Póliza no encontrada.");
+  const [coverages, otherPolicies] = await Promise.all([
+    getPolicyCoverages(policyId),
+    getPoliciesForContact(workspaceId, policy.contactId),
+  ]);
+
+  return analyzePolicyWithAI(credentials.apiKey, policy, coverages, otherPolicies.filter((p) => p.id !== policyId));
+}
+
+export async function generateRenewalMessageAction(policyId: string, channel: "email" | "whatsapp"): Promise<string> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const service = createServiceRoleClient();
+  const credentials = await getOpenRouterCredentials(service, workspaceId);
+  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder generar mensajes con IA.");
+
+  const policy = await getPolicyById(workspaceId, policyId);
+  if (!policy) throw new Error("Póliza no encontrada.");
+
+  return generateRenewalMessageWithAI(credentials.apiKey, policy, channel);
 }
