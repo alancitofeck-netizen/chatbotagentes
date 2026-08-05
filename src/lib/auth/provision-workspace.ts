@@ -21,11 +21,12 @@ function slugify(base: string) {
  * Owner (public.platform_admins, manually assigned), and every self-service
  * signup only ever administers their own Workspace as an agent (per the
  * corrected architecture: no automatic Owner assignment, ever). CRM,
- * Asesores, Mini Apps and Tareas (Workspace) are enabled immediately, not
- * left for the new agent to toggle — module activation is owner/admin-only
- * (requireManagerRole, src/lib/settings/actions.ts), and a solo
- * agent-only workspace has no owner/admin member who could ever turn them
- * on otherwise.
+ * Asesores, Mini Apps, Tareas, Pólizas (+ Posibles Pólizas, its own
+ * separate module_key), Cobranza and Asesoría Guiada are all enabled
+ * immediately, not left for the new agent to toggle — module activation is
+ * owner/admin-only (requireManagerRole, src/lib/settings/actions.ts), and a
+ * solo agent-only workspace has no owner/admin member who could ever turn
+ * them on otherwise.
  *
  * Returns the resolved workspace id (existing or newly created) — used by
  * the Google sign-in callback (src/app/api/auth/google/callback/route.ts)
@@ -71,6 +72,10 @@ export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: s
     { workspace_id: workspace.id, module_key: "advisors", enabled: true },
     { workspace_id: workspace.id, module_key: "mini_apps", enabled: true },
     { workspace_id: workspace.id, module_key: "tasks", enabled: true },
+    { workspace_id: workspace.id, module_key: "policies", enabled: true },
+    { workspace_id: workspace.id, module_key: "insurance_prospects", enabled: true },
+    { workspace_id: workspace.id, module_key: "collections", enabled: true },
+    { workspace_id: workspace.id, module_key: "advisory_sessions", enabled: true },
   ]);
 
   if (modulesError) {
