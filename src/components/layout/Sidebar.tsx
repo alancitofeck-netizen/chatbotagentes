@@ -203,7 +203,7 @@ function SidebarNavItem({
         onFocus={() => setIsHovered(true)}
         onBlur={() => setIsHovered(false)}
         className={cn(
-          "relative mx-2 flex h-10 items-center rounded-xl transition-colors duration-150 ease-out",
+          "relative mx-2 flex h-10 items-center justify-center rounded-xl transition-colors duration-150 ease-out",
           item.comingSoon
             ? "cursor-default text-neutral-600"
             : isActive
@@ -215,7 +215,7 @@ function SidebarNavItem({
         <span className="flex size-10 shrink-0 items-center justify-center">
           <Icon className="size-[18px]" aria-hidden="true" />
         </span>
-        <span className={cn("flex min-w-0 flex-1 items-center gap-2 pr-3", fadeClassName(isExpanded))}>
+        <span className={cn("flex min-w-0 items-center gap-2 pr-3", isExpanded ? "flex-1" : "w-0 flex-none", fadeClassName(isExpanded))}>
           <span className="truncate text-sm font-medium">{item.label}</span>
           {item.comingSoon && (
             <Badge variant="neutral" className="ml-auto shrink-0">
@@ -391,7 +391,13 @@ export function Sidebar({
         <nav aria-label="Navegación principal" className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden py-2">
           {groups.map((group) => (
             <div key={group.category} className="flex flex-col">
-              <p role="presentation" className={cn("px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-neutral-500", fadeClassName(isExpanded))}>
+              <p
+                role="presentation"
+                className={cn(
+                  "overflow-hidden px-4 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 transition-[opacity,transform,max-height,padding] duration-[180ms] ease-out motion-reduce:transition-none",
+                  isExpanded ? "max-h-8 pb-1 pt-3 opacity-100 translate-x-0 delay-100" : "pointer-events-none max-h-0 pb-0 pt-0 opacity-0 -translate-x-2 delay-0",
+                )}
+              >
                 {group.category}
               </p>
               <div className="flex flex-col gap-1">
