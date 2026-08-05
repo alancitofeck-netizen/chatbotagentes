@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Plus, FileUp, Upload, Download, SlidersHorizontal, KanbanSquare, Table as TableIcon, CalendarDays } from "lucide-react";
+import { Search, Plus, FileUp, Upload, Download, SlidersHorizontal, KanbanSquare, Table as TableIcon, CalendarDays, Zap } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
@@ -21,6 +21,7 @@ export function PoliciesActionBar({
   members,
   onNewPolicy,
   onUploadPdf,
+  onOpenAutomations,
 }: {
   view: "kanban" | "table" | "calendar";
   onViewChange: (v: "kanban" | "table" | "calendar") => void;
@@ -32,6 +33,7 @@ export function PoliciesActionBar({
   members: WorkspaceMemberOption[];
   onNewPolicy: () => void;
   onUploadPdf: () => void;
+  onOpenAutomations: () => void;
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -72,6 +74,10 @@ export function PoliciesActionBar({
         <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)}>
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </Button>
+        <Button size="sm" variant="secondary" onClick={onOpenAutomations}>
+          <Zap className="size-4" aria-hidden="true" />
+          Automatizaciones
         </Button>
 
         <div className="ml-auto flex items-center gap-1 rounded-md border border-border-default bg-surface-1 p-1">

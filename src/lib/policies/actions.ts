@@ -22,9 +22,21 @@ import {
   type PolicyBeneficiary,
 } from "@/lib/policies/queries";
 import { extractTextFromPdf, extractPolicyDataWithAI, type ExtractedPolicyData } from "@/lib/policies/pdfExtraction";
+import { ensurePolicyAutomationRules, updatePolicyAutomationRule, type PolicyAutomationRulePatch } from "@/lib/policies/automationRules";
 
 function revalidatePolicies() {
   revalidatePath("/polizas");
+}
+
+export async function getPolicyAutomationRulesAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return ensurePolicyAutomationRules(workspaceId);
+}
+
+export async function updatePolicyAutomationRuleAction(ruleId: string, patch: PolicyAutomationRulePatch): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  await updatePolicyAutomationRule(workspaceId, ruleId, patch);
+  revalidatePolicies();
 }
 
 export async function getPolicyListAction() {
