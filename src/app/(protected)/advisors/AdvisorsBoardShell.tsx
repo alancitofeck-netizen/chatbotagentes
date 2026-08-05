@@ -39,9 +39,9 @@ export function AdvisorsBoardShell({
   );
 
   async function handleDeleteFromDetail(id: string) {
-    if (!window.confirm("¿Eliminar esta póliza? Esta acción no se puede deshacer.")) return;
+    if (!window.confirm("¿Eliminar este prospecto? Esta acción no se puede deshacer.")) return;
     await deleteDeal(id);
-    toast.success("Póliza eliminada.");
+    toast.success("Prospecto eliminado.");
     setDetailId(null);
     refreshBoard();
   }
@@ -52,13 +52,13 @@ export function AdvisorsBoardShell({
         <div className="p-4 sm:p-6 lg:p-8">
           <EmptyState
             icon={ShieldCheck}
-            title="Todavía no hay pólizas cargadas"
-            description="Se crea automáticamente con tu primera póliza."
+            title="Todavía no hay prospectos cargados"
+            description="Se crea automáticamente con tu primer prospecto."
             action={
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button onClick={() => setDealForm({ card: null, defaultStageId: null })}>
                   <Plus className="size-4" aria-hidden="true" />
-                  Nueva póliza
+                  Nuevo prospecto
                 </Button>
                 <LinkButton href="/advisors/import" variant="secondary">
                   <Upload className="size-4" aria-hidden="true" />
@@ -75,7 +75,7 @@ export function AdvisorsBoardShell({
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Button onClick={() => setDealForm({ card: null, defaultStageId: board.stages[0]?.id ?? null })}>
                 <Plus className="size-4" aria-hidden="true" />
-                Nueva póliza
+                Nuevo prospecto
               </Button>
               <LinkButton href="/advisors/import" variant="secondary">
                 <Upload className="size-4" aria-hidden="true" />

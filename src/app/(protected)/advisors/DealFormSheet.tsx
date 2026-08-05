@@ -64,17 +64,17 @@ export function DealFormSheet({
         } else {
           await createDeal(input, stageId || undefined);
         }
-        toast.success(isEdit ? "Póliza actualizada." : "Póliza creada.");
+        toast.success(isEdit ? "Prospecto actualizado." : "Prospecto creado.");
         onSaved();
         onClose();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "No se pudo guardar la póliza.");
+        toast.error(err instanceof Error ? err.message : "No se pudo guardar el prospecto.");
       }
     });
   }
 
   return (
-    <Sheet open onClose={onClose} title={isEdit ? "Editar póliza" : "Nueva póliza"}>
+    <Sheet open onClose={onClose} title={isEdit ? "Editar prospecto" : "Nuevo prospecto"}>
       <div className="flex flex-col gap-4 p-5">
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Cliente</p>
         <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
@@ -85,7 +85,7 @@ export function DealFormSheet({
         <Input label="Empresa" value={company} onChange={(e) => setCompany(e.target.value)} />
 
         <div className="my-1 h-px bg-border-default" />
-        <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Póliza</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Prospecto</p>
         <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Seguro de vida — Nombre del cliente" />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Valor" type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} />
@@ -97,7 +97,7 @@ export function DealFormSheet({
             ))}
           </Select>
         </div>
-        <Input label="Tipo de póliza / producto" value={policyType} onChange={(e) => setPolicyType(e.target.value)} placeholder="Ej. Vida, Salud, Retiro" />
+        <Input label="Tipo de producto" value={policyType} onChange={(e) => setPolicyType(e.target.value)} placeholder="Ej. Vida, Salud, Retiro" />
         <div className="grid grid-cols-2 gap-3">
           <Input label="Fecha de renovación" type="date" value={renewalDate} onChange={(e) => setRenewalDate(e.target.value)} />
           <Input label="Comisión" type="number" min={0} value={commission} onChange={(e) => setCommission(e.target.value)} />
@@ -121,7 +121,7 @@ export function DealFormSheet({
         </Select>
 
         <Button onClick={handleSave} loading={isPending}>
-          {isEdit ? "Guardar cambios" : "Crear póliza"}
+          {isEdit ? "Guardar cambios" : "Crear prospecto"}
         </Button>
       </div>
     </Sheet>

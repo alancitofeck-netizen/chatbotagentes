@@ -77,16 +77,21 @@ export interface NavItem {
  * as KPIs/Inbox/Calendario/Documentos, per explicit user request (see
  * supabase/migrations/0071_classroom_module.sql).
  *
- * "Pólizas" moved OUT of Asesores' own tab strip (AdvisorsSecondaryNav.tsx)
- * into its own top-level module/route (/polizas, was /advisors/polizas),
- * per explicit user request — it's meant to feel like a full portfolio-
- * management platform in its own right, not a tab buried inside another
- * module. Its own category ("Pólizas") rather than folding it into
- * "Clientes" matches the requested sidebar layout exactly. The
+ * "Pólizas" moved OUT of Asesores' own tab strip (AdvisorsSecondaryNav.tsx,
+ * since removed) into its own top-level module/route (/polizas, was
+ * /advisors/polizas), per explicit user request — it's meant to feel like a
+ * full portfolio-management platform in its own right, not a tab buried
+ * inside another module. Its own category ("Pólizas") rather than folding
+ * it into "Clientes" matches the requested sidebar layout exactly. The
  * `workspace_modules` gate (`policies`) was already independent of
  * `advisors` since its own creation — only the nav entry/route moved, not
  * the module boundary (same posture as every other promotion/demotion
  * above).
+ *
+ * "Asesores" was later relabeled "Prospectos" (still `/advisors`, still
+ * `module_key='advisors'` — only the visible label changed) once "Posibles
+ * Pólizas" moved out into Pólizas' own tab strip (PoliciesSecondaryNav.tsx),
+ * leaving this module as purely a pre-sale deals/prospects board.
  *
  * `category` groups these into section headers (Sidebar.tsx's expanded
  * panel, MobileNav's drawer) — grouping the real items that already exist,
@@ -96,7 +101,7 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, category: "Principal" },
     { label: "Inbox", href: "/inbox", icon: Inbox, category: "Principal" },
     { label: "CRM", href: "/crm", icon: Kanban, category: "Clientes", comingSoon: !enabledModules.has("crm") },
-    { label: "Asesores", href: "/advisors", icon: ShieldCheck, category: "Clientes", comingSoon: !enabledModules.has("advisors") },
+    { label: "Prospectos", href: "/advisors", icon: ShieldCheck, category: "Clientes", comingSoon: !enabledModules.has("advisors") },
     { label: "Mini Apps", href: "/mini-apps", icon: AppWindow, category: "Clientes", comingSoon: !enabledModules.has("mini_apps") },
     { label: "Pólizas", href: "/polizas", icon: FileCheck2, category: "Pólizas", comingSoon: !enabledModules.has("policies") },
     { label: "Calendario", href: "/calendar", icon: CalendarDays, category: "Operación" },

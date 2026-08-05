@@ -757,7 +757,7 @@ function ResultsStep({
             Ver errores
           </Button>
         )}
-        <LinkButton href="/advisors">Ir a Pólizas</LinkButton>
+        <LinkButton href="/advisors">Ir a Prospectos</LinkButton>
         <Button variant="secondary" onClick={onRestart}>
           Importar otro archivo
         </Button>

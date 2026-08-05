@@ -13,8 +13,8 @@ import {
 } from "@/lib/insuranceProspects/queries";
 
 function revalidateProspectPaths(prospectId?: string) {
-  revalidatePath("/advisors/posibles-polizas");
-  if (prospectId) revalidatePath(`/advisors/posibles-polizas/${prospectId}`);
+  revalidatePath("/polizas/posibles-polizas");
+  if (prospectId) revalidatePath(`/polizas/posibles-polizas/${prospectId}`);
 }
 
 export async function getProspectsListAction() {

@@ -25,7 +25,7 @@ export function AdvisorsKpiHeader({ kpis }: { kpis: AdvisorsKpis }) {
         iconBg="bg-accent-100"
         iconColor="text-accent-700"
         value={String(kpis.totalPolicies)}
-        label="Total de pólizas"
+        label="Total de prospectos"
       />
       <KpiTile
         icon={<UserPlus className="size-[18px]" aria-hidden="true" />}

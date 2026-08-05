@@ -51,7 +51,7 @@ export function DealDetailSheet({
   }
 
   return (
-    <Sheet open={opportunityId !== null} onClose={onClose} title={detail?.title ?? "Póliza"}>
+    <Sheet open={opportunityId !== null} onClose={onClose} title={detail?.title ?? "Prospecto"}>
       {!detail ? (
         <div className="flex flex-col gap-3 p-5">
           <Skeleton className="h-5 w-2/3" />
@@ -81,7 +81,7 @@ export function DealDetailSheet({
                   </div>
                   {detail.policyType && (
                     <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Tipo de póliza</dt>
+                      <dt className="text-neutral-500">Tipo de producto</dt>
                       <dd className="text-foreground">{detail.policyType}</dd>
                     </div>
                   )}

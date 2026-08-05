@@ -80,10 +80,10 @@ export async function ensurePipeline(workspaceId: string): Promise<string> {
   const serviceClient = createServiceRoleClient();
   const { data: pipeline, error } = await serviceClient
     .from("pipelines")
-    .insert({ workspace_id: workspaceId, module_key: "advisors", name: "Pólizas y clientes" })
+    .insert({ workspace_id: workspaceId, module_key: "advisors", name: "Prospectos y clientes" })
     .select("id")
     .single();
-  if (error || !pipeline) throw new Error("No se pudo crear el pipeline de Asesores.");
+  if (error || !pipeline) throw new Error("No se pudo crear el pipeline de Prospectos.");
 
   await serviceClient.from("pipeline_stages").insert(
     DEFAULT_STAGES.map((s, i) => ({
@@ -157,7 +157,7 @@ export async function createDeal(input: DealFormInput, stageId?: string) {
     .insert({ pipeline_id: pipelineId, stage_id: targetStageId, item_type: "opportunity", item_id: opportunity.id, position: 0 })
     .select("id")
     .single();
-  if (pipelineItemError || !pipelineItem) throw new Error("No se pudo agregar la póliza al tablero.");
+  if (pipelineItemError || !pipelineItem) throw new Error("No se pudo agregar el prospecto al tablero.");
 
   await supabase.from("opportunities").update({ pipeline_item_id: pipelineItem.id }).eq("id", opportunity.id);
 
@@ -238,7 +238,7 @@ export async function moveDeal(pipelineItemId: string, stageId: string, position
 
   const pipeline = Array.isArray(item?.pipelines) ? item?.pipelines[0] : item?.pipelines;
   if (!item || pipeline?.workspace_id !== workspaceId) {
-    throw new Error("Póliza no encontrada en este workspace.");
+    throw new Error("Prospecto no encontrado en este workspace.");
   }
 
   await supabase.from("pipeline_items").update({ stage_id: stageId, position }).eq("id", pipelineItemId);
