@@ -35,7 +35,13 @@ export function SmartCardsColumn({ dashboard }: { dashboard: AssistantDashboard 
   function handleGenerateRecommendations() {
     setGenerating(true);
     generateRecommendationsAction()
-      .then(setRecommendations)
+      .then((result) => {
+        if (typeof result !== "string") {
+          toast.error(result.error);
+          return;
+        }
+        setRecommendations(result);
+      })
       .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo generar."))
       .finally(() => setGenerating(false));
   }

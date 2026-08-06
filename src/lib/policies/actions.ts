@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
-import { getOpenRouterCredentials } from "@/lib/integrations/openrouter";
+import { resolveOpenRouterApiKey } from "@/lib/integrations/openrouter";
 import { findOrCreateContact } from "@/lib/contacts/match";
 import {
   getPolicyList,
@@ -353,24 +353,32 @@ export async function getPolicyNotesAction(policyId: string) {
  * /api/documents/upload que usa el resto de la app) — esto lee su texto y
  * llama a la IA para estructurarlo. Todavía no crea nada (cliente/póliza);
  * la pantalla de revisión llama a confirmPolicyFromExtractionAction una vez
- * que el usuario confirma/edita los datos. */
-export async function extractPolicyFromPdfAction(storagePath: string): Promise<ExtractedPolicyData> {
+ * que el usuario confirma/edita los datos.
+ *
+ * Devuelve el error como dato ({ error }) en vez de lanzar una excepción —
+ * ver la nota en resolveOpenRouterApiKey (openrouter.ts): un throw acá no
+ * llegaba de forma confiable al catch del cliente en producción, y todo
+ * agente sin OpenRouter conectado en SU propio workspace (el caso normal
+ * para cualquier cuenta nueva) terminaba viendo un crash genérico en vez
+ * del mensaje real. */
+export async function extractPolicyFromPdfAction(storagePath: string): Promise<ExtractedPolicyData | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const service = createServiceRoleClient();
 
-  const credentials = await getOpenRouterCredentials(service, workspaceId);
-  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder leer pólizas con IA.");
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "leer pólizas con IA");
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
 
   const { data: file, error: downloadError } = await service.storage.from("documents").download(storagePath);
-  if (downloadError || !file) throw new Error("No se pudo leer el PDF recién subido.");
+  if (downloadError || !file) return { error: "No se pudo leer el PDF recién subido." };
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const text = await extractTextFromPdf(buffer);
   if (!text.trim()) {
-    throw new Error("Este PDF no tiene texto legible (probablemente es una imagen escaneada) — cargá la póliza manualmente por ahora.");
+    return { error: "Este PDF no tiene texto legible (probablemente es una imagen escaneada) — cargá la póliza manualmente por ahora." };
   }
 
-  return extractPolicyDataWithAI(credentials.apiKey, text);
+  return extractPolicyDataWithAI(apiKey, text);
 }
 
 /** Paso 2: el usuario ya revisó/editó los datos extraídos — crea cliente
@@ -555,32 +563,34 @@ export async function confirmPolicyImportAction(
 // numéricas fabricadas, ver la nota en aiAnalysis.ts.
 // ---------------------------------------------------------------------------
 
-export async function analyzePolicyAction(policyId: string): Promise<PolicyAnalysis> {
+export async function analyzePolicyAction(policyId: string): Promise<PolicyAnalysis | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const service = createServiceRoleClient();
-  const credentials = await getOpenRouterCredentials(service, workspaceId);
-  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder analizar pólizas con IA.");
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "analizar pólizas con IA");
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
 
   const policy = await getPolicyById(workspaceId, policyId);
-  if (!policy) throw new Error("Póliza no encontrada.");
+  if (!policy) return { error: "Póliza no encontrada." };
   const [coverages, otherPolicies] = await Promise.all([
     getPolicyCoverages(policyId),
     getPoliciesForContact(workspaceId, policy.contactId),
   ]);
 
-  return analyzePolicyWithAI(credentials.apiKey, policy, coverages, otherPolicies.filter((p) => p.id !== policyId));
+  return analyzePolicyWithAI(apiKey, policy, coverages, otherPolicies.filter((p) => p.id !== policyId));
 }
 
-export async function generateRenewalMessageAction(policyId: string, channel: "email" | "whatsapp"): Promise<string> {
+export async function generateRenewalMessageAction(policyId: string, channel: "email" | "whatsapp"): Promise<string | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const service = createServiceRoleClient();
-  const credentials = await getOpenRouterCredentials(service, workspaceId);
-  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder generar mensajes con IA.");
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "generar mensajes con IA");
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
 
   const policy = await getPolicyById(workspaceId, policyId);
-  if (!policy) throw new Error("Póliza no encontrada.");
+  if (!policy) return { error: "Póliza no encontrada." };
 
-  return generateRenewalMessageWithAI(credentials.apiKey, policy, channel);
+  return generateRenewalMessageWithAI(apiKey, policy, channel);
 }
 
 // ---------------------------------------------------------------------------

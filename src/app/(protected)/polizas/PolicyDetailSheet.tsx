@@ -292,7 +292,13 @@ export function PolicyDetailSheet({
     setAnalyzing(true);
     setAnalysis(null);
     analyzePolicyAction(policyId)
-      .then(setAnalysis)
+      .then((result) => {
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
+        setAnalysis(result);
+      })
       .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo analizar la póliza."))
       .finally(() => setAnalyzing(false));
   }
@@ -302,7 +308,13 @@ export function PolicyDetailSheet({
     setGeneratingChannel(channel);
     setGeneratedMessage(null);
     generateRenewalMessageAction(policyId, channel)
-      .then((text) => setGeneratedMessage({ channel, text }))
+      .then((result) => {
+        if (typeof result !== "string") {
+          toast.error(result.error);
+          return;
+        }
+        setGeneratedMessage({ channel, text: result });
+      })
       .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo generar el mensaje."))
       .finally(() => setGeneratingChannel(null));
   }

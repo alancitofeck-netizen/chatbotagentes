@@ -208,7 +208,13 @@ export function CollectionDetailDrawer({
     setGeneratingChannel(channel);
     setGeneratedMessage(null);
     generateCollectionMessageAction(paymentId, channel)
-      .then((text) => setGeneratedMessage({ channel, text }))
+      .then((result) => {
+        if (typeof result !== "string") {
+          toast.error(result.error);
+          return;
+        }
+        setGeneratedMessage({ channel, text: result });
+      })
       .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo generar el mensaje."))
       .finally(() => setGeneratingChannel(null));
   }

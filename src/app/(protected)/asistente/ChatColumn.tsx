@@ -18,8 +18,12 @@ function ToolConfirmCard({ toolCall, onResolved }: { toolCall: AssistantToolCall
   async function handleConfirm() {
     setBusy("confirm");
     try {
-      const { reply } = await confirmToolCallAction(toolCall.id);
-      onResolved(reply);
+      const result = await confirmToolCallAction(toolCall.id);
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      onResolved(result.reply);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo confirmar.");
     } finally {
@@ -112,7 +116,13 @@ export function ChatColumn({ conversationId, initialMessages }: { conversationId
     setMessages((prev) => [...prev, { id: `optimistic-${Date.now()}`, role: "user", content: text, pendingToolCallIds: [], createdAt: new Date().toISOString() }]);
 
     try {
-      await sendAssistantMessageAction(conversationId, text);
+      const result = await sendAssistantMessageAction(conversationId, text);
+      if ("error" in result) {
+        toast.error(result.error);
+        const fresh = await getConversationMessagesAction(conversationId);
+        setMessages(fresh);
+        return;
+      }
       const fresh = await getConversationMessagesAction(conversationId);
       setMessages(fresh);
     } catch (err) {

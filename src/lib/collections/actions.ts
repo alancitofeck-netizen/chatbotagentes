@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { getOpenRouterCredentials } from "@/lib/integrations/openrouter";
+import { resolveOpenRouterApiKey } from "@/lib/integrations/openrouter";
 import {
   getCollectionsList,
   getCollectionById,
@@ -69,16 +69,17 @@ export async function getCollectionsPriorityRankingAction(): Promise<RankedColle
 
 /** Único punto de este módulo que sí llama a un LLM — genera el texto de un
  * recordatorio de pago bajo demanda, nunca lo envía. */
-export async function generateCollectionMessageAction(paymentId: string, channel: "email" | "whatsapp"): Promise<string> {
+export async function generateCollectionMessageAction(paymentId: string, channel: "email" | "whatsapp"): Promise<string | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const service = createServiceRoleClient();
-  const credentials = await getOpenRouterCredentials(service, workspaceId);
-  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder generar mensajes con IA.");
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "generar mensajes con IA");
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
 
   const item = await getCollectionById(workspaceId, paymentId);
-  if (!item) throw new Error("Cobro no encontrado.");
+  if (!item) return { error: "Cobro no encontrado." };
 
-  return generateCollectionMessageWithAI(credentials.apiKey, item, channel);
+  return generateCollectionMessageWithAI(apiKey, item, channel);
 }
 
 /** Picker de pólizas para "Nuevo cobro" — reusa el mismo listado de

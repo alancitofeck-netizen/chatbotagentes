@@ -99,6 +99,11 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
       setDocumentId(newDocumentId);
 
       const extracted = await extractPolicyFromPdfAction(storagePath);
+      if ("error" in extracted) {
+        toast.error(extracted.error);
+        setStep("upload");
+        return;
+      }
       setData(extracted);
       setStep("review");
     } catch (err) {

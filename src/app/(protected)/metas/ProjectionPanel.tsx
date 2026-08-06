@@ -41,7 +41,13 @@ export function ProjectionPanel({ goals }: { goals: GoalWithProgress[] }) {
   function handleGenerate(goalId: string) {
     setGeneratingFor(goalId);
     generateGoalRecommendationAction(goalId)
-      .then((text) => setRecommendations((prev) => ({ ...prev, [goalId]: text })))
+      .then((result) => {
+        if (typeof result !== "string") {
+          toast.error(result.error);
+          return;
+        }
+        setRecommendations((prev) => ({ ...prev, [goalId]: result }));
+      })
       .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo generar la recomendación."))
       .finally(() => setGeneratingFor(null));
   }

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
-import { getOpenRouterCredentials } from "@/lib/integrations/openrouter";
+import { resolveOpenRouterApiKey } from "@/lib/integrations/openrouter";
 import { slugify } from "@/lib/miniApps/apiKey";
 import {
   getPresentationList,
@@ -154,20 +154,21 @@ export async function deletePresentationPhotoAction(presentationId: string, phot
  * arma el contexto, llama generatePresentationContent (aiContent.ts), y
  * siembra el resultado en ai_content + slides (slides queda editable de
  * forma independiente desde acá en adelante). */
-export async function generatePresentationAiContentAction(presentationId: string): Promise<{ aiContent: Record<string, unknown>; slides: PresentationSlide[] }> {
+export async function generatePresentationAiContentAction(presentationId: string): Promise<{ aiContent: Record<string, unknown>; slides: PresentationSlide[] } | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const service = createServiceRoleClient();
-  const credentials = await getOpenRouterCredentials(service, workspaceId);
-  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para generar la presentación con IA.");
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "generar la presentación con IA");
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
 
   const presentation = await getPresentationById(workspaceId, presentationId);
-  if (!presentation) throw new Error("Presentación no encontrada.");
+  if (!presentation) return { error: "Presentación no encontrada." };
 
   const supabase = await createClient();
   await supabase.from("presentations").update({ status: "generando", updated_at: new Date().toISOString() }).eq("id", presentationId).eq("workspace_id", workspaceId);
 
   try {
-    const { aiContent, slides } = await generatePresentationContent(credentials.apiKey, presentation);
+    const { aiContent, slides } = await generatePresentationContent(apiKey, presentation);
 
     await supabase
       .from("presentations")
@@ -182,7 +183,7 @@ export async function generatePresentationAiContentAction(presentationId: string
     return { aiContent: aiContent as unknown as Record<string, unknown>, slides };
   } catch (err) {
     await supabase.from("presentations").update({ status: "borrador", updated_at: new Date().toISOString() }).eq("id", presentationId).eq("workspace_id", workspaceId);
-    throw err;
+    return { error: err instanceof Error ? err.message : "No se pudo generar la presentación con IA." };
   }
 }
 

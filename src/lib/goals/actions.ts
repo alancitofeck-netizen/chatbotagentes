@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
-import { getOpenRouterCredentials } from "@/lib/integrations/openrouter";
+import { resolveOpenRouterApiKey } from "@/lib/integrations/openrouter";
 import {
   getGoalsForMember,
   getAllGoals,
@@ -185,18 +185,19 @@ export async function deleteGoalAction(goalId: string): Promise<void> {
   revalidateGoals();
 }
 
-export async function generateGoalRecommendationAction(goalId: string): Promise<string> {
+export async function generateGoalRecommendationAction(goalId: string): Promise<string | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const service = createServiceRoleClient();
-  const credentials = await getOpenRouterCredentials(service, workspaceId);
-  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder generar recomendaciones con IA.");
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "generar recomendaciones con IA");
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
 
   const goal = await getGoalById(workspaceId, goalId);
-  if (!goal) throw new Error("Objetivo no encontrado.");
+  if (!goal) return { error: "Objetivo no encontrado." };
   const currentValue = await computeGoalMetricValue(workspaceId, goal.memberId, goal.metricKey, goal.periodStart, goal.periodEnd);
   const projection = computeGoalProjection(currentValue, goal.targetValue, goal.periodStart, goal.periodEnd);
 
-  return generateGoalRecommendation(credentials.apiKey, {
+  return generateGoalRecommendation(apiKey, {
     goalName: goal.name,
     metricKey: goal.metricKey,
     currentValue,

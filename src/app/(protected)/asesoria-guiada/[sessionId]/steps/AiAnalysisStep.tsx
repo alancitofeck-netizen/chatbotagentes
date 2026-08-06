@@ -21,7 +21,13 @@ export function AiAnalysisStep({
   function handleAnalyze() {
     setAnalyzing(true);
     analyzeAdvisorySessionAction(sessionId)
-      .then(onAnalyzed)
+      .then((result) => {
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
+        onAnalyzed(result);
+      })
       .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo analizar la asesoría."))
       .finally(() => setAnalyzing(false));
   }

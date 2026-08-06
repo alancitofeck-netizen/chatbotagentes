@@ -42,6 +42,33 @@ export async function getOpenRouterCredentials(
   return { apiKey: row.api_key };
 }
 
+/**
+ * Wrapper around getOpenRouterCredentials for every AI Server Action in the
+ * app — returns the "no está conectado" case as DATA instead of throwing.
+ *
+ * Root cause (found via production logs after agents reported every AI
+ * feature crashing for them while it worked for the owner): every agent
+ * gets their OWN freshly-provisioned workspace with no OpenRouter connected
+ * yet (provision-workspace.ts never seeds it, by design — it's a per-tenant
+ * credential). The previous `if (!credentials) throw new Error(...)` guard,
+ * present at the top of every one of these actions, doesn't reliably
+ * survive the Server Action boundary in this app's production build — some
+ * throws (confirmed live for extractPolicyFromPdfAction) surface to the
+ * client as an opaque "Server Components render" crash instead of a
+ * rejected promise the caller's own try/catch can show as a toast (same
+ * class of issue already documented in agentRuntime.ts's SandboxTurnResult
+ * — "a thrown Error crossing the Server Action boundary was observed to
+ * surface... as a generic redacted message"). Returning the error as data
+ * sidesteps it entirely, same fix already proven there.
+ */
+export type OpenRouterKeyResult = { ok: true; apiKey: string } | { ok: false; error: string };
+
+export async function resolveOpenRouterApiKey(supabase: SupabaseClient, workspaceId: string, featureLabel: string): Promise<OpenRouterKeyResult> {
+  const credentials = await getOpenRouterCredentials(supabase, workspaceId);
+  if (!credentials) return { ok: false, error: `Conectá OpenRouter primero (Perfil → Integraciones) para poder ${featureLabel}.` };
+  return { ok: true, apiKey: credentials.apiKey };
+}
+
 export interface OpenRouterMessage {
   role: "system" | "user" | "assistant" | "tool";
   content: string | null;

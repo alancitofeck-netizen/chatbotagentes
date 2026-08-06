@@ -36,7 +36,13 @@ export function CollectionsPriorityView({ onOpen }: { onOpen: (paymentId: string
     setGeneratingFor(item.id);
     setMessageFor(null);
     generateCollectionMessageAction(item.id, channel)
-      .then((text) => setMessageFor({ id: item.id, channel, text }))
+      .then((result) => {
+        if (typeof result !== "string") {
+          toast.error(result.error);
+          return;
+        }
+        setMessageFor({ id: item.id, channel, text: result });
+      })
       .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo generar el mensaje."))
       .finally(() => setGeneratingFor(null));
   }

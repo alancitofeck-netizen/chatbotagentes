@@ -40,8 +40,12 @@ export function IaStep({
     setMessageIndex(0);
     setGenerating(true);
     try {
-      const { aiContent, slides } = await generatePresentationAiContentAction(presentationId);
-      onGenerated(aiContent, slides);
+      const result = await generatePresentationAiContentAction(presentationId);
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      onGenerated(result.aiContent, result.slides);
       toast.success("Contenido generado con IA.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo generar el contenido.");

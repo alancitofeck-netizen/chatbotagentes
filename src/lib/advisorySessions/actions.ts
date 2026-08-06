@@ -8,7 +8,7 @@ import { logActivity } from "@/lib/activity/log";
 import { findOrCreateContact } from "@/lib/contacts/match";
 import { addContactNote } from "@/lib/contacts/actions";
 import { createTask } from "@/lib/tasks/actions";
-import { getOpenRouterCredentials } from "@/lib/integrations/openrouter";
+import { resolveOpenRouterApiKey } from "@/lib/integrations/openrouter";
 import {
   getAdvisorySessionList,
   getAdvisorySessionById,
@@ -113,16 +113,17 @@ export async function updateAdvisorySessionStepAction(sessionId: string, patch: 
   if (error) throw new Error("No se pudo guardar.");
 }
 
-export async function analyzeAdvisorySessionAction(sessionId: string): Promise<AdvisorySessionAnalysis> {
+export async function analyzeAdvisorySessionAction(sessionId: string): Promise<AdvisorySessionAnalysis | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const service = createServiceRoleClient();
-  const credentials = await getOpenRouterCredentials(service, workspaceId);
-  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder analizar la asesoría con IA.");
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "analizar la asesoría con IA");
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
 
   const session = await getAdvisorySessionById(workspaceId, sessionId);
-  if (!session) throw new Error("Asesoría no encontrada.");
+  if (!session) return { error: "Asesoría no encontrada." };
 
-  const analysis = await analyzeAdvisorySessionWithAI(credentials.apiKey, session);
+  const analysis = await analyzeAdvisorySessionWithAI(apiKey, session);
 
   const supabase = await createClient();
   await supabase

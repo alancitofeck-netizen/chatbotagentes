@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
-import { getOpenRouterCredentials, complete } from "@/lib/integrations/openrouter";
+import { resolveOpenRouterApiKey, complete, type OpenRouterKeyResult } from "@/lib/integrations/openrouter";
 import { runAssistantTurn, narrateToolResult, type AssistantTurnResult } from "@/lib/assistant/runtime";
 import { ASSISTANT_TOOL_BY_KEY } from "@/lib/assistant/tools/registry";
 import type { AssistantToolContext } from "@/lib/assistant/tools/shared";
@@ -14,11 +14,14 @@ function revalidateAssistant() {
   revalidatePath("/asistente");
 }
 
-async function requireApiKey(workspaceId: string): Promise<string> {
+/** Ver la nota en resolveOpenRouterApiKey (openrouter.ts) — devuelve el
+ * error como dato en vez de lanzar, porque un throw acá no llegaba de
+ * forma confiable al catch del cliente en producción (causa real del bug
+ * "funciona para el owner pero no para agentes": cada agente tiene su
+ * propio workspace recién creado, sin OpenRouter conectado todavía). */
+async function requireApiKey(workspaceId: string): Promise<OpenRouterKeyResult> {
   const service = createServiceRoleClient();
-  const credentials = await getOpenRouterCredentials(service, workspaceId);
-  if (!credentials) throw new Error("Conectá OpenRouter primero (Perfil → Integraciones) para poder usar el Asistente IA.");
-  return credentials.apiKey;
+  return resolveOpenRouterApiKey(service, workspaceId, "usar el Asistente IA");
 }
 
 export interface AssistantMessageView {
@@ -80,17 +83,19 @@ export async function getPendingToolCallsAction(toolCallIds: string[]): Promise<
   }));
 }
 
-export async function sendAssistantMessageAction(conversationId: string, text: string): Promise<AssistantTurnResult> {
+export async function sendAssistantMessageAction(conversationId: string, text: string): Promise<AssistantTurnResult | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const memberId = await getCurrentMemberId(workspaceId);
-  if (!memberId) throw new Error("No se pudo resolver tu usuario en este workspace.");
-  if (!text.trim()) throw new Error("Escribí un mensaje.");
+  if (!memberId) return { error: "No se pudo resolver tu usuario en este workspace." };
+  if (!text.trim()) return { error: "Escribí un mensaje." };
 
-  const apiKey = await requireApiKey(workspaceId);
+  const credentials = await requireApiKey(workspaceId);
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
   const supabase = await createClient();
 
   const { data: conversation } = await supabase.from("assistant_conversations").select("id").eq("id", conversationId).eq("workspace_id", workspaceId).eq("member_id", memberId).maybeSingle();
-  if (!conversation) throw new Error("Conversación no encontrada.");
+  if (!conversation) return { error: "Conversación no encontrada." };
 
   const result = await runAssistantTurn({ supabase, workspaceId, memberId, conversationId, apiKey, userText: text.trim() });
   revalidateAssistant();
@@ -98,37 +103,59 @@ export async function sendAssistantMessageAction(conversationId: string, text: s
 }
 
 /** El usuario tocó "Confirmar" en la tarjeta de una acción propuesta — recién
- * acá se ejecuta el handler de verdad (nunca durante el turno del modelo). */
-export async function confirmToolCallAction(toolCallId: string): Promise<{ reply: string }> {
+ * acá se ejecuta el handler de verdad (nunca durante el turno del modelo).
+ *
+ * La ejecución del handler y la narración del resultado están en try/catch
+ * separados a propósito: si la acción real (crear tarea, registrar un
+ * pago, etc.) ya se ejecutó bien pero la narración con IA falla después
+ * (ej. sin OpenRouter conectado), el usuario tiene que enterarse de que SÍ
+ * se hizo — no reportar "no pude completarlo" sobre algo que ya pasó. */
+export async function confirmToolCallAction(toolCallId: string): Promise<{ reply: string } | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
   const memberId = await getCurrentMemberId(workspaceId);
-  if (!memberId) throw new Error("No se pudo resolver tu usuario en este workspace.");
+  if (!memberId) return { error: "No se pudo resolver tu usuario en este workspace." };
   const supabase = await createClient();
 
   const { data: row } = await supabase.from("assistant_tool_calls").select("*").eq("id", toolCallId).eq("workspace_id", workspaceId).eq("member_id", memberId).maybeSingle();
-  if (!row) throw new Error("Acción no encontrada.");
-  if (row.status !== "proposed") throw new Error("Esta acción ya se resolvió.");
+  if (!row) return { error: "Acción no encontrada." };
+  if (row.status !== "proposed") return { error: "Esta acción ya se resolvió." };
 
   const toolDef = ASSISTANT_TOOL_BY_KEY.get(row.tool_key as string);
-  if (!toolDef) throw new Error("Herramienta desconocida.");
+  if (!toolDef) return { error: "Herramienta desconocida." };
 
   await supabase.from("assistant_tool_calls").update({ status: "confirmed" }).eq("id", toolCallId);
 
   const toolCtx: AssistantToolContext = { supabase, workspaceId, memberId };
   const args = (row.arguments as Record<string, unknown>) ?? {};
 
-  let reply: string;
+  let result: unknown;
   try {
-    const result = await toolDef.handler(args, toolCtx);
+    result = await toolDef.handler(args, toolCtx);
     await supabase.from("assistant_tool_calls").update({ status: "executed", result, executed_at: new Date().toISOString() }).eq("id", toolCallId);
     await supabase.from("audit_log").insert({ workspace_id: workspaceId, actor_type: "ai", actor_id: memberId, action: `assistant_tool.${row.tool_key}`, entity_type: "assistant_tool_call", entity_id: toolCallId, metadata: { arguments: args, result } });
-
-    const apiKey = await requireApiKey(workspaceId);
-    reply = await narrateToolResult(apiKey, row.tool_key as string, args, result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "No se pudo completar la acción.";
     await supabase.from("assistant_tool_calls").update({ status: "failed", error: message }).eq("id", toolCallId);
-    reply = `No pude completarlo: ${message}`;
+    const reply = `No pude completarlo: ${message}`;
+    await supabase.from("assistant_messages").insert({ conversation_id: row.conversation_id, role: "assistant", content: reply });
+    await supabase.from("assistant_conversations").update({ updated_at: new Date().toISOString() }).eq("id", row.conversation_id as string);
+    revalidateAssistant();
+    return { reply };
+  }
+
+  // La acción ya se ejecutó — desde acá, cualquier problema (sin OpenRouter,
+  // fallo del modelo) solo afecta la REDACCIÓN, nunca se reporta como que
+  // la acción falló.
+  let reply: string;
+  const credentialsForNarration = await requireApiKey(workspaceId);
+  if (credentialsForNarration.ok) {
+    try {
+      reply = await narrateToolResult(credentialsForNarration.apiKey, row.tool_key as string, args, result);
+    } catch {
+      reply = "Listo, ya está hecho.";
+    }
+  } else {
+    reply = "Listo, ya está hecho.";
   }
 
   await supabase.from("assistant_messages").insert({ conversation_id: row.conversation_id, role: "assistant", content: reply });
@@ -179,9 +206,11 @@ export async function getAssistantDashboardAction(): Promise<AssistantDashboard>
 /** "Recomendaciones automáticas" — bajo demanda (botón), nunca automático:
  * narra en texto las prioridades ya calculadas de forma determinística, sin
  * agregar ningún número nuevo. */
-export async function generateRecommendationsAction(): Promise<string> {
+export async function generateRecommendationsAction(): Promise<string | { error: string }> {
   const { workspaceId } = await requireActiveWorkspace();
-  const apiKey = await requireApiKey(workspaceId);
+  const credentials = await requireApiKey(workspaceId);
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
   const priorities = await getPriorityItems(workspaceId);
 
   if (priorities.length === 0) return "No hay nada urgente ahora mismo — buen momento para prospectar clientes nuevos.";
