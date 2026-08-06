@@ -18,12 +18,29 @@ export interface OpenRouterCredentials {
 }
 
 /**
- * Resolves a workspace's own OpenRouter API key from Supabase Vault via
- * `public.get_openrouter_credentials` (SECURITY DEFINER,
- * supabase/migrations/0021_openrouter_integration_vault.sql), whose EXECUTE
- * grant is restricted to `service_role` — `supabase` here MUST be a
- * `createServiceRoleClient()` instance, same rule as getYCloudCredentials.
- * Never forward `apiKey` to the browser or log it.
+ * Resolves the OpenRouter API key to use for a workspace's AI calls —
+ * checks the workspace's OWN connection first (Supabase Vault via
+ * `public.get_openrouter_credentials`, SECURITY DEFINER, supabase/
+ * migrations/0021_openrouter_integration_vault.sql), and falls back to a
+ * platform-wide key (`OPENROUTER_API_KEY` env var) if the workspace never
+ * connected one.
+ *
+ * Deliberate deviation from docs/blueprint/08-integrations.md's original
+ * "per-workspace only, never a shared env var" stance — confirmed with the
+ * user after flagging the tradeoff explicitly: every AI feature is meant to
+ * work out of the box for every workspace (including a brand-new
+ * self-service signup's own freshly-provisioned workspace, which has no
+ * connection yet), not gated behind each tenant bringing their own
+ * OpenRouter account. The real cost consequence — every workspace without
+ * its own key draws from the SAME shared credit balance, with no per-tenant
+ * hard limit at the provider level (only this app's own `usage_events`
+ * table tracks it) — was disclosed and accepted, not silently assumed away.
+ * A workspace can still opt out of the shared pool by connecting its own
+ * key in Perfil → Integraciones, which always takes priority.
+ *
+ * `supabase` here MUST be a `createServiceRoleClient()` instance (the RPC's
+ * EXECUTE grant is restricted to `service_role`, same rule as
+ * getYCloudCredentials). Never forward `apiKey` to the browser or log it.
  */
 export async function getOpenRouterCredentials(
   supabase: SupabaseClient,
@@ -33,13 +50,13 @@ export async function getOpenRouterCredentials(
 
   if (error) {
     console.error(`[openrouter] failed to resolve credentials for workspace ${workspaceId}:`, error);
-    return null;
+  } else {
+    const row = data as { api_key: string } | null;
+    if (row?.api_key) return { apiKey: row.api_key };
   }
 
-  const row = data as { api_key: string } | null;
-  if (!row || !row.api_key) return null;
-
-  return { apiKey: row.api_key };
+  if (process.env.OPENROUTER_API_KEY) return { apiKey: process.env.OPENROUTER_API_KEY };
+  return null;
 }
 
 /**

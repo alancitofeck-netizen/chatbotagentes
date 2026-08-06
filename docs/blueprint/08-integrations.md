@@ -6,7 +6,7 @@ Patrón general: cada proveedor se implementa como **adapter** detrás de una in
 - `LLMProvider` (implementación: OpenRouter) — `complete({messages, tools, modelChain})`.
 - `CRMProvider` (implementación: HighLevel) — `upsertContact`, `upsertOpportunity`, `checkAvailability`, `createBooking`, `handleWebhookEvent`.
 
-Credenciales por workspace en `integration_connections` ([02-database.md](02-database.md)), con la clave real en Supabase Vault (`credentials_vault_ref`), nunca en texto plano en la tabla ni en variables de entorno compartidas entre workspaces.
+Credenciales por workspace en `integration_connections` ([02-database.md](02-database.md)), con la clave real en Supabase Vault (`credentials_vault_ref`), nunca en texto plano en la tabla ni en variables de entorno compartidas entre workspaces — **excepto OpenRouter**, que sí tiene un fallback global deliberado (ver más abajo), decisión de producto posterior a este documento.
 
 ---
 
@@ -29,6 +29,7 @@ Credenciales por workspace en `integration_connections` ([02-database.md](02-dat
 - **Tool calling**: formato estilo OpenAI — `tools: [{type:"function", name, description, parameters}]`; el modelo devuelve `function_call` (`id`,`call_id`,`name`,`arguments`); se responde con `function_call_output` (`call_id`,`output`).
 - **Streaming**: soportado.
 - **Rate limits y costos**: gobernados **globalmente por cuenta/saldo de crédito**, no por API key ni de forma nativa por sub-cliente. **Decisión de arquitectura**: esta plataforma debe implementar su **propia capa de métering por workspace** (`usage_events`, [02-database.md](02-database.md)) para facturar y limitar abuso — OpenRouter no aísla el consumo entre los workspaces de esta plataforma.
+- **Fallback global de credencial** (revisión posterior a este documento, `src/lib/integrations/openrouter.ts::getOpenRouterCredentials`): un workspace conecta opcionalmente su propia key desde Perfil → Integraciones (Vault, como el resto de esta sección) — si no lo hace, cae a `OPENROUTER_API_KEY` (env var de la plataforma), para que ninguna función de IA quede bloqueada solo por no haber conectado nada. Trade-off aceptado explícitamente con el usuario: sin key propia, un workspace consume del mismo saldo compartido que todos los demás sin ella, sin límite duro por tenant a nivel de OpenRouter (solo lo que `usage_events` mida). Un workspace que sí conecta su propia key queda aislado normalmente, como documenta el resto de esta sección.
 - **⚠️ A verificar en implementación**: nombre exacto del header de atribución de app (fuentes consistentes en `HTTP-Referer`, inconsistentes en el segundo header — verificar contra la documentación vigente al implementar, no asumir el nombre exacto sin confirmarlo).
 - **Resiliencia** ([12-security-audit.md](12-security-audit.md) #12, #15): además del fallback de `models` (nivel de modelo/proveedor LLM, ya cubierto arriba), el adapter envuelve la llamada con su propio reintento (backoff + jitter) para errores de red/timeout de OpenRouter mismo. Si se agotan todos los modelos de la cadena de fallback **y** los reintentos propios, la conversación se degrada a `pending_human` en vez de fallar sin respuesta (ver [05-ai-engine.md](05-ai-engine.md), "Degradación por fallo o cuota").
 
