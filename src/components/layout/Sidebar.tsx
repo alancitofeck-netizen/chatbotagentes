@@ -20,6 +20,7 @@ import {
   PinOff,
   ShieldCheck,
   Sparkles,
+  Trophy,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
@@ -118,6 +119,7 @@ export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
     },
     { label: "Calendario", href: "/calendar", icon: CalendarDays, category: "Operación" },
     { label: "Cobranza", href: "/cobranza", icon: CircleDollarSign, category: "Operación", comingSoon: !enabledModules.has("collections") },
+    { label: "Metas y Bonos", href: "/metas", icon: Trophy, category: "Operación", comingSoon: !enabledModules.has("goals") },
     { label: "Tareas", href: "/tasks", icon: ListTodo, category: "Operación", comingSoon: !enabledModules.has("tasks") },
     { label: "Documentos", href: "/documents", icon: Folder, category: "Operación" },
     { label: "KPIs", href: "/kpis", icon: BarChart3, category: "Inteligencia" },

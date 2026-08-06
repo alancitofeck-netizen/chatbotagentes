@@ -13,6 +13,7 @@ const MODULE_KEYS = [
   "collections",
   "presentations",
   "policy_extraction",
+  "goals",
 ] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 

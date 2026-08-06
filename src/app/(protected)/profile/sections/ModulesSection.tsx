@@ -18,6 +18,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   advisory_sessions: { name: "Asesoría Guiada", description: "Asistente interactivo paso a paso para acompañar al asesor durante la reunión con el cliente." },
   collections: { name: "Cobranza", description: "Centro financiero: pagos, recibos, vencimientos, renovaciones y comisiones de toda la cartera." },
   policy_extraction: { name: "Extracción IA", description: "Subí el PDF de una póliza y la IA completa los datos clave listos para guardar en Pólizas." },
+  goals: { name: "Metas y Bonificaciones", description: "Objetivos de producción, ranking entre asesores, logros y proyecciones de cumplimiento." },
 };
 
 export function ModulesSection({
