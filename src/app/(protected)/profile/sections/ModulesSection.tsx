@@ -20,6 +20,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   policy_extraction: { name: "Extracción IA", description: "Subí el PDF de una póliza y la IA completa los datos clave listos para guardar en Pólizas." },
   goals: { name: "Metas y Bonificaciones", description: "Objetivos de producción, ranking entre asesores, logros y proyecciones de cumplimiento." },
   ai_assistant: { name: "Asistente IA", description: "Copiloto in-app: consultá y ejecutá acciones en el CRM por chat, con tarjetas proactivas de prioridades y alertas." },
+  insurance_providers: { name: "Conexión con Aseguradoras", description: "Centro de integraciones: sincronizá tu cartera cargando los exports de cada aseguradora." },
 };
 
 export function ModulesSection({

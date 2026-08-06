@@ -107,6 +107,11 @@ export async function importPolicyRows(
   rows: Record<string, string>[],
   mapping: Record<string, string | null>,
   defaultOwnerId: string | null,
+  /** Cuando el import viene de Conexión con Aseguradoras (carga manual) en
+   * vez del importador genérico de Pólizas — se estampa en cada póliza
+   * creada para que "pólizas sincronizadas" en esa tarjeta sea un COUNT
+   * real, no un número aparte a mantener. */
+  insuranceConnectionId: string | null = null,
 ): Promise<PolicyImportResult> {
   const supabase = await createClient();
   const service = createServiceRoleClient();
@@ -164,6 +169,7 @@ export async function importPolicyRows(
           payment_frequency: field(row, "paymentFrequency")?.trim() || null,
           commission_amount: normalizeNumber(field(row, "commissionAmount")),
           source: "import",
+          insurance_connection_id: insuranceConnectionId,
         })
         .select("id")
         .single();
