@@ -86,7 +86,11 @@ const EXTRACTION_TOOL: OpenRouterToolDef = {
         startDate: { type: ["string", "null"], description: "Formato YYYY-MM-DD" },
         endDate: { type: ["string", "null"], description: "Formato YYYY-MM-DD" },
         premium: { type: ["number", "null"] },
-        premiumCurrency: { type: ["string", "null"], description: "Ej. USD, ARS" },
+        premiumCurrency: {
+          type: ["string", "null"],
+          description:
+            "Código ISO 4217 de 3 letras (USD, ARS, MXN, etc.) — NUNCA una abreviatura local como 'M.N.' o un símbolo como '$'. Si el PDF dice 'M.N.' o 'moneda nacional', inferí el código ISO del país de la póliza (ej. México → MXN).",
+        },
         commissionAmount: { type: ["number", "null"] },
         paymentFrequency: { type: ["string", "null"], enum: ["mensual", "trimestral", "semestral", "anual", "unico", null] },
         sumInsured: { type: ["number", "null"] },
