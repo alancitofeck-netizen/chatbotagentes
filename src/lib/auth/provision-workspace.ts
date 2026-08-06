@@ -22,8 +22,9 @@ function slugify(base: string) {
  * signup only ever administers their own Workspace as an agent (per the
  * corrected architecture: no automatic Owner assignment, ever). CRM,
  * Asesores, Mini Apps, Tareas, Pólizas (+ Posibles Pólizas, its own
- * separate module_key), Cobranza and Asesoría Guiada are all enabled
- * immediately, not left for the new agent to toggle — module activation is
+ * separate module_key), Cobranza, Asesoría Guiada, and Extracción IA
+ * (policy_extraction) are all enabled immediately, not left for the new
+ * agent to toggle — module activation is
  * owner/admin-only (requireManagerRole, src/lib/settings/actions.ts), and a
  * solo agent-only workspace has no owner/admin member who could ever turn
  * them on otherwise.
@@ -76,6 +77,7 @@ export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: s
     { workspace_id: workspace.id, module_key: "insurance_prospects", enabled: true },
     { workspace_id: workspace.id, module_key: "collections", enabled: true },
     { workspace_id: workspace.id, module_key: "advisory_sessions", enabled: true },
+    { workspace_id: workspace.id, module_key: "policy_extraction", enabled: true },
   ]);
 
   if (modulesError) {

@@ -55,6 +55,13 @@ export interface ExtractedPolicyData {
   // Específicos por tipo — solo se completan los relevantes al insuranceType detectado.
   auto: { make: string | null; model: string | null; year: number | null; plate: string | null; vin: string | null; engine: string | null } | null;
   hogar: { address: string | null; squareMeters: number | null; propertyType: string | null } | null;
+  /** Nombres de campos (claves de ExtractedPolicyData) que el propio modelo
+   * marcó como ambiguos/poco legibles/inferidos en vez de leídos
+   * directamente del texto — no es un puntaje de precisión, es la
+   * autoevaluación cualitativa del modelo sobre lo que acaba de leer, misma
+   * idea que un corrector humano señalando "revisá esto". Vacío si no marcó
+   * ninguno. */
+  lowConfidenceFields: string[];
 }
 
 const EXTRACTION_TOOL: OpenRouterToolDef = {
@@ -127,8 +134,14 @@ const EXTRACTION_TOOL: OpenRouterToolDef = {
             propertyType: { type: ["string", "null"] },
           },
         },
+        lowConfidenceFields: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Nombres de campos (ej. 'premium', 'endDate') que llenaste pero no estás seguro de haber leído bien — texto borroso/ambiguo, o un valor inferido en vez de leído directamente. Vacío si estás seguro de todos.",
+        },
       },
-      required: ["insuranceType", "coverages", "beneficiaries"],
+      required: ["insuranceType", "coverages", "beneficiaries", "lowConfidenceFields"],
     },
   },
 };
@@ -152,7 +165,7 @@ export async function extractPolicyDataWithAI(apiKey: string, pdfText: string): 
       {
         role: "system",
         content:
-          "Sos un asistente experto en pólizas de seguro para brokers en Argentina/LatAm. Leé el texto de la póliza y llamá a extract_policy_data con TODOS los datos que puedas identificar. Si un dato no aparece en el texto, dejalo en null — nunca inventes valores. Las fechas siempre en formato YYYY-MM-DD.",
+          "Sos un asistente experto en pólizas de seguro para brokers en Argentina/LatAm. Leé el texto de la póliza y llamá a extract_policy_data con TODOS los datos que puedas identificar. Si un dato no aparece en el texto, dejalo en null — nunca inventes valores. Las fechas siempre en formato YYYY-MM-DD. En lowConfidenceFields listá el nombre de cada campo que llenaste pero del que no estás seguro (texto ambiguo, borroso, o un valor que tuviste que inferir en vez de leer directamente) — sé honesto, no lo dejes vacío solo por completar.",
       },
       { role: "user", content: `Texto de la póliza:\n\n${truncated}` },
     ],
@@ -192,5 +205,6 @@ export async function extractPolicyDataWithAI(apiKey: string, pdfText: string): 
     beneficiaries: parsed.beneficiaries ?? [],
     auto: parsed.auto ?? null,
     hogar: parsed.hogar ?? null,
+    lowConfidenceFields: parsed.lowConfidenceFields ?? [],
   };
 }
