@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   AppWindow,
   BarChart3,
+  Bot,
   CalendarDays,
   ClipboardList,
   CircleDollarSign,
@@ -103,6 +104,7 @@ export interface NavItem {
 export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
   return [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, category: "Principal" },
+    { label: "Asistente IA", href: "/asistente", icon: Bot, category: "Principal", isAI: true, comingSoon: !enabledModules.has("ai_assistant") },
     { label: "Inbox", href: "/inbox", icon: Inbox, category: "Principal" },
     { label: "CRM", href: "/crm", icon: Kanban, category: "Clientes", comingSoon: !enabledModules.has("crm") },
     { label: "Prospectos", href: "/advisors", icon: ShieldCheck, category: "Clientes", comingSoon: !enabledModules.has("advisors") },

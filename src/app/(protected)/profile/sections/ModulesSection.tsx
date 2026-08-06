@@ -19,6 +19,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   collections: { name: "Cobranza", description: "Centro financiero: pagos, recibos, vencimientos, renovaciones y comisiones de toda la cartera." },
   policy_extraction: { name: "Extracción IA", description: "Subí el PDF de una póliza y la IA completa los datos clave listos para guardar en Pólizas." },
   goals: { name: "Metas y Bonificaciones", description: "Objetivos de producción, ranking entre asesores, logros y proyecciones de cumplimiento." },
+  ai_assistant: { name: "Asistente IA", description: "Copiloto in-app: consultá y ejecutá acciones en el CRM por chat, con tarjetas proactivas de prioridades y alertas." },
 };
 
 export function ModulesSection({

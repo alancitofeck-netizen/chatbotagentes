@@ -79,6 +79,7 @@ export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: s
     { workspace_id: workspace.id, module_key: "advisory_sessions", enabled: true },
     { workspace_id: workspace.id, module_key: "policy_extraction", enabled: true },
     { workspace_id: workspace.id, module_key: "goals", enabled: true },
+    { workspace_id: workspace.id, module_key: "ai_assistant", enabled: true },
   ]);
 
   if (modulesError) {

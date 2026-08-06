@@ -14,6 +14,7 @@ const MODULE_KEYS = [
   "presentations",
   "policy_extraction",
   "goals",
+  "ai_assistant",
 ] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
