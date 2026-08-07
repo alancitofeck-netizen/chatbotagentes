@@ -62,7 +62,10 @@ export function AvatarUploadDialog({
   const onCropComplete = useCallback((_area: Area, areaPixels: Area) => setCroppedArea(areaPixels), []);
 
   function reset() {
-    setImageSrc(null);
+    setImageSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedArea(null);
@@ -86,9 +89,9 @@ export function AvatarUploadDialog({
       toast.error("La imagen es demasiado grande (máximo 8 MB).");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setImageSrc(reader.result as string);
-    reader.readAsDataURL(file);
+    // blob: URL en vez de FileReader.readAsDataURL — evita el límite de
+    // WebKit para data: URIs grandes (fotos de cámara) en img.src/Cropper.
+    setImageSrc(URL.createObjectURL(file));
   }
 
   async function handleSave() {

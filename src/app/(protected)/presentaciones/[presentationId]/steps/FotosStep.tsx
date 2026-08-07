@@ -32,23 +32,26 @@ export function FotosStep({
   const [replacingPhotoId, setReplacingPhotoId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  function readAsDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function handleFile(file: File, replacingId: string | null) {
+  // blob: URL en vez de FileReader.readAsDataURL — con fotos de cámara de
+  // iPhone (varios MB) el data: URI en base64 resultante supera el límite
+  // interno de WebKit para el atributo `src`/`img.src` y tira
+  // "The string did not match the expected pattern.". blob: no tiene ese
+  // límite y es el mismo patrón ya usado en GroupFormDialog/CrmBoardShell.
+  function handleFile(file: File, replacingId: string | null) {
     if (photos.length >= MAX_PHOTOS && !replacingId) {
       toast.error(`Máximo ${MAX_PHOTOS} fotos.`);
       return;
     }
-    const dataUrl = await readAsDataUrl(file);
     setReplacingPhotoId(replacingId);
-    setPendingImageSrc(dataUrl);
+    setPendingImageSrc(URL.createObjectURL(file));
+  }
+
+  function closePendingImage() {
+    setPendingImageSrc((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setReplacingPhotoId(null);
   }
 
   async function handleCropped(blob: Blob) {
@@ -73,8 +76,7 @@ export function FotosStep({
         };
         onChange([...photos, newPhoto]);
       }
-      setPendingImageSrc(null);
-      setReplacingPhotoId(null);
+      closePendingImage();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo subir la foto.");
     } finally {
@@ -148,7 +150,7 @@ export function FotosStep({
               e.preventDefault();
               setIsDragOver(false);
               const file = e.dataTransfer.files?.[0];
-              if (file) void handleFile(file, null);
+              if (file) handleFile(file, null);
             }}
             className={`flex aspect-[4/5] cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-3 text-center transition-colors ${
               isDragOver ? "border-accent-500 bg-accent-500/5" : "border-border-default bg-surface-2 hover:border-accent-300"
@@ -168,7 +170,7 @@ export function FotosStep({
         onChange={(e) => {
           const file = e.target.files?.[0];
           e.target.value = "";
-          if (file) void handleFile(file, replacingPhotoId);
+          if (file) handleFile(file, replacingPhotoId);
         }}
       />
 
@@ -197,10 +199,7 @@ export function FotosStep({
       {pendingImageSrc && (
         <PhotoCropDialog
           imageSrc={pendingImageSrc}
-          onCancel={() => {
-            setPendingImageSrc(null);
-            setReplacingPhotoId(null);
-          }}
+          onCancel={closePendingImage}
           onCropped={handleCropped}
         />
       )}
