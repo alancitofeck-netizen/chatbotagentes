@@ -256,6 +256,17 @@ export async function moveDeal(pipelineItemId: string, stageId: string, position
     .eq("id", item.item_id)
     .eq("workspace_id", workspaceId);
 
+  // Mismo criterio que moveOpportunityCard (src/lib/crm/actions.ts) — se
+  // completa una sola vez, nunca se pisa (0113_dashboard_home_metrics.sql).
+  if (destinationStage?.is_won) {
+    await supabase
+      .from("opportunities")
+      .update({ closed_at: new Date().toISOString() })
+      .eq("id", item.item_id)
+      .eq("workspace_id", workspaceId)
+      .is("closed_at", null);
+  }
+
   revalidatePath("/advisors");
 }
 

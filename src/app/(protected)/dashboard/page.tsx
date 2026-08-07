@@ -24,6 +24,8 @@ import { evaluateInsights } from "@/lib/insights/engine";
 import { buildExecutiveSummary, buildTrendItems, buildRecommendedActions, deriveStaleOpportunities } from "@/lib/insights/summary";
 import { computeAdvisorStatus } from "@/lib/insights/advisorStatus";
 import type { EngineInput } from "@/lib/insights/types";
+import { getDashboardHome } from "@/lib/dashboard/homeQueries";
+import { DashboardHomeSection } from "./DashboardHomeSection";
 import { KpiCards } from "./KpiCards";
 import { ActivityChart } from "./ActivityChart";
 import { RecentConversations } from "./RecentConversations";
@@ -94,6 +96,9 @@ export default async function DashboardPage() {
     isOwner ? getAgentList(workspaceId) : Promise.resolve([]),
   ]);
   const firstName = primaryUserName.split(" ")[0];
+  // "Semana" es el tab default (mismo criterio que la referencia) — el resto
+  // de los períodos se piden client-side al cambiar (DashboardHomeSection).
+  const home = await getDashboardHome(workspaceId, firstName, "week");
 
   const staleOpportunities = deriveStaleOpportunities(crmBoard);
   const engineInput: EngineInput = {
@@ -126,7 +131,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <ExecutiveSummary greetingName={firstName} bullets={bullets} health={health} />
+      <DashboardHomeSection firstName={firstName} initialData={home} initialPeriod="week" />
+
+      <ExecutiveSummary bullets={bullets} health={health} />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-[15px] font-semibold text-foreground">Insights prioritarios</h2>

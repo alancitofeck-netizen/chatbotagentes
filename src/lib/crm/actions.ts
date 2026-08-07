@@ -324,6 +324,20 @@ export async function moveOpportunityCard(pipelineItemId: string, stageId: strin
     .eq("id", item.item_id)
     .eq("workspace_id", workspaceId);
 
+  // Se completa una sola vez, la primera vez que entra a una etapa ganada
+  // (0113_dashboard_home_metrics.sql) — el filtro .is("closed_at", null)
+  // hace que un vaivén de etapas nunca lo pise. Alimenta "Tiempo promedio
+  // de cierre" del Dashboard (created_at → closed_at); no se backfillea
+  // nada de lo ya cerrado antes de esta columna, a propósito.
+  if (destinationStage?.is_won) {
+    await supabase
+      .from("opportunities")
+      .update({ closed_at: new Date().toISOString() })
+      .eq("id", item.item_id)
+      .eq("workspace_id", workspaceId)
+      .is("closed_at", null);
+  }
+
   if (item.stage_id !== stageId) {
     await logOpportunityActivity(supabase, workspaceId, item.item_id as string, "opportunity_stage_changed", {
       from_stage: originStage?.name ?? null,

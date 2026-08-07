@@ -1,24 +1,16 @@
 import { Card } from "@/components/ui/Card";
 import type { HealthMeta } from "@/lib/insights/types";
 
-/** The Dashboard's insights-first hero card — a small executive report, not
- * a generic greeting. The one "contrast" (dark) card in the view, per the
- * design doc's "at most one per view" rule for that variant. */
-export function ExecutiveSummary({
-  greetingName,
-  bullets,
-  health,
-}: {
-  greetingName: string;
-  bullets: string[];
-  health: HealthMeta;
-}) {
+/** The Dashboard's AI-insights card — a small executive report. No longer
+ * greets by name itself (DashboardHomeSection's hero above it already does
+ * "Buenos días/tardes/noches, {nombre}" — repeating it here read as two
+ * greetings stacked back to back). The one "contrast" (dark) card in the
+ * view, per the design doc's "at most one per view" rule for that variant. */
+export function ExecutiveSummary({ bullets, health }: { bullets: string[]; health: HealthMeta }) {
   return (
     <Card variant="contrast" className="flex flex-col gap-4">
       <div>
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-balance">
-          {greetingName ? `Buenos días, ${greetingName} 👋` : "Buenos días 👋"}
-        </h1>
+        <h2 className="text-[15px] font-semibold text-balance">Resumen inteligente</h2>
         <p className="mt-1 text-sm text-white/70">Hoy detectamos lo siguiente:</p>
       </div>
 

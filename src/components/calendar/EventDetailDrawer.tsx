@@ -17,6 +17,8 @@ import {
   MessageCircle,
   Copy,
   CalendarRange,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
@@ -26,7 +28,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/toast/toast";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency } from "@/lib/utils/format";
-import { cancelEvent, deleteEvent, createEvent, getEventCrmSummaryAction } from "@/lib/calendar/actions";
+import { cancelEvent, deleteEvent, createEvent, getEventCrmSummaryAction, markBookingAttendanceAction } from "@/lib/calendar/actions";
 import { createTask } from "@/lib/tasks/actions";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import type { ContactCrmSummary } from "@/lib/inbox/queries";
@@ -75,6 +77,7 @@ export function EventDetailDrawer({
   const [isPending, startTransition] = useTransition();
   const meta = EVENT_TYPE_META[event.eventType] ?? EVENT_TYPE_META.other;
   const isCancelled = event.status === "cancelled";
+  const isPast = new Date(event.endTime) < new Date();
   const reminderLabel = REMINDER_OPTIONS.find((o) => o.value === (event.reminderMinutes != null ? String(event.reminderMinutes) : ""))?.label;
   const channel = meetingChannel(event.meetingUrl);
 
@@ -84,6 +87,8 @@ export function EventDetailDrawer({
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [creatingTask, setCreatingTask] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [attended, setAttended] = useState(event.attended);
+  const [markingAttendance, setMarkingAttendance] = useState(false);
 
   useEffect(() => {
     if (!event.contactId) {
@@ -105,6 +110,18 @@ export function EventDetailDrawer({
       onChanged();
       onClose();
     });
+  }
+
+  function handleMarkAttendance(value: boolean) {
+    setMarkingAttendance(true);
+    markBookingAttendanceAction(event.id, value)
+      .then(() => {
+        setAttended(value);
+        toast.success(value ? "Marcado como asistió." : "Marcado como no asistió.");
+        onChanged();
+      })
+      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo registrar la asistencia."))
+      .finally(() => setMarkingAttendance(false));
   }
 
   function handleDelete() {
@@ -183,6 +200,49 @@ export function EventDetailDrawer({
           )}
           {channel && <span className={`rounded-full ${channel.tint} ${channel.text} px-2.5 py-1 text-xs font-semibold`}>{channel.label}</span>}
         </div>
+
+        {/* Marcar asistencia — solo para reuniones ya pasadas y no
+            canceladas. Alimenta el KPI "Se presentaron" del Dashboard;
+            antes de esto nada escribía este dato. */}
+        {isPast && !isCancelled && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border-default bg-surface-2 px-3.5 py-3">
+            <p className="text-sm text-foreground">¿El cliente asistió?</p>
+            {attended === null ? (
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  disabled={markingAttendance}
+                  onClick={() => handleMarkAttendance(true)}
+                  className="flex items-center gap-1.5 rounded-full bg-success-bg px-3 py-1.5 text-xs font-medium text-success-strong hover:opacity-80 disabled:opacity-40"
+                >
+                  <CheckCircle2 size={13} aria-hidden="true" /> Asistió
+                </button>
+                <button
+                  type="button"
+                  disabled={markingAttendance}
+                  onClick={() => handleMarkAttendance(false)}
+                  className="flex items-center gap-1.5 rounded-full bg-error-bg px-3 py-1.5 text-xs font-medium text-error-strong hover:opacity-80 disabled:opacity-40"
+                >
+                  <XCircle size={13} aria-hidden="true" /> No asistió
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={markingAttendance}
+                onClick={() => handleMarkAttendance(!attended)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium hover:opacity-80 disabled:opacity-40",
+                  attended ? "bg-success-bg text-success-strong" : "bg-error-bg text-error-strong",
+                )}
+                title="Tocar para cambiar"
+              >
+                {attended ? <CheckCircle2 size={13} aria-hidden="true" /> : <XCircle size={13} aria-hidden="true" />}
+                {attended ? "Asistió" : "No asistió"}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Accesos directos — Crear tarea / Enviar WhatsApp / Abrir contacto /
             Abrir CRM / Duplicar / Reprogramar, a pedido explícito. */}

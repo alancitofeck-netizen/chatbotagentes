@@ -22,6 +22,10 @@ export interface CalendarEvent {
   meetingUrl: string | null;
   status: EventStatus;
   provider: EventProvider;
+  /** null = todavía sin marcar (0113_dashboard_home_metrics.sql) — solo lo
+   * escribe markBookingAttendanceAction (calendar/actions.ts). Alimenta el
+   * KPI "Se presentaron" del Dashboard. */
+  attended: boolean | null;
   /** bookings.external_id — the Google Calendar event id once this row has
    * been pushed there (or the origin id if it was imported from Google). */
   externalId: string | null;
@@ -57,6 +61,7 @@ interface EventRow {
   meeting_url: string | null;
   status: string;
   provider: string;
+  attended: boolean | null;
   external_id: string | null;
   reminder_minutes: number | null;
   contact_id: string | null;
@@ -75,7 +80,7 @@ interface EventRow {
 }
 
 const EVENT_SELECT =
-  "id, subject, description, event_type, start_time, end_time, timezone, location, meeting_url, status, provider, external_id, reminder_minutes, contact_id, owner_id, created_by, related_type, related_id, recurrence_rule, recurrence_group_id, created_at, updated_at, contacts(name, company, avatar_url)";
+  "id, subject, description, event_type, start_time, end_time, timezone, location, meeting_url, status, provider, attended, external_id, reminder_minutes, contact_id, owner_id, created_by, related_type, related_id, recurrence_rule, recurrence_group_id, created_at, updated_at, contacts(name, company, avatar_url)";
 
 async function resolveRelatedLabels(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -139,6 +144,7 @@ async function mapEventRows(
       meetingUrl: r.meeting_url,
       status: r.status as EventStatus,
       provider: r.provider as EventProvider,
+      attended: r.attended,
       externalId: r.external_id,
       reminderMinutes: r.reminder_minutes,
       contactId: r.contact_id,

@@ -287,6 +287,27 @@ export async function cancelEvent(eventId: string) {
   revalidateEventPaths();
 }
 
+/** Marca si el contacto asistió o no a una reunión ya pasada — el único
+ * lugar que escribe bookings.attended (0113_dashboard_home_metrics.sql).
+ * Alimenta el KPI "Se presentaron" del Dashboard: antes de esto, ninguna
+ * fila tenía este dato, así que ese % arranca en 0 marcadas y crece con el
+ * uso real, nunca fue "calculado" de datos que no existían. También deja
+ * el evento en status='completed' cuando se marca (asistió o no), porque
+ * marcar asistencia solo tiene sentido para una reunión que ya sucedió. */
+export async function markBookingAttendanceAction(eventId: string, attended: boolean): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({ attended, status: "completed", updated_at: new Date().toISOString() })
+    .eq("id", eventId)
+    .eq("workspace_id", workspaceId);
+  if (error) throw new Error("No se pudo registrar la asistencia.");
+
+  revalidateEventPaths();
+}
+
 /** Real delete (distinct from cancelEvent's soft-cancel) — owner/admin only,
  * enforced by the bookings_delete policy (0017_calendar_events.sql). */
 export async function deleteEvent(eventId: string) {
