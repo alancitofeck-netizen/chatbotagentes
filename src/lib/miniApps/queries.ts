@@ -5,8 +5,16 @@ import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from "@/lib/miniApps/paletteEngine";
 import { templateKeysForCategory, type MiniAppTemplateCategory } from "@/lib/miniApps/templateCatalog";
 import { DEFAULT_LINKED_APP_ICON, type LinkedAppType } from "@/lib/miniApps/linkedAppOptions";
+import {
+  DEFAULT_DIAGNOSTICO_AGENTE,
+  DEFAULT_DIAGNOSTICO_QUESTIONS,
+  DEFAULT_DIAGNOSTICO_LEVELS,
+  type DiagnosticoAgente,
+  type DiagnosticoQuestion,
+  type DiagnosticoLevel,
+} from "@/lib/miniApps/diagnosticoDefaults";
 
-export type MiniAppTemplateKey = "simulador_retiro" | "calculadora_brecha_retiro" | "app_vinculada";
+export type MiniAppTemplateKey = "simulador_retiro" | "calculadora_brecha_retiro" | "app_vinculada" | "diagnostico_financiero";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -52,10 +60,23 @@ export interface LinkedAppConfig {
   assignedAgentName?: string;
 }
 
+/** Config para "Diagnóstico Interactivo Financiero" — ver
+ * diagnosticoDefaults.ts para el shape de cada pieza y el dataset por
+ * defecto. `agente` cubre exactamente los campos que el HTML original
+ * necesitaba hardcodeados en `const AGENTE`; `questions`/`levels` son el
+ * motor del quiz, editables desde el wizard. */
+export interface DiagnosticoFinancieroConfig {
+  agente: DiagnosticoAgente;
+  questions: DiagnosticoQuestion[];
+  levels: DiagnosticoLevel[];
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
   app_vinculada: LinkedAppConfig;
+  diagnostico_financiero: DiagnosticoFinancieroConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -179,6 +200,15 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
       hostingMode: raw.hostingMode === "upload" ? "upload" : "url",
       indexPath: typeof raw.indexPath === "string" ? raw.indexPath : undefined,
       bundleVersion: typeof raw.bundleVersion === "number" ? raw.bundleVersion : undefined,
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "diagnostico_financiero") {
+    const config: DiagnosticoFinancieroConfig = {
+      agente: { ...DEFAULT_DIAGNOSTICO_AGENTE, ...((raw.agente as Partial<DiagnosticoAgente>) ?? {}) },
+      questions: Array.isArray(raw.questions) && raw.questions.length > 0 ? (raw.questions as DiagnosticoQuestion[]) : DEFAULT_DIAGNOSTICO_QUESTIONS,
+      levels: Array.isArray(raw.levels) && raw.levels.length > 0 ? (raw.levels as DiagnosticoLevel[]) : DEFAULT_DIAGNOSTICO_LEVELS,
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];

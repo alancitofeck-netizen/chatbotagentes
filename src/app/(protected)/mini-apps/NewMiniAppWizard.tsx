@@ -12,13 +12,21 @@ import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { createMiniApp, updateMiniAppBranding } from "@/lib/miniApps/actions";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR, isValidHexColor } from "@/lib/miniApps/paletteEngine";
-import type { MiniAppTemplateKey } from "@/lib/miniApps/queries";
+import type { MiniAppTemplateKey, MiniAppFieldConfig, CalculadoraBrechaConfig, DiagnosticoFinancieroConfig } from "@/lib/miniApps/queries";
+import {
+  DEFAULT_DIAGNOSTICO_AGENTE,
+  DEFAULT_DIAGNOSTICO_QUESTIONS,
+  DEFAULT_DIAGNOSTICO_LEVELS,
+  type DiagnosticoQuestion,
+  type DiagnosticoLevel,
+} from "@/lib/miniApps/diagnosticoDefaults";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
 const TEMPLATES = [
   { key: "simulador_retiro", label: "Simulador de Retiro", available: true },
   { key: "calculadora_brecha_retiro", label: "Calculadora de Brecha de Retiro", available: true },
+  { key: "diagnostico_financiero", label: "Diagnóstico Interactivo Financiero", available: true },
   { key: "formulario", label: "Formulario (Próximamente)", available: false },
   { key: "landing", label: "Landing (Próximamente)", available: false },
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
@@ -92,6 +100,51 @@ export function NewMiniAppWizard({
   const [avisoPrivacidadUrl, setAvisoPrivacidadUrl] = useState("");
   const [licenseBadge, setLicenseBadge] = useState("");
 
+  // Paso 2 (Diagnóstico Interactivo Financiero) — campos del objeto AGENTE
+  // que el HTML original tenía hardcodeados; "nombre" se autocompleta al
+  // elegir "Agente asignado" (ver el Select de Paso 2 más abajo) y queda
+  // editable por si se quiere mostrar un nombre distinto.
+  const [diagNombre, setDiagNombre] = useState("");
+  const [diagMarca, setDiagMarca] = useState(DEFAULT_DIAGNOSTICO_AGENTE.marca);
+  const [diagRol, setDiagRol] = useState(DEFAULT_DIAGNOSTICO_AGENTE.rol);
+  const [diagBadge, setDiagBadge] = useState(DEFAULT_DIAGNOSTICO_AGENTE.badge);
+  const [diagTitulo, setDiagTitulo] = useState(DEFAULT_DIAGNOSTICO_AGENTE.titulo);
+  const [diagSubtitulo, setDiagSubtitulo] = useState(DEFAULT_DIAGNOSTICO_AGENTE.subtitulo);
+  const [diagWhatsapp, setDiagWhatsapp] = useState(DEFAULT_DIAGNOSTICO_AGENTE.whatsapp);
+  const [diagCtaUrl, setDiagCtaUrl] = useState(DEFAULT_DIAGNOSTICO_AGENTE.ctaUrl);
+  const [diagWebhookUrl, setDiagWebhookUrl] = useState(DEFAULT_DIAGNOSTICO_AGENTE.webhookUrl);
+
+  // Paso 3 (Diagnóstico Interactivo Financiero) — arranca con el dataset
+  // original completo (diagnosticoDefaults.ts), editable pregunta por
+  // pregunta/nivel por nivel. Los pesos de cada opción (0/1/2/3, en ese
+  // orden) quedan fijos — no se exponen para editar — porque la fórmula de
+  // score original (`maxRaw += 3` por pregunta) asume ese rango exacto; si
+  // se permitieran pesos arbitrarios el score dejaría de coincidir con la
+  // lógica del HTML original.
+  const [diagQuestions, setDiagQuestions] = useState<DiagnosticoQuestion[]>(DEFAULT_DIAGNOSTICO_QUESTIONS);
+  const [diagLevels, setDiagLevels] = useState<DiagnosticoLevel[]>(DEFAULT_DIAGNOSTICO_LEVELS);
+
+  function updateDiagQuestion(i: number, patch: Partial<DiagnosticoQuestion>) {
+    setDiagQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
+  }
+  function updateDiagOption(qi: number, oi: number, text: string) {
+    setDiagQuestions((qs) =>
+      qs.map((q, idx) => (idx === qi ? { ...q, options: q.options.map((o, oidx) => (oidx === oi ? { ...o, t: text } : o)) } : q)),
+    );
+  }
+  function addDiagQuestion() {
+    setDiagQuestions((qs) => [
+      ...qs,
+      { text: "", area: "", options: [{ t: "", w: 0 }, { t: "", w: 1 }, { t: "", w: 2 }, { t: "", w: 3 }] },
+    ]);
+  }
+  function removeDiagQuestion(i: number) {
+    setDiagQuestions((qs) => qs.filter((_, idx) => idx !== i));
+  }
+  function updateDiagLevel(i: number, patch: Partial<DiagnosticoLevel>) {
+    setDiagLevels((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  }
+
   function handleLogoCropped(blob: Blob) {
     setLogoBlob(blob);
     setLogoPreviewUrl(URL.createObjectURL(blob));
@@ -105,14 +158,33 @@ export function NewMiniAppWizard({
     }
     setIsPending(true);
     try {
-      const config =
-        templateKey === "calculadora_brecha_retiro"
-          ? { whatsappAsesor, avisoPrivacidadUrl, licenseBadge }
-          : {
-              annualReturnRatePct,
-              showIngresoActual,
-              fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
-            };
+      let config: MiniAppFieldConfig | CalculadoraBrechaConfig | DiagnosticoFinancieroConfig;
+      if (templateKey === "calculadora_brecha_retiro") {
+        config = { whatsappAsesor, avisoPrivacidadUrl, licenseBadge };
+      } else if (templateKey === "diagnostico_financiero") {
+        config = {
+          agente: {
+            nombre: diagNombre,
+            marca: diagMarca,
+            rol: diagRol,
+            badge: diagBadge,
+            titulo: diagTitulo,
+            subtitulo: diagSubtitulo,
+            whatsapp: diagWhatsapp,
+            ctaUrl: diagCtaUrl,
+            webhookUrl: diagWebhookUrl,
+            time: DEFAULT_DIAGNOSTICO_AGENTE.time,
+          },
+          questions: diagQuestions,
+          levels: diagLevels,
+        };
+      } else {
+        config = {
+          annualReturnRatePct,
+          showIngresoActual,
+          fieldLabels: { edad: labelEdad, edadRetiro: labelEdadRetiro, ahorroMensual: labelAhorroMensual, ingresoActual: labelIngresoActual },
+        };
+      }
       const result = await createMiniApp({
         name,
         description,
@@ -210,7 +282,19 @@ export function NewMiniAppWizard({
           <div className="flex flex-col gap-4">
             <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Simulador de Retiro — Diego Tinoco" />
             <Input label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} />
-            <Select label="Agente asignado" value={assignedAgentId} onChange={(e) => setAssignedAgentId(e.target.value)}>
+            <Select
+              label="Agente asignado"
+              value={assignedAgentId}
+              onChange={(e) => {
+                setAssignedAgentId(e.target.value);
+                // Autocompleta el "nombre a mostrar" del Diagnóstico al elegir
+                // agente — solo si el usuario todavía no lo escribió a mano.
+                if (templateKey === "diagnostico_financiero" && !diagNombre.trim()) {
+                  const m = members.find((x) => x.memberId === e.target.value);
+                  if (m) setDiagNombre(m.fullName);
+                }
+              }}
+            >
               <option value="">Sin asignar</option>
               {members.map((m) => (
                 <option key={m.memberId} value={m.memberId}>
@@ -233,9 +317,50 @@ export function NewMiniAppWizard({
               </div>
             </div>
 
+            {templateKey === "diagnostico_financiero" && (
+              <div className="flex flex-col gap-4">
+                <div className="my-1 h-px bg-border-default" />
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Portada del Diagnóstico</p>
+                <Input label="Nombre a mostrar" value={diagNombre} onChange={(e) => setDiagNombre(e.target.value)} placeholder="Ej. Elvira Sánchez" />
+                <Input label="Marca (opcional)" value={diagMarca} onChange={(e) => setDiagMarca(e.target.value)} placeholder="Ej. Patrimonio Seguro" />
+                <Input label="Rol / subtítulo del agente" value={diagRol} onChange={(e) => setDiagRol(e.target.value)} />
+                <Input label="Etiqueta superior (badge)" value={diagBadge} onChange={(e) => setDiagBadge(e.target.value)} />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">Título (hook)</label>
+                  <textarea
+                    value={diagTitulo}
+                    onChange={(e) => setDiagTitulo(e.target.value)}
+                    rows={2}
+                    className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">Subtítulo</label>
+                  <textarea
+                    value={diagSubtitulo}
+                    onChange={(e) => setDiagSubtitulo(e.target.value)}
+                    rows={2}
+                    className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                  />
+                </div>
+                <Input
+                  label="WhatsApp (solo dígitos, con código de país — vacío oculta el botón)"
+                  value={diagWhatsapp}
+                  onChange={(e) => setDiagWhatsapp(e.target.value)}
+                  placeholder="5215500000000"
+                />
+                <Input label="URL de agenda (Calendly u otro)" value={diagCtaUrl} onChange={(e) => setDiagCtaUrl(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+                <Input label="Webhook opcional (copia del lead)" value={diagWebhookUrl} onChange={(e) => setDiagWebhookUrl(e.target.value)} placeholder="https://..." />
+              </div>
+            )}
+
             {/* Solo estos dos colores — el resto del sistema visual de la
              * página pública se genera solo (paletteEngine.ts), con
-             * contraste WCAG verificado automáticamente. */}
+             * contraste WCAG verificado automáticamente. No aplica a
+             * Diagnóstico: ese tipo tiene su propio CSS autocontenido, sin
+             * ningún efecto de estos selectores. */}
+            {templateKey !== "diagnostico_financiero" && (
+            <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-foreground">Color principal</label>
@@ -288,6 +413,8 @@ export function NewMiniAppWizard({
             </div>
 
             <MiniAppPalettePreview primaryColor={primaryColor} secondaryColor={secondaryColor} />
+            </>
+            )}
 
             <Input
               label="URL donde vive la mini app (opcional)"
@@ -372,12 +499,90 @@ export function NewMiniAppWizard({
           </div>
         )}
 
+        {step === 2 && templateKey === "diagnostico_financiero" && (
+          <div className="flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Preguntas ({diagQuestions.length})</p>
+              <Button type="button" variant="secondary" size="sm" onClick={addDiagQuestion}>
+                + Agregar pregunta
+              </Button>
+            </div>
+            <div className="flex flex-col gap-3">
+              {diagQuestions.map((q, qi) => (
+                <div key={qi} className="flex flex-col gap-2.5 rounded-md border border-border-default bg-surface-2 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="mt-2 shrink-0 text-xs font-semibold text-neutral-400">#{qi + 1}</span>
+                    <div className="flex flex-1 flex-col gap-2">
+                      <Input label="Pregunta" value={q.text} onChange={(e) => updateDiagQuestion(qi, { text: e.target.value })} />
+                      <Input label="Área (agrupa el desglose final)" value={q.area} onChange={(e) => updateDiagQuestion(qi, { area: e.target.value })} />
+                    </div>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => removeDiagQuestion(qi)} disabled={diagQuestions.length <= 1}>
+                      Quitar
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {q.options.map((o, oi) => (
+                      <Input
+                        key={oi}
+                        label={`Opción ${"ABCD"[oi]}`}
+                        value={o.t}
+                        onChange={(e) => updateDiagOption(qi, oi, e.target.value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="my-1 h-px bg-border-default" />
+            <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Niveles de resultado</p>
+            <div className="flex flex-col gap-3">
+              {diagLevels.map((lv, li) => (
+                <div key={li} className="flex flex-col gap-2.5 rounded-md border border-border-default bg-surface-2 p-3">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <Input label="Nombre" value={lv.name} onChange={(e) => updateDiagLevel(li, { name: e.target.value })} />
+                    <Input label="Desde %" type="number" min={0} max={100} value={String(lv.min)} onChange={(e) => updateDiagLevel(li, { min: Number(e.target.value) })} />
+                    <Input label="Hasta %" type="number" min={0} max={100} value={String(lv.max)} onChange={(e) => updateDiagLevel(li, { max: Number(e.target.value) })} />
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium text-foreground">Color</label>
+                      <input type="color" value={lv.color} onChange={(e) => updateDiagLevel(li, { color: e.target.value })} className="h-9 w-full rounded-md border border-border-default" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-foreground">Diagnóstico (texto principal)</label>
+                    <textarea
+                      value={lv.lead}
+                      onChange={(e) => updateDiagLevel(li, { lead: e.target.value })}
+                      rows={2}
+                      className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-foreground">Recomendación</label>
+                    <textarea
+                      value={lv.reco}
+                      onChange={(e) => updateDiagLevel(li, { reco: e.target.value })}
+                      rows={2}
+                      className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="flex flex-col gap-3 rounded-md border border-border-default bg-surface-2 p-4 text-sm">
             <p>
               <strong>{name || "(sin nombre)"}</strong> — {description || "sin descripción"}
             </p>
             {templateKey === "simulador_retiro" && <p className="text-neutral-500">Tasa de rendimiento: {annualReturnRatePct}%</p>}
+            {templateKey === "diagnostico_financiero" && (
+              <p className="text-neutral-500">
+                {diagQuestions.length} preguntas · {diagLevels.length} niveles de resultado
+              </p>
+            )}
             <p className="text-neutral-500">Se va a publicar en tu propia URL de Growth Link al confirmar.</p>
           </div>
         )}

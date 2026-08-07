@@ -17,6 +17,13 @@ import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { LogoCropDialog } from "../LogoCropDialog";
 import { MiniAppPalettePreview } from "../MiniAppPalettePreview";
 import { LINKED_APP_TYPE_OPTIONS, LINKED_APP_ICON_OPTIONS, DEFAULT_LINKED_APP_ICON, type LinkedAppType } from "@/lib/miniApps/linkedAppOptions";
+import {
+  DEFAULT_DIAGNOSTICO_AGENTE,
+  DEFAULT_DIAGNOSTICO_QUESTIONS,
+  DEFAULT_DIAGNOSTICO_LEVELS,
+  type DiagnosticoQuestion,
+  type DiagnosticoLevel,
+} from "@/lib/miniApps/diagnosticoDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -69,6 +76,7 @@ export function ConfiguracionTab({
   const isSimulador = miniApp.templateKey === "simulador_retiro";
   const isCalculadora = miniApp.templateKey === "calculadora_brecha_retiro";
   const isLinkedApp = miniApp.templateKey === "app_vinculada";
+  const isDiagnostico = miniApp.templateKey === "diagnostico_financiero";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -88,6 +96,39 @@ export function ConfiguracionTab({
 
   const [linkedAppType, setLinkedAppType] = useState<LinkedAppType>(isLinkedApp ? miniApp.config.linkedAppType : "otro");
   const [linkedAppIcon, setLinkedAppIcon] = useState(isLinkedApp ? miniApp.config.icon : DEFAULT_LINKED_APP_ICON);
+
+  const [diagNombre, setDiagNombre] = useState(isDiagnostico ? miniApp.config.agente.nombre : "");
+  const [diagMarca, setDiagMarca] = useState(isDiagnostico ? miniApp.config.agente.marca : DEFAULT_DIAGNOSTICO_AGENTE.marca);
+  const [diagRol, setDiagRol] = useState(isDiagnostico ? miniApp.config.agente.rol : DEFAULT_DIAGNOSTICO_AGENTE.rol);
+  const [diagBadge, setDiagBadge] = useState(isDiagnostico ? miniApp.config.agente.badge : DEFAULT_DIAGNOSTICO_AGENTE.badge);
+  const [diagTitulo, setDiagTitulo] = useState(isDiagnostico ? miniApp.config.agente.titulo : DEFAULT_DIAGNOSTICO_AGENTE.titulo);
+  const [diagSubtitulo, setDiagSubtitulo] = useState(isDiagnostico ? miniApp.config.agente.subtitulo : DEFAULT_DIAGNOSTICO_AGENTE.subtitulo);
+  const [diagWhatsapp, setDiagWhatsapp] = useState(isDiagnostico ? miniApp.config.agente.whatsapp : DEFAULT_DIAGNOSTICO_AGENTE.whatsapp);
+  const [diagCtaUrl, setDiagCtaUrl] = useState(isDiagnostico ? miniApp.config.agente.ctaUrl : DEFAULT_DIAGNOSTICO_AGENTE.ctaUrl);
+  const [diagWebhookUrl, setDiagWebhookUrl] = useState(isDiagnostico ? miniApp.config.agente.webhookUrl : DEFAULT_DIAGNOSTICO_AGENTE.webhookUrl);
+  const [diagQuestions, setDiagQuestions] = useState<DiagnosticoQuestion[]>(isDiagnostico ? miniApp.config.questions : DEFAULT_DIAGNOSTICO_QUESTIONS);
+  const [diagLevels, setDiagLevels] = useState<DiagnosticoLevel[]>(isDiagnostico ? miniApp.config.levels : DEFAULT_DIAGNOSTICO_LEVELS);
+
+  function updateDiagQuestion(i: number, patch: Partial<DiagnosticoQuestion>) {
+    setDiagQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
+  }
+  function updateDiagOption(qi: number, oi: number, text: string) {
+    setDiagQuestions((qs) =>
+      qs.map((q, idx) => (idx === qi ? { ...q, options: q.options.map((o, oidx) => (oidx === oi ? { ...o, t: text } : o)) } : q)),
+    );
+  }
+  function addDiagQuestion() {
+    setDiagQuestions((qs) => [
+      ...qs,
+      { text: "", area: "", options: [{ t: "", w: 0 }, { t: "", w: 1 }, { t: "", w: 2 }, { t: "", w: 3 }] },
+    ]);
+  }
+  function removeDiagQuestion(i: number) {
+    setDiagQuestions((qs) => qs.filter((_, idx) => idx !== i));
+  }
+  function updateDiagLevel(i: number, patch: Partial<DiagnosticoLevel>) {
+    setDiagLevels((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  }
 
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
@@ -129,7 +170,24 @@ export function ConfiguracionTab({
                   indexPath: miniApp.config.indexPath,
                   bundleVersion: miniApp.config.bundleVersion,
                 }
-              : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+              : isDiagnostico
+                ? {
+                    agente: {
+                      nombre: diagNombre,
+                      marca: diagMarca,
+                      rol: diagRol,
+                      badge: diagBadge,
+                      titulo: diagTitulo,
+                      subtitulo: diagSubtitulo,
+                      whatsapp: diagWhatsapp,
+                      ctaUrl: diagCtaUrl,
+                      webhookUrl: diagWebhookUrl,
+                      time: DEFAULT_DIAGNOSTICO_AGENTE.time,
+                    },
+                    questions: diagQuestions,
+                    levels: diagLevels,
+                  }
+                : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -264,7 +322,10 @@ export function ConfiguracionTab({
            * gráficos, etiquetas, sombras, gradientes, en claro y oscuro) se
            * genera automáticamente desde acá (paletteEngine.ts), con
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
-           * de diseño más allá de estos dos valores. */}
+           * de diseño más allá de estos dos valores. No aplica a
+           * Diagnóstico: ese tipo tiene su propio CSS autocontenido. */}
+          {!isDiagnostico && (
+          <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-foreground">Color principal</label>
@@ -321,6 +382,8 @@ export function ConfiguracionTab({
           <Button type="button" variant="secondary" size="sm" onClick={handleSaveColor} loading={isSavingBranding} className="self-start">
             Guardar colores
           </Button>
+          </>
+          )}
 
           <div className="my-1 h-px bg-border-default" />
 
@@ -368,6 +431,105 @@ export function ConfiguracionTab({
                   </option>
                 ))}
               </Select>
+            </>
+          ) : isDiagnostico ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Portada del Diagnóstico</p>
+              <Input label="Nombre a mostrar" value={diagNombre} onChange={(e) => setDiagNombre(e.target.value)} />
+              <Input label="Marca (opcional)" value={diagMarca} onChange={(e) => setDiagMarca(e.target.value)} />
+              <Input label="Rol / subtítulo del agente" value={diagRol} onChange={(e) => setDiagRol(e.target.value)} />
+              <Input label="Etiqueta superior (badge)" value={diagBadge} onChange={(e) => setDiagBadge(e.target.value)} />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Título (hook)</label>
+                <textarea
+                  value={diagTitulo}
+                  onChange={(e) => setDiagTitulo(e.target.value)}
+                  rows={2}
+                  className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Subtítulo</label>
+                <textarea
+                  value={diagSubtitulo}
+                  onChange={(e) => setDiagSubtitulo(e.target.value)}
+                  rows={2}
+                  className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                />
+              </div>
+              <Input
+                label="WhatsApp (solo dígitos, con código de país — vacío oculta el botón)"
+                value={diagWhatsapp}
+                onChange={(e) => setDiagWhatsapp(e.target.value)}
+                placeholder="5215500000000"
+              />
+              <Input label="URL de agenda (Calendly u otro)" value={diagCtaUrl} onChange={(e) => setDiagCtaUrl(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input label="Webhook opcional (copia del lead)" value={diagWebhookUrl} onChange={(e) => setDiagWebhookUrl(e.target.value)} placeholder="https://..." />
+
+              <div className="my-1 h-px bg-border-default" />
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Preguntas ({diagQuestions.length})</p>
+                <Button type="button" variant="secondary" size="sm" onClick={addDiagQuestion}>
+                  + Agregar pregunta
+                </Button>
+              </div>
+              <div className="flex flex-col gap-3">
+                {diagQuestions.map((q, qi) => (
+                  <div key={qi} className="flex flex-col gap-2.5 rounded-md border border-border-default bg-surface-2 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="mt-2 shrink-0 text-xs font-semibold text-neutral-400">#{qi + 1}</span>
+                      <div className="flex flex-1 flex-col gap-2">
+                        <Input label="Pregunta" value={q.text} onChange={(e) => updateDiagQuestion(qi, { text: e.target.value })} />
+                        <Input label="Área (agrupa el desglose final)" value={q.area} onChange={(e) => updateDiagQuestion(qi, { area: e.target.value })} />
+                      </div>
+                      <Button type="button" variant="secondary" size="sm" onClick={() => removeDiagQuestion(qi)} disabled={diagQuestions.length <= 1}>
+                        Quitar
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                      {q.options.map((o, oi) => (
+                        <Input key={oi} label={`Opción ${"ABCD"[oi]}`} value={o.t} onChange={(e) => updateDiagOption(qi, oi, e.target.value)} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Niveles de resultado</p>
+              <div className="flex flex-col gap-3">
+                {diagLevels.map((lv, li) => (
+                  <div key={li} className="flex flex-col gap-2.5 rounded-md border border-border-default bg-surface-2 p-3">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <Input label="Nombre" value={lv.name} onChange={(e) => updateDiagLevel(li, { name: e.target.value })} />
+                      <Input label="Desde %" type="number" min={0} max={100} value={String(lv.min)} onChange={(e) => updateDiagLevel(li, { min: Number(e.target.value) })} />
+                      <Input label="Hasta %" type="number" min={0} max={100} value={String(lv.max)} onChange={(e) => updateDiagLevel(li, { max: Number(e.target.value) })} />
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-sm font-medium text-foreground">Color</label>
+                        <input type="color" value={lv.color} onChange={(e) => updateDiagLevel(li, { color: e.target.value })} className="h-9 w-full rounded-md border border-border-default" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium text-foreground">Diagnóstico (texto principal)</label>
+                      <textarea
+                        value={lv.lead}
+                        onChange={(e) => updateDiagLevel(li, { lead: e.target.value })}
+                        rows={2}
+                        className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium text-foreground">Recomendación</label>
+                      <textarea
+                        value={lv.reco}
+                        onChange={(e) => updateDiagLevel(li, { reco: e.target.value })}
+                        rows={2}
+                        className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </>
           ) : (
             <>

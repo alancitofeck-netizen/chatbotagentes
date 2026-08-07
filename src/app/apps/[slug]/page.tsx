@@ -5,6 +5,7 @@ import { generateMiniAppPalette, toCssDeclarations } from "@/lib/miniApps/palett
 import { RetirementSimulatorApp } from "./RetirementSimulatorApp";
 import { CalculadoraBrechaApp } from "./CalculadoraBrechaApp";
 import { LinkedAppLanding } from "./LinkedAppLanding";
+import { DiagnosticoFinancieroApp } from "./DiagnosticoFinancieroApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -63,6 +64,12 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
         <LinkedAppLanding app={app} />
       </>
     );
+  }
+
+  if (app.templateKey === "diagnostico_financiero") {
+    // Sin themeCss/--ma-* — este tipo tiene su propio sistema visual
+    // autocontenido (ver DiagnosticoFinancieroApp.tsx), no el de paletteEngine.
+    return <DiagnosticoFinancieroApp app={app} />;
   }
 
   notFound();

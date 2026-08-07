@@ -4,6 +4,8 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { verifyApiKey } from "@/lib/miniApps/apiKey";
 import { simulateRetirement, recommendedMonthlyIncome, DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { calculateBrechaRetiro, REGIMEN_LABELS, type Regimen } from "@/lib/miniApps/brechaEngine";
+import { computeDiagnosticoScore } from "@/lib/miniApps/diagnosticoEngine";
+import type { DiagnosticoQuestion, DiagnosticoLevel } from "@/lib/miniApps/diagnosticoDefaults";
 import {
   getPreparationLevel,
   getStrengthsAndOpportunities,
@@ -239,6 +241,20 @@ async function processLeadSubmission(
     data.pension_estimada = Math.round(result.have);
     data.meta = Math.round(result.need);
     data.brecha = Math.round(result.gap);
+  } else if (app.template_key === "diagnostico_financiero") {
+    const rawAnswers = Array.isArray(body.answers) ? (body.answers as unknown[]) : null;
+    if (!rawAnswers) {
+      return { ok: false, status: 400, error: "invalid_diagnostico_answers", allowedOrigins };
+    }
+    const answers = rawAnswers.map((a) => (typeof a === "number" && Number.isFinite(a) ? a : null));
+    const questions = (app.config?.questions as DiagnosticoQuestion[] | undefined) ?? [];
+    const levels = (app.config?.levels as DiagnosticoLevel[] | undefined) ?? [];
+    const { pct, areas, level } = computeDiagnosticoScore(questions, levels, answers);
+
+    data.answers = answers;
+    data.score = pct;
+    data.level = level?.name ?? null;
+    data.areas = areas;
   }
 
   const supabase = createServiceRoleClient();

@@ -26,10 +26,18 @@ const FIELD_LABELS: Record<string, string> = {
   fondo_rango_bajo: "Fondo (rango bajo)",
   fondo_rango_alto: "Fondo (rango alto)",
   renta_mensual_estimada: "Renta mensual estimada",
+  email: "Correo electrónico",
+  score: "Puntaje",
+  level: "Nivel",
+  areas: "Desglose por área",
+  answers: "Respuestas (índices)",
 };
 
 function formatValue(value: unknown): string {
   if (typeof value === "number") return new Intl.NumberFormat("es-MX").format(value);
+  if (Array.isArray(value)) {
+    return value.map((v) => (typeof v === "object" && v !== null ? Object.values(v).join(" ") : String(v))).join(", ");
+  }
   return String(value);
 }
 
