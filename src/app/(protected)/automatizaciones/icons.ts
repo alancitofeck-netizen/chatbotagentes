@@ -1,0 +1,14 @@
+import { Cake, CalendarHeart, Wallet, CalendarCheck2, AlarmClock, Hand, Sparkles, FileText, CalendarClock, Star, type LucideIcon } from "lucide-react";
+
+export const AUTOMATION_ICON_MAP: Record<string, LucideIcon> = {
+  Cake,
+  CalendarHeart,
+  Wallet,
+  CalendarCheck2,
+  AlarmClock,
+  Hand,
+  Sparkles,
+  FileText,
+  CalendarClock,
+  Star,
+};
