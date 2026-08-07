@@ -43,6 +43,15 @@
  *    wizard) con fallback a iniciales — mismo patrón que
  *    DiagnosticoFinancieroApp/diagnosticoTemplate.ts.
  *
+ * Además, un cambio de CSS (no del original, que era un HTML standalone): el
+ * original centraba todo poniendo `display:flex;justify-content:center` en
+ * `body` directamente — acá `<body>` es el de layout.tsx, que ya trae las
+ * clases Tailwind `flex flex-col` (especificidad de clase > especificidad de
+ * elemento), así que esa regla nunca ganaba y el contenido quedaba pegado a
+ * la izquierda en vez de centrado. Se mueve el centrado a un wrapper propio
+ * (`.stage`, mismo nombre/criterio que .stage/.wrap en diagnosticoTemplate.ts)
+ * que no depende de nada del layout raíz.
+ *
  * Todo el resto — CSS completo, estructura del HTML, y cada función de
  * DIAGNOSTICO_RETIRO_LOGIC_JS (render de preguntas, análisis animada,
  * gauge, desglose por área, captura, descarga, reset, referidos) — es una
@@ -73,13 +82,15 @@ export const DIAGNOSTICO_RETIRO_CSS = `
       var(--navy);
     color:var(--cream);
     font-family:var(--font-body);
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    padding:32px 16px 56px;
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
+  /* Centrado en un wrapper propio, no en \`body\` directamente — el layout
+     raíz de la app le pone \`flex flex-col\` (Tailwind) a <body>, y esa clase
+     gana por especificidad sobre un selector de elemento \`body{display:flex}\`,
+     lo que rompía el centrado (quedaba flex-direction:column, no row). Mismo
+     criterio que .stage/.wrap en diagnosticoTemplate.ts. */
+  .stage{ min-height:100vh; display:flex; justify-content:center; padding:32px 16px 56px; }
   .page{ width:100%; max-width:620px; }
 
   /* ---------- Brand bar ---------- */
@@ -306,6 +317,7 @@ export const DIAGNOSTICO_RETIRO_CSS = `
 `;
 
 export const DIAGNOSTICO_RETIRO_BODY_HTML = `
+<div class="stage">
 <div class="page">
 
   <div class="brandbar">
@@ -429,6 +441,7 @@ export const DIAGNOSTICO_RETIRO_BODY_HTML = `
   </main>
 
   <footer class="page-disclaimer" id="footer-text">—</footer>
+</div>
 </div>
 `;
 
