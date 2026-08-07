@@ -6,29 +6,23 @@ import { cn } from "@/lib/utils/cn";
 import type { DashboardHomeData, DashboardPeriod } from "@/lib/dashboard/homeQueries";
 import { getDashboardHomeAction } from "./actions";
 import { HomeKpiCards } from "./HomeKpiCards";
-import { MonthlyActivityChart } from "./MonthlyActivityChart";
 import { SalesEfficacyPanel } from "./SalesEfficacyPanel";
-import { TodayTasksPanel } from "./TodayTasksPanel";
 import { GoalsProgressPanel } from "./GoalsProgressPanel";
 import { formatCurrency } from "@/lib/utils/format";
 
 const PERIOD_LABEL: Record<DashboardPeriod, string> = { day: "Día", week: "Semana", month: "Mes", year: "Año" };
 const PERIODS: DashboardPeriod[] = ["day", "week", "month", "year"];
 
-function greetingPrefix(hour: number): string {
-  if (hour < 12) return "Buenos días";
-  if (hour < 19) return "Buenas tardes";
-  return "Buenas noches";
-}
-
-export function DashboardHomeSection({ firstName, initialData, initialPeriod }: { firstName: string; initialData: DashboardHomeData; initialPeriod: DashboardPeriod }) {
+/** No repite el saludo — ExecutiveSummary (más arriba en page.tsx) ya dice
+ * "Buenos días/tardes/noches, {nombre}"; acá solo el título de esta sección
+ * + el selector de período + el resumen de agenda del día. Tampoco un
+ * gráfico de actividad propio — ActivityChart (más abajo en la página) ya
+ * cubre esa vista; duplicarlo con otro gráfico de barras al lado se sentía
+ * repetido (ver el feedback del usuario). */
+export function DashboardHomeSection({ initialData, initialPeriod }: { initialData: DashboardHomeData; initialPeriod: DashboardPeriod }) {
   const [period, setPeriod] = useState(initialPeriod);
   const [data, setData] = useState(initialData);
   const [isPending, startTransition] = useTransition();
-  // Se calcula en el cliente (no en el server, que en Vercel corre en UTC) —
-  // así "Buenos días"/"Buenas tardes" refleja la hora real del asesor, no
-  // la del datacenter.
-  const [greeting] = useState(() => greetingPrefix(new Date().getHours()));
 
   function handlePeriodChange(next: DashboardPeriod) {
     setPeriod(next);
@@ -49,10 +43,7 @@ export function DashboardHomeSection({ firstName, initialData, initialPeriod }: 
     <div className={cn("flex flex-col gap-4", isPending && "opacity-60 transition-opacity duration-200")}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent-600">
-            {greeting}, {firstName}
-          </p>
-          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Tu día de hoy</h1>
+          <h2 className="text-[17px] font-semibold text-foreground">Tu día de hoy</h2>
           <p className="text-sm text-neutral-500">{summaryParts.join(" · ")}</p>
         </div>
         <div className="flex shrink-0 gap-1 rounded-full bg-surface-2 p-1">
@@ -75,12 +66,7 @@ export function DashboardHomeSection({ firstName, initialData, initialPeriod }: 
       <HomeKpiCards kpis={data.kpis} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <MonthlyActivityChart data={data.monthlyActivity} />
         <SalesEfficacyPanel eficacia={data.eficaciaVentas} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TodayTasksPanel tasks={data.pendingTasksToday} />
         <GoalsProgressPanel goals={data.goals} />
       </div>
     </div>

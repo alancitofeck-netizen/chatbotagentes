@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMonday, addDays as addDaysWeek } from "@/lib/calendar/week";
 import { getCollectionsKpis } from "@/lib/collections/queries";
 import { getProductBreakdown } from "@/lib/goals/queries";
-import { getTasks, type TaskItem } from "@/lib/tasks/queries";
+import { getTasks } from "@/lib/tasks/queries";
 import { getGoalsBoardAction } from "@/lib/goals/actions";
 
 export type DashboardPeriod = "day" | "week" | "month" | "year";
@@ -51,7 +51,6 @@ function pctDelta(current: number, previous: number): number | null {
 }
 
 export interface DashboardHomeGreeting {
-  firstName: string;
   appointmentsToday: number;
   pendingTasksToday: number;
   collectionsThisWeekAmount: number;
@@ -62,11 +61,6 @@ export interface DashboardHomeKpis {
   sePresentaron: { attendedCount: number; markedCount: number; attendanceRatePct: number | null };
   embudoActivo: { amount: number; currency: string; count: number };
   carteraEnRiesgo: { count: number; amount: number };
-}
-
-export interface MonthlyActivityPoint {
-  month: string;
-  count: number;
 }
 
 export interface EficaciaVentas {
@@ -88,39 +82,8 @@ export interface GoalProgressSummary {
 export interface DashboardHomeData {
   greeting: DashboardHomeGreeting;
   kpis: DashboardHomeKpis;
-  monthlyActivity: MonthlyActivityPoint[];
   eficaciaVentas: EficaciaVentas;
-  pendingTasksToday: TaskItem[];
   goals: GoalProgressSummary[];
-}
-
-const MONTH_LABEL = new Intl.DateTimeFormat("es", { month: "short" });
-
-async function getMonthlyActivity(workspaceId: string, now: Date): Promise<MonthlyActivityPoint[]> {
-  const supabase = await createClient();
-  const rangeStart = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-  const { data } = await supabase
-    .from("bookings")
-    .select("start_time")
-    .eq("workspace_id", workspaceId)
-    .neq("status", "cancelled")
-    .gte("start_time", rangeStart.toISOString())
-    .lt("start_time", rangeEnd.toISOString());
-
-  const buckets = new Map<string, { label: string; count: number }>();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    buckets.set(`${d.getFullYear()}-${d.getMonth()}`, { label: MONTH_LABEL.format(d), count: 0 });
-  }
-  for (const row of data ?? []) {
-    const d = new Date(row.start_time as string);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    const bucket = buckets.get(key);
-    if (bucket) bucket.count += 1;
-  }
-  return [...buckets.values()].map((b) => ({ month: b.label, count: b.count }));
 }
 
 async function getEficaciaVentas(workspaceId: string, range: PeriodRange): Promise<EficaciaVentas> {
@@ -190,17 +153,17 @@ async function getKpis(workspaceId: string, range: PeriodRange, collectionsKpis:
 /** KPIs de actividad quedan a nivel workspace (mismo criterio que el
  * getDashboardKpis existente, que tampoco filtra por miembro) — "Metas"
  * es la única sección personal, porque getGoalsBoardAction ya resuelve el
- * miembro actual internamente (los objetivos son por asesor, no de equipo). */
-export async function getDashboardHome(workspaceId: string, firstName: string, period: DashboardPeriod): Promise<DashboardHomeData> {
+ * miembro actual internamente (los objetivos son por asesor, no de equipo).
+ * El saludo por nombre lo muestra ExecutiveSummary — esto ya no lo necesita. */
+export async function getDashboardHome(workspaceId: string, period: DashboardPeriod): Promise<DashboardHomeData> {
   const now = new Date();
   const range = resolvePeriodRange(period, now);
   const todayStart = startOfDay(now);
   const todayEnd = addDaysWeek(todayStart, 1);
   const supabase = await createClient();
 
-  const [collectionsKpis, monthlyActivity, eficaciaVentas, tasksToday, goalsBoard, { count: appointmentsToday }] = await Promise.all([
+  const [collectionsKpis, eficaciaVentas, tasksToday, goalsBoard, { count: appointmentsToday }] = await Promise.all([
     getCollectionsKpis(workspaceId),
-    getMonthlyActivity(workspaceId, now),
     getEficaciaVentas(workspaceId, range),
     getTasks(workspaceId, { dueRange: "today" }),
     getGoalsBoardAction(),
@@ -208,7 +171,7 @@ export async function getDashboardHome(workspaceId: string, firstName: string, p
   ]);
   const kpis = await getKpis(workspaceId, range, collectionsKpis);
 
-  const pendingTasksToday = tasksToday.filter((t) => t.status !== "completed");
+  const pendingTasksTodayCount = tasksToday.filter((t) => t.status !== "completed").length;
 
   const goals: GoalProgressSummary[] = goalsBoard.goals.slice(0, 2).map((g) => ({
     id: g.id,
@@ -221,15 +184,12 @@ export async function getDashboardHome(workspaceId: string, firstName: string, p
 
   return {
     greeting: {
-      firstName,
       appointmentsToday: appointmentsToday ?? 0,
-      pendingTasksToday: pendingTasksToday.length,
+      pendingTasksToday: pendingTasksTodayCount,
       collectionsThisWeekAmount: collectionsKpis.upcoming7Amount,
     },
     kpis,
-    monthlyActivity,
     eficaciaVentas,
-    pendingTasksToday,
     goals,
   };
 }

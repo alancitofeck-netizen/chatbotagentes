@@ -98,7 +98,7 @@ export default async function DashboardPage() {
   const firstName = primaryUserName.split(" ")[0];
   // "Semana" es el tab default (mismo criterio que la referencia) — el resto
   // de los períodos se piden client-side al cambiar (DashboardHomeSection).
-  const home = await getDashboardHome(workspaceId, firstName, "week");
+  const home = await getDashboardHome(workspaceId, "week");
 
   const staleOpportunities = deriveStaleOpportunities(crmBoard);
   const engineInput: EngineInput = {
@@ -131,9 +131,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <DashboardHomeSection firstName={firstName} initialData={home} initialPeriod="week" />
-
-      <ExecutiveSummary bullets={bullets} health={health} />
+      <ExecutiveSummary greetingName={firstName} bullets={bullets} health={health} />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-[15px] font-semibold text-foreground">Insights prioritarios</h2>
@@ -141,6 +139,8 @@ export default async function DashboardPage() {
       </section>
 
       <RecommendedActions actions={recommendedActions} />
+
+      <DashboardHomeSection initialData={home} initialPeriod="week" />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-[15px] font-semibold text-foreground">Tendencias</h2>

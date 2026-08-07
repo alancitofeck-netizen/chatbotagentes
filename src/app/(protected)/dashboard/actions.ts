@@ -1,6 +1,6 @@
 "use server";
 
-import { requireActiveWorkspace, getWorkspacePrimaryUserName } from "@/lib/auth/session";
+import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getActivitySeries, getPendingTasks, type ChartRange } from "@/lib/dashboard/queries";
 import { getDashboardHome, type DashboardPeriod } from "@/lib/dashboard/homeQueries";
 import { completeTask as completeTaskShared } from "@/lib/tasks/actions";
@@ -24,6 +24,5 @@ export async function completeTask(taskId: string) {
 
 export async function getDashboardHomeAction(period: DashboardPeriod) {
   const { workspaceId } = await requireActiveWorkspace();
-  const primaryUserName = await getWorkspacePrimaryUserName(workspaceId);
-  return getDashboardHome(workspaceId, primaryUserName.split(" ")[0], period);
+  return getDashboardHome(workspaceId, period);
 }
