@@ -3,7 +3,7 @@
 // "server-only" imports so the client bundle doesn't try to pull in
 // contacts/tasks/calendar/etc. query modules (each of which is itself
 // server-only) just to read a label string.
-export type ExportEntity = "contacts" | "companies" | "conversations" | "tasks" | "calendar" | "agents" | "reports";
+export type ExportEntity = "contacts" | "companies" | "conversations" | "tasks" | "calendar" | "agents" | "reports" | "prospects" | "payments";
 export type ExportFormat = "csv" | "xlsx" | "pdf";
 
 export const ENTITY_LABELS: Record<ExportEntity, string> = {
@@ -14,4 +14,6 @@ export const ENTITY_LABELS: Record<ExportEntity, string> = {
   calendar: "Calendario",
   agents: "Agentes",
   reports: "Reportes",
+  prospects: "Prospectos",
+  payments: "Cobros",
 };

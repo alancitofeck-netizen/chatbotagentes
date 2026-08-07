@@ -7,6 +7,8 @@ import { getTasks } from "@/lib/tasks/queries";
 import { getCalendarEvents } from "@/lib/calendar/queries";
 import { getAgentList } from "@/lib/agents/queries";
 import { getDashboardKpis, getLeadsBySource, getTopOpportunities } from "@/lib/dashboard/queries";
+import { getAdvisorsBoard } from "@/lib/advisors/queries";
+import { getCollectionsList } from "@/lib/collections/queries";
 import { ENTITY_LABELS, type ExportEntity, type ExportFormat } from "@/lib/documents/exportConstants";
 
 export { ENTITY_LABELS, type ExportEntity, type ExportFormat };
@@ -126,6 +128,33 @@ export async function getExportRows(entity: ExportEntity, workspaceId: string): 
         { header: "Sección", accessor: (r) => r.section },
         { header: "Métrica", accessor: (r) => r.metric },
         { header: "Valor", accessor: (r) => r.value },
+      ];
+      return { rows, columns: columns as ExportColumn<never>[] };
+    }
+    case "prospects": {
+      const board = await getAdvisorsBoard(workspaceId);
+      const rows = board ? Object.values(board.cardsByStage).flat() : [];
+      const columns: ExportColumn<(typeof rows)[number]>[] = [
+        { header: "Nombre", accessor: (r) => r.contactName },
+        { header: "Empresa", accessor: (r) => r.company ?? "" },
+        { header: "Teléfono", accessor: (r) => r.phone ?? "" },
+        { header: "Email", accessor: (r) => r.email ?? "" },
+        { header: "Valor", accessor: (r) => `${r.value} ${r.currency}` },
+        { header: "Responsable", accessor: (r) => r.ownerName ?? "" },
+        { header: "Creado", accessor: (r) => r.createdAt },
+      ];
+      return { rows, columns: columns as ExportColumn<never>[] };
+    }
+    case "payments": {
+      const rows = await getCollectionsList(workspaceId);
+      const columns: ExportColumn<Awaited<ReturnType<typeof getCollectionsList>>[number]>[] = [
+        { header: "Cliente", accessor: (r) => r.contactName },
+        { header: "Póliza", accessor: (r) => r.policyNumber ?? "" },
+        { header: "Aseguradora", accessor: (r) => r.company },
+        { header: "Vencimiento", accessor: (r) => r.dueDate },
+        { header: "Monto", accessor: (r) => `${r.amount} ${r.currency}` },
+        { header: "Estado", accessor: (r) => r.status },
+        { header: "Pagado el", accessor: (r) => r.paidAt ?? "" },
       ];
       return { rows, columns: columns as ExportColumn<never>[] };
     }

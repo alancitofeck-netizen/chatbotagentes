@@ -81,6 +81,7 @@ export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: s
     { workspace_id: workspace.id, module_key: "goals", enabled: true },
     { workspace_id: workspace.id, module_key: "ai_assistant", enabled: true },
     { workspace_id: workspace.id, module_key: "insurance_providers", enabled: true },
+    { workspace_id: workspace.id, module_key: "data_transfer", enabled: true },
   ]);
 
   if (modulesError) {

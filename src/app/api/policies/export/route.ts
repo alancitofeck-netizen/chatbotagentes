@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getUser, getActiveWorkspaceForUser } from "@/lib/auth/session";
+import { getUser, getActiveWorkspaceForUser, getCurrentMemberId } from "@/lib/auth/session";
 import { getPolicyList } from "@/lib/policies/queries";
 import { POLICY_STAGES } from "@/lib/policies/constants";
 import { toCsv, toXlsx, toPdf, type ExportColumn } from "@/lib/documents/exports";
+import { logExportJob } from "@/lib/dataTransfer/queries";
 
 // pdfkit/exceljs need Node APIs (Buffer/streams) not available on edge.
 export const runtime = "nodejs";
@@ -41,6 +42,8 @@ export async function GET(request: NextRequest) {
 
   const rows = await getPolicyList(active.workspaceId);
   const filenameBase = `polizas-${new Date().toISOString().slice(0, 10)}`;
+  const memberId = await getCurrentMemberId(active.workspaceId);
+  void logExportJob(active.workspaceId, memberId, "policies", format, `${filenameBase}.${format}`, rows.length);
 
   if (format === "csv") {
     return new NextResponse(toCsv(rows as unknown[], COLUMNS as ExportColumn<never>[]), {

@@ -18,6 +18,7 @@ import {
   Sparkles,
   Trophy,
   Zap,
+  ArrowLeftRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -136,6 +137,16 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   },
 
   { id: "classroom", name: "Classroom", icon: GraduationCap, route: "/classroom", section: "Aprendizaje", order: 0 },
+
+  {
+    id: "data_transfer",
+    name: "Importar / Exportar",
+    icon: ArrowLeftRight,
+    route: "/importar-exportar",
+    section: "Cuenta",
+    moduleKey: "data_transfer",
+    order: 0,
+  },
 ];
 
 export interface NavItem {
