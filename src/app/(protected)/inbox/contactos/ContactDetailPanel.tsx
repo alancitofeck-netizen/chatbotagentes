@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { CalendarDays, ExternalLink, ListTodo, Smartphone } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CalendarDays, ExternalLink, ListTodo, Smartphone, Presentation, Plus, Copy, Trash2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -22,6 +23,8 @@ import { getContactRelatedTasksAction } from "@/lib/tasks/actions";
 import { PRIORITY_META, STATUS_META } from "@/components/tasks/priorityMeta";
 import { getContactMiniAppOriginsAction } from "@/lib/miniApps/actions";
 import { TEMPLATE_KEY_META } from "@/lib/miniApps/templateCatalog";
+import type { AsesoriaListItem, AsesoriaStatus } from "@/lib/asesorias/queries";
+import { getContactAsesoriasAction, createAsesoriaAction, duplicateAsesoriaAction, deleteAsesoriaAction } from "@/lib/asesorias/actions";
 import { RetirementDiagnosisSummary, isRetirementDiagnosisShape } from "./RetirementDiagnosisSummary";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 
@@ -31,6 +34,13 @@ function formatEventDate(iso: string) {
 function formatEventTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
 }
+
+const ASESORIA_STATUS_VARIANT: Record<AsesoriaStatus, "success" | "warning" | "neutral"> = {
+  no_iniciada: "neutral",
+  en_progreso: "warning",
+  finalizada: "success",
+};
+const ASESORIA_STATUS_LABEL: Record<AsesoriaStatus, string> = { no_iniciada: "No iniciada", en_progreso: "En progreso", finalizada: "Finalizada" };
 
 const OPT_STATUS_OPTIONS = [
   { value: "unknown", label: "Desconocido" },
@@ -78,6 +88,7 @@ export function ContactDetailPanel({
   tags: WorkspaceTag[];
   onChanged: () => void;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState("resumen");
   const [name, setName] = useState(detail?.name ?? "");
   const [phone, setPhone] = useState(detail?.phone ?? "");
@@ -92,7 +103,35 @@ export function ContactDetailPanel({
   const [originsLoaded, setOriginsLoaded] = useState(false);
   const [relatedTasks, setRelatedTasks] = useState<TaskItem[]>([]);
   const [relatedTasksLoaded, setRelatedTasksLoaded] = useState(false);
+  const [asesorias, setAsesorias] = useState<AsesoriaListItem[]>([]);
+  const [asesoriasLoaded, setAsesoriasLoaded] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  async function handleNewAsesoria() {
+    if (!detail) return;
+    try {
+      const { id } = await createAsesoriaAction({ contactId: detail.id });
+      router.push(`/asesorias/${id}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo crear la asesoría.");
+    }
+  }
+
+  async function handleDuplicateAsesoria(id: string) {
+    try {
+      const { id: newId } = await duplicateAsesoriaAction(id);
+      router.push(`/asesorias/${newId}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo duplicar la asesoría.");
+    }
+  }
+
+  async function handleDeleteAsesoria(id: string) {
+    if (!window.confirm("¿Eliminar esta asesoría? Esta acción no se puede deshacer.")) return;
+    await deleteAsesoriaAction(id);
+    setAsesorias((prev) => prev.filter((a) => a.id !== id));
+    toast.success("Asesoría eliminada.");
+  }
 
   useEffect(() => {
     if (tab !== "reuniones" || eventsLoaded || !detail) return;
@@ -117,6 +156,14 @@ export function ContactDetailPanel({
       setOriginsLoaded(true);
     });
   }, [tab, originsLoaded, detail]);
+
+  useEffect(() => {
+    if (tab !== "asesorias" || asesoriasLoaded || !detail) return;
+    getContactAsesoriasAction(detail.id).then((fresh) => {
+      setAsesorias(fresh);
+      setAsesoriasLoaded(true);
+    });
+  }, [tab, asesoriasLoaded, detail]);
 
   if (loading) {
     return (
@@ -186,6 +233,7 @@ export function ContactDetailPanel({
             <TabsTrigger value="tareas">Tareas</TabsTrigger>
             <TabsTrigger value="historial">Historial</TabsTrigger>
             <TabsTrigger value="origen">Origen del Lead</TabsTrigger>
+            <TabsTrigger value="asesorias">Asesorías</TabsTrigger>
           </TabsList>
 
           <div className="py-4">
@@ -401,6 +449,62 @@ export function ContactDetailPanel({
                   })}
                 </ul>
               )}
+            </TabsContent>
+
+            <TabsContent value="asesorias">
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleNewAsesoria}>
+                    <Plus className="size-4" aria-hidden="true" />
+                    Nueva Asesoría
+                  </Button>
+                </div>
+                {!asesoriasLoaded ? (
+                  <Skeleton className="h-16 w-full" />
+                ) : asesorias.length === 0 ? (
+                  <p className="text-sm text-neutral-500">Sin asesorías todavía para este contacto.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {asesorias.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 rounded-md bg-surface-2 p-3">
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                            <Presentation size={14} aria-hidden="true" />
+                            {a.name}
+                            <Badge variant={ASESORIA_STATUS_VARIANT[a.status]}>{ASESORIA_STATUS_LABEL[a.status]}</Badge>
+                          </p>
+                          <p className="mt-1 text-xs text-neutral-500">
+                            Última actividad: {formatDate(a.updatedAt)}
+                            {a.advisorName ? ` · Asesor: ${a.advisorName}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <Button size="sm" variant="secondary" onClick={() => router.push(`/asesorias/${a.id}`)}>
+                            {a.status === "no_iniciada" ? "Abrir" : "Continuar"}
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateAsesoria(a.id)}
+                            className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-3 hover:text-foreground"
+                            aria-label="Duplicar"
+                            title="Duplicar"
+                          >
+                            <Copy size={14} aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAsesoria(a.id)}
+                            className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-error-bg hover:text-error-strong"
+                            aria-label="Eliminar"
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </TabsContent>
           </div>
         </Tabs>

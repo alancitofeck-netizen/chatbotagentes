@@ -15,7 +15,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   tasks: { name: "Tareas", description: "Workspace de productividad: tareas, checklists, comentarios y archivos." },
   insurance_prospects: { name: "Posibles Pólizas", description: "Prospectos de seguro capturados desde Mini Apps, calculadoras y formularios." },
   policies: { name: "Pólizas", description: "Gestión completa de pólizas activas: prima, comisión, coberturas, vencimientos y renovaciones." },
-  advisory_sessions: { name: "Asesoría Guiada", description: "Asistente interactivo paso a paso para acompañar al asesor durante la reunión con el cliente." },
+  asesorias: { name: "Asesorías", description: "Reuniones guiadas con el prospecto (Meeting OS) — se guardan solas y quedan en el historial del contacto." },
   collections: { name: "Cobranza", description: "Centro financiero: pagos, recibos, vencimientos, renovaciones y comisiones de toda la cartera." },
   policy_extraction: { name: "Extracción IA", description: "Subí el PDF de una póliza y la IA completa los datos clave listos para guardar en Pólizas." },
   goals: { name: "Metas y Bonificaciones", description: "Objetivos de producción, ranking entre asesores, logros y proyecciones de cumplimiento." },

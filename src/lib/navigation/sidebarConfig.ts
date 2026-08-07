@@ -3,8 +3,8 @@ import {
   BarChart3,
   Bot,
   CalendarDays,
-  ClipboardList,
   CircleDollarSign,
+  Presentation,
   FileCheck2,
   Folder,
   GraduationCap,
@@ -68,7 +68,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   { id: "crm", name: "CRM", icon: Kanban, route: "/crm", section: "Clientes", moduleKey: "crm", order: 0 },
   { id: "advisors", name: "Prospectos", icon: ShieldCheck, route: "/advisors", section: "Clientes", moduleKey: "advisors", order: 1 },
   { id: "mini_apps", name: "Mini Apps", icon: AppWindow, route: "/mini-apps", section: "Clientes", moduleKey: "mini_apps", order: 2 },
-  { id: "advisory_sessions", name: "Asesoría Guiada", icon: ClipboardList, route: "/asesoria-guiada", section: "Clientes", moduleKey: "advisory_sessions", order: 3 },
+  { id: "asesorias", name: "Asesorías", icon: Presentation, route: "/asesorias", section: "Clientes", moduleKey: "asesorias", order: 3 },
 
   { id: "policies", name: "Pólizas", icon: FileCheck2, route: "/polizas", section: "Pólizas", moduleKey: "policies", order: 0 },
 
