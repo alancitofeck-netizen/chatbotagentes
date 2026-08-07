@@ -13,8 +13,35 @@ import {
   type DiagnosticoQuestion,
   type DiagnosticoLevel,
 } from "@/lib/miniApps/diagnosticoDefaults";
+import {
+  DEFAULT_DIAGNOSTICO_RETIRO_ASESOR,
+  DEFAULT_DIAGNOSTICO_RETIRO_REFERIDO,
+  DEFAULT_DIAGNOSTICO_RETIRO_PRODUCTO,
+  DEFAULT_DIAGNOSTICO_RETIRO_TEXTOS,
+  DEFAULT_DIAGNOSTICO_RETIRO_AREA_LABELS,
+  DEFAULT_DIAGNOSTICO_RETIRO_QUESTIONS,
+  DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
+  DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_2,
+  DEFAULT_DIAGNOSTICO_RETIRO_PERFILES,
+  DEFAULT_DIAGNOSTICO_RETIRO_RECO_POOL,
+  DEFAULT_DIAGNOSTICO_RETIRO_THEME_POOL,
+  type DiagnosticoRetiroArea,
+  type DiagnosticoRetiroAsesor,
+  type DiagnosticoRetiroReferido,
+  type DiagnosticoRetiroProducto,
+  type DiagnosticoRetiroTextos,
+  type DiagnosticoRetiroQuestion,
+  type DiagnosticoRetiroPerfil,
+  type DiagnosticoRetiroRecoPool,
+  type DiagnosticoRetiroThemePool,
+} from "@/lib/miniApps/diagnosticoRetiroDefaults";
 
-export type MiniAppTemplateKey = "simulador_retiro" | "calculadora_brecha_retiro" | "app_vinculada" | "diagnostico_financiero";
+export type MiniAppTemplateKey =
+  | "simulador_retiro"
+  | "calculadora_brecha_retiro"
+  | "app_vinculada"
+  | "diagnostico_financiero"
+  | "diagnostico_financiero_retiro";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -72,11 +99,36 @@ export interface DiagnosticoFinancieroConfig {
   assignedAgentName?: string;
 }
 
+/** Config para "Diagnóstico Financiero - Retiro" — ver
+ * diagnosticoRetiroDefaults.ts para el shape de cada pieza y el dataset por
+ * defecto. A diferencia de DiagnosticoFinancieroConfig: `questions` tiene
+ * opciones que puntúan en varias áreas a la vez (no un `w` escalar), y el
+ * perfil de resultado se resuelve con `umbral1`/`umbral2` + `perfiles`
+ * (3, siempre) en vez de un array de rangos tipo `levels`. `areaLabels`
+ * cubre las 4 áreas fijas (retiro/ahorro/fiscal/proteccion — ver
+ * DIAGNOSTICO_RETIRO_AREAS); lo único editable de cada área es su etiqueta
+ * visible, nunca su clave. */
+export interface DiagnosticoRetiroConfig {
+  asesor: DiagnosticoRetiroAsesor;
+  referido: DiagnosticoRetiroReferido;
+  producto: DiagnosticoRetiroProducto;
+  textos: DiagnosticoRetiroTextos;
+  areaLabels: Record<DiagnosticoRetiroArea, string>;
+  questions: DiagnosticoRetiroQuestion[];
+  umbral1: number;
+  umbral2: number;
+  perfiles: DiagnosticoRetiroPerfil[];
+  recoPool: DiagnosticoRetiroRecoPool;
+  themePool: DiagnosticoRetiroThemePool;
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
   app_vinculada: LinkedAppConfig;
   diagnostico_financiero: DiagnosticoFinancieroConfig;
+  diagnostico_financiero_retiro: DiagnosticoRetiroConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -209,6 +261,26 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
       agente: { ...DEFAULT_DIAGNOSTICO_AGENTE, ...((raw.agente as Partial<DiagnosticoAgente>) ?? {}) },
       questions: Array.isArray(raw.questions) && raw.questions.length > 0 ? (raw.questions as DiagnosticoQuestion[]) : DEFAULT_DIAGNOSTICO_QUESTIONS,
       levels: Array.isArray(raw.levels) && raw.levels.length > 0 ? (raw.levels as DiagnosticoLevel[]) : DEFAULT_DIAGNOSTICO_LEVELS,
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "diagnostico_financiero_retiro") {
+    const config: DiagnosticoRetiroConfig = {
+      asesor: { ...DEFAULT_DIAGNOSTICO_RETIRO_ASESOR, ...((raw.asesor as Partial<DiagnosticoRetiroAsesor>) ?? {}) },
+      referido: { ...DEFAULT_DIAGNOSTICO_RETIRO_REFERIDO, ...((raw.referido as Partial<DiagnosticoRetiroReferido>) ?? {}) },
+      producto: { ...DEFAULT_DIAGNOSTICO_RETIRO_PRODUCTO, ...((raw.producto as Partial<DiagnosticoRetiroProducto>) ?? {}) },
+      textos: { ...DEFAULT_DIAGNOSTICO_RETIRO_TEXTOS, ...((raw.textos as Partial<DiagnosticoRetiroTextos>) ?? {}) },
+      areaLabels: { ...DEFAULT_DIAGNOSTICO_RETIRO_AREA_LABELS, ...((raw.areaLabels as Partial<Record<DiagnosticoRetiroArea, string>>) ?? {}) },
+      questions:
+        Array.isArray(raw.questions) && raw.questions.length > 0
+          ? (raw.questions as DiagnosticoRetiroQuestion[])
+          : DEFAULT_DIAGNOSTICO_RETIRO_QUESTIONS,
+      umbral1: typeof raw.umbral1 === "number" ? raw.umbral1 : DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
+      umbral2: typeof raw.umbral2 === "number" ? raw.umbral2 : DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_2,
+      perfiles: Array.isArray(raw.perfiles) && raw.perfiles.length === 3 ? (raw.perfiles as DiagnosticoRetiroPerfil[]) : DEFAULT_DIAGNOSTICO_RETIRO_PERFILES,
+      recoPool: { ...DEFAULT_DIAGNOSTICO_RETIRO_RECO_POOL, ...((raw.recoPool as Partial<DiagnosticoRetiroRecoPool>) ?? {}) },
+      themePool: { ...DEFAULT_DIAGNOSTICO_RETIRO_THEME_POOL, ...((raw.themePool as Partial<DiagnosticoRetiroThemePool>) ?? {}) },
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];

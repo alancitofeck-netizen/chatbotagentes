@@ -28,6 +28,7 @@ export const TEMPLATE_KEY_META: Record<MiniAppTemplateKey, { label: string; cate
   calculadora_brecha_retiro: { label: "Calculadora de Brecha de Retiro", category: "calculadoras" },
   app_vinculada: { label: "App Vinculada", category: "vinculadas" },
   diagnostico_financiero: { label: "Diagnóstico Interactivo Financiero", category: "quizzes" },
+  diagnostico_financiero_retiro: { label: "Diagnóstico Financiero - Retiro", category: "quizzes" },
 };
 
 export function templateKeysForCategory(category: MiniAppTemplateCategory): MiniAppTemplateKey[] {

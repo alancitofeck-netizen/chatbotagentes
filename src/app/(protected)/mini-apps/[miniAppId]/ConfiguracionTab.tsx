@@ -24,8 +24,36 @@ import {
   type DiagnosticoQuestion,
   type DiagnosticoLevel,
 } from "@/lib/miniApps/diagnosticoDefaults";
+import {
+  DEFAULT_DIAGNOSTICO_RETIRO_ASESOR,
+  DEFAULT_DIAGNOSTICO_RETIRO_REFERIDO,
+  DEFAULT_DIAGNOSTICO_RETIRO_PRODUCTO,
+  DEFAULT_DIAGNOSTICO_RETIRO_TEXTOS,
+  DEFAULT_DIAGNOSTICO_RETIRO_AREA_LABELS,
+  DEFAULT_DIAGNOSTICO_RETIRO_QUESTIONS,
+  DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
+  DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_2,
+  DEFAULT_DIAGNOSTICO_RETIRO_PERFILES,
+  DEFAULT_DIAGNOSTICO_RETIRO_RECO_POOL,
+  DEFAULT_DIAGNOSTICO_RETIRO_THEME_POOL,
+  DIAGNOSTICO_RETIRO_AREAS,
+  DIAGNOSTICO_RETIRO_THEME_KEYS,
+  type DiagnosticoRetiroArea,
+  type DiagnosticoRetiroQuestion,
+  type DiagnosticoRetiroOption,
+  type DiagnosticoRetiroPerfil,
+  type DiagnosticoRetiroRecoPool,
+  type DiagnosticoRetiroThemePool,
+} from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
+
+const RETIRO_TIERS = ["low", "mid", "high"] as const;
+const RETIRO_TIER_LABELS: Record<(typeof RETIRO_TIERS)[number], string> = { low: "Puntaje bajo", mid: "Puntaje medio", high: "Puntaje alto" };
+
+function emptyRetiroOption(): DiagnosticoRetiroOption {
+  return { label: "", points: { retiro: 0, ahorro: 0, fiscal: 0, proteccion: 0 }, theme: "" };
+}
 
 function CopyableLine({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -77,6 +105,7 @@ export function ConfiguracionTab({
   const isCalculadora = miniApp.templateKey === "calculadora_brecha_retiro";
   const isLinkedApp = miniApp.templateKey === "app_vinculada";
   const isDiagnostico = miniApp.templateKey === "diagnostico_financiero";
+  const isRetiro = miniApp.templateKey === "diagnostico_financiero_retiro";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -128,6 +157,69 @@ export function ConfiguracionTab({
   }
   function updateDiagLevel(i: number, patch: Partial<DiagnosticoLevel>) {
     setDiagLevels((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  }
+
+  const [retiroNombre, setRetiroNombre] = useState(isRetiro ? miniApp.config.asesor.nombre : "");
+  const [retiroMarca, setRetiroMarca] = useState(isRetiro ? miniApp.config.asesor.marca : DEFAULT_DIAGNOSTICO_RETIRO_ASESOR.marca);
+  const [retiroLema, setRetiroLema] = useState(isRetiro ? miniApp.config.asesor.lema : DEFAULT_DIAGNOSTICO_RETIRO_ASESOR.lema);
+  const [retiroWhatsapp, setRetiroWhatsapp] = useState(isRetiro ? miniApp.config.asesor.whatsapp : DEFAULT_DIAGNOSTICO_RETIRO_ASESOR.whatsapp);
+  const [retiroWebhookUrl, setRetiroWebhookUrl] = useState(isRetiro ? miniApp.config.asesor.webhookUrl : DEFAULT_DIAGNOSTICO_RETIRO_ASESOR.webhookUrl);
+  const [retiroHeroPregunta, setRetiroHeroPregunta] = useState(isRetiro ? miniApp.config.textos.heroPregunta : DEFAULT_DIAGNOSTICO_RETIRO_TEXTOS.heroPregunta);
+  const [retiroHeroSub, setRetiroHeroSub] = useState(isRetiro ? miniApp.config.textos.heroSub : DEFAULT_DIAGNOSTICO_RETIRO_TEXTOS.heroSub);
+  const [retiroDisclaimer, setRetiroDisclaimer] = useState(isRetiro ? miniApp.config.textos.disclaimer : DEFAULT_DIAGNOSTICO_RETIRO_TEXTOS.disclaimer);
+  const [retiroConsentLabel, setRetiroConsentLabel] = useState(isRetiro ? miniApp.config.textos.consentLabel : DEFAULT_DIAGNOSTICO_RETIRO_TEXTOS.consentLabel);
+  const [retiroProductoNombre, setRetiroProductoNombre] = useState(isRetiro ? miniApp.config.producto.nombre : DEFAULT_DIAGNOSTICO_RETIRO_PRODUCTO.nombre);
+  const [retiroAseguradora, setRetiroAseguradora] = useState(isRetiro ? miniApp.config.producto.aseguradora : DEFAULT_DIAGNOSTICO_RETIRO_PRODUCTO.aseguradora);
+  const [retiroTopeDeducible, setRetiroTopeDeducible] = useState(isRetiro ? miniApp.config.producto.topeDeducible : DEFAULT_DIAGNOSTICO_RETIRO_PRODUCTO.topeDeducible);
+  const [retiroPrefijoCodigo, setRetiroPrefijoCodigo] = useState(isRetiro ? miniApp.config.referido.prefijoCodigo : DEFAULT_DIAGNOSTICO_RETIRO_REFERIDO.prefijoCodigo);
+  const [retiroAreaLabels, setRetiroAreaLabels] = useState<Record<DiagnosticoRetiroArea, string>>(
+    isRetiro ? miniApp.config.areaLabels : DEFAULT_DIAGNOSTICO_RETIRO_AREA_LABELS,
+  );
+  const [retiroQuestions, setRetiroQuestions] = useState<DiagnosticoRetiroQuestion[]>(
+    isRetiro ? miniApp.config.questions : DEFAULT_DIAGNOSTICO_RETIRO_QUESTIONS,
+  );
+  const [retiroUmbral1, setRetiroUmbral1] = useState(isRetiro ? miniApp.config.umbral1 : DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1);
+  const [retiroUmbral2, setRetiroUmbral2] = useState(isRetiro ? miniApp.config.umbral2 : DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_2);
+  const [retiroPerfiles, setRetiroPerfiles] = useState<DiagnosticoRetiroPerfil[]>(isRetiro ? miniApp.config.perfiles : DEFAULT_DIAGNOSTICO_RETIRO_PERFILES);
+  const [retiroRecoPool, setRetiroRecoPool] = useState<DiagnosticoRetiroRecoPool>(isRetiro ? miniApp.config.recoPool : DEFAULT_DIAGNOSTICO_RETIRO_RECO_POOL);
+  const [retiroThemePool, setRetiroThemePool] = useState<DiagnosticoRetiroThemePool>(
+    isRetiro ? miniApp.config.themePool : DEFAULT_DIAGNOSTICO_RETIRO_THEME_POOL,
+  );
+
+  function updateRetiroAreaLabel(area: DiagnosticoRetiroArea, value: string) {
+    setRetiroAreaLabels((labels) => ({ ...labels, [area]: value }));
+  }
+  function updateRetiroQuestionText(i: number, text: string) {
+    setRetiroQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, text } : q)));
+  }
+  function updateRetiroOption(qi: number, oi: number, patch: Partial<DiagnosticoRetiroOption>) {
+    setRetiroQuestions((qs) =>
+      qs.map((q, idx) => (idx === qi ? { ...q, options: q.options.map((o, oidx) => (oidx === oi ? { ...o, ...patch } : o)) } : q)),
+    );
+  }
+  function updateRetiroOptionPoints(qi: number, oi: number, area: DiagnosticoRetiroArea, value: number) {
+    setRetiroQuestions((qs) =>
+      qs.map((q, idx) =>
+        idx === qi
+          ? { ...q, options: q.options.map((o, oidx) => (oidx === oi ? { ...o, points: { ...o.points, [area]: value } } : o)) }
+          : q,
+      ),
+    );
+  }
+  function addRetiroQuestion() {
+    setRetiroQuestions((qs) => [...qs, { text: "", options: [emptyRetiroOption(), emptyRetiroOption(), emptyRetiroOption(), emptyRetiroOption()] }]);
+  }
+  function removeRetiroQuestion(i: number) {
+    setRetiroQuestions((qs) => qs.filter((_, idx) => idx !== i));
+  }
+  function updateRetiroPerfil(i: number, patch: Partial<DiagnosticoRetiroPerfil>) {
+    setRetiroPerfiles((ps) => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
+  }
+  function updateRetiroReco(key: keyof DiagnosticoRetiroRecoPool, value: string) {
+    setRetiroRecoPool((pool) => ({ ...pool, [key]: value }));
+  }
+  function updateRetiroTheme(key: (typeof DIAGNOSTICO_RETIRO_THEME_KEYS)[number], value: string) {
+    setRetiroThemePool((pool) => ({ ...pool, [key]: value }));
   }
 
   const [isSavingBranding, setIsSavingBranding] = useState(false);
@@ -187,7 +279,21 @@ export function ConfiguracionTab({
                     questions: diagQuestions,
                     levels: diagLevels,
                   }
-                : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+                : isRetiro
+                  ? {
+                      asesor: { nombre: retiroNombre, marca: retiroMarca, lema: retiroLema, whatsapp: retiroWhatsapp, webhookUrl: retiroWebhookUrl },
+                      referido: { prefijoCodigo: retiroPrefijoCodigo },
+                      producto: { nombre: retiroProductoNombre, aseguradora: retiroAseguradora, topeDeducible: retiroTopeDeducible },
+                      textos: { heroPregunta: retiroHeroPregunta, heroSub: retiroHeroSub, disclaimer: retiroDisclaimer, consentLabel: retiroConsentLabel },
+                      areaLabels: retiroAreaLabels,
+                      questions: retiroQuestions,
+                      umbral1: retiroUmbral1,
+                      umbral2: retiroUmbral2,
+                      perfiles: retiroPerfiles,
+                      recoPool: retiroRecoPool,
+                      themePool: retiroThemePool,
+                    }
+                  : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -322,9 +428,9 @@ export function ConfiguracionTab({
            * gráficos, etiquetas, sombras, gradientes, en claro y oscuro) se
            * genera automáticamente desde acá (paletteEngine.ts), con
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
-           * de diseño más allá de estos dos valores. No aplica a
-           * Diagnóstico: ese tipo tiene su propio CSS autocontenido. */}
-          {!isDiagnostico && (
+           * de diseño más allá de estos dos valores. No aplica a los
+           * Diagnósticos: tienen su propio CSS autocontenido. */}
+          {!isDiagnostico && !isRetiro && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -527,6 +633,192 @@ export function ConfiguracionTab({
                         className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
                       />
                     </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : isRetiro ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Portada del Diagnóstico</p>
+              <Input label="Nombre a mostrar" value={retiroNombre} onChange={(e) => setRetiroNombre(e.target.value)} />
+              <Input label="Marca (opcional)" value={retiroMarca} onChange={(e) => setRetiroMarca(e.target.value)} />
+              <Input label="Lema" value={retiroLema} onChange={(e) => setRetiroLema(e.target.value)} />
+              <Input
+                label="WhatsApp (solo dígitos, con código de país)"
+                value={retiroWhatsapp}
+                onChange={(e) => setRetiroWhatsapp(e.target.value)}
+                placeholder="5215500000000"
+              />
+              <Input label="Webhook opcional (copia del lead)" value={retiroWebhookUrl} onChange={(e) => setRetiroWebhookUrl(e.target.value)} placeholder="https://..." />
+
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Textos</p>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Pregunta principal (hero)</label>
+                <textarea
+                  value={retiroHeroPregunta}
+                  onChange={(e) => setRetiroHeroPregunta(e.target.value)}
+                  rows={2}
+                  className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Subtítulo</label>
+                <textarea
+                  value={retiroHeroSub}
+                  onChange={(e) => setRetiroHeroSub(e.target.value)}
+                  rows={2}
+                  className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                />
+              </div>
+              <Input label="Disclaimer" value={retiroDisclaimer} onChange={(e) => setRetiroDisclaimer(e.target.value)} />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Texto legal (consentimiento LFPDPPP)</label>
+                <textarea
+                  value={retiroConsentLabel}
+                  onChange={(e) => setRetiroConsentLabel(e.target.value)}
+                  rows={2}
+                  className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                />
+              </div>
+
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Producto y referidos</p>
+              <Input label="Producto (opcional)" value={retiroProductoNombre} onChange={(e) => setRetiroProductoNombre(e.target.value)} />
+              <Input label="Aseguradora (opcional)" value={retiroAseguradora} onChange={(e) => setRetiroAseguradora(e.target.value)} />
+              <Input label="Tope deducible (opcional)" value={retiroTopeDeducible} onChange={(e) => setRetiroTopeDeducible(e.target.value)} />
+              <Input label="Prefijo del código de referido" value={retiroPrefijoCodigo} onChange={(e) => setRetiroPrefijoCodigo(e.target.value)} />
+
+              <div className="my-1 h-px bg-border-default" />
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Preguntas y puntajes ({retiroQuestions.length})</p>
+                <Button type="button" variant="secondary" size="sm" onClick={addRetiroQuestion}>
+                  + Agregar pregunta
+                </Button>
+              </div>
+              <div className="flex flex-col gap-3">
+                {retiroQuestions.map((q, qi) => (
+                  <div key={qi} className="flex flex-col gap-2.5 rounded-md border border-border-default bg-surface-2 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="mt-2 shrink-0 text-xs font-semibold text-neutral-400">#{qi + 1}</span>
+                      <Input label="Pregunta" value={q.text} onChange={(e) => updateRetiroQuestionText(qi, e.target.value)} containerClassName="flex-1" />
+                      <Button type="button" variant="secondary" size="sm" onClick={() => removeRetiroQuestion(qi)} disabled={retiroQuestions.length <= 1}>
+                        Quitar
+                      </Button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {q.options.map((o, oi) => (
+                        <div key={oi} className="flex flex-col gap-1.5 rounded-md border border-border-default bg-surface-1 p-2.5">
+                          <Input label={`Opción ${"ABCD"[oi]}`} value={o.label} onChange={(e) => updateRetiroOption(qi, oi, { label: e.target.value })} />
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {DIAGNOSTICO_RETIRO_AREAS.map((area) => (
+                              <Input
+                                key={area}
+                                label={retiroAreaLabels[area]}
+                                type="number"
+                                value={String(o.points[area])}
+                                onChange={(e) => updateRetiroOptionPoints(qi, oi, area, Number(e.target.value) || 0)}
+                              />
+                            ))}
+                          </div>
+                          <Input
+                            label="Tema (solo para la pregunta de objetivo)"
+                            value={o.theme}
+                            onChange={(e) => updateRetiroOption(qi, oi, { theme: e.target.value })}
+                            placeholder="mantener / patrimonio / fiscal / liquidez"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Etiquetas de las áreas</p>
+              <div className="grid grid-cols-2 gap-3">
+                {DIAGNOSTICO_RETIRO_AREAS.map((area) => (
+                  <Input key={area} label={area} value={retiroAreaLabels[area]} onChange={(e) => updateRetiroAreaLabel(area, e.target.value)} />
+                ))}
+              </div>
+
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Perfil de resultado</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Umbral 1"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={String(retiroUmbral1)}
+                  onChange={(e) => setRetiroUmbral1(Number(e.target.value) || 0)}
+                />
+                <Input
+                  label="Umbral 2"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={String(retiroUmbral2)}
+                  onChange={(e) => setRetiroUmbral2(Number(e.target.value) || 0)}
+                />
+              </div>
+              <div className="flex flex-col gap-3">
+                {retiroPerfiles.map((p, pi) => (
+                  <div key={pi} className="flex flex-col gap-2.5 rounded-md border border-border-default bg-surface-2 p-3">
+                    <p className="text-xs font-semibold text-neutral-400">
+                      {pi === 0 ? `Score < ${retiroUmbral1}` : pi === 1 ? `${retiroUmbral1} ≤ Score < ${retiroUmbral2}` : `Score ≥ ${retiroUmbral2}`}
+                    </p>
+                    <Input label="Nombre del perfil" value={p.name} onChange={(e) => updateRetiroPerfil(pi, { name: e.target.value })} />
+                    <Input label="Titular" value={p.headline} onChange={(e) => updateRetiroPerfil(pi, { headline: e.target.value })} />
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium text-foreground">Descripción</label>
+                      <textarea
+                        value={p.desc}
+                        onChange={(e) => updateRetiroPerfil(pi, { desc: e.target.value })}
+                        rows={2}
+                        className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Recomendaciones por área</p>
+              <div className="flex flex-col gap-3">
+                {DIAGNOSTICO_RETIRO_AREAS.map((area) => (
+                  <div key={area} className="flex flex-col gap-2 rounded-md border border-border-default bg-surface-2 p-3">
+                    <p className="text-xs font-semibold text-neutral-400">{retiroAreaLabels[area]}</p>
+                    {RETIRO_TIERS.map((t) => {
+                      const key = `${area}_${t}` as keyof DiagnosticoRetiroRecoPool;
+                      return (
+                        <div key={t} className="flex flex-col gap-1.5">
+                          <label className="text-sm font-medium text-foreground">{RETIRO_TIER_LABELS[t]}</label>
+                          <textarea
+                            value={retiroRecoPool[key]}
+                            onChange={(e) => updateRetiroReco(key, e.target.value)}
+                            rows={2}
+                            className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Mensajes por objetivo (pregunta de tema)</p>
+              <div className="flex flex-col gap-2.5">
+                {DIAGNOSTICO_RETIRO_THEME_KEYS.map((key) => (
+                  <div key={key} className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-foreground">{key}</label>
+                    <textarea
+                      value={retiroThemePool[key]}
+                      onChange={(e) => updateRetiroTheme(key, e.target.value)}
+                      rows={2}
+                      className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                    />
                   </div>
                 ))}
               </div>

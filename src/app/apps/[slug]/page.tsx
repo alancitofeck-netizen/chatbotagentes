@@ -6,6 +6,7 @@ import { RetirementSimulatorApp } from "./RetirementSimulatorApp";
 import { CalculadoraBrechaApp } from "./CalculadoraBrechaApp";
 import { LinkedAppLanding } from "./LinkedAppLanding";
 import { DiagnosticoFinancieroApp } from "./DiagnosticoFinancieroApp";
+import { DiagnosticoRetiroApp } from "./DiagnosticoRetiroApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -70,6 +71,12 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
     // Sin themeCss/--ma-* — este tipo tiene su propio sistema visual
     // autocontenido (ver DiagnosticoFinancieroApp.tsx), no el de paletteEngine.
     return <DiagnosticoFinancieroApp app={app} />;
+  }
+
+  if (app.templateKey === "diagnostico_financiero_retiro") {
+    // Mismo motivo que diagnostico_financiero: diseño navy/dorado
+    // autocontenido (ver DiagnosticoRetiroApp.tsx), sin themeCss/--ma-*.
+    return <DiagnosticoRetiroApp app={app} />;
   }
 
   notFound();

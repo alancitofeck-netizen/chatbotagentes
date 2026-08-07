@@ -29,6 +29,9 @@ const FIELD_LABELS: Record<string, string> = {
   email: "Correo electrónico",
   score: "Puntaje",
   level: "Nivel",
+  perfil: "Perfil",
+  theme: "Objetivo declarado",
+  recomendaciones: "Recomendaciones mostradas",
   areas: "Desglose por área",
   answers: "Respuestas (índices)",
 };

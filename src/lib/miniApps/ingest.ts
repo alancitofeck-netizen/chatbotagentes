@@ -6,6 +6,17 @@ import { simulateRetirement, recommendedMonthlyIncome, DEFAULT_ANNUAL_RETURN_RAT
 import { calculateBrechaRetiro, REGIMEN_LABELS, type Regimen } from "@/lib/miniApps/brechaEngine";
 import { computeDiagnosticoScore } from "@/lib/miniApps/diagnosticoEngine";
 import type { DiagnosticoQuestion, DiagnosticoLevel } from "@/lib/miniApps/diagnosticoDefaults";
+import { computeDiagnosticoRetiroScore } from "@/lib/miniApps/diagnosticoRetiroEngine";
+import {
+  DIAGNOSTICO_RETIRO_AREAS,
+  DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
+  DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_2,
+  type DiagnosticoRetiroArea,
+  type DiagnosticoRetiroQuestion,
+  type DiagnosticoRetiroPerfil,
+  type DiagnosticoRetiroRecoPool,
+  type DiagnosticoRetiroThemePool,
+} from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import {
   getPreparationLevel,
   getStrengthsAndOpportunities,
@@ -255,6 +266,36 @@ async function processLeadSubmission(
     data.score = pct;
     data.level = level?.name ?? null;
     data.areas = areas;
+  } else if (app.template_key === "diagnostico_financiero_retiro") {
+    const rawAnswers = Array.isArray(body.answers) ? (body.answers as unknown[]) : null;
+    if (!rawAnswers) {
+      return { ok: false, status: 400, error: "invalid_diagnostico_answers", allowedOrigins };
+    }
+    const answers = rawAnswers.map((a) => (typeof a === "number" && Number.isFinite(a) ? a : null));
+    const questions = (app.config?.questions as DiagnosticoRetiroQuestion[] | undefined) ?? [];
+    const umbral1 = typeof app.config?.umbral1 === "number" ? app.config.umbral1 : DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1;
+    const umbral2 = typeof app.config?.umbral2 === "number" ? app.config.umbral2 : DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_2;
+    const perfiles = (app.config?.perfiles as DiagnosticoRetiroPerfil[] | undefined) ?? [];
+    const recoPool = (app.config?.recoPool as DiagnosticoRetiroRecoPool | undefined) ?? ({} as DiagnosticoRetiroRecoPool);
+    const themePool = (app.config?.themePool as DiagnosticoRetiroThemePool | undefined) ?? ({} as DiagnosticoRetiroThemePool);
+    const areaLabels = (app.config?.areaLabels as Partial<Record<DiagnosticoRetiroArea, string>> | undefined) ?? {};
+
+    const { overall, areaScores, perfil, theme, recomendaciones } = computeDiagnosticoRetiroScore(
+      questions,
+      umbral1,
+      umbral2,
+      perfiles,
+      recoPool,
+      themePool,
+      answers,
+    );
+
+    data.answers = answers;
+    data.score = overall;
+    data.perfil = perfil?.name ?? null;
+    data.areas = DIAGNOSTICO_RETIRO_AREAS.map((area) => ({ name: areaLabels[area] ?? area, pct: areaScores[area] }));
+    data.theme = theme || null;
+    data.recomendaciones = recomendaciones;
   }
 
   const supabase = createServiceRoleClient();
