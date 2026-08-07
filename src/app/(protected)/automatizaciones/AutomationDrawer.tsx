@@ -53,7 +53,7 @@ export function AutomationDrawer({
   async function handleSave() {
     setIsSaving(true);
     try {
-      await updateAutomationAction(automation.id, { enabled, whatsappEnabled, emailEnabled, messageTemplate: message });
+      await updateAutomationAction(automation.key, { enabled, whatsappEnabled, emailEnabled, messageTemplate: message });
       onUpdated({ ...automation, enabled, whatsappEnabled, emailEnabled, messageTemplate: message });
       toast.success("Automatización actualizada.");
       onClose();

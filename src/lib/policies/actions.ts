@@ -33,6 +33,7 @@ import { ensurePolicyAutomationRules, updatePolicyAutomationRule, type PolicyAut
 import { isSupportedFileName, isXlsxFileName, listWorkbookSheets, parseExcelSheet, parseCsvFile, type SheetInfo } from "@/lib/advisors/import/parseFile";
 import { detectPolicyColumnMapping, importPolicyRows, type PolicyImportResult } from "@/lib/policies/import";
 import { analyzePolicyWithAI, generateRenewalMessageWithAI, type PolicyAnalysis } from "@/lib/policies/aiAnalysis";
+import { firePaymentReceivedAutomation } from "@/lib/automationTemplates/triggers";
 
 function revalidatePolicies() {
   revalidatePath("/polizas");
@@ -649,6 +650,9 @@ export async function updatePolicyPaymentStatusAction(paymentId: string, status:
     .update({ status, paid_at: status === "pagado" ? new Date().toISOString() : null, updated_at: new Date().toISOString() })
     .eq("id", paymentId);
   if (error) throw new Error("No se pudo actualizar la cuota.");
+  // "Pago recibido" (Automatizaciones) se dispara al toque, no por cron —
+  // nunca lanza, ver la nota en triggers.ts.
+  if (status === "pagado") await firePaymentReceivedAutomation(paymentId);
   revalidatePolicies();
 }
 

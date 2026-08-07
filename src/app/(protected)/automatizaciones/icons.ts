@@ -1,4 +1,21 @@
-import { Cake, CalendarHeart, Wallet, CalendarCheck2, AlarmClock, Hand, Sparkles, FileText, CalendarClock, Star, type LucideIcon } from "lucide-react";
+import {
+  Cake,
+  CalendarHeart,
+  Wallet,
+  CalendarCheck2,
+  AlarmClock,
+  Hand,
+  Sparkles,
+  FileText,
+  CalendarClock,
+  Star,
+  Send,
+  Flame,
+  PhoneCall,
+  CreditCard,
+  CircleAlert,
+  type LucideIcon,
+} from "lucide-react";
 
 export const AUTOMATION_ICON_MAP: Record<string, LucideIcon> = {
   Cake,
@@ -11,4 +28,9 @@ export const AUTOMATION_ICON_MAP: Record<string, LucideIcon> = {
   FileText,
   CalendarClock,
   Star,
+  Send,
+  Flame,
+  PhoneCall,
+  CreditCard,
+  CircleAlert,
 };
