@@ -16,6 +16,17 @@
  * 3. Se agrega un `fetch` fire-and-forget a `/api/public/mini-apps/{slug}/
  *    visit` al cargar, igual que ya hacen los otros tipos de Mini App, para
  *    que el conteo de visitas de la pestaña Analíticas funcione también acá.
+ * 4. Los botones que en el HTML original llamaban a sus funciones vía
+ *    atributos `onclick="..."` inline (que dependen de que esas funciones
+ *    existan como globals de `window`) pasan a conectarse con
+ *    `addEventListener` dentro de un IIFE — `window.next` en particular
+ *    puede quedar pisado por el propio runtime de Next.js, lo que rompía en
+ *    producción el botón "Siguiente" (dejaba de reaccionar al click sin
+ *    ningún error visible). Con el IIFE, las funciones nunca tocan
+ *    `window`, así que no dependen de qué nombres use el framework. Mismos
+ *    ids ya existentes (`prevBtn`/`nextBtn`) más 3 ids nuevos agregados al
+ *    HTML solo para poder engancharlos (`btnStart`/`btnSubmitLead`/
+ *    `btnCta`/`btnRestart`) — ningún cambio visual.
  *
  * Todo el resto — CSS, HTML, y cada función de DIAGNOSTICO_LOGIC_JS — es
  * una copia literal del archivo original.
@@ -271,7 +282,7 @@ export const DIAGNOSTICO_BODY_HTML = `
         <span class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> <span id="coverTime">~3 min</span></span>
         <span class="chip"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> <span id="coverCount">7 preguntas</span></span>
       </div>
-      <button class="btn btn-primary" onclick="start()">Comenzar diagnóstico →</button>
+      <button class="btn btn-primary" id="btnStart">Comenzar diagnóstico →</button>
       <a class="wa" id="waBtn" href="#" target="_blank" aria-label="WhatsApp">
         <svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.2-1.7-.8-1.9-.9-.3-.1-.5-.2-.7.1-.2.3-.7.9-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm0 18.3c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.3 8.3 0 1 1 12 20.3z"/></svg>
       </a>
@@ -292,8 +303,8 @@ export const DIAGNOSTICO_BODY_HTML = `
       <div class="options" id="options"></div>
 
       <div class="nav">
-        <button class="btn btn-ghost" id="prevBtn" onclick="prev()">← Anterior</button>
-        <button class="btn btn-primary" id="nextBtn" onclick="next()" disabled>Siguiente →</button>
+        <button class="btn btn-ghost" id="prevBtn">← Anterior</button>
+        <button class="btn btn-primary" id="nextBtn" disabled>Siguiente →</button>
       </div>
     </section>
 
@@ -334,7 +345,7 @@ export const DIAGNOSTICO_BODY_HTML = `
           <label for="phone">WhatsApp</label>
           <input id="phone" type="tel" placeholder="+52 55 0000 0000" autocomplete="tel">
         </div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:16px;padding:16px" onclick="submitLead()">Ver mi diagnóstico →</button>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:16px;padding:16px" id="btnSubmitLead">Ver mi diagnóstico →</button>
         <p class="consent">Al continuar aceptas recibir tu resultado y contacto de seguimiento. Tus datos están seguros y no se comparten con terceros.</p>
       </div>
     </section>
@@ -363,10 +374,10 @@ export const DIAGNOSTICO_BODY_HTML = `
         <div class="reco" id="reco"></div>
 
         <div class="cta-final">
-          <button class="btn btn-primary" onclick="cta()">Agendar mi sesión gratuita →</button>
+          <button class="btn btn-primary" id="btnCta">Agendar mi sesión gratuita →</button>
           <p class="cta-note" id="ctaNote">30 minutos, sin compromiso. Repasamos tu diagnóstico y tu siguiente paso.</p>
         </div>
-        <div style="text-align:center"><button class="restart" onclick="restart()">↺ Volver a empezar</button></div>
+        <div style="text-align:center"><button class="restart" id="btnRestart">↺ Volver a empezar</button></div>
       </div>
     </section>
 
@@ -375,6 +386,8 @@ export const DIAGNOSTICO_BODY_HTML = `
 `;
 
 export const DIAGNOSTICO_LOGIC_JS = `
+(function(){
+"use strict";
 const AGENTE = window.__DIAGNOSTICO_DATA__.agente;
 const QUESTIONS = window.__DIAGNOSTICO_DATA__.questions;
 const LEVELS = window.__DIAGNOSTICO_DATA__.levels;
@@ -544,6 +557,17 @@ function showResult(){
 function cta(){ window.open(CONFIG.ctaUrl,'_blank'); }
 function restart(){ answers.fill(null); cur=0; lead={}; ['name','email','phone'].forEach(id=>$(id).value=''); show('intro'); }
 
+/* conecta los botones — addEventListener en vez de onclick="" inline para
+   no depender de que estas funciones existan como propiedades de window
+   (ver el comentario al inicio del archivo: window.next puede quedar
+   pisado por el propio runtime de Next.js). */
+$('btnStart').addEventListener('click', start);
+$('prevBtn').addEventListener('click', prev);
+$('nextBtn').addEventListener('click', next);
+$('btnSubmitLead').addEventListener('click', submitLead);
+$('btnCta').addEventListener('click', cta);
+$('btnRestart').addEventListener('click', restart);
+
 /* inicializa la portada con los datos del agente */
 applyAgent();
 
@@ -553,4 +577,5 @@ document.addEventListener('keydown',e=>{
   if(['1','2','3','4'].includes(e.key)){ const i=+e.key-1; if(QUESTIONS[cur].options[i]){answers[cur]=i;render();} }
   if(e.key==='Enter' && answers[cur]!==null) next();
 });
+})();
 `;
