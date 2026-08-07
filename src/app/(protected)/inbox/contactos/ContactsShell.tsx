@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
@@ -47,6 +48,8 @@ export function ContactsShell({
   const [, startTransition] = useTransition();
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appSearchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   function refetchList() {
     startTransition(async () => {
@@ -153,6 +156,29 @@ export function ContactsShell({
     setCompanyFilter(company);
     setTab("contactos");
   }
+
+  // Deep links desde el Buscador Global — mismo patrón "once on mount" que
+  // PoliciesBoardShell/CalendarShell (?policy=/?event=): consumir el param
+  // y limpiar la URL con router.replace.
+  useEffect(() => {
+    const contactId = searchParams.get("contact");
+    if (contactId) {
+      Promise.resolve().then(() => loadDetail(contactId));
+      router.replace("/inbox/contactos", { scroll: false });
+      return;
+    }
+    const empresa = searchParams.get("empresa");
+    if (empresa) {
+      Promise.resolve().then(() => handleSelectCompany(empresa));
+      router.replace("/inbox/contactos", { scroll: false });
+      return;
+    }
+    if (searchParams.get("crear") === "1") {
+      Promise.resolve().then(() => setCreateOpen(true));
+      router.replace("/inbox/contactos", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleCreated(id: string) {
     refetchList();

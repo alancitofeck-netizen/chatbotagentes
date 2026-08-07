@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, CheckCircle2, XCircle, Wand2, Play } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +39,28 @@ export function AutomationsShell({ initial }: { initial: AutomationsBoardResult 
   const [category, setCategory] = useState<CategoryFilter>("Todas");
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Deep links desde el Buscador Global — mismo patrón "once on mount" que
+  // Pólizas/Calendario/Contactos. `?open=<key>` abre el drawer de esa
+  // automatización del catálogo; `?crear=1` abre el Builder directo.
+  useEffect(() => {
+    const key = searchParams.get("open");
+    if (key) {
+      Promise.resolve().then(() => setOpenKey(key));
+      router.replace("/automatizaciones", { scroll: false });
+      return;
+    }
+    if (searchParams.get("crear") === "1") {
+      Promise.resolve().then(() => {
+        setTab("mine");
+        setCreateOpen(true);
+      });
+      router.replace("/automatizaciones", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();

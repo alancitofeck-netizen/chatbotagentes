@@ -77,6 +77,12 @@ export function PoliciesBoardShell({
         }),
       );
       router.replace("/polizas", { scroll: false });
+      return;
+    }
+    // `?crear=1` — Buscador Global's "Nueva póliza" acción rápida.
+    if (searchParams.get("crear") === "1") {
+      Promise.resolve().then(() => setPolicyForm({ policy: null }));
+      router.replace("/polizas", { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

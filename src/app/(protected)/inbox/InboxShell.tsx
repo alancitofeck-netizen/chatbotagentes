@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Sheet } from "@/components/ui/Sheet";
 import type { ConversationDetail, ConversationListItem, WorkspaceMemberOption, WorkspaceTag } from "@/lib/inbox/queries";
@@ -35,6 +36,8 @@ export function InboxShell({
   const [infoSheetOpen, setInfoSheetOpen] = useState(false);
   const [, startTransition] = useTransition();
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   function refetchList() {
     startTransition(async () => {
@@ -66,6 +69,16 @@ export function InboxShell({
     setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)));
     markConversationRead(id);
   }
+
+  // Deep link desde el Buscador Global — mismo patrón "once on mount" que
+  // PoliciesBoardShell/CalendarShell/ContactsShell (?policy=/?event=/?contact=).
+  useEffect(() => {
+    const conversationId = searchParams.get("conversation");
+    if (!conversationId) return;
+    Promise.resolve().then(() => loadDetail(conversationId));
+    router.replace("/inbox", { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function refetchDetail() {
     if (!selectedId) return;
