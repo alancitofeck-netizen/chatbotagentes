@@ -8,12 +8,12 @@ import { Logo } from "@/components/brand/Logo";
 import { Badge } from "@/components/ui/Badge";
 import { ThemeToggle } from "@/lib/theme/ThemeToggle";
 import { cn } from "@/lib/utils/cn";
-import { getNavItems, groupNavItems, isNavItemActive } from "./Sidebar";
+import { getSidebarNavItems, groupNavItems, isNavItemActive } from "@/lib/navigation/sidebarConfig";
 
 export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const groups = groupNavItems(getNavItems(new Set(enabledModules)));
+  const groups = groupNavItems(getSidebarNavItems(new Set(enabledModules)));
 
   useEffect(() => {
     if (!open) return;
@@ -79,7 +79,7 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
                 const Icon = item.icon;
                 return (
                   <Link
-                    key={item.label}
+                    key={item.id}
                     href={item.comingSoon ? "#" : item.href}
                     onClick={(e) => {
                       if (item.comingSoon) e.preventDefault();

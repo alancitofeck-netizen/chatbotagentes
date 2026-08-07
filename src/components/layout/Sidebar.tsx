@@ -3,177 +3,20 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  AppWindow,
-  BarChart3,
-  Bot,
-  CalendarDays,
-  ClipboardList,
-  CircleDollarSign,
-  FileCheck2,
-  Folder,
-  GraduationCap,
-  Inbox,
-  Kanban,
-  LayoutDashboard,
-  ListTodo,
-  Pin,
-  Plug,
-  PinOff,
-  ShieldCheck,
-  Sparkles,
-  Trophy,
-  Zap,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { motion } from "framer-motion";
+import { Pin, PinOff } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { Badge } from "@/components/ui/Badge";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useSidebarPinned } from "./useSidebarPinned";
 import { cn } from "@/lib/utils/cn";
+import { getSidebarNavItems, groupNavItems, isNavItemActive, type NavItem } from "@/lib/navigation/sidebarConfig";
 
-export interface NavItem {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  /** Uppercase section header the item groups under when the sidebar is
-   * expanded (Sidebar.tsx) or in MobileNav's drawer — see groupNavItems(). */
-  category: string;
-  comingSoon?: boolean;
-  /** Shows a small green "IA" pill next to the label when expanded — no
-   * current nav item is actually an AI feature yet, this just wires the
-   * pattern up for the day one is (explicit request, not speculative). */
-  isAI?: boolean;
-}
-
-/** CRM/ATS become real links once workspace_modules.enabled is true for that
- * workspace (docs/blueprint/03-modules.md) — the (protected) layout fetches
- * that server-side and passes it down, this is the only place that decides
- * comingSoon vs. a real href.
- *
- * "Contactos" isn't a top-level item anymore — it moved under Inbox's own
- * secondary nav (src/app/(protected)/inbox/layout.tsx) as /inbox/contactos,
- * one unified communication area instead of two separate sidebar entries.
- *
- * "ATS" isn't a top-level item anymore either — it's now a tab inside CRM's
- * own tab strip (CrmAtsTabStrip.tsx), next to "Tareas". Its route (/ats,
- * /ats/[vacancyId]) deliberately did NOT move under /crm/ats — ATS has its
- * own independent workspace_modules activation flag, and nesting the route
- * would have made it unreachable if CRM were ever disabled while ATS stayed
- * enabled. Only the *navigation entry point* moved, not the module boundary.
- *
- * "KPIs" used to live as a tab inside CRM (CrmAtsTabStrip.tsx) but is now
- * its own top-level module/route (/kpis) per explicit user request — same
- * KpisSection component, same queries, not workspace_modules-gated (it
- * never was even as a CRM tab; `KpisSection` shows its own "conectá tu
- * hoja" empty state internally when there's no Google Sheets connection
- * yet, same as Inbox/Calendario/Documentos being always-on links).
- *
- * "Tareas" follows that same promotion pattern: it used to be a tab inside
- * CRM (CrmAtsTabStrip.tsx) and is now its own top-level module (/tasks),
- * redesigned into a full Notion/Linear-style workspace, per explicit user
- * request. Unlike KPIs it IS workspace_modules-gated (docs/blueprint
- * 03-modules.md's 3-layer enforcement), because unlike KPIs it has real
- * data of its own (tasks/checklists/comments/files) rather than just an
- * external-connection empty state.
- *
- * "Classroom" is a different case again: it's a GLOBAL course catalog (one
- * shared curriculum teaching Growth Link itself), not per-workspace content,
- * so it's never workspace_modules-gated either — always a real link, same
- * as KPIs/Inbox/Calendario/Documentos, per explicit user request (see
- * supabase/migrations/0071_classroom_module.sql).
- *
- * "Pólizas" moved OUT of Asesores' own tab strip (AdvisorsSecondaryNav.tsx,
- * since removed) into its own top-level module/route (/polizas, was
- * /advisors/polizas), per explicit user request — it's meant to feel like a
- * full portfolio-management platform in its own right, not a tab buried
- * inside another module. Its own category ("Pólizas") rather than folding
- * it into "Clientes" matches the requested sidebar layout exactly. The
- * `workspace_modules` gate (`policies`) was already independent of
- * `advisors` since its own creation — only the nav entry/route moved, not
- * the module boundary (same posture as every other promotion/demotion
- * above).
- *
- * "Asesores" was later relabeled "Prospectos" (still `/advisors`, still
- * `module_key='advisors'` — only the visible label changed) once "Posibles
- * Pólizas" moved out into Pólizas' own tab strip (PoliciesSecondaryNav.tsx),
- * leaving this module as purely a pre-sale deals/prospects board.
- *
- * `category` groups these into section headers (Sidebar.tsx's expanded
- * panel, MobileNav's drawer) — grouping the real items that already exist,
- * not inventing new modules to match any external reference. */
-export function getNavItems(enabledModules: ReadonlySet<string>): NavItem[] {
-  return [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, category: "Principal" },
-    { label: "Asistente IA", href: "/asistente", icon: Bot, category: "Principal", isAI: true, comingSoon: !enabledModules.has("ai_assistant") },
-    { label: "Inbox", href: "/inbox", icon: Inbox, category: "Principal" },
-    { label: "CRM", href: "/crm", icon: Kanban, category: "Clientes", comingSoon: !enabledModules.has("crm") },
-    { label: "Prospectos", href: "/advisors", icon: ShieldCheck, category: "Clientes", comingSoon: !enabledModules.has("advisors") },
-    { label: "Mini Apps", href: "/mini-apps", icon: AppWindow, category: "Clientes", comingSoon: !enabledModules.has("mini_apps") },
-    { label: "Asesoría Guiada", href: "/asesoria-guiada", icon: ClipboardList, category: "Clientes", comingSoon: !enabledModules.has("advisory_sessions") },
-    { label: "Pólizas", href: "/polizas", icon: FileCheck2, category: "Pólizas", comingSoon: !enabledModules.has("policies") },
-    {
-      label: "Extracción IA",
-      href: "/extraccion-polizas",
-      icon: Sparkles,
-      category: "Pólizas",
-      isAI: true,
-      comingSoon: !enabledModules.has("policy_extraction"),
-    },
-    {
-      label: "Aseguradoras",
-      href: "/aseguradoras",
-      icon: Plug,
-      category: "Pólizas",
-      comingSoon: !enabledModules.has("insurance_providers"),
-    },
-    { label: "Calendario", href: "/calendar", icon: CalendarDays, category: "Operación" },
-    { label: "Cobranza", href: "/cobranza", icon: CircleDollarSign, category: "Operación", comingSoon: !enabledModules.has("collections") },
-    { label: "Metas y Bonos", href: "/metas", icon: Trophy, category: "Operación", comingSoon: !enabledModules.has("goals") },
-    { label: "Automatizaciones", href: "/automatizaciones", icon: Zap, category: "Operación" },
-    { label: "Tareas", href: "/tasks", icon: ListTodo, category: "Operación", comingSoon: !enabledModules.has("tasks") },
-    { label: "Documentos", href: "/documents", icon: Folder, category: "Operación" },
-    { label: "KPIs", href: "/kpis", icon: BarChart3, category: "Inteligencia" },
-    {
-      label: "Crear mi Presentación",
-      href: "/presentaciones",
-      icon: Sparkles,
-      category: "Inteligencia",
-      isAI: true,
-      comingSoon: !enabledModules.has("presentations"),
-    },
-    { label: "Classroom", href: "/classroom", icon: GraduationCap, category: "Aprendizaje" },
-  ];
-}
-
-/** Groups a flat NavItem[] by `category`, preserving first-seen order —
- * kept separate from getNavItems() itself (which stays flat) so a future
- * consumer that doesn't want grouping isn't forced into the nested shape.
- * Both Sidebar.tsx and MobileNav.tsx call this on top of the same flat
- * list. */
-export function groupNavItems(items: NavItem[]): { category: string; items: NavItem[] }[] {
-  const order: string[] = [];
-  const grouped = new Map<string, NavItem[]>();
-  for (const item of items) {
-    if (!grouped.has(item.category)) {
-      grouped.set(item.category, []);
-      order.push(item.category);
-    }
-    grouped.get(item.category)!.push(item);
-  }
-  return order.map((category) => ({ category, items: grouped.get(category)! }));
-}
-
-/** ATS pages (/ats, /ats/[vacancyId]) live outside /crm but should still
- * highlight the CRM sidebar icon, since ATS is now reached exclusively via
- * CRM's tab strip. Exported so MobileNav.tsx shares the exact same rule
- * instead of re-deriving it. */
-export function isNavItemActive(pathname: string, href: string): boolean {
-  if (pathname === href || pathname.startsWith(`${href}/`)) return true;
-  if (href === "/crm" && pathname.startsWith("/ats")) return true;
-  return false;
-}
+// NavItem/getSidebarNavItems/groupNavItems/isNavItemActive now live in
+// src/lib/navigation/sidebarConfig.ts, resolved from the declarative
+// SIDEBAR_MODULES config there — MobileNav.tsx imports straight from that
+// module too (see its own import), not from here.
 
 const ROLE_LABELS: Record<string, string> = { owner: "Owner", admin: "Admin", agent: "Agente", viewer: "Viewer" };
 
@@ -234,7 +77,7 @@ function SidebarNavItem({
         onFocus={() => setIsHovered(true)}
         onBlur={() => setIsHovered(false)}
         className={cn(
-          "relative mx-2 flex h-10 items-center justify-center rounded-xl transition-colors duration-150 ease-out",
+          "relative mx-2 flex h-10 items-center justify-center rounded-xl transition-colors duration-[220ms] ease-out",
           item.comingSoon
             ? "cursor-default text-neutral-600"
             : isActive
@@ -242,10 +85,17 @@ function SidebarNavItem({
               : "text-neutral-400 hover:bg-accent-500/12 hover:text-neutral-100",
         )}
       >
-        {isActive && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-white" aria-hidden="true" />}
-        <span className="flex size-10 shrink-0 items-center justify-center">
+        {isActive && (
+          <motion.span
+            layoutId="sidebar-active-indicator"
+            transition={{ type: "spring", stiffness: 500, damping: 40 }}
+            className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-white"
+            aria-hidden="true"
+          />
+        )}
+        <motion.span whileHover={{ scale: 1.08 }} transition={{ duration: 0.2 }} className="flex size-10 shrink-0 items-center justify-center">
           <Icon className="size-[18px]" aria-hidden="true" />
-        </span>
+        </motion.span>
         <span className={cn("flex min-w-0 items-center gap-2 pr-3", isExpanded ? "flex-1" : "w-0 flex-none", fadeClassName(isExpanded))}>
           <span className="truncate text-sm font-medium">{item.label}</span>
           {item.comingSoon && (
@@ -306,7 +156,7 @@ export function Sidebar({
   isPlatformAdmin?: boolean;
 }) {
   const pathname = usePathname();
-  const navItems = useMemo(() => getNavItems(new Set(enabledModules)), [enabledModules]);
+  const navItems = useMemo(() => getSidebarNavItems(new Set(enabledModules)), [enabledModules]);
   const groups = useMemo(() => groupNavItems(navItems), [navItems]);
 
   const [isPinned, setPinned] = useSidebarPinned();
@@ -434,7 +284,7 @@ export function Sidebar({
               <div className="flex flex-col gap-1">
                 {group.items.map((item) => (
                   <SidebarNavItem
-                    key={item.label}
+                    key={item.id}
                     item={item}
                     isActive={isNavItemActive(pathname, item.href)}
                     isExpanded={isExpanded}
