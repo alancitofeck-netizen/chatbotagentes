@@ -85,6 +85,18 @@ function detectMp4(raw: string): VideoEmbed | null {
   return null;
 }
 
+/** Miniatura pública de YouTube derivada del mismo id que ya extrae
+ * detectProvider() — no hay campo de thumbnail en la base, y para el resto
+ * de los proveedores (Vimeo/Bunny/Cloudflare/Mux/MP4) no existe una URL de
+ * miniatura pública sin credenciales de API, así que devuelven null (el
+ * caller debe mostrar un fallback, nunca una imagen inventada). */
+export function getYoutubeThumbnailUrl(rawUrl: string): string | null {
+  const embed = detectProvider(rawUrl);
+  if (embed.provider !== "youtube") return null;
+  const id = embed.embedUrl.split("/embed/")[1];
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+}
+
 export function detectProvider(rawUrl: string): VideoEmbed {
   const raw = rawUrl.trim();
   if (!raw) return { provider: "unknown", originalUrl: raw };
