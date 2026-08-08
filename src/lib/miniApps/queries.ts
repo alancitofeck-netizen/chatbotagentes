@@ -4,7 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from "@/lib/miniApps/paletteEngine";
 import { templateKeysForCategory, type MiniAppTemplateCategory } from "@/lib/miniApps/templateCatalog";
-import { DEFAULT_LINKED_APP_ICON, type LinkedAppType } from "@/lib/miniApps/linkedAppOptions";
+import { DEFAULT_LINKED_APP_ICON, type LinkedAppType, type LinkedAppIconKey } from "@/lib/miniApps/linkedAppOptions";
 import {
   DEFAULT_DIAGNOSTICO_AGENTE,
   DEFAULT_DIAGNOSTICO_QUESTIONS,
@@ -54,8 +54,17 @@ export interface MiniAppListItem {
   status: MiniAppStatus;
   assignedAgentName: string | null;
   leadsCount: number;
+  /** Subconjunto de leadsCount con status "converted" — para calcular una
+   * tasa de conversión real en el listado (MiniAppsListShell.tsx), nunca
+   * inventada. */
+  convertedLeadsCount: number;
   lastLeadAt: string | null;
   createdAt: string;
+  /** Solo presente cuando templateKey === "app_vinculada" — el ícono real
+   * que el usuario eligió al vincular la app (ver linkedAppOptions.ts),
+   * para que el listado no le asigne un ícono genérico a todas las apps
+   * vinculadas por igual. */
+  linkedAppIcon?: LinkedAppIconKey;
 }
 
 /** Config for the "Calculadora de Brecha de Retiro" template — the
@@ -195,7 +204,7 @@ export async function getMiniAppsList(workspaceId: string): Promise<MiniAppListI
   const [{ data: apps }, memberNames] = await Promise.all([
     supabase
       .from("mini_apps")
-      .select("id, name, description, template_key, slug, status, assigned_agent_id, created_at")
+      .select("id, name, description, template_key, slug, status, assigned_agent_id, created_at, config")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false }),
     getMemberNamesById(supabase, workspaceId),
@@ -204,14 +213,15 @@ export async function getMiniAppsList(workspaceId: string): Promise<MiniAppListI
 
   const { data: leadStats } = await supabase
     .from("mini_app_leads")
-    .select("mini_app_id, received_at")
+    .select("mini_app_id, received_at, status")
     .eq("workspace_id", workspaceId);
 
-  const statsByApp = new Map<string, { count: number; lastLeadAt: string | null }>();
+  const statsByApp = new Map<string, { count: number; converted: number; lastLeadAt: string | null }>();
   for (const row of leadStats ?? []) {
     const key = row.mini_app_id as string;
-    const current = statsByApp.get(key) ?? { count: 0, lastLeadAt: null };
+    const current = statsByApp.get(key) ?? { count: 0, converted: 0, lastLeadAt: null };
     current.count += 1;
+    if (row.status === "converted") current.converted += 1;
     const receivedAt = row.received_at as string;
     if (!current.lastLeadAt || receivedAt > current.lastLeadAt) current.lastLeadAt = receivedAt;
     statsByApp.set(key, current);
@@ -226,8 +236,10 @@ export async function getMiniAppsList(workspaceId: string): Promise<MiniAppListI
     status: a.status as MiniAppStatus,
     assignedAgentName: a.assigned_agent_id ? (memberNames.get(a.assigned_agent_id as string) ?? null) : null,
     leadsCount: statsByApp.get(a.id as string)?.count ?? 0,
+    convertedLeadsCount: statsByApp.get(a.id as string)?.converted ?? 0,
     lastLeadAt: statsByApp.get(a.id as string)?.lastLeadAt ?? null,
     createdAt: a.created_at as string,
+    linkedAppIcon: a.template_key === "app_vinculada" ? ((a.config as { icon?: LinkedAppIconKey } | null)?.icon ?? undefined) : undefined,
   }));
 }
 
