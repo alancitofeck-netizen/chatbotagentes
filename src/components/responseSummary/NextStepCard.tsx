@@ -15,20 +15,20 @@ export function NextStepCard({ nextStep }: { nextStep: ResponseViewModel | undef
   const date = ns && typeof ns.date === "string" ? ns.date : null;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-2xl border border-border-default bg-surface-2 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500/20 text-accent-200">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500/15 text-accent-600">
           <CalendarClock className="size-4" aria-hidden="true" />
         </div>
         <div>
-          <p className="text-[15px] font-semibold text-white">Próximo paso</p>
+          <p className="text-[15px] font-semibold text-foreground">Próximo paso</p>
           {date ? (
-            <p className="mt-0.5 text-sm text-white/70">
+            <p className="mt-0.5 text-sm text-neutral-600">
               {[date, ns?.time].filter(Boolean).join(" · ")}
               {typeof ns?.objective === "string" && ns.objective ? ` — ${ns.objective}` : ""}
             </p>
           ) : (
-            <p className="mt-0.5 text-sm text-white/50">Todavía no se registró un próximo paso para esta conversación.</p>
+            <p className="mt-0.5 text-sm text-neutral-500">Todavía no se registró un próximo paso para esta conversación.</p>
           )}
         </div>
       </div>

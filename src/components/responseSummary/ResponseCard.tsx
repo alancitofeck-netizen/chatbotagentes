@@ -11,8 +11,8 @@ function asRecord(value: unknown): Record<string, unknown> {
  * (truncado mecánico por longitud, nunca un resumen generado). */
 export function ResponseCard({ model }: { model: ResponseViewModel }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-      <p className="text-[13px] text-white/60">{model.question}</p>
+    <div className="rounded-xl border border-border-default bg-surface-1 p-4">
+      <p className="text-[13px] text-neutral-500">{model.question}</p>
       <div className="mt-2">{renderAnswer(model)}</div>
     </div>
   );
@@ -27,15 +27,15 @@ function renderAnswer(model: ResponseViewModel) {
     case "field":
       return <ExpandableText text={String(answer)} />;
     case "choice":
-      return <p className="text-base font-semibold text-white">{String(answer)}</p>;
+      return <p className="text-base font-semibold text-foreground">{String(answer)}</p>;
     case "multi_choice":
     case "ranking": {
       const items = Array.isArray(answer) ? answer : [];
       return (
         <ol className="flex flex-col gap-1">
           {items.map((item, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm text-white">
-              {answerType === "ranking" && <span className="text-xs font-semibold text-accent-300">{i + 1}.</span>}
+            <li key={i} className="flex items-center gap-2 text-sm text-foreground">
+              {answerType === "ranking" && <span className="text-xs font-semibold text-accent-600">{i + 1}.</span>}
               {String(item)}
             </li>
           ))}
@@ -47,11 +47,11 @@ function renderAnswer(model: ResponseViewModel) {
       const rating = typeof fb.rating === "number" ? fb.rating : null;
       return (
         <div className="flex flex-col gap-2">
-          {typeof fb.text === "string" && fb.text && <p className="text-sm leading-relaxed text-white">{fb.text}</p>}
+          {typeof fb.text === "string" && fb.text && <p className="text-sm leading-relaxed text-foreground">{fb.text}</p>}
           {rating !== null && (
             <div className="flex items-center gap-0.5">
               {Array.from({ length: 5 }, (_, i) => (
-                <Star key={i} className={`size-4 ${i < rating ? "fill-warning-strong text-warning-strong" : "text-white/20"}`} aria-hidden="true" />
+                <Star key={i} className={`size-4 ${i < rating ? "fill-warning-strong text-warning-strong" : "text-neutral-300"}`} aria-hidden="true" />
               ))}
             </div>
           )}
@@ -62,7 +62,7 @@ function renderAnswer(model: ResponseViewModel) {
       const list = Array.isArray(answer) ? (answer as { type?: string; name?: string }[]) : [];
       const label: Record<string, string> = { solo: "Decide personalmente", pareja: "Suma a su pareja", socio: "Suma a un socio", familiar: "Suma a un familiar" };
       return (
-        <ul className="flex flex-col gap-1 text-sm text-white">
+        <ul className="flex flex-col gap-1 text-sm text-foreground">
           {list.map((dm, i) => (
             <li key={i}>{dm.type === "otro" ? dm.name || "Otra persona" : (label[dm.type ?? ""] ?? dm.type)}</li>
           ))}
@@ -73,7 +73,7 @@ function renderAnswer(model: ResponseViewModel) {
       const ns = asRecord(answer);
       const parts = [[ns.date, ns.time].filter(Boolean).join(" · "), ns.objective ? `Objetivo: ${ns.objective}` : null, ns.participants ? `Participantes: ${ns.participants}` : null].filter(Boolean);
       return (
-        <ul className="flex flex-col gap-1 text-sm text-white">
+        <ul className="flex flex-col gap-1 text-sm text-foreground">
           {parts.map((p, i) => (
             <li key={i}>{String(p)}</li>
           ))}
@@ -83,7 +83,7 @@ function renderAnswer(model: ResponseViewModel) {
     case "referral": {
       const list = Array.isArray(answer) ? (answer as { name?: string; phone?: string }[]) : [];
       return (
-        <ul className="flex flex-col gap-1 text-sm text-white">
+        <ul className="flex flex-col gap-1 text-sm text-foreground">
           {list.map((r, i) => (
             <li key={i}>
               {r.name} — {r.phone}
@@ -93,6 +93,6 @@ function renderAnswer(model: ResponseViewModel) {
       );
     }
     default:
-      return <p className="text-sm text-white">{typeof answer === "string" ? answer : JSON.stringify(answer)}</p>;
+      return <p className="text-sm text-foreground">{typeof answer === "string" ? answer : JSON.stringify(answer)}</p>;
   }
 }

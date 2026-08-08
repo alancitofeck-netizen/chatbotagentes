@@ -18,16 +18,16 @@ export function MiniAppLeadCard({ lead, onClick }: { lead: MiniAppLeadRow; onCli
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition-colors hover:bg-white/[0.07]"
+      className="flex flex-col gap-3 rounded-2xl border border-border-default bg-surface-2 p-4 text-left transition-colors hover:bg-surface-3"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500/20 text-accent-200">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500/15 text-accent-600">
             <User className="size-4" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[15px] font-semibold text-white">{lead.nombre}</p>
-            <p className="flex items-center gap-1 text-xs text-white/50">
+            <p className="truncate text-[15px] font-semibold text-foreground">{lead.nombre}</p>
+            <p className="flex items-center gap-1 text-xs text-neutral-500">
               <Phone className="size-3" aria-hidden="true" />
               {lead.whatsapp}
             </p>
@@ -38,9 +38,9 @@ export function MiniAppLeadCard({ lead, onClick }: { lead: MiniAppLeadRow; onCli
 
       <div className="flex flex-wrap items-center gap-1.5">
         {lead.agente && <StatusBadge variant="neutral">{lead.agente}</StatusBadge>}
-        <span className="text-xs text-white/50">{new Date(lead.fecha).toLocaleDateString("es")}</span>
+        <span className="text-xs text-neutral-500">{new Date(lead.fecha).toLocaleDateString("es")}</span>
         {score !== null && (
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-accent-500/20 px-2.5 py-1 text-xs font-medium text-accent-200">
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-accent-500/15 px-2.5 py-1 text-xs font-medium text-accent-700">
             <Gauge className="size-3" aria-hidden="true" />
             {score}/100{perfil ? ` · ${perfil}` : ""}
           </span>

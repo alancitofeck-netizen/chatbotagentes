@@ -46,13 +46,13 @@ export function ResponseSectionCard({ section, models }: { section: string; mode
   const hasMore = models.length > INITIAL_VISIBLE;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+    <div className="flex flex-col gap-3 rounded-2xl border border-border-default bg-surface-2 p-5">
       <div className="flex items-center gap-2.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-500/20 text-accent-200">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-500/15 text-accent-600">
           <Icon className="size-4" aria-hidden="true" />
         </div>
-        <h3 className="text-[15px] font-semibold text-white">{section}</h3>
-        <span className="text-xs text-white/50">({models.length})</span>
+        <h3 className="text-[15px] font-semibold text-foreground">{section}</h3>
+        <span className="text-xs text-neutral-400">({models.length})</span>
       </div>
 
       <div className="flex flex-col gap-2.5">
@@ -65,7 +65,7 @@ export function ResponseSectionCard({ section, models }: { section: string; mode
         <button
           type="button"
           onClick={() => setShowAll(!showAll)}
-          className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-medium text-accent-300 hover:text-accent-200"
+          className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-medium text-accent-600 hover:text-accent-700"
         >
           {showAll ? "Ver menos" : `Ver todas las respuestas (${models.length})`}
           <ChevronDown className={`size-3.5 transition-transform duration-[180ms] ${showAll ? "rotate-180" : ""}`} aria-hidden="true" />

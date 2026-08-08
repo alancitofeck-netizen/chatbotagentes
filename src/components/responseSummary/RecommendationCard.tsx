@@ -12,15 +12,15 @@ export function RecommendationCard({ recommendations }: { recommendations: strin
   const [first, ...rest] = recommendations;
 
   return (
-    <div className="col-span-2 rounded-xl border border-white/10 bg-white/5 p-4">
-      <p className="flex items-center gap-1.5 text-[13px] text-white/60">
-        <Star className="size-3.5 text-accent-300" aria-hidden="true" />
+    <div className="col-span-2 rounded-xl border border-border-default bg-surface-2 p-4">
+      <p className="flex items-center gap-1.5 text-[13px] text-neutral-500">
+        <Star className="size-3.5 text-accent-600" aria-hidden="true" />
         Recomendaciones
       </p>
-      <p className={`mt-2 text-sm leading-relaxed text-white ${!expanded ? "line-clamp-3" : ""}`}>{first}</p>
+      <p className={`mt-2 text-sm leading-relaxed text-foreground ${!expanded ? "line-clamp-3" : ""}`}>{first}</p>
       {expanded &&
         rest.map((r, i) => (
-          <p key={i} className="mt-2 text-sm leading-relaxed text-white">
+          <p key={i} className="mt-2 text-sm leading-relaxed text-foreground">
             {r}
           </p>
         ))}
@@ -28,7 +28,7 @@ export function RecommendationCard({ recommendations }: { recommendations: strin
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent-300 hover:text-accent-200"
+          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent-600 hover:text-accent-700"
         >
           {expanded ? "Ver menos" : "Ver más"}
           <ChevronDown className={`size-3.5 transition-transform duration-[180ms] ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />

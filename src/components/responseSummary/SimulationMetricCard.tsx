@@ -22,9 +22,9 @@ export function SimulationMetricCard({ model }: { model: ResponseViewModel }) {
     const num = parseInt(model.answer, 10);
     if (!Number.isNaN(num)) {
       return (
-        <div className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="flex flex-col items-center gap-1 rounded-xl border border-border-default bg-surface-2 p-4">
           <ScoreGauge score={num} />
-          <p className="text-xs text-white/60">{model.question}</p>
+          <p className="text-xs text-neutral-500">{model.question}</p>
         </div>
       );
     }
@@ -38,23 +38,23 @@ export function SimulationMetricCard({ model }: { model: ResponseViewModel }) {
 
   if (Array.isArray(model.answer)) {
     return (
-      <div className="col-span-2 rounded-xl border border-white/10 bg-white/5 p-4">
-        <p className="flex items-center gap-1.5 text-[13px] text-white/60">
-          <Icon className="size-3.5 text-accent-300" aria-hidden="true" />
+      <div className="col-span-2 rounded-xl border border-border-default bg-surface-2 p-4">
+        <p className="flex items-center gap-1.5 text-[13px] text-neutral-500">
+          <Icon className="size-3.5 text-accent-600" aria-hidden="true" />
           {model.question}
         </p>
-        <p className="mt-1.5 text-sm text-white">{model.answer.map((v) => (typeof v === "object" && v !== null ? Object.values(v).join(" ") : String(v))).join(", ")}</p>
+        <p className="mt-1.5 text-sm text-foreground">{model.answer.map((v) => (typeof v === "object" && v !== null ? Object.values(v).join(" ") : String(v))).join(", ")}</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-      <p className="flex items-center gap-1.5 text-[13px] text-white/60">
-        <Icon className="size-3.5 text-accent-300" aria-hidden="true" />
+    <div className="rounded-xl border border-border-default bg-surface-2 p-4">
+      <p className="flex items-center gap-1.5 text-[13px] text-neutral-500">
+        <Icon className="size-3.5 text-accent-600" aria-hidden="true" />
         {model.question}
       </p>
-      <p className="mt-1.5 truncate text-sm font-medium text-white">{String(model.answer)}</p>
+      <p className="mt-1.5 truncate text-sm font-medium text-foreground">{String(model.answer)}</p>
     </div>
   );
 }

@@ -7,8 +7,8 @@ type Variant = "primary" | "secondary" | "confirmed";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary: "bg-gradient-to-r from-accent-500 to-primary-600 text-white hover:brightness-110",
-  secondary: "border border-white/15 bg-white/5 text-white hover:bg-white/10",
-  confirmed: "border border-success-strong/30 bg-success-strong/10 text-[#7CE7B0] cursor-default",
+  secondary: "border border-border-default bg-surface-2 text-foreground hover:bg-surface-3",
+  confirmed: "border border-success-strong/30 bg-success-strong/10 text-success-strong cursor-default",
 };
 
 interface LeadActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

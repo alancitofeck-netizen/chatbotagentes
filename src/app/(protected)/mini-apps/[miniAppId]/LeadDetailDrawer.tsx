@@ -105,9 +105,9 @@ export function LeadDetailDrawer({
   const models = lead ? normalizeMiniAppLeadResponses(lead, miniApp) : [];
 
   return (
-    <Sheet open onClose={onClose} title={lead?.nombre ?? "Lead"} variant="dark">
+    <Sheet open onClose={onClose} title={lead?.nombre ?? "Lead"}>
       {!lead ? (
-        <div className="p-5 text-sm text-white/50">Cargando…</div>
+        <div className="p-5 text-sm text-neutral-500">Cargando…</div>
       ) : (
         <div className="flex flex-col gap-5 p-5">
           <LeadHeader nombre={lead.nombre} status={lead.status} origenApp={lead.origenApp} />
@@ -126,7 +126,7 @@ export function LeadDetailDrawer({
 
           {models.length > 0 && (
             <div className="flex flex-col gap-2">
-              <p className="text-[11px] font-medium tracking-wide text-white/50 uppercase">Datos de la simulación</p>
+              <p className="text-[11px] font-medium tracking-wide text-neutral-400 uppercase">Datos de la simulación</p>
               <div className="grid grid-cols-2 gap-3">
                 {models.map((m) => (
                   <SimulationMetricCard key={m.key} model={m} />
@@ -135,7 +135,7 @@ export function LeadDetailDrawer({
             </div>
           )}
 
-          <div className="my-1 h-px bg-white/10" />
+          <div className="my-1 h-px bg-border-default" />
 
           <div className="flex flex-col gap-2">
             <LeadActionButton
@@ -157,18 +157,16 @@ export function LeadDetailDrawer({
             </LeadActionButton>
 
             <div>
-              <p className="mb-1.5 text-[11px] font-medium tracking-wide text-white/50 uppercase">Asignar asesor</p>
+              <p className="mb-1.5 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">Asignar asesor</p>
               <select
                 value=""
                 onChange={(e) => e.target.value && handleAssign(e.target.value)}
                 disabled={!lead.opportunityId || isPending}
-                className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:border-accent-400 disabled:opacity-40"
+                className="w-full rounded-xl border border-border-default bg-surface-1 px-3 py-2.5 text-sm text-foreground outline-none focus:border-accent-500 disabled:opacity-40"
               >
-                <option value="" className="bg-primary-950">
-                  {lead.opportunityId ? "Elegir asesor…" : "Primero mové el lead al Pipeline"}
-                </option>
+                <option value="">{lead.opportunityId ? "Elegir asesor…" : "Primero mové el lead al Pipeline"}</option>
                 {members.map((m) => (
-                  <option key={m.memberId} value={m.memberId} className="bg-primary-950">
+                  <option key={m.memberId} value={m.memberId}>
                     {m.fullName}
                   </option>
                 ))}
@@ -179,7 +177,7 @@ export function LeadDetailDrawer({
               Iniciar conversación
             </LeadActionButton>
 
-            <Link href="/inbox" className="text-center text-xs text-accent-300 hover:text-accent-200 hover:underline">
+            <Link href="/inbox" className="text-center text-xs text-accent-600 hover:text-accent-700 hover:underline">
               Ver en el Inbox →
             </Link>
           </div>

@@ -7,10 +7,10 @@ import { CheckCircle2, Circle } from "lucide-react";
  * "rechazado" que el modelo de datos no contempla. */
 export function ConsentStatus({ accepted, fecha }: { accepted: boolean; fecha: string }) {
   return (
-    <div className={`rounded-xl border p-3.5 ${accepted ? "border-success-strong/30 bg-success-strong/10" : "border-white/10 bg-white/5"}`}>
-      <p className={`text-[11px] font-medium tracking-wide uppercase ${accepted ? "text-[#7CE7B0]" : "text-white/50"}`}>Consentimiento (LFPDPPP)</p>
-      <p className="mt-1 flex items-center gap-1.5 text-sm text-white">
-        {accepted ? <CheckCircle2 className="size-4 text-[#7CE7B0]" aria-hidden="true" /> : <Circle className="size-4 text-white/40" aria-hidden="true" />}
+    <div className={`rounded-xl border p-3.5 ${accepted ? "border-success-strong/30 bg-success-strong/10" : "border-border-default bg-surface-2"}`}>
+      <p className={`text-[11px] font-medium tracking-wide uppercase ${accepted ? "text-success-strong" : "text-neutral-400"}`}>Consentimiento (LFPDPPP)</p>
+      <p className="mt-1 flex items-center gap-1.5 text-sm text-foreground">
+        {accepted ? <CheckCircle2 className="size-4 text-success-strong" aria-hidden="true" /> : <Circle className="size-4 text-neutral-400" aria-hidden="true" />}
         {accepted ? "Aceptado" : "No aceptado"} — {new Date(fecha).toLocaleString("es")}
       </p>
     </div>

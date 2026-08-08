@@ -25,7 +25,7 @@ export function ScoreGauge({ score, label }: { score: number; label?: string }) 
     <div className="flex flex-col items-center gap-1">
       <div className="relative" style={{ width: SIZE, height: SIZE }}>
         <svg width={SIZE} height={SIZE} className="-rotate-90">
-          <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={STROKE} />
+          <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="var(--border-default)" strokeWidth={STROKE} />
           <circle
             cx={SIZE / 2}
             cy={SIZE / 2}
@@ -39,9 +39,9 @@ export function ScoreGauge({ score, label }: { score: number; label?: string }) 
             style={{ transition: "stroke-dashoffset 700ms cubic-bezier(0.16,1,0.3,1)" }}
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white">{clamped}</div>
+        <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-foreground">{clamped}</div>
       </div>
-      {label && <p className="text-xs text-white/60">{label}</p>}
+      {label && <p className="text-xs text-neutral-500">{label}</p>}
     </div>
   );
 }

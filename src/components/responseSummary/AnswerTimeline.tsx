@@ -24,13 +24,13 @@ export function AnswerTimeline({ models, max = 5 }: { models: ResponseViewModel[
     <ol className="flex flex-col gap-0">
       {ordered.map((m, i) => (
         <li key={m.key} className="relative flex gap-3 pb-5 last:pb-0">
-          {i < ordered.length - 1 && <span className="absolute top-7 left-[15px] h-full w-px bg-white/10" aria-hidden="true" />}
-          <span className="z-10 flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-500/20 text-xs font-semibold text-accent-200">
+          {i < ordered.length - 1 && <span className="absolute top-7 left-[15px] h-full w-px bg-border-default" aria-hidden="true" />}
+          <span className="z-10 flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-500/15 text-xs font-semibold text-accent-600">
             {String(i + 1).padStart(2, "0")}
           </span>
           <div className="min-w-0 pt-1">
-            <p className="text-[13px] font-medium text-white/60">{m.section ?? "General"}</p>
-            <p className="truncate text-sm text-white">{summarizeAnswer(m) || m.question}</p>
+            <p className="text-[13px] font-medium text-neutral-500">{m.section ?? "General"}</p>
+            <p className="truncate text-sm text-foreground">{summarizeAnswer(m) || m.question}</p>
           </div>
         </li>
       ))}

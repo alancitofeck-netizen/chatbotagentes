@@ -16,10 +16,10 @@ export function LeadHeader({ nombre, status, origenApp }: { nombre: string; stat
       </div>
       <div className="flex flex-col items-center gap-1.5">
         <div className="flex items-center gap-2">
-          <p className="text-lg font-semibold text-white">{nombre}</p>
+          <p className="text-lg font-semibold text-foreground">{nombre}</p>
           <StatusBadge variant={LEAD_STATUS_VARIANT[status]}>{LEAD_STATUS_LABEL[status]}</StatusBadge>
         </div>
-        <p className="text-xs text-white/50">{origenApp}</p>
+        <p className="text-xs text-neutral-500">{origenApp}</p>
       </div>
     </div>
   );

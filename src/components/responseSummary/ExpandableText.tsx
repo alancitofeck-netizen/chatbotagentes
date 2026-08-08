@@ -27,12 +27,12 @@ export function ExpandableText({
 
   return (
     <div>
-      <p className={`text-sm leading-relaxed text-white transition-all duration-[180ms] ease-out ${!expanded && isLong ? "line-clamp-2" : ""} ${className ?? ""}`}>{text}</p>
+      <p className={`text-sm leading-relaxed text-foreground transition-all duration-[180ms] ease-out ${!expanded && isLong ? "line-clamp-2" : ""} ${className ?? ""}`}>{text}</p>
       {isLong && (
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent-300 hover:text-accent-200"
+          className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent-600 hover:text-accent-700"
         >
           {expanded ? collapseLabel : expandLabel}
           <ChevronDown className={`size-3.5 transition-transform duration-[180ms] ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
