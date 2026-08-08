@@ -5,6 +5,7 @@ import { addContactNote } from "@/lib/contacts/actions";
 import { createTask } from "@/lib/tasks/actions";
 import { createOpportunity } from "@/lib/crm/actions";
 import { logActivity } from "@/lib/activity/log";
+import { extractAsesoriaResponses } from "@/lib/asesorias/responseExtraction";
 
 type AsesoriaStatus = "no_iniciada" | "en_progreso" | "finalizada";
 
@@ -94,6 +95,59 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { error: updateError } = await supabase.from("asesorias").update(update).eq("id", asesoriaId).eq("workspace_id", active.workspaceId);
   if (updateError) return NextResponse.json({ error: "update_failed" }, { status: 500 });
 
+  const memberId = await getCurrentMemberId(active.workspaceId);
+
+  // Extrae las respuestas a filas normalizadas (asesoria_responses) —
+  // best-effort, nunca bloquea el guardado del `state` ya confirmado arriba.
+  // Ver responseExtraction.ts para el mapeo por tipo de diapositiva.
+  try {
+    const extracted = extractAsesoriaResponses(template, session);
+    if (extracted.length > 0) {
+      await supabase.from("asesoria_responses").upsert(
+        extracted.map((r) => ({
+          workspace_id: active.workspaceId,
+          asesoria_id: asesoriaId,
+          contact_id: existing.contact_id,
+          advisor_id: memberId,
+          question_key: r.questionKey,
+          question: r.question,
+          answer: r.answer,
+          answer_type: r.answerType,
+          slide_number: r.slideNumber,
+          section: r.section,
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: "asesoria_id,question_key" },
+      );
+      const keptKeys = extracted.map((r) => r.questionKey);
+      await supabase.from("asesoria_responses").delete().eq("asesoria_id", asesoriaId).not("question_key", "in", `(${keptKeys.map((k) => `"${k.replace(/"/g, '""')}"`).join(",")})`);
+    } else {
+      await supabase.from("asesoria_responses").delete().eq("asesoria_id", asesoriaId);
+    }
+
+    // Fill-only hacia contacts — mismo criterio que syncInsuranceProspect
+    // (miniApps/ingest.ts): nunca pisa un dato ya cargado, solo completa lo
+    // que está vacío. Así lo que el asesor tipeó en "Preparar reunión"
+    // (dentro del propio Meeting OS) también queda en la ficha real del
+    // contacto, no solo enterrado en el jsonb de la asesoría.
+    if (existing.contact_id) {
+      const { data: contactRow } = await supabase.from("contacts").select("name, phone, email, company").eq("id", existing.contact_id).maybeSingle();
+      if (contactRow) {
+        const fillOnly: Record<string, unknown> = {};
+        const fullName = (typeof prospect.fullName === "string" && prospect.fullName.trim()) || (typeof prospect.name === "string" && prospect.name.trim()) || "";
+        if (!contactRow.name && fullName) fillOnly.name = fullName;
+        if (!contactRow.phone && typeof prospect.whatsapp === "string" && prospect.whatsapp.trim()) fillOnly.phone = prospect.whatsapp.trim();
+        if (!contactRow.email && typeof prospect.email === "string" && prospect.email.trim()) fillOnly.email = prospect.email.trim();
+        if (!contactRow.company && typeof prospect.company === "string" && prospect.company.trim()) fillOnly.company = prospect.company.trim();
+        if (Object.keys(fillOnly).length > 0) {
+          await supabase.from("contacts").update(fillOnly).eq("id", existing.contact_id);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[asesorias] failed to sync normalized responses:", err);
+  }
+
   // Efectos de cierre — solo la primera vez que se detecta la transición a
   // "Finalizada", y solo si la asesoría tiene un contacto vinculado. Mismo
   // mecanismo que ya prueba finalizeAdvisorySessionAction (advisorySessions/
@@ -101,7 +155,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // acción no creaba.
   if (newStatus === "finalizada" && previousStatus !== "finalizada" && existing.contact_id) {
     const contactId = existing.contact_id as string;
-    const memberId = await getCurrentMemberId(active.workspaceId);
     const name = (typeof prospect.fullName === "string" && prospect.fullName.trim()) || (typeof prospect.name === "string" && prospect.name) || "el prospecto";
 
     await addContactNote(contactId, buildSummaryNote(name, session)).catch(() => {});

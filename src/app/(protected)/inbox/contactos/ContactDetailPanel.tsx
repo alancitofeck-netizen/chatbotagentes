@@ -482,6 +482,9 @@ export function ContactDetailPanel({
                           <Button size="sm" variant="secondary" onClick={() => router.push(`/asesorias/${a.id}`)}>
                             {a.status === "no_iniciada" ? "Abrir" : "Continuar"}
                           </Button>
+                          <Button size="sm" variant="ghost" onClick={() => router.push(`/asesorias/${a.id}/resumen`)}>
+                            Ver respuestas
+                          </Button>
                           <button
                             type="button"
                             onClick={() => handleDuplicateAsesoria(a.id)}

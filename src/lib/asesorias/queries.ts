@@ -105,6 +105,44 @@ export interface AsesoriaRow {
 const DETAIL_SELECT =
   "id, workspace_id, contact_id, advisor_id, opportunity_id, name, status, current_slide, template_name, state, context_snapshot, started_at, completed_at, updated_at";
 
+export interface AsesoriaResponseRow {
+  id: string;
+  questionKey: string;
+  question: string;
+  answer: unknown;
+  answerType: string;
+  slideNumber: number | null;
+  section: string | null;
+  updatedAt: string;
+}
+
+/** Respuestas normalizadas (asesoria_responses, ver 0117_asesoria_responses.sql
+ * y responseExtraction.ts) para la pantalla de solo lectura
+ * /asesorias/[asesoriaId]/resumen — ordenadas para que coincidan con el
+ * orden real de las diapositivas del Meeting OS (las que no cuelgan de una
+ * diapositiva, como preMeeting/nextStep/referrals, quedan al final). */
+export async function getAsesoriaResponses(workspaceId: string, asesoriaId: string): Promise<AsesoriaResponseRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("asesoria_responses")
+    .select("id, question_key, question, answer, answer_type, slide_number, section, updated_at")
+    .eq("workspace_id", workspaceId)
+    .eq("asesoria_id", asesoriaId)
+    .order("slide_number", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    questionKey: r.question_key as string,
+    question: r.question as string,
+    answer: r.answer,
+    answerType: r.answer_type as string,
+    slideNumber: r.slide_number as number | null,
+    section: r.section as string | null,
+    updatedAt: r.updated_at as string,
+  }));
+}
+
 export async function getAsesoriaById(workspaceId: string, asesoriaId: string): Promise<AsesoriaRow | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("asesorias").select(DETAIL_SELECT).eq("workspace_id", workspaceId).eq("id", asesoriaId).maybeSingle();
