@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { GraduationCap, Settings } from "lucide-react";
 import { buttonClassName } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "./SearchBar";
 import { ContinueLearningCard } from "./ContinueLearningCard";
 import { CategoryGrid } from "./CategoryGrid";
@@ -53,25 +54,47 @@ export function ClassroomHomeShell({
         </div>
       </div>
 
-      {continueLearning && (
-        <ContinueLearningCard course={continueLearning.course} progress={continueLearning.progress} lessonId={continueLearning.lessonId} />
-      )}
-
-      <CategoryGrid categories={categories} summaries={categorySummaries} />
-
-      {featuredCourses.length > 0 && (
-        <CourseRow
-          title="Recomendados para vos"
-          // v1 placeholder for the deferred CRM-behavior recommendation
-          // engine — reads the manually-curated is_featured flag instead of
-          // real usage-based recommendations (see 0071_classroom_module.sql
-          // and the Classroom Fase 1 plan's explicit scope note).
-          courses={featuredCourses}
-          progressByCourse={progressByCourse}
+      {categories.length === 0 && featuredCourses.length === 0 && recentCourses.length === 0 ? (
+        <EmptyState
+          icon={GraduationCap}
+          title="Tu Classroom está esperando contenido"
+          description={
+            canManage
+              ? "Creá tu primera categoría y curso para empezar a armar el Classroom."
+              : "Cuando haya nuevos cursos o materiales, van a aparecer acá."
+          }
+          action={
+            canManage ? (
+              <Link href="/classroom/admin" className={buttonClassName({ variant: "secondary" })}>
+                <Settings size={16} aria-hidden="true" />
+                Administrar Classroom
+              </Link>
+            ) : undefined
+          }
         />
-      )}
+      ) : (
+        <>
+          {continueLearning && (
+            <ContinueLearningCard course={continueLearning.course} progress={continueLearning.progress} lessonId={continueLearning.lessonId} />
+          )}
 
-      {recentCourses.length > 0 && <CourseRow title="Últimos cursos agregados" courses={recentCourses} progressByCourse={progressByCourse} />}
+          <CategoryGrid categories={categories} summaries={categorySummaries} />
+
+          {featuredCourses.length > 0 && (
+            <CourseRow
+              title="Recomendados para vos"
+              // v1 placeholder for the deferred CRM-behavior recommendation
+              // engine — reads the manually-curated is_featured flag instead of
+              // real usage-based recommendations (see 0071_classroom_module.sql
+              // and the Classroom Fase 1 plan's explicit scope note).
+              courses={featuredCourses}
+              progressByCourse={progressByCourse}
+            />
+          )}
+
+          {recentCourses.length > 0 && <CourseRow title="Últimos cursos agregados" courses={recentCourses} progressByCourse={progressByCourse} />}
+        </>
+      )}
     </div>
   );
 }
