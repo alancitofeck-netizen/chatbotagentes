@@ -151,6 +151,13 @@ export function LeadDetailDrawer({
             </p>
           </div>
 
+          <Link
+            href={`/mini-apps/${lead.miniAppId}/leads/${lead.id}/resumen`}
+            className="flex items-center justify-center gap-1.5 rounded-md border border-border-strong px-3 py-2 text-sm font-medium text-foreground hover:bg-surface-2"
+          >
+            Ver resumen visual
+          </Link>
+
           {Object.keys(lead.data).length > 0 && (
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Datos de la simulación</p>
