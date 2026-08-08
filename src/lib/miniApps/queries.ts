@@ -165,6 +165,10 @@ export interface MiniAppLeadRow {
   status: MiniAppLeadStatus;
   contactId: string | null;
   opportunityId: string | null;
+  /** Mismo bucket jsonb que ya usa MiniAppLeadDetail — se suma acá también
+   * para poder mostrar métricas reales (score/perfil) en la tarjeta de la
+   * lista sin una segunda consulta por lead (ver responseSummary/). */
+  data: Record<string, unknown>;
 }
 
 export interface MiniAppLeadDetail extends MiniAppLeadRow {
@@ -172,7 +176,6 @@ export interface MiniAppLeadDetail extends MiniAppLeadRow {
   consentimiento: boolean;
   consentimientoFecha: string;
   receivedAt: string;
-  data: Record<string, unknown>;
 }
 
 /** workspace_member_names (0003_inbox.sql) resolves member -> display name;
@@ -350,7 +353,7 @@ export async function getMiniAppLeads(
   const supabase = await createClient();
   let query = supabase
     .from("mini_app_leads")
-    .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id")
+    .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, data")
     .eq("workspace_id", workspaceId)
     .eq("mini_app_id", miniAppId)
     .order("received_at", { ascending: false });
@@ -371,6 +374,7 @@ export async function getMiniAppLeads(
     status: r.status as MiniAppLeadStatus,
     contactId: r.contact_id as string | null,
     opportunityId: r.opportunity_id as string | null,
+    data: (r.data as Record<string, unknown>) ?? {},
   }));
 }
 
