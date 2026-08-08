@@ -1,56 +1,31 @@
-"use client";
-
-import { useState } from "react";
-import { ChevronDown, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import type { ResponseViewModel } from "./types";
-
-const LONG_TEXT_THRESHOLD = 140;
+import { ExpandableText } from "./ExpandableText";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 /** Una respuesta, en la tarjeta que le corresponde según cómo se capturó el
- * dato (ResponseAnswerType). Si el valor es texto y supera
- * LONG_TEXT_THRESHOLD, colapsa con "Ver respuesta completa" — truncado
- * mecánico (por longitud), no un resumen generado, para no inventar
- * contenido que la respuesta no tiene. */
+ * dato (ResponseAnswerType). Texto largo se colapsa vía ExpandableText
+ * (truncado mecánico por longitud, nunca un resumen generado). */
 export function ResponseCard({ model }: { model: ResponseViewModel }) {
-  const [expanded, setExpanded] = useState(false);
-
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4">
       <p className="text-[13px] text-white/60">{model.question}</p>
-      <div className="mt-2">{renderAnswer(model, expanded, setExpanded)}</div>
+      <div className="mt-2">{renderAnswer(model)}</div>
     </div>
   );
 }
 
-function renderAnswer(model: ResponseViewModel, expanded: boolean, setExpanded: (v: boolean) => void) {
+function renderAnswer(model: ResponseViewModel) {
   const { answer, answerType } = model;
 
   switch (answerType) {
     case "text":
     case "money":
-    case "field": {
-      const text = String(answer);
-      const isLong = text.length > LONG_TEXT_THRESHOLD;
-      return (
-        <div>
-          <p className={`text-sm leading-relaxed text-white transition-all duration-[180ms] ease-out ${!expanded && isLong ? "line-clamp-2" : ""}`}>{text}</p>
-          {isLong && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent-300 hover:text-accent-200"
-            >
-              {expanded ? "Ver menos" : "Ver respuesta completa"}
-              <ChevronDown className={`size-3.5 transition-transform duration-[180ms] ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      );
-    }
+    case "field":
+      return <ExpandableText text={String(answer)} />;
     case "choice":
       return <p className="text-base font-semibold text-white">{String(answer)}</p>;
     case "multi_choice":

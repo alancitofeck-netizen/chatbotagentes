@@ -1,14 +1,7 @@
 import { Gauge, Phone, User } from "lucide-react";
-import type { MiniAppLeadRow, MiniAppLeadStatus } from "@/lib/miniApps/queries";
+import type { MiniAppLeadRow } from "@/lib/miniApps/queries";
 import { StatusBadge } from "@/components/responseSummary/StatusBadge";
-
-const STATUS_LABEL: Record<MiniAppLeadStatus, string> = { new: "Nuevo", contacted: "Contactado", converted: "Convertido", discarded: "Descartado" };
-const STATUS_VARIANT: Record<MiniAppLeadStatus, "neutral" | "accent" | "success" | "warning"> = {
-  new: "accent",
-  contacted: "warning",
-  converted: "success",
-  discarded: "neutral",
-};
+import { LEAD_STATUS_LABEL, LEAD_STATUS_VARIANT } from "./leadStatus";
 
 /** Tarjeta de lead para el listado de una Mini App (LeadsTab) — mismo
  * lenguaje visual que ResponseSummaryScreen (ver src/components/
@@ -40,7 +33,7 @@ export function MiniAppLeadCard({ lead, onClick }: { lead: MiniAppLeadRow; onCli
             </p>
           </div>
         </div>
-        <StatusBadge variant={STATUS_VARIANT[lead.status]}>{STATUS_LABEL[lead.status]}</StatusBadge>
+        <StatusBadge variant={LEAD_STATUS_VARIANT[lead.status]}>{LEAD_STATUS_LABEL[lead.status]}</StatusBadge>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">

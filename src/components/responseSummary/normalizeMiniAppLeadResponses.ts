@@ -36,6 +36,16 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
 
+/** Etiquetas legibles para DiagnosticoRetiroThemeKey (diagnosticoRetiroDefaults.ts)
+ * — la pregunta de "objetivo" (sin puntos, solo tema) guarda la clave interna
+ * en data.theme, nunca un texto ya formateado para mostrar. */
+const THEME_LABELS: Record<string, string> = {
+  mantener: "Mantener nivel de vida",
+  patrimonio: "Patrimonio protegido",
+  fiscal: "Eficiencia fiscal",
+  liquidez: "Liquidez",
+};
+
 function formatGenericValue(value: unknown): string {
   if (typeof value === "number") return new Intl.NumberFormat("es-MX").format(value);
   if (Array.isArray(value)) {
@@ -92,6 +102,18 @@ function pushDiagnosticoResult(out: ResponseViewModel[], lead: MiniAppLeadDetail
     if (formatted.length > 0) {
       out.push({ key: "areas", question: "Desglose por área", answer: formatted, answerType: "multi_choice", section: "Resultado", order: baseOrder + 2 });
     }
+  }
+  if (typeof lead.data.theme === "string" && lead.data.theme) {
+    out.push({ key: "theme", question: "Objetivo declarado", answer: THEME_LABELS[lead.data.theme] ?? lead.data.theme, answerType: "field", section: "Resultado", order: baseOrder + 3 });
+  }
+  if (Array.isArray(lead.data.recomendaciones) && lead.data.recomendaciones.length > 0) {
+    const recos = (lead.data.recomendaciones as unknown[]).filter((r): r is string => typeof r === "string" && r.trim() !== "");
+    if (recos.length > 0) {
+      out.push({ key: "recomendaciones", question: "Recomendaciones", answer: recos, answerType: "multi_choice", section: "Resultado", order: baseOrder + 4 });
+    }
+  }
+  if (Array.isArray(lead.data.answers) && lead.data.answers.length > 0) {
+    out.push({ key: "answers", question: "Respuestas (índices)", answer: lead.data.answers, answerType: "multi_choice", section: "Resultado", order: baseOrder + 5 });
   }
 }
 
