@@ -40,16 +40,30 @@ export function CourseOverview({
         {category ? category.name : "Classroom"}
       </Link>
 
-      <div className={cn("relative flex h-48 w-full items-center justify-center overflow-hidden rounded-xl", !course.coverImageUrl && colorMeta.bg)}>
-        {course.coverImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- remote Storage URL, dimensions dynamic
-          <img src={course.coverImageUrl} alt={course.title} className="h-full w-full object-cover" />
-        ) : (
+      {course.coverImageUrl ? (
+        <div className="relative flex h-64 w-full items-end overflow-hidden rounded-xl sm:h-80">
+          {/* eslint-disable-next-line @next/next/no-img-element -- remote Storage URL, dimensions dynamic */}
+          <img src={course.coverImageUrl} alt={course.title} className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/85 via-neutral-950/10 to-transparent" aria-hidden="true" />
+          <div className="relative z-10 flex flex-col gap-3 p-6">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {category && (
+                <Badge variant={category.color} dot>
+                  {category.name}
+                </Badge>
+              )}
+              <Badge variant={levelMeta.badge}>{levelMeta.label}</Badge>
+            </div>
+            <h1 className="text-2xl font-semibold text-white sm:text-3xl">{course.title}</h1>
+          </div>
+        </div>
+      ) : (
+        <div className={cn("flex h-48 w-full items-center justify-center rounded-xl", colorMeta.bg)}>
           <span className="text-6xl">{category?.icon ?? "📚"}</span>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="flex flex-col gap-3">
+      {!course.coverImageUrl && (
         <div className="flex flex-wrap items-center gap-1.5">
           {category && (
             <Badge variant={category.color} dot>
@@ -58,9 +72,10 @@ export function CourseOverview({
           )}
           <Badge variant={levelMeta.badge}>{levelMeta.label}</Badge>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground">{course.title}</h1>
-        {course.description && <p className="max-w-2xl text-[15px] text-neutral-600">{course.description}</p>}
-      </div>
+      )}
+      {!course.coverImageUrl && <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">{course.title}</h1>}
+
+      {course.description && <p className="max-w-2xl text-[15px] text-neutral-600">{course.description}</p>}
 
       {course.objectives.length > 0 && (
         <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-surface-1 p-4">

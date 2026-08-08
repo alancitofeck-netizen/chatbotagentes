@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PlayCircle, BookOpen, Clock, MoreVertical } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, MoreVertical } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -36,19 +36,31 @@ export function CourseCard({
   const levelMeta = COURSE_LEVEL_META[course.level];
 
   return (
-    <Card className="group relative flex flex-col gap-3 overflow-hidden p-0 transition-shadow duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:shadow-[var(--elevation-md)]">
+    <Card className="group relative flex flex-col gap-3 overflow-hidden p-0 transition-all duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:-translate-y-0.5 hover:shadow-[var(--elevation-md)]">
       <Link href={href} className="flex flex-col gap-3">
         <div className={cn("relative flex h-36 w-full items-center justify-center overflow-hidden", !course.coverImageUrl && colorMeta.bg)}>
           {course.coverImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- remote Storage URL, dimensions dynamic
-            <img src={course.coverImageUrl} alt={course.title} className="h-full w-full object-cover" />
+            <img src={course.coverImageUrl} alt={course.title} className="h-full w-full object-cover transition-transform duration-[var(--duration-slow)] ease-[var(--ease-out)] group-hover:scale-105" />
           ) : (
             <span className="text-4xl">{course.categoryIcon}</span>
           )}
-          <PlayCircle
-            className="absolute inset-0 m-auto size-10 text-white opacity-0 drop-shadow-md transition-opacity duration-[var(--duration-fast)] group-hover:opacity-90"
-            aria-hidden="true"
-          />
+
+          {/* Overlay tipo Hotmart: al pasar el mouse, la imagen se oscurece y
+              aparecen la cantidad de lecciones + un botón "Entrar" visual —
+              el click sigue siendo el mismo <Link> que ya envuelve toda la
+              card, esto no agrega un segundo destino. */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-neutral-950/0 opacity-0 transition-all duration-[var(--duration-fast)] ease-[var(--ease-out)] group-hover:bg-neutral-950/55 group-hover:opacity-100">
+            <span className="flex items-center gap-1 text-[13px] font-medium text-white">
+              <BookOpen size={13} aria-hidden="true" />
+              {course.lessonCount} {course.lessonCount === 1 ? "clase" : "clases"}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-semibold text-neutral-900">
+              Entrar
+              <ArrowRight size={13} aria-hidden="true" />
+            </span>
+          </div>
+
           {course.isFeatured && (
             <Badge variant="accent" className="absolute left-2 top-2">
               Destacado
