@@ -9,8 +9,11 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { toast } from "@/components/toast/toast";
-import { Download, Trash2, Upload, Plus, Sparkles, Copy, Mail, MessageCircle, Loader2, CalendarRange, Check, Scale, History } from "lucide-react";
+import { Download, Trash2, Upload, Plus, Sparkles, Copy, Mail, MessageCircle, Loader2, CalendarRange, Check, Scale, History, DollarSign, ShieldCheck, Percent } from "lucide-react";
 import { PolicyCompareSheet } from "./PolicyCompareSheet";
+import { PolicyHeaderCard } from "./PolicyHeaderCard";
+import { PolicyInfoCard } from "./PolicyInfoCard";
+import { PolicySummaryMetricCard } from "./PolicySummaryMetricCard";
 import { uploadDocumentFile } from "@/lib/documents/uploadClient";
 import { fileTypeMetaFor, formatFileSize } from "@/components/documents/documentIcons";
 import type { DocumentItem, DocumentVersion } from "@/lib/documents/queries";
@@ -417,102 +420,54 @@ export function PolicyDetailSheet({
 
             <div className="py-4">
               <TabsContent value="resumen">
-                <dl className="flex flex-col gap-3 text-sm">
-                  {detail.policyNumber && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">N° de póliza</dt>
-                      <dd className="font-mono text-foreground">{detail.policyNumber}</dd>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <dt className="text-neutral-500">Compañía</dt>
-                    <dd className="text-foreground">{detail.company}</dd>
+                <div className="flex flex-col gap-4">
+                  <PolicyHeaderCard contactName={detail.contactName} status={detail.status} company={detail.company} product={detail.product} />
+
+                  <div className="flex flex-wrap items-center justify-center gap-1.5">
+                    {detail.policyNumber && <Badge variant="neutral">N° {detail.policyNumber}</Badge>}
+                    <Badge variant="accent">{INSURANCE_TYPE_LABEL[detail.insuranceType] ?? detail.insuranceType}</Badge>
+                    {detail.ownerName && <Badge variant="neutral">{detail.ownerName}</Badge>}
+                    {detail.source === "pdf_ai" && <Badge variant="info">Creada con IA desde PDF</Badge>}
                   </div>
-                  {detail.product && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Producto</dt>
-                      <dd className="text-foreground">{detail.product}</dd>
+
+                  <PolicyInfoCard
+                    vigenciaLabel={
+                      detail.startDate || detail.endDate
+                        ? `${detail.startDate ? formatDateOnly(detail.startDate) : "?"} — ${detail.endDate ? formatDateOnly(detail.endDate) : "?"}`
+                        : null
+                    }
+                    phone={detail.contactPhone}
+                    email={detail.contactEmail}
+                  />
+
+                  {(detail.premium !== null || detail.sumInsured !== null || detail.commissionAmount !== null) && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {detail.premium !== null && (
+                        <PolicySummaryMetricCard icon={DollarSign} label="Prima" value={formatCurrency(detail.premium, detail.premiumCurrency)} />
+                      )}
+                      {detail.sumInsured !== null && (
+                        <PolicySummaryMetricCard icon={ShieldCheck} label="Suma asegurada" value={formatCurrency(detail.sumInsured, detail.premiumCurrency)} />
+                      )}
+                      {detail.commissionAmount !== null && (
+                        <PolicySummaryMetricCard icon={Percent} label="Comisión" value={formatCurrency(detail.commissionAmount, detail.premiumCurrency)} />
+                      )}
                     </div>
                   )}
-                  <div className="flex items-center justify-between">
-                    <dt className="text-neutral-500">Tipo</dt>
-                    <dd>
-                      <Badge variant="accent">{INSURANCE_TYPE_LABEL[detail.insuranceType] ?? detail.insuranceType}</Badge>
-                    </dd>
-                  </div>
-                  {detail.startDate && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Inicio de vigencia</dt>
-                      <dd className="text-foreground">{formatDateOnly(detail.startDate)}</dd>
-                    </div>
-                  )}
-                  {detail.endDate && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Vencimiento</dt>
-                      <dd className="text-foreground">{formatDateOnly(detail.endDate)}</dd>
-                    </div>
-                  )}
-                  {detail.premium !== null && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Prima</dt>
-                      <dd className="font-mono font-semibold text-foreground">{formatCurrency(detail.premium, detail.premiumCurrency)}</dd>
-                    </div>
-                  )}
-                  {detail.commissionAmount !== null && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Comisión</dt>
-                      <dd className="font-mono text-foreground">{formatCurrency(detail.commissionAmount, detail.premiumCurrency)}</dd>
-                    </div>
-                  )}
-                  {detail.sumInsured !== null && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Suma asegurada</dt>
-                      <dd className="font-mono text-foreground">{formatCurrency(detail.sumInsured, detail.premiumCurrency)}</dd>
-                    </div>
-                  )}
+
                   <div className="my-1 h-px bg-border-default" />
-                  <div className="flex items-center justify-between">
-                    <dt className="text-neutral-500">Cliente</dt>
-                    <dd className="text-foreground">{detail.contactName}</dd>
+
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => detail && onEdit(detail)}>
+                      Editar
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => setCompareOpen(true)}>
+                      <Scale className="size-4" aria-hidden="true" />
+                      Comparar
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => detail && onDelete(detail.id)}>
+                      Eliminar
+                    </Button>
                   </div>
-                  {detail.contactEmail && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Email</dt>
-                      <dd className="truncate text-foreground">{detail.contactEmail}</dd>
-                    </div>
-                  )}
-                  {detail.contactPhone && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Teléfono</dt>
-                      <dd className="text-foreground">{detail.contactPhone}</dd>
-                    </div>
-                  )}
-                  {detail.ownerName && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Agente responsable</dt>
-                      <dd className="text-foreground">{detail.ownerName}</dd>
-                    </div>
-                  )}
-                  {detail.source === "pdf_ai" && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Origen</dt>
-                      <dd>
-                        <Badge variant="info">Creada con IA desde PDF</Badge>
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-                <div className="mt-4 flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => detail && onEdit(detail)}>
-                    Editar
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setCompareOpen(true)}>
-                    <Scale className="size-4" aria-hidden="true" />
-                    Comparar
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => detail && onDelete(detail.id)}>
-                    Eliminar
-                  </Button>
                 </div>
               </TabsContent>
 
