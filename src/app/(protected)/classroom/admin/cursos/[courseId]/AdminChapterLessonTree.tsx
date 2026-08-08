@@ -120,7 +120,7 @@ function ChapterCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-lg border border-border-default bg-surface-1">
+    <div ref={setNodeRef} style={style} className="rounded-xl border border-border-default bg-surface-1 transition-shadow duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:shadow-[var(--elevation-xs)]">
       <div className="flex items-center gap-2 p-2.5">
         <button
           {...attributes}

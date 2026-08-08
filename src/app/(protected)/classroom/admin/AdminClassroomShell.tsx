@@ -70,8 +70,10 @@ export function AdminClassroomShell({ categories, courses }: { categories: Class
   return (
     <div className="flex flex-col gap-6 p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="size-6 text-accent-500" aria-hidden="true" />
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-primary-600 text-white">
+            <GraduationCap className="size-5" aria-hidden="true" />
+          </div>
           <h1 className="text-xl font-semibold text-foreground">Administrar Classroom</h1>
         </div>
         <div className="flex gap-2">
