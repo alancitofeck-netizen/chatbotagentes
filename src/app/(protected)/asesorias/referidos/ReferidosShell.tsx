@@ -165,7 +165,7 @@ export function ReferidosShell({ initialReferrals }: { initialReferrals: Referra
                     <tr className="border-b border-border-default text-xs text-neutral-500">
                       <th className="px-3 py-2.5 font-medium">Nombre</th>
                       <th className="px-3 py-2.5 font-medium">Teléfono</th>
-                      <th className="px-3 py-2.5 font-medium">Asesor</th>
+                      <th className="px-3 py-2.5 font-medium">Referido por</th>
                       <th className="px-3 py-2.5 font-medium">Fecha</th>
                       <th className="px-3 py-2.5 font-medium">Estado</th>
                       <th className="px-3 py-2.5 font-medium">Acciones</th>
@@ -187,7 +187,7 @@ export function ReferidosShell({ initialReferrals }: { initialReferrals: Referra
                           </div>
                         </td>
                         <td className="px-3 py-2.5 text-neutral-600">+{r.phone}</td>
-                        <td className="px-3 py-2.5 text-neutral-600">{r.advisorName ?? "—"}</td>
+                        <td className="px-3 py-2.5 font-medium text-foreground">{r.asesoriaName}</td>
                         <td className="px-3 py-2.5 text-neutral-600">{formatDate(r.createdAt)}</td>
                         <td className="px-3 py-2.5">
                           <Badge variant={REFERRAL_STATUS_VARIANT[r.status]}>{REFERRAL_STATUS_LABEL[r.status]}</Badge>
