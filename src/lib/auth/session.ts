@@ -40,7 +40,7 @@ export async function getUserWorkspaces(userId: string): Promise<WorkspaceMember
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("workspace_members")
-    .select("role, workspaces(id, name, slug)")
+    .select("role, workspaces!workspace_members_workspace_id_fkey(id, name, slug)")
     .eq("user_id", userId);
 
   if (error || !data) return [];
