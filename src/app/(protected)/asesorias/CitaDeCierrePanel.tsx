@@ -12,11 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 export function CitaDeCierrePanel() {
   return (
     <Card className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Cita de Cierre</h2>
-          <p className="text-sm text-neutral-500">Segunda reunión para avanzar con el cierre del prospecto.</p>
-        </div>
+      <div className="flex justify-end">
         <Badge variant="accent">Próximamente</Badge>
       </div>
       <EmptyState

@@ -1,13 +1,11 @@
+import Link from "next/link";
 import { ArrowRight, ArrowDown, Presentation, Handshake } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { cn } from "@/lib/utils/cn";
 
-export type AsesoriaStage = "presentacion" | "cierre";
-
-function formatLastActivity(iso: string | null, nowMs: number) {
+function formatLastActivity(iso: string | null) {
   if (!iso) return "Sin actividad todavía";
-  const diffMs = nowMs - new Date(iso).getTime();
+  const diffMs = Date.now() - new Date(iso).getTime();
   const diffMin = Math.round(diffMs / 60000);
   if (diffMin < 1) return "Última actividad: ahora";
   if (diffMin < 60) return `Última actividad: hace ${diffMin} min`;
@@ -18,8 +16,7 @@ function formatLastActivity(iso: string | null, nowMs: number) {
 }
 
 function StageCard({
-  active,
-  onClick,
+  href,
   number,
   icon,
   iconBg,
@@ -29,8 +26,7 @@ function StageCard({
   statusBadge,
   stat,
 }: {
-  active: boolean;
-  onClick: () => void;
+  href: string;
   number: string;
   icon: React.ReactNode;
   iconBg: string;
@@ -43,14 +39,11 @@ function StageCard({
   return (
     <Card
       variant="default"
-      className={cn(
-        "flex flex-1 flex-col gap-4 border-2 transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]",
-        active ? "border-accent-500" : "border-transparent hover:border-border-strong",
-      )}
+      className="flex flex-1 flex-col gap-4 border-2 border-transparent transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong"
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <span className={cn("flex size-11 items-center justify-center rounded-full", iconBg, iconColor)}>{icon}</span>
+          <span className={`flex size-11 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
           <div>
             <span className="text-xs font-semibold tracking-wide text-neutral-400">{number}</span>
             <h3 className="text-base font-semibold text-foreground">{title}</h3>
@@ -60,39 +53,26 @@ function StageCard({
         {statusBadge}
       </div>
       <div className="text-sm text-neutral-500">{stat}</div>
-      <button
-        type="button"
-        onClick={onClick}
-        className={cn(
-          "mt-auto flex w-fit items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]",
-          active ? "bg-accent-600 text-white hover:bg-accent-700" : "bg-surface-2 text-foreground hover:bg-surface-3",
-        )}
+      <Link
+        href={href}
+        className="mt-auto flex w-fit items-center gap-1.5 rounded-md bg-surface-2 px-3 py-1.5 text-sm font-medium text-foreground transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-3"
       >
         Abrir sesión
         <ArrowRight className="size-3.5" aria-hidden="true" />
-      </button>
+      </Link>
     </Card>
   );
 }
 
-export function AsesoriaStageOverview({
-  activeStage,
-  onSelectStage,
-  totalAsesorias,
-  lastActivityAt,
-  nowMs,
-}: {
-  activeStage: AsesoriaStage;
-  onSelectStage: (stage: AsesoriaStage) => void;
-  totalAsesorias: number;
-  lastActivityAt: string | null;
-  nowMs: number;
-}) {
+/** Dos cards de etapa que llevan a rutas propias (`/asesorias/presentacion`,
+ * `/asesorias/cierre`) — mismo patrón "listado → entrás a un detalle" que
+ * Mini Apps (`/mini-apps` → `/mini-apps/[miniAppId]`), en vez de mostrar los
+ * KPIs/tabla de Presentación ya abiertos en la página raíz del módulo. */
+export function AsesoriaStageOverview({ totalAsesorias, lastActivityAt }: { totalAsesorias: number; lastActivityAt: string | null }) {
   return (
     <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center">
       <StageCard
-        active={activeStage === "presentacion"}
-        onClick={() => onSelectStage("presentacion")}
+        href="/asesorias/presentacion"
         number="01"
         icon={<Presentation className="size-5" aria-hidden="true" />}
         iconBg="bg-accent-100"
@@ -108,7 +88,7 @@ export function AsesoriaStageOverview({
           <>
             {totalAsesorias} {totalAsesorias === 1 ? "asesoría" : "asesorías"}
             <span className="mx-1.5 text-neutral-300">·</span>
-            {formatLastActivity(lastActivityAt, nowMs)}
+            {formatLastActivity(lastActivityAt)}
           </>
         }
       />
@@ -119,8 +99,7 @@ export function AsesoriaStageOverview({
       </div>
 
       <StageCard
-        active={activeStage === "cierre"}
-        onClick={() => onSelectStage("cierre")}
+        href="/asesorias/cierre"
         number="02"
         icon={<Handshake className="size-5" aria-hidden="true" />}
         iconBg="bg-surface-3"
