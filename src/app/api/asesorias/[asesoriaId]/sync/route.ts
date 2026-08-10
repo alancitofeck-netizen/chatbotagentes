@@ -80,6 +80,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const previousStatus = existing.status as AsesoriaStatus;
   const currentSlide = typeof session.progress === "number" ? session.progress : 0;
   const templateName = typeof template.name === "string" ? template.name : null;
+  const prospectName = (typeof prospect.fullName === "string" && prospect.fullName.trim()) || (typeof prospect.name === "string" && prospect.name.trim()) || "";
 
   const update: Record<string, unknown> = {
     state: project,
@@ -88,6 +89,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     template_name: templateName,
     updated_at: new Date().toISOString(),
   };
+  // El nombre que el asesor tipea dentro de "Preparar reunión" (prospect.
+  // fullName) recién existe una vez que arranca a llenar el Meeting OS — a
+  // diferencia del fill-only hacia `contacts` de más abajo (que no pisa un
+  // valor ya cargado), acá SÍ conviene reflejar siempre el último nombre
+  // tipeado en el listado de Asesorías, para que deje de mostrar "Nueva
+  // asesoría" apenas el asesor lo completa.
+  if (prospectName) update.name = prospectName;
   if (newStatus === "finalizada" && previousStatus !== "finalizada") {
     update.completed_at = new Date().toISOString();
   }

@@ -53,6 +53,73 @@ window.__ASESORIA_SEED__ = ${serializedSeed};
   if (SEED && SEED.template) {
     try { localStorage.setItem("gl-project-current", JSON.stringify(SEED)); } catch (e) {}
   }
+
+  // El editor incrusta cada imagen subida (recursos de "Referidos", logo,
+  // recap) como data: URI base64 dentro del propio JSON de la plantilla
+  // (compressImage()/saveLogo(), archivo verbatim) — con un par de fotos ese
+  // JSON supera el límite de tamaño de las funciones serverless de Vercel y
+  // el guardado falla en silencio. Antes de mandar CUALQUIER payload acá
+  // abajo, reemplazamos cada data: URI por su URL subida a Storage (ver
+  // upload-template-image/route.ts) — el propio Meeting OS sigue teniendo el
+  // base64 en su localStorage/memoria (no tocamos eso), solo la COPIA que
+  // viaja por red queda liviana. imageCache evita resubir la misma imagen en
+  // cada autoguardado mientras siga en el estado.
+  var imageCache = {};
+  function hashString(str) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h * 0x01000193) >>> 0;
+    }
+    return h.toString(16);
+  }
+  function offloadValue(container, key) {
+    var value = container[key];
+    if (typeof value === "string" && value.indexOf("data:image/") === 0) {
+      var hash = hashString(value);
+      if (imageCache[hash]) {
+        container[key] = imageCache[hash];
+        return Promise.resolve();
+      }
+      return fetch("/api/asesorias/" + ID + "/upload-template-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl: value }),
+      })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (json) {
+          if (json && json.url) {
+            imageCache[hash] = json.url;
+            container[key] = json.url;
+          }
+        })
+        .catch(function () {});
+    }
+    if (value && typeof value === "object") return offloadImages(value);
+    return Promise.resolve();
+  }
+  function offloadImages(node) {
+    var keys = Array.isArray(node) ? node.map(function (_, i) { return i; }) : Object.keys(node);
+    var tasks = [];
+    for (var i = 0; i < keys.length; i++) tasks.push(offloadValue(node, keys[i]));
+    return Promise.all(tasks);
+  }
+  function sendPayload(url, rawValue) {
+    var parsed;
+    try { parsed = JSON.parse(rawValue); } catch (e) { parsed = null; }
+    if (!parsed || typeof parsed !== "object") {
+      fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: rawValue, keepalive: true }).catch(function () {});
+      return;
+    }
+    offloadImages(parsed)
+      .then(function () {
+        fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed), keepalive: true }).catch(function () {});
+      })
+      .catch(function () {
+        fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: rawValue, keepalive: true }).catch(function () {});
+      });
+  }
+
   var origSetItem = Storage.prototype.setItem;
   var timer = null;
   Storage.prototype.setItem = function (key, value) {
@@ -60,12 +127,7 @@ window.__ASESORIA_SEED__ = ${serializedSeed};
     if (key === "gl-project-current" && ID) {
       clearTimeout(timer);
       timer = setTimeout(function () {
-        fetch("/api/asesorias/" + ID + "/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: value,
-          keepalive: true,
-        }).catch(function () {});
+        sendPayload("/api/asesorias/" + ID + "/sync", value);
       }, 400);
     }
     // El propio Meeting OS escribe esta key SOLO cuando el asesor aprieta
@@ -75,12 +137,7 @@ window.__ASESORIA_SEED__ = ${serializedSeed};
     // del workspace (ver save-master-template/route.ts) — sin tocar el
     // archivo verbatim para lograrlo.
     if (key.indexOf("gl-template-") === 0 && ID) {
-      fetch("/api/asesorias/" + ID + "/save-master-template", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: value,
-        keepalive: true,
-      }).catch(function () {});
+      sendPayload("/api/asesorias/" + ID + "/save-master-template", value);
     }
   };
 })();
