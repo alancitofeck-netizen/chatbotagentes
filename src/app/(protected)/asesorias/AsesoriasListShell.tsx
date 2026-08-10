@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Presentation, Plus, Trash2, Copy } from "lucide-react";
+import { Presentation, Plus, Trash2, Copy, Link2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -59,6 +59,11 @@ export function AsesoriasListShell({ initialAsesorias }: { initialAsesorias: Ase
     toast.success("Asesoría eliminada.");
   }
 
+  function handleCopyLink(id: string) {
+    navigator.clipboard.writeText(`${window.location.origin}/asesorias/${id}`);
+    toast.success("Link copiado.");
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
@@ -113,6 +118,15 @@ export function AsesoriasListShell({ initialAsesorias }: { initialAsesorias: Ase
                       <Button size="sm" variant="ghost" onClick={() => router.push(`/asesorias/${a.id}/resumen`)}>
                         Ver respuestas
                       </Button>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(a.id)}
+                        className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-3 hover:text-foreground"
+                        aria-label="Copiar link"
+                        title="Copiar link"
+                      >
+                        <Link2 size={14} aria-hidden="true" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDuplicate(a.id)}

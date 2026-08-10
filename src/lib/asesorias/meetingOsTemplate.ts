@@ -1,11 +1,14 @@
 /** Plantilla verbatim de "Meeting OS" (módulo Asesorías) — CSS, HTML del
- * <body> y JS copiados carácter por carácter del archivo original entregado
- * (growth-link-meeting-os-v10-powing-cards.html). CERO cambios: ni un byte de
- * HTML/CSS/JS fue tocado — la fidelidad exacta se garantiza generando este
- * archivo por script (ver scratchpad/build_meetingos_template2.mjs de esta
- * sesión) en vez de transcribir a mano, para que la única transformación
- * posible sea el escape mecánico de backslash/backtick/${ que exige incrustar
- * el texto dentro de un template literal de TypeScript.
+ * <body> y JS copiados carácter por carácter del archivo v11 entregado
+ * (growth-link-meeting-os-v11-fix-desborde.html — fix de overflow: un slide
+ * más alto que el viewport ya no queda recortado, ver el comentario CSS
+ * sobre `.slide>.wrap`). Reemplaza la v10 (growth-link-meeting-os-v10-
+ * powing-cards.html). CERO cambios: ni un byte de HTML/CSS/JS fue tocado —
+ * la fidelidad exacta se garantiza generando este archivo por script (ver
+ * scratchpad/extract_v11.mjs de esta sesión) en vez de transcribir a mano,
+ * para que la única transformación posible sea el escape mecánico de
+ * backslash/backtick/${ que exige incrustar el texto dentro de un template
+ * literal de TypeScript.
  *
  * Este tipo de Módulo NO se sirve como fragmento inyectado en una página
  * React (a diferencia de las plantillas de Mini Apps) — el archivo original
@@ -13,14 +16,12 @@
  * que las encierre, lo que las cuelga de `window.*`; ya sabemos por el fix de
  * "Diagnóstico Interactivo Financiero" (commit 8b361bd) que `window.next`
  * puede quedar pisado por el runtime de Next.js, y esta plantilla vuelve a usar
- * `next()` como nombre de función. La solución que no requiere tocar el
- * archivo es servirlo dentro de un <iframe> mismo-origen (ver
- * src/app/api/asesorias/[asesoriaId]/frame/route.ts), que aisla su
- * `window`/`Storage` por completo. Ver el plan de esta sesión para el resto
- * del diseño (shim de localStorage, sembrado de datos del contacto/asesor).
- */
+ * exactamente ese patrón (más de 100 funciones globales). Por eso se sirve
+ * dentro de un <iframe> mismo-origen (src/app/api/asesorias/[asesoriaId]/frame/route.ts),
+ * que le da a este script su propio `window` real, aislado del de Next.js. */
 
 export const MEETING_OS_CSS = `
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@400;600;700;800&family=Manrope:wght@400;600;700;800&family=Lato:wght@400;700;900&family=Poppins:wght@400;600;700;800&family=Merriweather:wght@400;700;900&family=Playfair+Display:wght@500;700;800&family=Fraunces:wght@400;600;800&display=swap');
 :root{
   --gl-bg:#050817;--gl-bg2:#0A1230;--gl-surface:#0D1838;--gl-surface2:#122250;
@@ -42,8 +43,10 @@ h1,h2,.logo .txt,.stat .num{font-family:var(--gl-font-head)}
 .glow.a{width:600px;height:600px;background:var(--gl-glow);top:-200px;right:-150px}
 .glow.b{width:500px;height:500px;background:var(--gl-glow);bottom:-220px;left:-140px;opacity:.6}
 #deck{position:relative;z-index:2;height:100%;width:100%}
-.slide{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:64px 40px 96px}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding:64px 40px 96px;overflow-y:auto;overflow-x:hidden}
 .slide.active{display:flex;animation:rise .5s ease both}
+/* margin auto centra verticalmente cuando cabe, pero NO recorta cuando el contenido es más alto que la pantalla */
+.slide>.wrap{flex:0 0 auto;margin-top:auto;margin-bottom:auto}
 @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 .wrap{width:100%;max-width:820px;margin:0 auto}.center{text-align:center}
 .kicker{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--gl-accent-soft);font-weight:600;margin-bottom:20px}
@@ -421,7 +424,7 @@ body.fs #finishBtn{right:20px;bottom:70px}
 
 /* ===== RECAP + VALORACIÓN ===== */
 .recap-wrap{display:grid;grid-template-columns:280px 1fr;gap:36px;align-items:start;max-width:1040px}
-.recap-media{aspect-ratio:3/4;border:1px dashed var(--gl-border-strong);border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--gl-surface);position:sticky;top:0}
+.recap-media{aspect-ratio:3/4;max-height:60vh;border:1px dashed var(--gl-border-strong);border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--gl-surface)}
 .recap-media img{width:100%;height:100%;object-fit:cover}
 .recap-media-ph{font-size:32px;color:var(--gl-muted);opacity:.5}
 .recap-main{min-width:0;text-align:left}
@@ -452,7 +455,7 @@ body.fs #finishBtn{right:20px;bottom:70px}
 .ro-value-lead{font-size:16px;color:var(--gl-text2);margin-bottom:14px;line-height:1.5}.ro-value-lead strong{color:var(--gl-text)}
 .ro-value-hl{font-size:clamp(24px,3.6vw,34px);font-weight:800;letter-spacing:-.02em;color:var(--gl-accent-soft);margin-bottom:16px}
 .ro-value-badge{background:linear-gradient(120deg,var(--gl-accent),color-mix(in srgb,var(--gl-accent) 60%,#000));color:var(--gl-accent-contrast);border-radius:12px;padding:16px 18px;font-size:16px;font-weight:600}
-.ro-resource{border-radius:18px;overflow:hidden;min-height:260px;display:flex}
+.ro-resource{border-radius:18px;overflow:hidden;min-height:220px;max-height:42vh;display:flex}
 .ro-resource img{width:100%;height:100%;object-fit:cover}
 .ro-resource-ph{width:100%;background:radial-gradient(120% 100% at 70% 20%,color-mix(in srgb,var(--gl-accent) 22%,transparent),var(--gl-surface2));border:1px solid var(--gl-border);border-radius:18px;padding:26px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
 .ro-res-tag{font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--gl-accent-soft)}
@@ -465,8 +468,8 @@ body.fs #finishBtn{right:20px;bottom:70px}
 .rg-wrap h2{margin-bottom:26px}
 .rg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .rg-card{display:flex;flex-direction:column;gap:10px}
-.rg-card img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:16px;border:1px solid var(--gl-border)}
-.rg-ph{aspect-ratio:3/4;border:1px dashed var(--gl-border-strong);border-radius:16px;background:var(--gl-surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;position:relative}
+.rg-card img{width:100%;aspect-ratio:3/4;max-height:46vh;object-fit:cover;border-radius:16px;border:1px solid var(--gl-border);background:var(--gl-surface)}
+.rg-ph{aspect-ratio:3/4;max-height:46vh;border:1px dashed var(--gl-border-strong);border-radius:16px;background:var(--gl-surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;position:relative}
 .rg-ph-num{position:absolute;top:12px;left:14px;font-size:13px;font-weight:800;color:var(--gl-accent-soft)}
 .rg-ph-ic{font-size:30px;opacity:.4}
 .rg-title{font-size:15px;font-weight:600;color:var(--gl-text);text-align:center}
@@ -487,6 +490,7 @@ body.fs #finishBtn{right:20px;bottom:70px}
 `;
 
 export const MEETING_OS_BODY_HTML = `
+
 <canvas id="stars"></canvas>
 <div class="glow a"></div><div class="glow b"></div>
 <div id="bar"></div>
@@ -582,7 +586,6 @@ export const MEETING_OS_BODY_HTML = `
 `;
 
 export const MEETING_OS_LOGIC_JS = `
-
 
 
 
@@ -1045,8 +1048,6 @@ function prospectLineHTML(s){
   }
   return '<div class="cover-name">'+inner+'</div>';
 }
-
-
 /* ================================================================
    RENDERER
    ================================================================ */
@@ -1127,11 +1128,11 @@ function referralOfferView(s,kick){
   const valueBlock='<div class="ro-value">'+
     (s.valueLead!=null?'<p class="ro-value-lead"'+ed(s,'valueLead')+'>'+interpolate(s.valueLead)+'</p>':'')+
     (s.valueHighlight!=null?'<div class="ro-value-hl"'+ed(s,'valueHighlight')+'>'+interpolate(s.valueHighlight)+'</div>':'')+
-    (s.valueBadge!=null?'<div class="ro-value-badge"'+ed(s,'valueBadge')+'>ⓘ '+interpolate(s.valueBadge)+'</div>':'')+
+    (s.valueBadge!=null?'<div class="ro-value-badge"'+ed(s,'valueBadge')+'>★ '+interpolate(s.valueBadge)+'</div>':'')+
     '</div>';
   const resource=s.showResource!==false?'<div class="ro-resource">'+
     (s.resource&&s.resource.src?'<img src="'+escapeHtml(s.resource.src)+'" alt="">':
-      '<div class="ro-resource-ph"><div class="ro-res-tag">'+escapeHtml((s.resource&&s.resource.tag)||'DIAGNÓSTICO')+'</div><div class="ro-res-title">'+escapeHtml((s.resource&&s.resource.title)||'Tu recurso de regalo')+'</div><div class="ro-res-sub">'+escapeHtml((s.resource&&s.resource.sub)||'2 minutos · Sin registro')+'</div><div class="ro-res-orb">★</div><div class="ro-res-cta">▶ Toca para explorar</div></div>')+
+      '<div class="ro-resource-ph"><div class="ro-res-tag">'+escapeHtml((s.resource&&s.resource.tag)||'DIAGNÓSTICO')+'</div><div class="ro-res-title">'+escapeHtml((s.resource&&s.resource.title)||'Tu recurso de regalo')+'</div><div class="ro-res-sub">'+escapeHtml((s.resource&&s.resource.sub)||'2 minutos · Sin registro')+'</div><div class="ro-res-orb">▶</div><div class="ro-res-cta">▶ Toca para explorar</div></div>')+
     '</div>':'';
   const btn=s.buttonText!=null&&!EDITING()?'<div class="actions"><button class="btn" data-action="next">'+interpolate(s.buttonText)+'</button></div>':'';
   return '<div class="wrap ro-wrap">'+kick+'<h2'+ed(s,'title')+'>'+interpolate(s.title)+'</h2>'+steps+
@@ -1160,7 +1161,7 @@ function recapValueView(s,kick){
   return '<div class="wrap recap-wrap">'+media+
     '<div class="recap-main">'+kick+'<h2'+ed(s,'title')+'>'+interpolate(s.title)+'</h2>'+bullets+quote+opinion+q1+q2+btn+'</div></div>';
 }
-/* --- Captura de referidos (Nombre + WhatsApp) → session.referrals --- */
+/* --- Captura de referidos (Nombre + WhatsApp) — session.referrals --- */
 function referralCaptureView(s,kick){
   const lead=s.lead!=null?'<p class="lead"'+ed(s,'lead')+'>'+interpolate(s.lead)+'</p>':'';
   const criteria=(s.criteria&&s.criteria.length)?'<ul class="ref-crit">'+s.criteria.map((c,ci)=>'<li'+(EDITING()?' data-edit="crit:'+ci+'" data-sid="'+s.id+'"':'')+'>'+interpolate(c)+'</li>').join('')+'</ul>':'';
@@ -1232,7 +1233,7 @@ function calendlyView(s,kick){
     area='<div class="cal-embed" data-cal-embed="'+encodeURIComponent(url)+'">'+
       '<iframe src="'+escapeHtml(url)+'?hide_gdpr_banner=1" title="Calendly" onload="calMarkLoaded(this)"></iframe>'+
       '<div class="cal-fallback" data-cal-fallback><p>No pudimos mostrar la agenda aquí.</p>'+
-        '<a class="btn" href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">Abrir agenda ↗</a></div>'+
+        '<a class="btn" href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">Abrir agenda →</a></div>'+
       '</div>';
   }
   const fb=(url&&s.showFallbackButton!==false)?'<div class="cal-openext"><a href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(interpolate(s.fallbackButtonText||'Abrir agenda en otra pestaña ↗'))+'</a></div>':'';
@@ -1240,7 +1241,7 @@ function calendlyView(s,kick){
   return '<div class="wrap center">'+kick+'<h2'+ed(s,'title')+'>'+interpolate(s.title||'')+'</h2>'+subtitle+area+fb+confirmBtn+'</div>';
 }
 
-/* iframe cargó bien → cancelar el fallback pendiente */
+/* iframe cargó bien — cancelar el fallback pendiente */
 function calMarkLoaded(iframe){const box=iframe.closest('.cal-embed');if(box){box.classList.add('loaded');const fb=box.querySelector('[data-cal-fallback]');if(fb)fb.style.display='none';}}
 /* si en 6s no cargó, mostrar el fallback (embed bloqueado / lento / error) */
 function calWatchFallback(){document.querySelectorAll('.cal-embed:not(.loaded)').forEach(box=>{
@@ -1308,7 +1309,6 @@ function exportReferrals(){const refs=(SE().referrals||[]).filter(r=>r.name||r.p
 function nextStepView(){const ns=SE().nextStep||{};  const fecha=[ns.date,ns.time].filter(Boolean).join(' · ')||'';
   const rows=[['Próxima cita',fecha],['Participan',ns.participants],['Vamos a revisar',ns.objective],['Antes de la cita',ns.docs],['Compromiso del asesor',ns.advisorCommit],['Compromiso del prospecto',ns.prospectCommit]];
   return '<div class="nextstep-grid">'+rows.map(r=>'<div class="ns-row"><div class="k">'+r[0]+'</div><div class="v">'+escapeHtml(r[1]||'')+'</div></div>').join('')+'</div>';}
-
 /* ================================================================
    ENGINE presentación
    ================================================================ */
@@ -1344,12 +1344,12 @@ function wireInteractions(){
     el.addEventListener('keydown',e=>e.stopPropagation());
     el.addEventListener('input',()=>{setResponse(el.dataset.response,el.value);
       const rk=el.dataset.rkey;if(rk)setNamedResponse(rk,el.value);});});
-  // criterios de decisión → session.decisionCriteria
+  // criterios de decisión — session.decisionCriteria
   deck.querySelectorAll('.crit-in').forEach(inp=>{const idx=+inp.dataset.crit;
     inp.value=(SE().decisionCriteria&&SE().decisionCriteria[idx])||'';
     inp.addEventListener('keydown',e=>e.stopPropagation());
     inp.addEventListener('input',()=>{SE().decisionCriteria=SE().decisionCriteria||["","",""];SE().decisionCriteria[idx]=inp.value;scheduleSave();});});
-  // decisores → session.decisionMakers
+  // decisores — session.decisionMakers
   deck.querySelectorAll('.opt[data-dmopt]').forEach(o=>{o.onclick=()=>{
     o.parentElement.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');
     const val=o.dataset.dmopt;const box=deck.querySelector('#dmExtra');
@@ -1361,7 +1361,7 @@ function wireInteractions(){
       const mk=box.querySelector('#dmMust');if(mk)mk.addEventListener('change',()=>{SE().decisionMakers[0].mustAttend=mk.checked;scheduleSave();});
     }else if(box){box.innerHTML='';}
     scheduleSave();};});
-  // feedback → stars
+  // feedback — stars
   deck.querySelectorAll('[data-stars] .st').forEach(star=>{star.onclick=()=>{
     const n=+star.dataset.star;SE().feedback=SE().feedback||{};SE().feedback.rating=n;
     star.parentElement.querySelectorAll('.st').forEach((x,k)=>x.classList.toggle('on',k<n));scheduleSave();};});
@@ -1446,7 +1446,6 @@ function doSave(){
 }
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 function confirmIfDirty(msg){ if(!dirty)return true; return confirm((msg||'Tenés cambios sin guardar.')+'\\n\\n¿Continuar de todos modos? (Aceptar = descartar cambios no guardados)'); }
-
 /* ================================================================
    MODOS
    ================================================================ */
@@ -1473,7 +1472,7 @@ function renderStages(){const box=document.getElementById('stageProgress');if(!b
   const curIdx=present.indexOf(curSec);
   box.innerHTML=present.map((sec,n)=>{
     const cls=n===curIdx?'active':(n<curIdx?'done':'');
-    return '<span class="stage-chip '+cls+'">'+escapeHtml(sec)+'</span>'+(n<present.length-1?'<span class="stage-arrow">▸</span>':'');
+    return '<span class="stage-chip '+cls+'">'+escapeHtml(sec)+'</span>'+(n<present.length-1?'<span class="stage-arrow">›</span>':'');
   }).join('');}
 
 function renderSlideList(){const list=document.getElementById('slideList');
@@ -1485,7 +1484,7 @@ function renderSlideList(){const list=document.getElementById('slideList');
       '<div class="num">'+(n+1)+'</div>'+
       '<div class="info"><div class="nm">'+escapeHtml(s.internalName||s.id)+'</div><div class="tp">'+(TYPE_LABELS[s.type]||s.type)+'</div></div>'+
       '<div class="acts">'+
-        '<button class="mini" title="'+(s.enabled===false?'Activar':'Ocultar')+'" onclick="event.stopPropagation();toggleSlide(\\''+s.id+'\\')">'+(s.enabled===false?'○':'◉')+'</button>'+
+        '<button class="mini" title="'+(s.enabled===false?'Activar':'Ocultar')+'" onclick="event.stopPropagation();toggleSlide(\\''+s.id+'\\')">'+(s.enabled===false?'○':'●')+'</button>'+
         '<button class="mini" title="Duplicar" onclick="event.stopPropagation();duplicateSlide(\\''+s.id+'\\')">⧉</button>'+
         '<button class="mini del" title="Eliminar" onclick="event.stopPropagation();deleteSlide(\\''+s.id+'\\')">✕</button>'+
       '</div></div>';});
@@ -1514,7 +1513,7 @@ function deleteSlide(id){if(T().slides.length<=1){toast('No podés eliminar la �
   History.push('delete');currentEditId=T().slides[Math.max(0,idx-1)].id;renderSlideList();build();showEditSlide();renderProps();markDirty();toast('Eliminada — Ctrl+Z para recuperar');}
 
 const TYPE_LABELS={cover:'Portada',statement:'Texto',textQuestion:'Pregunta',money:'Monto',twostep:'Dos pasos',choice2:'Dos opciones',options:'Varias opciones',ranking:'Ranking',stat:'Estadística',list:'Lista',summary:'Resumen',media:'Imagen',embed:'Video/Embed',criteria:'Criterios',decisionMakers:'Decisores',nextStep:'Próximo paso',feedback:'Valoración',calendly:'Agenda / Calendly',referralCapture:'Captura de referidos',referralMessage:'Mensaje WhatsApp',recapValue:'Recap + Valoración',referralOffer:'Oferta de regalo',resourceGrid:'Grilla de recursos'};
-const TYPE_ICONS={cover:'▣',statement:'¶',textQuestion:'?',money:'$',twostep:'⇄',choice2:'⑂',options:'☰',ranking:'↕',stat:'#',list:'≡',summary:'✎',media:'▦',embed:'▷',criteria:'✔',decisionMakers:'⚑',nextStep:'→',feedback:'★',calendly:'📅',referralCapture:'👥',referralMessage:'💬',recapValue:'✍',referralOffer:'🎁',resourceGrid:'🖼'};
+const TYPE_ICONS={cover:'★',statement:'¶',textQuestion:'?',money:'$',twostep:'⇉',choice2:'⚖',options:'☰',ranking:'≡',stat:'#',list:'⁘',summary:'✎',media:'▢',embed:'▷',criteria:'☑',decisionMakers:'☺',nextStep:'➤',feedback:'★',calendly:'📅',referralCapture:'👥',referralMessage:'💬',recapValue:'✨',referralOffer:'🎁',resourceGrid:'🖼'};
 function blockTemplate(type){const base={id:uid(type),type,enabled:true,internalName:TYPE_LABELS[type],title:'Nuevo título',buttonText:'Continuar'};
   const ext={cover:{kicker:'Etiqueta',subtitle:'Subtítulo',badges:['Etiqueta 1'],prospectLine:{enabled:true,prefix:'Preparada para',showProspectName:true,suffix:'',anonymousText:'Preparada especialmente para ti'},buttonText:'Comenzar →'},
     statement:{kicker:'Etiqueta',body:'Texto explicativo.'},textQuestion:{kicker:'',placeholder:'Escribir respuesta…'},
@@ -1551,7 +1550,6 @@ function startInline(el){el.classList.add('editing');el.setAttribute('contentedi
     if(ev.key==='Escape'){el.textContent=getField(s,field);el.blur();}});}
 function getField(s,field){if(field.indexOf('badge:')===0)return (s.badges||[])[+field.split(':')[1]]||'';if(field.indexOf('crit:')===0)return (s.criteria||[])[+field.split(':')[1]]||'';if(field.indexOf('bullet:')===0)return (s.bullets||[])[+field.split(':')[1]]||'';if(field.indexOf('step:')===0)return (s.steps||[])[+field.split(':')[1]]||'';return s[field]!=null?s[field]:'';}
 function setField(s,field,val){if(field.indexOf('badge:')===0){s.badges[+field.split(':')[1]]=val;return;}if(field.indexOf('crit:')===0){s.criteria[+field.split(':')[1]]=val;return;}if(field.indexOf('bullet:')===0){s.bullets[+field.split(':')[1]]=val;return;}if(field.indexOf('step:')===0){s.steps[+field.split(':')[1]]=val;return;}s[field]=val;}
-
 /* ================================================================
    PANEL DE PROPIEDADES
    ================================================================ */
@@ -1589,6 +1587,9 @@ function renderProps(){const panel=document.getElementById('propPanel');const s=
   const roFile=panel.querySelector('#rgfile-ro');
   if(roFile)roFile.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const s=T().slides.find(x=>x.id===currentEditId);
     const rd=new FileReader();rd.onload=()=>compressImage(rd.result,f,(data)=>{s.resource=s.resource||{};s.resource.src=data;History.push('ro-img');renderProps();build();showEditSlide();markDirty();});rd.readAsDataURL(f);});
+  const recapFile=panel.querySelector('#rgfile-recap');
+  if(recapFile)recapFile.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const s=T().slides.find(x=>x.id===currentEditId);
+    const rd=new FileReader();rd.onload=()=>compressImage(rd.result,f,(data)=>{s.media=s.media||{};s.media.src=data;History.push('recap-img');renderProps();build();showEditSlide();markDirty();});rd.readAsDataURL(f);});
   panel.querySelectorAll('[data-prop]').forEach(inp=>{inp.addEventListener('keydown',e=>e.stopPropagation());
     inp.addEventListener('input',()=>{setProp(inp.dataset.prop,inp.value);});});
   const secSel=panel.querySelector('[data-section]');
@@ -1602,7 +1603,7 @@ function prospectLineEditor(s){const pl=s.prospectLine||{};const nm=safeName();
     (pl.fixedWarning?'<div class="pl-warn">Esta portada contenía un texto fijo. ¿Vincularla al nombre del prospecto?<div style="display:flex;gap:6px;margin-top:8px"><button class="btn sm" onclick="linkProspect(true)">Vincular nombre</button><button class="btn ghost sm" onclick="linkProspect(false)">Mantener fijo</button></div></div>':'')+
     '<div class="chip-toggle" style="margin-bottom:10px"><div class="switch '+(pl.showProspectName?'on':'')+'" onclick="togglePL()"><i></i></div> Mostrar nombre del prospecto</div>'+
     '<div class="prop"><label>Texto previo</label><input data-pl="prefix" value="'+String(pl.prefix||'').replace(/"/g,'&quot;')+'"></div>'+
-    (pl.showProspectName?'<div class="prop"><label>Dato dinámico</label><div class="pl-chip">Nombre del prospecto ✓</div></div>'+
+    (pl.showProspectName?'<div class="prop"><label>Dato dinámico</label><div class="pl-chip">Nombre del prospecto →</div></div>'+
       '<div class="prop"><label>Texto posterior (opcional)</label><input data-pl="suffix" value="'+String(pl.suffix||'').replace(/"/g,'&quot;')+'"></div>'+
       '<div class="prop"><label>Texto sin nombre</label><input data-pl="anonymousText" value="'+String(pl.anonymousText||'').replace(/"/g,'&quot;')+'"></div>':'')+
     '<div class="prop"><label>Vista previa</label><div class="pl-preview">'+(preview||'—')+'</div></div></div>';}
@@ -1630,7 +1631,7 @@ function insertDyn(prop,varText){const el=document.querySelector('[data-prop="'+
   const start=el.selectionStart!=null?el.selectionStart:el.value.length;
   el.value=el.value.slice(0,start)+varText+el.value.slice(el.selectionEnd!=null?el.selectionEnd:start);
   setProp(prop,el.value);closeDynMenu();el.focus();}
-function listEditor(s){const rows=(s.items||[]).map((it,n)=>'<div class="opt-editor" data-idx="'+n+'" draggable="true"><span class="grip">⋮⋮</span>'+(s.type==='options'?'<input class="oi" data-optfield="icon" data-idx="'+n+'" value="'+(it.icon||'').replace(/"/g,'&quot;')+'" placeholder="•">':'')+'<input data-optfield="label" data-idx="'+n+'" value="'+(it.label||'').replace(/"/g,'&quot;')+'"><button class="mini del" onclick="removeItem('+n+')">✕</button></div>').join('');
+function listEditor(s){const rows=(s.items||[]).map((it,n)=>'<div class="opt-editor" data-idx="'+n+'" draggable="true"><span class="grip">⋮⋮</span>'+(s.type==='options'?'<input class="oi" data-optfield="icon" data-idx="'+n+'" value="'+(it.icon||'').replace(/"/g,'&quot;')+'" placeholder="●">':'')+'<input data-optfield="label" data-idx="'+n+'" value="'+(it.label||'').replace(/"/g,'&quot;')+'"><button class="mini del" onclick="removeItem('+n+')">✕</button></div>').join('');
   const html='<div class="prop-group"><div class="gh">'+(s.type==='ranking'?'Prioridades':(s.type==='list'?'Elementos':'Opciones'))+'</div><div id="itemRows">'+rows+'</div><button class="add-opt" onclick="addItem()">+ Agregar</button></div>';
   setTimeout(()=>{document.querySelectorAll('[data-optfield]').forEach(inp=>{inp.addEventListener('keydown',e=>e.stopPropagation());
     inp.addEventListener('input',()=>{const it=s.items[+inp.dataset.idx];it[inp.dataset.optfield]=inp.value;History.push('text-item');build();showEditSlide();markDirty();});});setupItemDrag(s);},0);
@@ -1659,7 +1660,11 @@ function recapValueEditor(s){
       field('Pregunta 1 (destacada)','question1',s.question1||'','area')+
       field('Pregunta 2','question2',s.question2||'','area')+'</div>'+
     '<div class="prop"><div class="chip-toggle"><div class="switch '+(s.showMedia!==false?'on':'')+'" onclick="toggleRecMedia()"><i></i></div> Mostrar imagen lateral</div></div>'+
-    (s.showMedia!==false?field('URL de imagen (opcional)','media.src',(s.media&&s.media.src)||'','text'):'');}
+    (s.showMedia!==false?
+      imageField('Imagen lateral','media.src',(s.media&&s.media.src)||'','recap')+
+      ((s.media&&s.media.src)?'<div class="rg-thumb"><img src="'+escapeHtml(s.media.src)+'" alt=""><button class="mini del" onclick="clearRecapMedia()">Quitar imagen</button></div>':'')
+      :'');}
+function clearRecapMedia(){const s=T().slides.find(x=>x.id===currentEditId);s.media=s.media||{};s.media.src='';History.push('clr-recap-img');renderProps();build();showEditSlide();markDirty();}
 function addRecBullet(){const s=T().slides.find(x=>x.id===currentEditId);s.bullets=s.bullets||[];s.bullets.push('Nuevo punto');History.push('add-recbul');renderProps();build();showEditSlide();markDirty();}
 function removeRecBullet(n){const s=T().slides.find(x=>x.id===currentEditId);s.bullets.splice(n,1);History.push('rm-recbul');renderProps();build();showEditSlide();markDirty();}
 function toggleRecMedia(){const s=T().slides.find(x=>x.id===currentEditId);s.showMedia=s.showMedia===false;History.push('rec-media');renderProps();build();showEditSlide();markDirty();}
@@ -1731,8 +1736,8 @@ function calendlyEditor(s){const src=s.source||'brand';const brandUrl=(BR().cont
     (src==='brand'?'<div class="prop"><label>Calendly de tu perfil</label><input value="'+escapeHtml(brandUrl)+'" disabled placeholder="Configuralo en Identidad visual"></div>'
                   :'<div class="prop"><label>URL personalizada</label><input data-cal="calendlyUrl" value="'+escapeHtml(s.calendlyUrl||'')+'" placeholder="https://calendly.com/usuario/reunion"></div>')+
     '<div class="prop"><label>Texto del botón para abrir en otra pestaña</label><input data-cal="fallbackButtonText" value="'+escapeHtml(s.fallbackButtonText||'')+'"></div>'+
-    '<div class="prop"><div class="chip-toggle"><div class="switch '+(s.showFallbackButton!==false?'on':'')+'" onclick="toggleCal(\\'showFallbackButton\\')"><i></i></div> Mostrar enlace “abrir en otra pestaña”</div></div>'+
-    '<div class="prop"><div class="chip-toggle"><div class="switch '+(s.confirmationEnabled!==false?'on':'')+'" onclick="toggleCal(\\'confirmationEnabled\\')"><i></i></div> Mostrar botón “Cita agendada”</div></div>'+
+    '<div class="prop"><div class="chip-toggle"><div class="switch '+(s.showFallbackButton!==false?'on':'')+'" onclick="toggleCal(\\'showFallbackButton\\')"><i></i></div> Mostrar enlace "abrir en otra pestaña"</div></div>'+
+    '<div class="prop"><div class="chip-toggle"><div class="switch '+(s.confirmationEnabled!==false?'on':'')+'" onclick="toggleCal(\\'confirmationEnabled\\')"><i></i></div> Mostrar botón "Cita agendada"</div></div>'+
     '<div class="prop"><label>Texto del botón de confirmación</label><input data-cal="confirmationButtonText" value="'+escapeHtml(s.confirmationButtonText||'')+'"></div>'+
     ((src==='brand'&&!brandUrl)?'<div class="pl-warn">Configurá tu Calendly en Identidad visual para activar esta diapositiva.</div>':'')+
     '</div>';}
@@ -1748,7 +1753,6 @@ function removeSum(n){const s=T().slides.find(x=>x.id===currentEditId);s.sourceS
 function propToggle(prop){const s=T().slides.find(x=>x.id===currentEditId);if(prop==='enabled'){s.enabled=s.enabled===false;History.push('toggle');renderProps();renderSlideList();build();showEditSlide();markDirty();}}
 function setProp(path,val){const s=T().slides.find(x=>x.id===currentEditId);const parts=path.split('.');let o=s;for(let k=0;k<parts.length-1;k++)o=o[parts[k]];o[parts[parts.length-1]]=val;
   History.push('text-prop-'+path);if(path==='internalName')renderSlideList();else{build();showEditSlide();}markDirty();}
-
 /* ================================================================
    IDENTIDAD VISUAL (marca + logo desde archivo)
    ================================================================ */
@@ -1817,12 +1821,12 @@ function openThemes(){
       '<div class="theme-thumb" style="background:'+t.background+';color:'+t.textPrimary+'">'+
         '<div class="tt">'+t.name+'</div>'+
         '<div class="dots"><i style="background:'+t.accent+'"></i><i style="background:'+t.surface+';border:1px solid '+t.border+'"></i><i style="background:'+t.textSecondary+'"></i></div>'+
-      '</div><div class="theme-name">'+(t.mode==='light'?'☀ Claro':'🌙 Oscuro')+'</div></div>').join('');
+      '</div><div class="theme-name">'+(t.mode==='light'?'☀ Claro':'☾ Oscuro')+'</div></div>').join('');
   openModal('<button class="modal-x" onclick="closeModal()">×</button><h3>Diseños</h3>'+
     '<div class="mode-tabs">'+
-      '<button class="mode-tab '+(mode==='dark'?'on':'')+'" onclick="setThemeMode(\\'dark\\')">🌙 Oscuro</button>'+
+      '<button class="mode-tab '+(mode==='dark'?'on':'')+'" onclick="setThemeMode(\\'dark\\')">☾ Oscuro</button>'+
       '<button class="mode-tab '+(mode==='light'?'on':'')+'" onclick="setThemeMode(\\'light\\')">☀ Claro</button>'+
-      '<button class="mode-tab '+(mode==='auto'?'on':'')+'" onclick="setThemeMode(\\'auto\\')">🖥 Automático</button>'+
+      '<button class="mode-tab '+(mode==='auto'?'on':'')+'" onclick="setThemeMode(\\'auto\\')">◐ Automático</button>'+
       '<button class="mode-tab '+(mode==='custom'?'on':'')+'" onclick="setThemeMode(\\'custom\\')">🎨 Personalizado</button>'+
     '</div>'+
     '<div class="theme-grid">'+cards+'</div>'+
@@ -1873,7 +1877,7 @@ function openPrepare(){const p=SE().prospect,b=BR();
       '<div class="prep-tile" onclick="newSession()"><b>Iniciar nueva reunión</b><span>Empieza limpio, sin respuestas previas</span></div>'+
       '<div class="prep-tile" onclick="continueSession()"><b>Continuar anterior</b><span>Retomás donde quedaste</span></div>'+
       '<div class="prep-tile" onclick="demoSession()"><b>Reunión de prueba</b><span>Datos de ejemplo para practicar</span></div>'+
-      '<div class="prep-tile" onclick="noProspectSession()"><b>Empezar sin prospecto</b><span>Se mostrará “preparada para ti”</span></div>'+
+      '<div class="prep-tile" onclick="noProspectSession()"><b>Empezar sin prospecto</b><span>Se mostrará "preparada para ti"</span></div>'+
     '</div>'+
     '<div class="prop-group"><div class="gh">Datos del prospecto</div>'+
       idField2('Nombre','firstName',p.firstName)+
@@ -1900,10 +1904,9 @@ function demoSession(){meetingProject.session=blankSession();
   Object.assign(meetingProject.session.prospect,{name:'Martín G.',company:'Independiente',source:'LinkedIn',objective:'Retiro'});
   meetingProject.session.status='En progreso';toast('Reunión de prueba lista');closeModal();openPrepare();markDirty();}
 function noProspectSession(){if(!confirmIfDirty())return;meetingProject.session=blankSession();
-  build();showEditSlide();toast('Reunión sin prospecto — se mostrará “preparada para ti”');closeModal();setMode('present');}
+  build();showEditSlide();toast('Reunión sin prospecto — se mostrará "preparada para ti"');closeModal();setMode('present');}
 function clearResponses(){if(!confirm('¿Reiniciar todas las respuestas de esta reunión?'))return;
   SE().responses={};SE().progress=0;SE().status='No iniciada';build();showEditSlide();markDirty();toast('Respuestas reiniciadas');}
-
 /* ================================================================
    PLANTILLAS
    ================================================================ */
@@ -1920,7 +1923,7 @@ function duplicateTemplate(){const name=prompt('Nombre de la nueva plantilla:',T
 function openTemplates(){const list=Store.listTemplates();
   const rows=list.length?list.map(t=>'<div class="slide-item" style="cursor:default">'+
     '<div class="info"><div class="nm">'+escapeHtml(t.name)+' '+(t.isMaster?'· <span style="color:var(--gl-accent-soft)">maestra</span>':'')+'</div><div class="tp">'+new Date(t.updated).toLocaleString()+'</div></div>'+
-    '<div class="acts" style="opacity:1"><button class="mini" title="Cargar" onclick="loadTpl(\\''+t.id+'\\')">↥</button>'+(t.isMaster?'':'<button class="mini del" title="Eliminar" onclick="delTpl(\\''+t.id+'\\')">✕</button>')+'</div></div>').join(''):'<div class="prop-empty">Todavía no guardaste ninguna plantilla.</div>';
+    '<div class="acts" style="opacity:1"><button class="mini" title="Cargar" onclick="loadTpl(\\''+t.id+'\\')">⤒</button>'+(t.isMaster?'':'<button class="mini del" title="Eliminar" onclick="delTpl(\\''+t.id+'\\')">✕</button>')+'</div></div>').join(''):'<div class="prop-empty">Todavía no guardaste ninguna plantilla.</div>';
   openModal('<button class="modal-x" onclick="closeModal()">×</button><h3>Plantillas guardadas</h3>'+
     '<div style="margin-bottom:14px">'+rows+'</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
@@ -2052,7 +2055,6 @@ function continueLast(toSummary){const saved=Store.loadProject();if(!saved){toas
 function deleteLast(){if(!confirm('¿Eliminar la reunión guardada? Esta acción no se puede deshacer.'))return;
   meetingProject.session=blankSession();Store.saveProject();renderHomeContinue();toast('Reunión eliminada');}
 function goEditor(after){document.body.classList.remove('home','router');setMode('edit');if(typeof after==='function')setTimeout(after,50);}
-
 /* ================================================================
    MEETING ROUTER (interno — el prospecto no lo ve)
    ================================================================ */
@@ -2316,12 +2318,4 @@ loop();
   setSaveState('saved','Guardado');
   goHome();          // abre SIEMPRE en la pantalla inicial, nunca en una reunión anterior
 })();
-
-
-
-
-
-
-
-
 `;
