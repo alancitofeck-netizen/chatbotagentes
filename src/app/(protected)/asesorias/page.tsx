@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requireUser, requireActiveWorkspace } from "@/lib/auth/session";
 import { assertModuleEnabled } from "@/lib/settings/queries";
-import { getAsesoriaListAction } from "@/lib/asesorias/actions";
+import { getAsesoriaListAction, getAsesoriaReferralActivityAction } from "@/lib/asesorias/actions";
 import { AsesoriaStageOverview } from "./AsesoriaStageOverview";
 
 export const metadata: Metadata = {
@@ -13,12 +13,12 @@ export default async function AsesoriasPage() {
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "asesorias");
 
-  const asesorias = await getAsesoriaListAction();
+  const [asesorias, referralActivity] = await Promise.all([getAsesoriaListAction(), getAsesoriaReferralActivityAction()]);
   const lastActivityAt = asesorias.reduce<string | null>((latest, a) => {
     if (!latest) return a.updatedAt;
     return new Date(a.updatedAt) > new Date(latest) ? a.updatedAt : latest;
   }, null);
-  const prospectosUnicos = new Set(asesorias.map((a) => a.contactId).filter(Boolean)).size;
+  const referidos = referralActivity.length;
   const advisorName = (user.user_metadata?.full_name as string | undefined) ?? null;
 
   return (
@@ -28,7 +28,7 @@ export default async function AsesoriasPage() {
         <p className="text-sm text-neutral-500">Gestioná tus reuniones comerciales — Presentación y Cita de Cierre, un mismo proceso.</p>
       </div>
       <div className="px-4 sm:px-6 lg:px-8">
-        <AsesoriaStageOverview prospectosUnicos={prospectosUnicos} lastActivityAt={lastActivityAt} advisorName={advisorName} />
+        <AsesoriaStageOverview referidos={referidos} lastActivityAt={lastActivityAt} advisorName={advisorName} />
       </div>
     </div>
   );

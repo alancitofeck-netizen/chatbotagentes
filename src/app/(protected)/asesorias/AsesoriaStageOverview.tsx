@@ -115,11 +115,11 @@ function StageCard({
 }
 
 export function AsesoriaStageOverview({
-  prospectosUnicos,
+  referidos,
   lastActivityAt,
   advisorName,
 }: {
-  prospectosUnicos: number;
+  referidos: number;
   lastActivityAt: string | null;
   advisorName: string | null;
 }) {
@@ -140,7 +140,7 @@ export function AsesoriaStageOverview({
           </span>
         }
         stats={[
-          { icon: <Users className="size-4 text-accent-700" aria-hidden="true" />, value: String(prospectosUnicos), label: "Prospectos" },
+          { icon: <Users className="size-4 text-accent-700" aria-hidden="true" />, value: String(referidos), label: "Referidos" },
           { icon: <CalendarClock className="size-4 text-accent-700" aria-hidden="true" />, value: formatLastActivity(lastActivityAt), label: "Última actividad" },
           { icon: <UserRound className="size-4 text-accent-700" aria-hidden="true" />, value: advisorName ?? "Sin asignar", label: "Asesor asignado" },
         ]}
@@ -178,7 +178,7 @@ export function AsesoriaStageOverview({
           </span>
         }
         stats={[
-          { icon: <Users className="size-4 text-blue-700" aria-hidden="true" />, value: "0", label: "Prospectos" },
+          { icon: <Users className="size-4 text-blue-700" aria-hidden="true" />, value: "0", label: "Referidos" },
           { icon: <CalendarClock className="size-4 text-blue-700" aria-hidden="true" />, value: "Sin actividad", label: "Última actividad" },
           { icon: <UserRound className="size-4 text-blue-700" aria-hidden="true" />, value: "Sin asignar", label: "Asesor asignado" },
         ]}
