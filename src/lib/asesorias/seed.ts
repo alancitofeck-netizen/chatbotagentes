@@ -41,6 +41,9 @@ export function buildAsesoriaSeed(input: {
   advisorName?: string | null;
   brand?: AsesoriaSeedBrand | null;
   continuable?: boolean;
+  /** Plantilla guardada por el workspace (ver masterTemplate.ts) — pasa
+   * directo a buildFreshMeetingOsProject como base de las preguntas/slides. */
+  baseTemplate?: Record<string, unknown> | null;
 }): MeetingOsProject {
   const fullName = input.contact?.name?.trim() ?? "";
   const { firstName, lastName } = splitName(fullName);
@@ -70,5 +73,6 @@ export function buildAsesoriaSeed(input: {
         : undefined,
     },
     progress: input.continuable ? 1 : 0,
+    baseTemplate: input.baseTemplate ?? null,
   });
 }

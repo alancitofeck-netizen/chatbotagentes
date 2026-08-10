@@ -6,6 +6,7 @@ import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { findOrCreateContact } from "@/lib/contacts/match";
 import { getAsesoriaList, getContactAsesorias, getAsesoriaById, type AsesoriaListItem } from "@/lib/asesorias/queries";
 import { buildAsesoriaSeed } from "@/lib/asesorias/seed";
+import { getAsesoriaMasterTemplate } from "@/lib/asesorias/masterTemplate";
 
 const ASESORIA_CONTACT_SOURCE = "asesoria";
 
@@ -64,12 +65,14 @@ export async function createAsesoriaAction(input: CreateAsesoriaInput): Promise<
   const { data: workspace } = await supabase.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
   const { data: memberNames } = await supabase.rpc("workspace_member_names", { ws_id: workspaceId });
   const advisorName = ((memberNames ?? []) as { member_id: string; full_name: string }[]).find((m) => m.member_id === memberId)?.full_name ?? null;
+  const baseTemplate = memberId ? await getAsesoriaMasterTemplate(workspaceId, memberId) : null;
 
   const seed = buildAsesoriaSeed({
     contact,
     advisorName,
     brand: { companyName: (workspace?.name as string | undefined) ?? undefined, advisorName: advisorName ?? undefined },
     continuable: Boolean(contactId),
+    baseTemplate,
   });
 
   const { data: created, error } = await supabase

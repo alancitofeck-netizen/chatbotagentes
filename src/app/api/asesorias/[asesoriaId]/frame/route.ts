@@ -68,6 +68,20 @@ window.__ASESORIA_SEED__ = ${serializedSeed};
         }).catch(function () {});
       }, 400);
     }
+    // El propio Meeting OS escribe esta key SOLO cuando el asesor aprieta
+    // "Guardar" en el editor (o carga/duplica una plantilla) — nunca en el
+    // autoguardado silencioso de respuestas de una reunión en curso. Es la
+    // señal para guardar esta plantilla como base de las asesorías nuevas
+    // del workspace (ver save-master-template/route.ts) — sin tocar el
+    // archivo verbatim para lograrlo.
+    if (key.indexOf("gl-template-") === 0 && ID) {
+      fetch("/api/asesorias/" + ID + "/save-master-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: value,
+        keepalive: true,
+      }).catch(function () {});
+    }
   };
 })();
 `;

@@ -124,6 +124,11 @@ export function buildFreshMeetingOsProject(input: {
   advisor?: string;
   brand?: Partial<MeetingOsBrand>;
   progress?: number;
+  /** Plantilla guardada por el workspace (asesoria_templates.template, ver
+   * masterTemplate.ts) — si viene, reemplaza a MEETING_OS_DEFAULT_TEMPLATE
+   * como base de las preguntas/slides. theme/brand nunca vienen de acá,
+   * siguen resolviéndose igual que siempre (ver el plan de esta sesión). */
+  baseTemplate?: Record<string, unknown> | null;
 }): MeetingOsProject {
   const now = Date.now();
   const session = blankMeetingOsSession();
@@ -145,7 +150,7 @@ export function buildFreshMeetingOsProject(input: {
 
   return {
     schemaVersion: 2,
-    template: deepClone(MEETING_OS_DEFAULT_TEMPLATE),
+    template: input.baseTemplate ? deepClone(input.baseTemplate) : deepClone(MEETING_OS_DEFAULT_TEMPLATE),
     theme: deepClone(MEETING_OS_THEME_PRESETS["gl-dark"]),
     brand,
     session,
