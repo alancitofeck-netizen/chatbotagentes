@@ -93,6 +93,14 @@
   --border-default: var(--color-neutral-200);
   --border-strong: var(--color-neutral-300);
 
+  /* Fondos degradados sutiles para cards de "etapa" (AsesoriaStageOverview.tsx)
+     — usan estos tokens en vez de accent-50/blue-50 directo porque esos son
+     tonos fijos de la escala numerada (no cambian con el tema); en modo
+     oscuro accent-50/blue-50 seguían saliendo blanco/lavanda clarísimo,
+     rompiendo el contraste. Acá sí se redefinen por tema, como surface-*. */
+  --tint-violet-subtle: var(--color-accent-50);
+  --tint-blue-subtle: #eff6ff;
+
   /* Elevation — soft "floating card" language per visual reference (wide blur,
      low opacity), see 14-design-system.md §6 for the reconciliation with the
      original "muy pocas sombras" brief: still restrained/premium, just no
@@ -140,6 +148,8 @@
     --surface-3: var(--color-neutral-800);
     --border-default: var(--color-neutral-800);
     --border-strong: var(--color-neutral-700);
+    --tint-violet-subtle: var(--color-accent-900);
+    --tint-blue-subtle: #1e3a5f;
 
     --elevation-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
     --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.34);
@@ -156,6 +166,8 @@
   --surface-3: var(--color-neutral-800);
   --border-default: var(--color-neutral-800);
   --border-strong: var(--color-neutral-700);
+  --tint-violet-subtle: var(--color-accent-900);
+  --tint-blue-subtle: #1e3a5f;
 
   --elevation-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.34);

@@ -58,7 +58,7 @@ function StageCard({
   return (
     <Card
       variant="default"
-      className={`relative flex flex-col gap-5 overflow-hidden border-l-4 ${isViolet ? "border-l-accent-500 bg-gradient-to-br from-accent-50 to-surface-1" : "border-l-blue-500 bg-gradient-to-br from-blue-50 to-surface-1"}`}
+      className={`relative flex flex-col gap-5 overflow-hidden border-l-4 ${isViolet ? "border-l-accent-500 bg-gradient-to-br from-[var(--tint-violet-subtle)] to-surface-1" : "border-l-blue-500 bg-gradient-to-br from-[var(--tint-blue-subtle)] to-surface-1"}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
