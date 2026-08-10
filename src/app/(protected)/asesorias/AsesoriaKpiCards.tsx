@@ -5,21 +5,22 @@ import { Line, LineChart, ResponsiveContainer } from "recharts";
 import { Presentation, CheckCircle2, Clock, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HorizontalCardScroller } from "@/components/ui/HorizontalCardScroller";
-import type { AsesoriaListItem } from "@/lib/asesorias/queries";
+import type { AsesoriaListItem, ReferralActivityPoint } from "@/lib/asesorias/queries";
 
 interface DayPoint {
   label: string;
   total: number;
   finalizadas: number;
   enProgreso: number;
-  prospectos: number;
+  referidos: number;
 }
 
 /** Serie real de los últimos 14 días para los sparklines — cuenta asesorías
- * por `startedAt`, nunca data ficticia. Se calcula acá (no en el server)
- * porque ya recibimos la lista completa vía props; evita un round-trip
- * nuevo a Supabase solo para esto. */
-function buildActivitySeries(asesorias: AsesoriaListItem[], days: number, todayMs: number): DayPoint[] {
+ * por `startedAt` y referidos por `updatedAt` de cada fila de
+ * asesoria_responses (question_key='referrals'), nunca data ficticia. Se
+ * calcula acá (no en el server) porque ya recibimos las listas completas vía
+ * props; evita un round-trip nuevo a Supabase solo para esto. */
+function buildActivitySeries(asesorias: AsesoriaListItem[], referralActivity: ReferralActivityPoint[], days: number, todayMs: number): DayPoint[] {
   const points: DayPoint[] = [];
   const today = new Date(todayMs);
 
@@ -33,13 +34,17 @@ function buildActivitySeries(asesorias: AsesoriaListItem[], days: number, todayM
       const started = new Date(a.startedAt);
       return started >= dayStart && started < dayEnd;
     });
+    const dayReferrals = referralActivity.filter((r) => {
+      const updated = new Date(r.updatedAt);
+      return updated >= dayStart && updated < dayEnd;
+    });
 
     points.push({
       label: dayStart.toLocaleDateString("es", { day: "2-digit", month: "short" }),
       total: dayItems.length,
       finalizadas: dayItems.filter((a) => a.status === "finalizada").length,
       enProgreso: dayItems.filter((a) => a.status === "en_progreso").length,
-      prospectos: new Set(dayItems.map((a) => a.contactId).filter(Boolean)).size,
+      referidos: dayReferrals.reduce((sum, r) => sum + r.count, 0),
     });
   }
   return points;
@@ -93,7 +98,7 @@ function KpiCard({
   );
 }
 
-export function AsesoriaKpiCards({ asesorias }: { asesorias: AsesoriaListItem[] }) {
+export function AsesoriaKpiCards({ asesorias, referralActivity }: { asesorias: AsesoriaListItem[]; referralActivity: ReferralActivityPoint[] }) {
   const [todayMs] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -103,8 +108,8 @@ export function AsesoriaKpiCards({ asesorias }: { asesorias: AsesoriaListItem[] 
   const total = asesorias.length;
   const finalizadas = asesorias.filter((a) => a.status === "finalizada").length;
   const enProgreso = asesorias.filter((a) => a.status === "en_progreso").length;
-  const prospectosUnicos = new Set(asesorias.map((a) => a.contactId).filter(Boolean)).size;
-  const activity = buildActivitySeries(asesorias, 14, todayMs);
+  const referidos = referralActivity.reduce((sum, r) => sum + r.count, 0);
+  const activity = buildActivitySeries(asesorias, referralActivity, 14, todayMs);
 
   const pct = (n: number) => (total > 0 ? `${Math.round((n / total) * 1000) / 10}% del total` : "Sin asesorías todavía");
 
@@ -147,11 +152,12 @@ export function AsesoriaKpiCards({ asesorias }: { asesorias: AsesoriaListItem[] 
         icon={<Users className="size-[18px]" aria-hidden="true" />}
         iconBg="bg-blue-100"
         iconColor="text-blue-700"
-        value={String(prospectosUnicos)}
-        label="Prospectos únicos"
+        value={String(referidos)}
+        label="Referidos"
+        footnote={referidos > 0 ? "Compartidos en asesorías" : "Todavía ninguno"}
         sparklineColor="#3B82F6"
         sparklineData={activity}
-        sparklineKey="prospectos"
+        sparklineKey="referidos"
       />
     </HorizontalCardScroller>
   );

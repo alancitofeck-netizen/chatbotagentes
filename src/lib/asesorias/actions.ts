@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { findOrCreateContact } from "@/lib/contacts/match";
-import { getAsesoriaList, getContactAsesorias, getAsesoriaById, type AsesoriaListItem } from "@/lib/asesorias/queries";
+import { getAsesoriaList, getContactAsesorias, getAsesoriaById, getWorkspaceReferralActivity, type AsesoriaListItem, type ReferralActivityPoint } from "@/lib/asesorias/queries";
 import { buildAsesoriaSeed } from "@/lib/asesorias/seed";
 import { getAsesoriaMasterTemplate } from "@/lib/asesorias/masterTemplate";
 
@@ -18,6 +18,11 @@ export async function getAsesoriaListAction(): Promise<AsesoriaListItem[]> {
 export async function getContactAsesoriasAction(contactId: string): Promise<AsesoriaListItem[]> {
   const { workspaceId } = await requireActiveWorkspace();
   return getContactAsesorias(workspaceId, contactId);
+}
+
+export async function getAsesoriaReferralActivityAction(): Promise<ReferralActivityPoint[]> {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getWorkspaceReferralActivity(workspaceId);
 }
 
 export interface CreateAsesoriaInput {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Presentation, Plus, Trash2, Copy, Link2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Sheet } from "@/components/ui/Sheet";
 import { toast } from "@/components/toast/toast";
-import type { AsesoriaListItem, AsesoriaStatus } from "@/lib/asesorias/queries";
+import type { AsesoriaListItem, AsesoriaStatus, ReferralActivityPoint } from "@/lib/asesorias/queries";
 import { createAsesoriaAction, deleteAsesoriaAction, duplicateAsesoriaAction } from "@/lib/asesorias/actions";
 import { AsesoriaKpiCards } from "./AsesoriaKpiCards";
 
@@ -42,8 +42,15 @@ function formatDuration(a: AsesoriaListItem): string {
   return minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`;
 }
 
-export function AsesoriasListShell({ initialAsesorias }: { initialAsesorias: AsesoriaListItem[] }) {
+export function AsesoriasListShell({
+  initialAsesorias,
+  referralActivity,
+}: {
+  initialAsesorias: AsesoriaListItem[];
+  referralActivity: ReferralActivityPoint[];
+}) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [asesorias, setAsesorias] = useState(initialAsesorias);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -52,6 +59,17 @@ export function AsesoriasListShell({ initialAsesorias }: { initialAsesorias: Ase
   const [isPending, setIsPending] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeFilter>("all");
   const [now] = useState(() => Date.now());
+
+  // El botón "+ Crear Asesoría" de las cards de etapa (/asesorias) navega
+  // acá con ?crear=1 en vez de duplicar el flujo de creación — abre el
+  // mismo Sheet de siempre y limpia el query param para que un refresh no
+  // lo vuelva a abrir solo.
+  useEffect(() => {
+    if (searchParams.get("crear") !== "1") return;
+    Promise.resolve().then(() => setCreating(true));
+    router.replace("/asesorias/presentacion", { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredAsesorias =
     dateRange === "all" ? asesorias : asesorias.filter((a) => new Date(a.startedAt).getTime() >= now - Number(dateRange) * 24 * 60 * 60 * 1000);
@@ -90,7 +108,7 @@ export function AsesoriasListShell({ initialAsesorias }: { initialAsesorias: Ase
 
   return (
     <div className="flex flex-col gap-4">
-      <AsesoriaKpiCards asesorias={asesorias} />
+      <AsesoriaKpiCards asesorias={asesorias} referralActivity={referralActivity} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-foreground">Todas las asesorías</h2>

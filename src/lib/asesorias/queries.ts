@@ -105,6 +105,31 @@ export interface AsesoriaRow {
 const DETAIL_SELECT =
   "id, workspace_id, contact_id, advisor_id, opportunity_id, name, status, current_slide, template_name, state, context_snapshot, started_at, completed_at, updated_at";
 
+export interface ReferralActivityPoint {
+  updatedAt: string;
+  count: number;
+}
+
+/** Referidos compartidos DENTRO de las asesorías (session.referrals del
+ * Meeting OS, extraído por responseExtraction.ts a una fila por asesoría en
+ * asesoria_responses con question_key='referrals' — `answer` es el array
+ * completo `{name, cc, phone, status}`). Alimenta la KPI "Referidos" del
+ * listado — cada punto es una asesoría que compartió referidos, con cuántos
+ * trajo, para poder sumar el total y armar el sparkline por día. */
+export async function getWorkspaceReferralActivity(workspaceId: string): Promise<ReferralActivityPoint[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("asesoria_responses")
+    .select("answer, updated_at")
+    .eq("workspace_id", workspaceId)
+    .eq("question_key", "referrals");
+
+  return (data ?? []).map((r) => ({
+    updatedAt: r.updated_at as string,
+    count: Array.isArray(r.answer) ? r.answer.length : 0,
+  }));
+}
+
 export interface AsesoriaResponseRow {
   id: string;
   questionKey: string;

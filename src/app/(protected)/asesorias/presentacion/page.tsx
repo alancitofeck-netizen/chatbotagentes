@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { assertModuleEnabled } from "@/lib/settings/queries";
-import { getAsesoriaListAction } from "@/lib/asesorias/actions";
+import { getAsesoriaListAction, getAsesoriaReferralActivityAction } from "@/lib/asesorias/actions";
 import { AsesoriasListShell } from "../AsesoriasListShell";
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export default async function AsesoriasPresentacionPage() {
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "asesorias");
 
-  const asesorias = await getAsesoriaListAction();
+  const [asesorias, referralActivity] = await Promise.all([getAsesoriaListAction(), getAsesoriaReferralActivityAction()]);
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
@@ -27,7 +27,7 @@ export default async function AsesoriasPresentacionPage() {
         <p className="text-sm text-neutral-500">Cita Inicial — primera reunión guiada con el prospecto, se guarda sola mientras avanzás.</p>
       </div>
       <div className="px-4 sm:px-6 lg:px-8">
-        <AsesoriasListShell initialAsesorias={asesorias} />
+        <AsesoriasListShell initialAsesorias={asesorias} referralActivity={referralActivity} />
       </div>
     </div>
   );

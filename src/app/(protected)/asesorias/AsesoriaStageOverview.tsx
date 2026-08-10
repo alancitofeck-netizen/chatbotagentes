@@ -1,113 +1,195 @@
 import Link from "next/link";
-import { ArrowRight, ArrowDown, Presentation, Handshake } from "lucide-react";
+import { ArrowDown, Users, TrendingUp, CalendarClock, UserRound, MessageSquareText, Lock, ListChecks, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 
 function formatLastActivity(iso: string | null) {
-  if (!iso) return "Sin actividad todavía";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const diffMin = Math.round(diffMs / 60000);
-  if (diffMin < 1) return "Última actividad: ahora";
-  if (diffMin < 60) return `Última actividad: hace ${diffMin} min`;
-  const diffH = Math.round(diffMin / 60);
-  if (diffH < 24) return `Última actividad: hace ${diffH} h`;
-  const diffD = Math.round(diffH / 24);
-  return `Última actividad: hace ${diffD} d`;
+  if (!iso) return "Sin actividad";
+  const date = new Date(iso);
+  const now = new Date();
+  const time = date.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday) return `Hoy, ${time}`;
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return `Ayer, ${time}`;
+  return `${date.toLocaleDateString("es", { day: "2-digit", month: "short" })}, ${time}`;
+}
+
+function StatItem({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/60">{icon}</span>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-foreground">{value}</p>
+        <p className="text-xs text-neutral-500">{label}</p>
+      </div>
+    </div>
+  );
 }
 
 function StageCard({
-  href,
+  accent,
+  sessionLabel,
   number,
   icon,
-  iconBg,
-  iconColor,
   title,
   subtitle,
+  description,
   statusBadge,
-  stat,
+  stats,
+  detailsHref,
+  primaryAction,
+  panelIcon,
 }: {
-  href: string;
+  accent: "violet" | "blue";
+  sessionLabel: string;
   number: string;
   icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
   title: string;
   subtitle: string;
+  description: string;
   statusBadge: React.ReactNode;
-  stat: React.ReactNode;
+  stats: { icon: React.ReactNode; value: string; label: string }[];
+  detailsHref: string;
+  primaryAction: React.ReactNode;
+  panelIcon: React.ReactNode;
 }) {
+  const isViolet = accent === "violet";
   return (
     <Card
       variant="default"
-      className="flex flex-1 flex-col gap-4 border-2 border-transparent transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-border-strong"
+      className={`relative flex flex-col gap-5 overflow-hidden border-l-4 ${isViolet ? "border-l-accent-500 bg-gradient-to-br from-accent-50 to-surface-1" : "border-l-blue-500 bg-gradient-to-br from-blue-50 to-surface-1"}`}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <span className={`flex size-11 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${isViolet ? "bg-accent-600" : "bg-blue-600"}`}>
+            {number}
+          </span>
+          <span className={`flex size-12 shrink-0 items-center justify-center rounded-full ${isViolet ? "bg-accent-100 text-accent-700" : "bg-blue-100 text-blue-700"}`}>
+            {icon}
+          </span>
           <div>
-            <span className="text-xs font-semibold tracking-wide text-neutral-400">{number}</span>
-            <h3 className="text-base font-semibold text-foreground">{title}</h3>
-            <p className="text-sm text-neutral-500">{subtitle}</p>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide ${isViolet ? "bg-accent-100 text-accent-700" : "bg-blue-100 text-blue-700"}`}
+            >
+              <span className={`size-1.5 rounded-full ${isViolet ? "bg-accent-500" : "bg-blue-500"}`} aria-hidden="true" />
+              {sessionLabel}
+            </span>
+            <h3 className="mt-1.5 text-xl font-bold text-foreground">{title}</h3>
+            <p className={`text-sm font-semibold ${isViolet ? "text-accent-700" : "text-blue-700"}`}>{subtitle}</p>
           </div>
         </div>
         {statusBadge}
       </div>
-      <div className="text-sm text-neutral-500">{stat}</div>
-      <Link
-        href={href}
-        className="mt-auto flex w-fit items-center gap-1.5 rounded-md bg-surface-2 px-3 py-1.5 text-sm font-medium text-foreground transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-surface-3"
+
+      <p className="max-w-xl text-sm text-neutral-600">{description}</p>
+
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        {stats.map((s, i) => (
+          <StatItem key={i} icon={s.icon} value={s.value} label={s.label} />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-default pt-4">
+        <Link
+          href={detailsHref}
+          className={`flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-sm font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
+            isViolet ? "border-accent-200 text-accent-700 hover:bg-accent-50" : "border-blue-200 text-blue-700 hover:bg-blue-50"
+          }`}
+        >
+          <ListChecks className="size-4" aria-hidden="true" />
+          Ver detalles
+        </Link>
+        {primaryAction}
+      </div>
+
+      <span
+        className={`pointer-events-none absolute -right-4 top-1/2 hidden size-28 -translate-y-1/2 items-center justify-center rounded-3xl sm:flex ${
+          isViolet ? "bg-gradient-to-br from-accent-500 to-accent-700" : "bg-gradient-to-br from-blue-500 to-blue-700"
+        }`}
       >
-        Abrir sesión
-        <ArrowRight className="size-3.5" aria-hidden="true" />
-      </Link>
+        {panelIcon}
+      </span>
     </Card>
   );
 }
 
-/** Dos cards de etapa que llevan a rutas propias (`/asesorias/presentacion`,
- * `/asesorias/cierre`) — mismo patrón "listado → entrás a un detalle" que
- * Mini Apps (`/mini-apps` → `/mini-apps/[miniAppId]`), en vez de mostrar los
- * KPIs/tabla de Presentación ya abiertos en la página raíz del módulo. */
-export function AsesoriaStageOverview({ totalAsesorias, lastActivityAt }: { totalAsesorias: number; lastActivityAt: string | null }) {
+export function AsesoriaStageOverview({
+  prospectosUnicos,
+  lastActivityAt,
+  advisorName,
+}: {
+  prospectosUnicos: number;
+  lastActivityAt: string | null;
+  advisorName: string | null;
+}) {
   return (
-    <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center">
+    <div className="flex flex-col items-stretch">
       <StageCard
-        href="/asesorias/presentacion"
+        accent="violet"
+        sessionLabel="Primera sesión"
         number="01"
-        icon={<Presentation className="size-5" aria-hidden="true" />}
-        iconBg="bg-accent-100"
-        iconColor="text-accent-700"
+        icon={<UserRound className="size-6" aria-hidden="true" />}
         title="Presentación"
         subtitle="Cita Inicial"
+        description="Primera reunión guiada con el prospecto para conocer sus necesidades y presentar la propuesta."
         statusBadge={
-          <Badge variant="success" dot>
+          <span className="flex items-center gap-1.5 rounded-full bg-success-bg px-2.5 py-1 text-xs font-medium text-success-strong">
+            <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
             Activa
-          </Badge>
+          </span>
         }
-        stat={
-          <>
-            {totalAsesorias} {totalAsesorias === 1 ? "asesoría" : "asesorías"}
-            <span className="mx-1.5 text-neutral-300">·</span>
-            {formatLastActivity(lastActivityAt)}
-          </>
+        stats={[
+          { icon: <Users className="size-4 text-accent-700" aria-hidden="true" />, value: String(prospectosUnicos), label: "Prospectos" },
+          { icon: <CalendarClock className="size-4 text-accent-700" aria-hidden="true" />, value: formatLastActivity(lastActivityAt), label: "Última actividad" },
+          { icon: <UserRound className="size-4 text-accent-700" aria-hidden="true" />, value: advisorName ?? "Sin asignar", label: "Asesor asignado" },
+        ]}
+        detailsHref="/asesorias/presentacion"
+        primaryAction={
+          <Link
+            href="/asesorias/presentacion?crear=1"
+            className="flex items-center gap-1.5 rounded-md bg-accent-600 px-3.5 py-2 text-sm font-medium text-white transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-accent-700"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Crear Asesoría
+          </Link>
         }
+        panelIcon={<MessageSquareText className="size-10 text-white/90" aria-hidden="true" />}
       />
 
-      <div className="flex shrink-0 items-center justify-center self-center text-neutral-300">
-        <ArrowDown className="size-5 md:hidden" aria-hidden="true" />
-        <ArrowRight className="hidden size-5 md:block" aria-hidden="true" />
+      <div className="flex items-center justify-center py-2">
+        <span className="flex size-8 items-center justify-center rounded-full border border-border-default bg-surface-1 text-neutral-400">
+          <ArrowDown className="size-4" aria-hidden="true" />
+        </span>
       </div>
 
       <StageCard
-        href="/asesorias/cierre"
+        accent="blue"
+        sessionLabel="Segunda sesión"
         number="02"
-        icon={<Handshake className="size-5" aria-hidden="true" />}
-        iconBg="bg-surface-3"
-        iconColor="text-neutral-500"
+        icon={<TrendingUp className="size-6" aria-hidden="true" />}
         title="Cita de Cierre"
-        subtitle="Segunda reunión"
-        statusBadge={<Badge variant="neutral">Próximamente</Badge>}
-        stat="Preparado para cuando sumemos esta etapa"
+        subtitle="Segunda Reunión"
+        description="Segunda reunión para avanzar con el cierre y definir los próximos pasos."
+        statusBadge={
+          <span className="flex items-center gap-1.5 rounded-full bg-warning-bg px-2.5 py-1 text-xs font-medium text-warning-strong">
+            <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+            Pendiente
+          </span>
+        }
+        stats={[
+          { icon: <Users className="size-4 text-blue-700" aria-hidden="true" />, value: "0", label: "Prospectos" },
+          { icon: <CalendarClock className="size-4 text-blue-700" aria-hidden="true" />, value: "Sin actividad", label: "Última actividad" },
+          { icon: <UserRound className="size-4 text-blue-700" aria-hidden="true" />, value: "Sin asignar", label: "Asesor asignado" },
+        ]}
+        detailsHref="/asesorias/cierre"
+        primaryAction={
+          <span className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-blue-200 px-3.5 py-2 text-sm font-medium text-blue-400">
+            <Lock className="size-4" aria-hidden="true" />
+            Preparar sesión
+          </span>
+        }
+        panelIcon={<CalendarClock className="size-10 text-white/90" aria-hidden="true" />}
       />
     </div>
   );
