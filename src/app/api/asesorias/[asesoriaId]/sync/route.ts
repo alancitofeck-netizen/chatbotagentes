@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, getActiveWorkspaceForUser, getCurrentMemberId } from "@/lib/auth/session";
 import { addContactNote } from "@/lib/contacts/actions";
@@ -103,6 +104,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { error: updateError } = await supabase.from("asesorias").update(update).eq("id", asesoriaId).eq("workspace_id", active.workspaceId);
   if (updateError) return NextResponse.json({ error: "update_failed" }, { status: 500 });
+
+  // /sync es un Route Handler llamado por el shim (fetch plano), no un
+  // Server Action — a diferencia de create/duplicate/deleteAsesoriaAction
+  // (actions.ts), acá nada invalidaba el cache de Next.js, así que las cards
+  // de etapa y las KPIs de /asesorias(/presentacion) quedaban mostrando
+  // datos viejos hasta un refresh manual. Solo revalida en la transición de
+  // estado (no en cada autoguardado, que dispara cada ~400ms) — es lo único
+  // que cambia lo que esas pantallas muestran.
+  if (newStatus !== previousStatus) {
+    revalidatePath("/asesorias");
+    revalidatePath("/asesorias/presentacion");
+  }
 
   const memberId = await getCurrentMemberId(active.workspaceId);
 
