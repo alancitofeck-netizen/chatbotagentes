@@ -9,18 +9,6 @@ const nextConfig: NextConfig = {
   // hidden or redirected.
   experimental: {
     authInterrupts: true,
-    // Sin esto, el Router Cache del cliente (distinto del cache de servidor
-    // que revalidatePath sí invalida) guarda 30s cualquier ruta dinámica
-    // visitada por navegación interna (<Link>/router.push) — así, volver a
-    // /asesorias después de terminar una asesoría desde /sync (un Route
-    // Handler, no un Server Action: nada le avisa al cliente que hay que
-    // refrescar) mostraba datos viejos hasta que pasaban esos 30s. dynamic:0
-    // hace que toda página dinámica siempre traiga datos frescos del
-    // servidor en cada navegación — apropiado acá, es un CRM interno, no un
-    // sitio de alto tráfico donde ese cache ahorre carga real.
-    staleTimes: {
-      dynamic: 0,
-    },
   },
 
   // pdfkit reads its bundled AFM font metrics files from disk at runtime via
