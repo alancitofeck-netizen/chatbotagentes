@@ -110,23 +110,20 @@ export interface ReferralActivityPoint {
   count: number;
 }
 
-/** Referidos compartidos DENTRO de las asesorías (session.referrals del
- * Meeting OS, extraído por responseExtraction.ts a una fila por asesoría en
- * asesoria_responses con question_key='referrals' — `answer` es el array
- * completo `{name, cc, phone, status}`). Alimenta la KPI "Referidos" del
- * listado — cada punto es una asesoría que compartió referidos, con cuántos
- * trajo, para poder sumar el total y armar el sparkline por día. */
+/** Referidos capturados dentro de las asesorías — lee la tabla estructurada
+ * asesoria_referrals (0120_asesoria_referrals.sql), no el jsonb crudo de
+ * asesoria_responses, para que el número de la KPI "Referidos" y el total
+ * de la pantalla /asesorias/referidos (getWorkspaceReferrals, referrals.ts)
+ * salgan siempre de la misma fuente. Cada fila de la tabla ya es un
+ * referido individual, así que `count` es siempre 1 — se mantiene el shape
+ * `{updatedAt, count}` para no tocar AsesoriaKpiCards.tsx. */
 export async function getWorkspaceReferralActivity(workspaceId: string): Promise<ReferralActivityPoint[]> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("asesoria_responses")
-    .select("answer, updated_at")
-    .eq("workspace_id", workspaceId)
-    .eq("question_key", "referrals");
+  const { data } = await supabase.from("asesoria_referrals").select("created_at").eq("workspace_id", workspaceId);
 
   return (data ?? []).map((r) => ({
-    updatedAt: r.updated_at as string,
-    count: Array.isArray(r.answer) ? r.answer.length : 0,
+    updatedAt: r.created_at as string,
+    count: 1,
   }));
 }
 

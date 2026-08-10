@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { Line, LineChart, ResponsiveContainer } from "recharts";
-import { Presentation, CheckCircle2, Clock, Users } from "lucide-react";
+import { Presentation, CheckCircle2, Clock, Users, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { HorizontalCardScroller } from "@/components/ui/HorizontalCardScroller";
 import type { AsesoriaListItem, ReferralActivityPoint } from "@/lib/asesorias/queries";
@@ -72,6 +73,7 @@ function KpiCard({
   sparklineColor,
   sparklineData,
   sparklineKey,
+  href,
 }: {
   icon: ReactNode;
   iconBg: string;
@@ -82,10 +84,21 @@ function KpiCard({
   sparklineColor: string;
   sparklineData: DayPoint[];
   sparklineKey: keyof DayPoint;
+  /** Si viene, la card entera navega ahí — usada por "Referidos" para
+   * llevar a /asesorias/referidos. Las demás cards quedan solo informativas. */
+  href?: string;
 }) {
-  return (
-    <Card className="flex flex-col gap-3">
-      <span className={`flex size-10 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
+  const content = (
+    <>
+      <div className="flex items-start justify-between">
+        <span className={`flex size-10 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
+        {href && (
+          <span className="flex items-center gap-1 text-xs font-medium text-accent-600 opacity-0 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] group-hover:opacity-100">
+            Ver detalle
+            <ArrowRight className="size-3" aria-hidden="true" />
+          </span>
+        )}
+      </div>
       <div className="flex items-end justify-between gap-2">
         <div>
           <p className="font-mono text-2xl font-semibold leading-none text-foreground">{value}</p>
@@ -94,8 +107,21 @@ function KpiCard({
         </div>
         <Sparkline data={sparklineData} dataKey={sparklineKey} color={sparklineColor} />
       </div>
-    </Card>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="group flex cursor-pointer flex-col gap-3 rounded-lg border border-transparent bg-surface-1 p-5 shadow-[var(--elevation-sm)] transition-all duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:border-accent-300 hover:shadow-[var(--elevation-md)]"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <Card className="flex flex-col gap-3">{content}</Card>;
 }
 
 export function AsesoriaKpiCards({ asesorias, referralActivity }: { asesorias: AsesoriaListItem[]; referralActivity: ReferralActivityPoint[] }) {
@@ -158,6 +184,7 @@ export function AsesoriaKpiCards({ asesorias, referralActivity }: { asesorias: A
         sparklineColor="#3B82F6"
         sparklineData={activity}
         sparklineKey="referidos"
+        href="/asesorias/referidos"
       />
     </HorizontalCardScroller>
   );

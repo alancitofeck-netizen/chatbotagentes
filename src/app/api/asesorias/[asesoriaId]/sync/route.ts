@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, getActiveWorkspaceForUser, getCurrentMemberId } from "@/lib/auth/session";
 import { addContactNote } from "@/lib/contacts/actions";
+import { findOrCreateContact } from "@/lib/contacts/match";
 import { createTask } from "@/lib/tasks/actions";
 import { createOpportunity } from "@/lib/crm/actions";
 import { logActivity } from "@/lib/activity/log";
@@ -131,6 +132,46 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       await supabase.from("asesoria_responses").delete().eq("asesoria_id", asesoriaId).not("question_key", "in", `(${keptKeys.map((k) => `"${k.replace(/"/g, '""')}"`).join(",")})`);
     } else {
       await supabase.from("asesoria_responses").delete().eq("asesoria_id", asesoriaId);
+    }
+
+    // Materializa los referidos válidos (nombre + teléfono usable, mismo
+    // criterio validPhone ≥8 dígitos que usa el archivo verbatim para
+    // "Enviar regalo") en asesoria_referrals — ver
+    // 0120_asesoria_referrals.sql. Resuelve/crea el contacto por teléfono
+    // (findOrCreateContact, mismo helper que ya usa el prospecto principal
+    // más abajo) para no duplicar contactos y poder detectar el mismo
+    // teléfono referido más de una vez. El upsert NUNCA incluye `status` —
+    // es el ciclo de vida CRM propio de la pantalla de Referidos, no debe
+    // resetearse en cada autoguardado de esta misma asesoría.
+    const rawReferrals = Array.isArray(session.referrals) ? session.referrals : [];
+    const referralRows = rawReferrals
+      .map((r) => asRecord(r))
+      .map((r) => ({
+        name: (typeof r.name === "string" ? r.name : "").trim(),
+        phone: `${typeof r.cc === "string" ? r.cc : ""}${typeof r.phone === "string" ? r.phone : ""}`.replace(/\D/g, ""),
+      }))
+      .filter((r) => r.name && r.phone.length >= 8);
+
+    if (referralRows.length > 0) {
+      const resolvedRows = await Promise.all(
+        referralRows.map(async (r) => {
+          const referredContactId = await findOrCreateContact(supabase, active.workspaceId, { name: r.name, phone: r.phone }, "asesoria_referral").catch(() => null);
+          return {
+            workspace_id: active.workspaceId,
+            asesoria_id: asesoriaId,
+            advisor_id: memberId,
+            referred_contact_id: referredContactId,
+            name: r.name,
+            phone: r.phone,
+            updated_at: new Date().toISOString(),
+          };
+        }),
+      );
+      await supabase.from("asesoria_referrals").upsert(resolvedRows, { onConflict: "asesoria_id,phone" });
+      const keptPhones = referralRows.map((r) => r.phone);
+      await supabase.from("asesoria_referrals").delete().eq("asesoria_id", asesoriaId).not("phone", "in", `(${keptPhones.map((p) => `"${p}"`).join(",")})`);
+    } else {
+      await supabase.from("asesoria_referrals").delete().eq("asesoria_id", asesoriaId);
     }
 
     // Fill-only hacia contacts — mismo criterio que syncInsuranceProspect

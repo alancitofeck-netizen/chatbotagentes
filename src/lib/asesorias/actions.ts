@@ -7,6 +7,7 @@ import { findOrCreateContact } from "@/lib/contacts/match";
 import { getAsesoriaList, getContactAsesorias, getAsesoriaById, getWorkspaceReferralActivity, type AsesoriaListItem, type ReferralActivityPoint } from "@/lib/asesorias/queries";
 import { buildAsesoriaSeed } from "@/lib/asesorias/seed";
 import { getAsesoriaMasterTemplate } from "@/lib/asesorias/masterTemplate";
+import { getWorkspaceReferrals, updateReferralStatus, type ReferralRow, type ReferralStatus } from "@/lib/asesorias/referrals";
 
 const ASESORIA_CONTACT_SOURCE = "asesoria";
 
@@ -23,6 +24,17 @@ export async function getContactAsesoriasAction(contactId: string): Promise<Ases
 export async function getAsesoriaReferralActivityAction(): Promise<ReferralActivityPoint[]> {
   const { workspaceId } = await requireActiveWorkspace();
   return getWorkspaceReferralActivity(workspaceId);
+}
+
+export async function getAsesoriaReferralsAction(): Promise<ReferralRow[]> {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getWorkspaceReferrals(workspaceId);
+}
+
+export async function updateReferralStatusAction(referralId: string, status: ReferralStatus): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  await updateReferralStatus(referralId, workspaceId, status);
+  revalidatePath("/asesorias/referidos");
 }
 
 export interface CreateAsesoriaInput {
