@@ -8,6 +8,7 @@ import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { toast } from "@/components/toast/toast";
 import type { ClientListItem } from "@/lib/clients/queries";
 import { pauseClientAction, reactivateClientAction, archiveClientAction } from "@/lib/clients/actions";
+import { HEALTH_LABEL_META } from "./clientHealthMeta";
 
 const STATUS_META: Record<ClientListItem["status"], { label: string; className: string }> = {
   en_onboarding: { label: "En onboarding", className: "bg-info-bg text-info-strong" },
@@ -22,6 +23,7 @@ export function ClientListRow({ client, accountManagerName, onChanged }: { clien
   const router = useRouter();
   const [, startTransition] = useTransition();
   const status = STATUS_META[client.status];
+  const health = client.healthScoreLabel ? HEALTH_LABEL_META[client.healthScoreLabel] : null;
 
   function run(action: () => Promise<void>, successMessage: string) {
     startTransition(async () => {
@@ -46,6 +48,7 @@ export function ClientListRow({ client, accountManagerName, onChanged }: { clien
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate text-[14px] font-semibold text-foreground">{client.contactName}</h3>
+            {health && <span className={`size-2 shrink-0 rounded-full ${health.dot}`} title={health.label} aria-hidden="true" />}
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.className}`}>{status.label}</span>
           </div>
           <p className="truncate text-[12px] text-neutral-500">{client.profession ?? "Sin profesión"}{client.company ? ` · ${client.company}` : ""}</p>

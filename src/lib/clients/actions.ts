@@ -6,6 +6,7 @@ import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { findOrCreateContact } from "@/lib/contacts/match";
 import { getOrCreateDefaultGroup } from "@/lib/tasks/groups/actions";
+import { logActivity } from "@/lib/activity/log";
 import {
   getClientsList,
   getClientProfile,
@@ -142,6 +143,8 @@ export async function createClientAction(input: CreateClientInput): Promise<{ id
   });
   if (contractError) throw new Error("El cliente se creó pero no se pudo guardar el contrato inicial.");
 
+  await logActivity(supabase, workspaceId, memberId, "client", clientId, "client_created", { contactId });
+
   revalidateClients();
   return { id: clientId };
 }
@@ -189,6 +192,7 @@ export async function updateClientAction(clientId: string, input: UpdateClientIn
 async function setClientStatus(clientId: string, status: ClientStatus): Promise<void> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
   const { error } = await supabase
     .from("clients")
@@ -196,6 +200,7 @@ async function setClientStatus(clientId: string, status: ClientStatus): Promise<
     .eq("id", clientId)
     .eq("workspace_id", workspaceId);
   if (error) throw new Error("No se pudo actualizar el estado del cliente.");
+  await logActivity(supabase, workspaceId, memberId, "client", clientId, "client_status_changed", { status });
   revalidateClients(clientId);
 }
 
@@ -253,6 +258,8 @@ export async function renewContractAction(clientId: string, input: RenewContract
     .select("id")
     .single();
   if (error || !created) throw new Error("No se pudo renovar el contrato.");
+
+  await logActivity(supabase, workspaceId, memberId, "client", clientId, "contract_renewed", { contractId: created.id, startDate: input.startDate, endDate: input.endDate });
 
   revalidateClients(clientId);
   return { id: created.id as string };

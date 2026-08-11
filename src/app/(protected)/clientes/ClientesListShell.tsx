@@ -1,11 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users, UserCheck, CalendarClock, CalendarDays, FileCheck2, ListTodo, DollarSign, Search, LayoutGrid, List as ListIcon, Plus, Users2 } from "lucide-react";
+import {
+  Users,
+  UserCheck,
+  CalendarClock,
+  CalendarDays,
+  FileCheck2,
+  ListTodo,
+  DollarSign,
+  Search,
+  LayoutGrid,
+  List as ListIcon,
+  Plus,
+  Users2,
+  CalendarX2,
+  Wallet,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MetricCard } from "@/components/responseSummary/MetricCard";
 import type { ClientListItem } from "@/lib/clients/queries";
+import type { ClientAlertType } from "@/lib/clients/alerts";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { getClientsListAction } from "@/lib/clients/actions";
 import { NewClientWizard } from "./NewClientWizard";
@@ -13,11 +29,7 @@ import { ClientCard } from "./ClientCard";
 import { ClientListRow } from "./ClientListRow";
 
 type StatusFilter = "all" | "en_onboarding" | "activo" | "pausado" | "archivado";
-
-function daysUntil(iso: string): number {
-  const diffMs = new Date(iso).getTime() - new Date().setHours(0, 0, 0, 0);
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-}
+type AlertFilter = "all" | ClientAlertType;
 
 export function ClientesListShell({
   initialClients,
@@ -33,6 +45,7 @@ export function ClientesListShell({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [accountManagerFilter, setAccountManagerFilter] = useState("all");
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>("all");
   const [layout, setLayout] = useState<"grid" | "list">("grid");
 
   async function refetch() {
@@ -43,14 +56,26 @@ export function ClientesListShell({
 
   const metrics = useMemo(() => {
     const activos = clients.filter((c) => c.status === "activo").length;
-    const contratosPorVencer = clients.filter((c) => c.activeContract && daysUntil(c.activeContract.endDate) >= 0 && daysUntil(c.activeContract.endDate) <= 30).length;
     const citasMes = clients.reduce((sum, c) => sum + c.citasMesCount, 0);
     const polizasMes = clients.reduce((sum, c) => sum + c.polizasMesCount, 0);
-    const tareasPendientes = clients.reduce((sum, c) => sum + c.tareasPendientesCount, 0);
     const mrr = clients
       .filter((c) => c.status === "activo" && c.activeContract?.monthlyValue)
       .reduce((sum, c) => sum + (c.activeContract?.monthlyValue ?? 0), 0);
-    return { activos, contratosPorVencer, citasMes, polizasMes, tareasPendientes, mrr };
+    // Los 4 conteos de alerta salen de client.alertTypes (getClientsList,
+    // mismas reglas que el banner del perfil — ver alerts.ts) en vez de
+    // recalcularse acá con criterios propios, para que el número de esta
+    // card y el filtro que dispara al tocarla siempre coincidan.
+    const countByAlert = (type: ClientAlertType) => clients.filter((c) => c.alertTypes.includes(type)).length;
+    return {
+      activos,
+      contratosPorVencer: countByAlert("contract_expiring"),
+      citasMes,
+      polizasMes,
+      tareasPendientes: countByAlert("tasks_pending"),
+      sinCitasRecientes: countByAlert("no_recent_activity"),
+      pagoPendiente: countByAlert("payment_pending"),
+      mrr,
+    };
   }, [clients]);
 
   const filtered = useMemo(() => {
@@ -58,10 +83,15 @@ export function ClientesListShell({
     return clients.filter((c) => {
       if (statusFilter !== "all" && c.status !== statusFilter) return false;
       if (accountManagerFilter !== "all" && c.accountManagerId !== accountManagerFilter) return false;
+      if (alertFilter !== "all" && !c.alertTypes.includes(alertFilter)) return false;
       if (q && !c.contactName.toLowerCase().includes(q) && !(c.company ?? "").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [clients, search, statusFilter, accountManagerFilter]);
+  }, [clients, search, statusFilter, accountManagerFilter, alertFilter]);
+
+  function toggleAlertFilter(type: ClientAlertType) {
+    setAlertFilter((current) => (current === type ? "all" : type));
+  }
 
   if (!moduleEnabled) {
     return (
@@ -91,13 +121,44 @@ export function ClientesListShell({
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             <MetricCard icon={UserCheck} label="Clientes activos" value={String(metrics.activos)} />
-            <MetricCard icon={CalendarClock} label="Contratos x vencer" value={String(metrics.contratosPorVencer)} />
             <MetricCard icon={CalendarDays} label="Citas este mes" value={String(metrics.citasMes)} />
             <MetricCard icon={FileCheck2} label="Pólizas este mes" value={String(metrics.polizasMes)} />
-            <MetricCard icon={ListTodo} label="Tareas pendientes" value={String(metrics.tareasPendientes)} />
             <MetricCard icon={DollarSign} label="MRR activo" value={`USD ${metrics.mrr.toLocaleString("es-MX")}`} />
+          </div>
+
+          {/* Las 4 alertas — clickeables como quick-filter, mismo criterio
+           * (alertTypes) que dispara el banner del perfil de cada cliente. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MetricCard
+              icon={CalendarClock}
+              label="Contratos x vencer"
+              value={String(metrics.contratosPorVencer)}
+              onClick={() => toggleAlertFilter("contract_expiring")}
+              active={alertFilter === "contract_expiring"}
+            />
+            <MetricCard
+              icon={ListTodo}
+              label="Tareas pendientes"
+              value={String(metrics.tareasPendientes)}
+              onClick={() => toggleAlertFilter("tasks_pending")}
+              active={alertFilter === "tasks_pending"}
+            />
+            <MetricCard
+              icon={CalendarX2}
+              label="Sin citas recientes"
+              value={String(metrics.sinCitasRecientes)}
+              onClick={() => toggleAlertFilter("no_recent_activity")}
+              active={alertFilter === "no_recent_activity"}
+            />
+            <MetricCard
+              icon={Wallet}
+              label="Pago pendiente"
+              value={String(metrics.pagoPendiente)}
+              onClick={() => toggleAlertFilter("payment_pending")}
+              active={alertFilter === "payment_pending"}
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

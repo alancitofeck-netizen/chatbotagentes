@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { buildClientAlerts, type ClientAlertType, type ClientAlertTaskInput } from "@/lib/clients/alerts";
 
 export type ClientStatus = "en_onboarding" | "activo" | "pausado" | "archivado";
 export type ClientContractStatus = "borrador" | "activo" | "vencido" | "renovado" | "cancelado";
@@ -60,6 +61,7 @@ export interface ClientListItem {
   setterId: string | null;
   accountManagerId: string | null;
   trafficManagerId: string | null;
+  healthScore: number | null;
   healthScoreLabel: ClientHealthLabel | null;
   activeContract: ClientContract | null;
   citasCount: number;
@@ -67,6 +69,7 @@ export interface ClientListItem {
   polizasCount: number;
   polizasMesCount: number;
   tareasPendientesCount: number;
+  alertTypes: ClientAlertType[];
   createdAt: string;
 }
 
@@ -81,7 +84,7 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
   const { data: rows } = await supabase
     .from("clients")
     .select(
-      "id, contact_id, profession, insurer, country, city, status, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score_label, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url)",
+      "id, contact_id, profession, insurer, country, city, status, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url)",
     )
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false });
@@ -96,7 +99,7 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
     supabase.from("client_contracts").select(CONTRACT_SELECT).in("client_id", clientIds).order("start_date", { ascending: false }),
     supabase.from("bookings").select("client_id, start_time").eq("workspace_id", workspaceId).in("client_id", clientIds),
     supabase.from("policies").select("client_id, issue_date").eq("workspace_id", workspaceId).in("client_id", clientIds),
-    supabase.from("tasks").select("client_id, status").eq("workspace_id", workspaceId).in("client_id", clientIds),
+    supabase.from("tasks").select("client_id, status, owner_side, due_at").eq("workspace_id", workspaceId).in("client_id", clientIds),
   ]);
 
   const activeContractByClient = new Map<string, ClientContract>();
@@ -122,10 +125,41 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
   const polizasMesByClient = countBy(policies, (r) => typeof r.issue_date === "string" && r.issue_date >= monthStart);
   const tareasPendientesByClient = countBy(tasks, (r) => r.status !== "completed");
 
+  // Última cita por cliente — para la alerta "sin citas recientes"
+  // (ver alerts.ts, noRecentActivitySeverity). `bookings` ya viene sin
+  // ordenar acá (se pide todo el historial para citasCount), así que se
+  // resuelve el máximo en JS en vez de un segundo round-trip ordenado.
+  const lastBookingByClient = new Map<string, string>();
+  for (const row of bookings ?? []) {
+    const clientId = row.client_id as string;
+    const startTime = row.start_time as string;
+    const current = lastBookingByClient.get(clientId);
+    if (!current || startTime > current) lastBookingByClient.set(clientId, startTime);
+  }
+
+  // Tareas agrupadas (no solo el conteo) — buildClientAlerts necesita
+  // owner_side/due_at para distinguir "vencida y a cargo del cliente" de
+  // simplemente "pendiente".
+  const tasksByClient = new Map<string, ClientAlertTaskInput[]>();
+  for (const row of tasks ?? []) {
+    const clientId = row.client_id as string;
+    const list = tasksByClient.get(clientId) ?? [];
+    list.push({ ownerSide: row.owner_side as ClientAlertTaskInput["ownerSide"], status: row.status as string, dueAt: row.due_at as string | null });
+    tasksByClient.set(clientId, list);
+  }
+
   return rows.map((r) => {
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
+    const id = r.id as string;
+    const activeContract = activeContractByClient.get(id) ?? null;
+    const alerts = buildClientAlerts({
+      contract: activeContract,
+      tasks: tasksByClient.get(id) ?? [],
+      lastBookingAt: lastBookingByClient.get(id) ?? null,
+      policiesThisMonthCount: polizasMesByClient.get(id) ?? 0,
+    });
     return {
-      id: r.id as string,
+      id,
       contactId: r.contact_id as string,
       contactName: (contact?.name as string | undefined) ?? "Sin nombre",
       contactAvatarUrl: (contact?.avatar_url as string | undefined) ?? null,
@@ -140,13 +174,15 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
       setterId: r.setter_id as string | null,
       accountManagerId: r.account_manager_id as string | null,
       trafficManagerId: r.traffic_manager_id as string | null,
+      healthScore: r.health_score as number | null,
       healthScoreLabel: r.health_score_label as ClientHealthLabel | null,
-      activeContract: activeContractByClient.get(r.id as string) ?? null,
-      citasCount: citasByClient.get(r.id as string) ?? 0,
-      citasMesCount: citasMesByClient.get(r.id as string) ?? 0,
-      polizasCount: polizasByClient.get(r.id as string) ?? 0,
-      polizasMesCount: polizasMesByClient.get(r.id as string) ?? 0,
-      tareasPendientesCount: tareasPendientesByClient.get(r.id as string) ?? 0,
+      activeContract,
+      citasCount: citasByClient.get(id) ?? 0,
+      citasMesCount: citasMesByClient.get(id) ?? 0,
+      polizasCount: polizasByClient.get(id) ?? 0,
+      polizasMesCount: polizasMesByClient.get(id) ?? 0,
+      tareasPendientesCount: tareasPendientesByClient.get(id) ?? 0,
+      alertTypes: alerts.map((a) => a.type),
       createdAt: r.created_at as string,
     };
   });
@@ -175,6 +211,7 @@ export interface ClientProfile {
   calendlyUrl: string | null;
   healthScore: number | null;
   healthScoreLabel: ClientHealthLabel | null;
+  healthScoreUpdatedAt: string | null;
   createdAt: string;
 }
 
@@ -183,7 +220,7 @@ export async function getClientProfile(workspaceId: string, clientId: string): P
   const { data } = await supabase
     .from("clients")
     .select(
-      "id, workspace_id, contact_id, profession, insurer, country, city, status, service_type, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url, email, phone)",
+      "id, workspace_id, contact_id, profession, insurer, country, city, status, service_type, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, health_score_updated_at, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url, email, phone)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", clientId)
@@ -214,6 +251,7 @@ export async function getClientProfile(workspaceId: string, clientId: string): P
     calendlyUrl: data.calendly_url as string | null,
     healthScore: data.health_score as number | null,
     healthScoreLabel: data.health_score_label as ClientHealthLabel | null,
+    healthScoreUpdatedAt: data.health_score_updated_at as string | null,
     createdAt: data.created_at as string,
   };
 }
@@ -343,3 +381,87 @@ export async function getClientTasks(workspaceId: string, clientId: string): Pro
     dueAt: r.due_at as string | null,
   }));
 }
+
+export type ClientTimelineEventType = "booking" | "task_completed" | "policy" | "activity";
+
+export interface ClientTimelineEvent {
+  id: string;
+  type: ClientTimelineEventType;
+  label: string;
+  detail: string | null;
+  at: string;
+  actorId: string | null;
+}
+
+/** Sección Timeline de Resumen — unión cronológica de bookings/tasks
+ * completadas/policies (todas ya filtradas por client_id, 0125) más
+ * audit_log (entity_type='client', entity_id=clients.id — eventos propios
+ * del módulo, ver logActivity() en actions.ts). Se resuelve acá en JS en
+ * vez de un UNION en SQL porque cada fuente tiene columnas y un "label" de
+ * evento distintos — nombre del actor se resuelve en el caller (ya trae
+ * getWorkspaceMembers para Setter/AM/TM, no duplicar el fetch acá). */
+export async function getClientTimeline(workspaceId: string, clientId: string, limit = 30): Promise<ClientTimelineEvent[]> {
+  const supabase = await createClient();
+  const [{ data: bookings }, { data: tasks }, { data: policies }, { data: activity }] = await Promise.all([
+    supabase.from("bookings").select("id, start_time, provider, contacts(name)").eq("workspace_id", workspaceId).eq("client_id", clientId),
+    supabase
+      .from("tasks")
+      .select("id, title, completed_at")
+      .eq("workspace_id", workspaceId)
+      .eq("client_id", clientId)
+      .eq("status", "completed")
+      .not("completed_at", "is", null),
+    supabase.from("policies").select("id, product, company, issue_date").eq("workspace_id", workspaceId).eq("client_id", clientId).not("issue_date", "is", null),
+    supabase.from("audit_log").select("id, action, metadata, created_at, actor_id").eq("workspace_id", workspaceId).eq("entity_type", "client").eq("entity_id", clientId),
+  ]);
+
+  const events: ClientTimelineEvent[] = [];
+
+  for (const b of bookings ?? []) {
+    const contact = Array.isArray(b.contacts) ? b.contacts[0] : b.contacts;
+    events.push({
+      id: `booking-${b.id}`,
+      type: "booking",
+      label: "Cita agendada",
+      detail: [contact?.name as string | undefined, b.provider as string | undefined].filter(Boolean).join(" · ") || null,
+      at: b.start_time as string,
+      actorId: null,
+    });
+  }
+
+  for (const t of tasks ?? []) {
+    events.push({ id: `task-${t.id}`, type: "task_completed", label: "Tarea completada", detail: t.title as string, at: t.completed_at as string, actorId: null });
+  }
+
+  for (const p of policies ?? []) {
+    events.push({
+      id: `policy-${p.id}`,
+      type: "policy",
+      label: "Póliza emitida",
+      detail: [p.product as string | undefined, p.company as string | undefined].filter(Boolean).join(" · ") || null,
+      at: p.issue_date as string,
+      actorId: null,
+    });
+  }
+
+  const ACTIVITY_LABEL: Record<string, string> = {
+    client_created: "Cliente creado",
+    contract_renewed: "Contrato renovado",
+    client_status_changed: "Estado actualizado",
+  };
+  for (const a of activity ?? []) {
+    const action = a.action as string;
+    const metadata = (a.metadata as Record<string, unknown>) ?? {};
+    const detail =
+      action === "client_status_changed"
+        ? (STATUS_LABEL_ES[metadata.status as string] ?? (metadata.status as string) ?? null)
+        : action === "contract_renewed"
+          ? `Hasta ${metadata.endDate ?? "—"}`
+          : null;
+    events.push({ id: `activity-${a.id}`, type: "activity", label: ACTIVITY_LABEL[action] ?? action, detail, at: a.created_at as string, actorId: a.actor_id as string | null });
+  }
+
+  return events.sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, limit);
+}
+
+const STATUS_LABEL_ES: Record<string, string> = { en_onboarding: "En onboarding", activo: "Activo", pausado: "Pausado", archivado: "Archivado" };

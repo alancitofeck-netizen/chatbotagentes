@@ -1,14 +1,24 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Link2, CalendarCheck, MessageCircle, FileText } from "lucide-react";
+import { ArrowLeft, Link2, CalendarCheck, MessageCircle, FileText, AlertTriangle, OctagonAlert } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { assertModuleEnabled } from "@/lib/settings/queries";
 import { getClientProfile } from "@/lib/clients/queries";
+import { getClientAlerts } from "@/lib/clients/alerts";
+import { recomputeAndCacheClientHealth } from "@/lib/clients/health";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ShieldAlert } from "lucide-react";
 import { TabLink } from "@/components/ui/Tabs";
+import { HEALTH_LABEL_META } from "../clientHealthMeta";
+
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+
+function isHealthScoreStale(healthScoreUpdatedAt: string | null): boolean {
+  if (!healthScoreUpdatedAt) return true;
+  return Date.now() - new Date(healthScoreUpdatedAt).getTime() > STALE_AFTER_MS;
+}
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
   en_onboarding: { label: "En onboarding", className: "bg-info-bg text-info-strong" },
@@ -45,10 +55,23 @@ export default async function ClientProfileLayout({ children, params }: { childr
   }
 
   await assertModuleEnabled(workspaceId, "clientes");
-  const client = await getClientProfile(workspaceId, clientId);
+  let client = await getClientProfile(workspaceId, clientId);
   if (!client) notFound();
 
+  // Fallback perezoso del Health Score: si nunca se calculó o quedó
+  // desactualizado (>24h), se recalcula acá mismo antes de renderizar —
+  // el cron diario (recompute-health-scores) es la vía normal, esto solo
+  // cubre el hueco entre que se crea un cliente y la primera corrida del
+  // cron, o si el cron se saltó una noche.
+  if (isHealthScoreStale(client.healthScoreUpdatedAt)) {
+    await recomputeAndCacheClientHealth(workspaceId, clientId);
+    client = await getClientProfile(workspaceId, clientId);
+    if (!client) notFound();
+  }
+
+  const alerts = await getClientAlerts(workspaceId, clientId);
   const status = STATUS_META[client.status];
+  const health = client.healthScoreLabel ? HEALTH_LABEL_META[client.healthScoreLabel] : null;
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
@@ -65,6 +88,13 @@ export default async function ClientProfileLayout({ children, params }: { childr
               <div className="flex items-center gap-2">
                 <h1 className="text-[20px] leading-[28px] font-semibold tracking-[-0.02em] text-foreground">{client.contactName}</h1>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${status.className}`}>{status.label}</span>
+                {health && (
+                  <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${health.className}`}>
+                    <span className={`size-1.5 rounded-full ${health.dot}`} aria-hidden="true" />
+                    {health.label}
+                    {client.healthScore !== null && ` · ${client.healthScore}`}
+                  </span>
+                )}
               </div>
               <p className="text-sm text-neutral-500">
                 {client.profession ?? "Sin profesión"}
@@ -116,6 +146,21 @@ export default async function ClientProfileLayout({ children, params }: { childr
             </Link>
           </div>
         </div>
+
+        {alerts.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {alerts.map((alert) => {
+              const Icon = alert.severity === "critical" ? OctagonAlert : AlertTriangle;
+              const className = alert.severity === "critical" ? "border-error/40 bg-error-bg text-error-strong" : "border-warning/40 bg-warning-bg text-warning-strong";
+              return (
+                <div key={alert.type} className={`flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm ${className}`}>
+                  <Icon className="size-4 shrink-0" aria-hidden="true" />
+                  {alert.message}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div role="tablist" className="flex flex-wrap gap-5 overflow-x-auto border-b border-border-default">
           {TABS.map((tab) => (
