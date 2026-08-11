@@ -1,6 +1,7 @@
 import type { MiniAppLeadDetail, MiniAppDetail } from "@/lib/miniApps/queries";
 import type { DiagnosticoQuestion } from "@/lib/miniApps/diagnosticoDefaults";
 import type { DiagnosticoRetiroQuestion } from "@/lib/miniApps/diagnosticoRetiroDefaults";
+import { getDiagnosticoSolidezTier } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import type { ResponseViewModel } from "./types";
 
 /** Mismos labels que LeadDetailDrawer.tsx (duplicados a propósito — ese
@@ -117,6 +118,51 @@ function pushDiagnosticoResult(out: ResponseViewModel[], lead: MiniAppLeadDetail
   }
 }
 
+/** "Diagnóstico de Solidez Financiera" — a diferencia de los otros dos
+ * diagnósticos, no hay preguntas configuradas en `miniApp.config` (el
+ * cuestionario es fijo, no editable por asesor — ver
+ * diagnosticoSolidezDefaults.ts), así que acá alcanza con `lead.data`, ya
+ * guardada con pregunta+respuesta real por ingest.ts (nunca el `scores`/
+ * `resultado` crudo que mandó el navegador). */
+function normalizeDiagnosticoSolidez(lead: MiniAppLeadDetail): ResponseViewModel[] {
+  const out: ResponseViewModel[] = [];
+  const answers = Array.isArray(lead.data.answers)
+    ? (lead.data.answers as { question?: unknown; dim?: unknown; dimLabel?: unknown; respuesta?: unknown }[])
+    : [];
+
+  answers.forEach((a, i) => {
+    if (typeof a.question !== "string" || typeof a.respuesta !== "string") return;
+    out.push({
+      key: `q${i}`,
+      question: a.question,
+      answer: a.respuesta,
+      answerType: "choice",
+      section: typeof a.dimLabel === "string" ? a.dimLabel : "Diagnóstico",
+      order: i,
+    });
+  });
+
+  const baseOrder = answers.length + 1;
+  if (typeof lead.data.overall === "number") {
+    const tier = getDiagnosticoSolidezTier(lead.data.overall);
+    out.push({ key: "overall", question: "Puntaje general", answer: `${lead.data.overall}/100`, answerType: "field", section: "Resultado", order: baseOrder });
+    out.push({ key: "tier", question: tier.name, answer: tier.desc, answerType: "field", section: "Resultado", order: baseOrder + 1 });
+  }
+  if (Array.isArray(lead.data.areasAtencion) && lead.data.areasAtencion.length > 0) {
+    const areas = lead.data.areasAtencion as { dimLabel?: string; score?: number }[];
+    const formatted = areas.filter((a) => a.dimLabel).map((a) => `${a.dimLabel}: ${a.score}%`);
+    if (formatted.length > 0) {
+      out.push({ key: "areasAtencion", question: "Áreas de atención", answer: formatted, answerType: "multi_choice", section: "Resultado", order: baseOrder + 2 });
+    }
+  }
+  const fortaleza = lead.data.fortalezaPrincipal as { dimLabel?: string; score?: number } | null | undefined;
+  if (fortaleza?.dimLabel) {
+    out.push({ key: "fortaleza", question: "Fortaleza principal", answer: `${fortaleza.dimLabel}: ${fortaleza.score}%`, answerType: "field", section: "Resultado", order: baseOrder + 3 });
+  }
+
+  return out;
+}
+
 function normalizeGeneric(lead: MiniAppLeadDetail): ResponseViewModel[] {
   return Object.entries(lead.data)
     .filter(([key]) => !SKIP_GENERIC_KEYS.has(key))
@@ -141,6 +187,9 @@ export function normalizeMiniAppLeadResponses(lead: MiniAppLeadDetail, miniApp: 
   }
   if (miniApp?.templateKey === "diagnostico_financiero_retiro") {
     return normalizeDiagnosticoRetiro(lead, miniApp.config);
+  }
+  if (miniApp?.templateKey === "diagnostico_solidez_financiera") {
+    return normalizeDiagnosticoSolidez(lead);
   }
   return normalizeGeneric(lead);
 }

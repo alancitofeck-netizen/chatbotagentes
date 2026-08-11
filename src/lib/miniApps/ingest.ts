@@ -7,6 +7,7 @@ import { calculateBrechaRetiro, REGIMEN_LABELS, type Regimen } from "@/lib/miniA
 import { computeDiagnosticoScore } from "@/lib/miniApps/diagnosticoEngine";
 import type { DiagnosticoQuestion, DiagnosticoLevel } from "@/lib/miniApps/diagnosticoDefaults";
 import { computeDiagnosticoRetiroScore } from "@/lib/miniApps/diagnosticoRetiroEngine";
+import { computeDiagnosticoSolidezScore, type DiagnosticoSolidezAnswerInput } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import {
   DIAGNOSTICO_RETIRO_AREAS,
   DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
@@ -296,6 +297,26 @@ async function processLeadSubmission(
     data.areas = DIAGNOSTICO_RETIRO_AREAS.map((area) => ({ name: areaLabels[area] ?? area, pct: areaScores[area] }));
     data.theme = theme || null;
     data.recomendaciones = recomendaciones;
+  } else if (app.template_key === "diagnostico_solidez_financiera") {
+    const rawAnswers = Array.isArray(body.respuestas) ? (body.respuestas as unknown[]) : null;
+    if (!rawAnswers) {
+      return { ok: false, status: 400, error: "invalid_diagnostico_answers", allowedOrigins };
+    }
+    const respuestas: DiagnosticoSolidezAnswerInput[] = rawAnswers.map((r) => {
+      const row = (r ?? {}) as Record<string, unknown>;
+      return {
+        dim: typeof row.dim === "string" ? row.dim : "",
+        respuesta: typeof row.respuesta === "string" ? row.respuesta : "",
+      };
+    });
+
+    const { scores, overall, answers, areasAtencion, fortalezaPrincipal } = computeDiagnosticoSolidezScore(respuestas);
+
+    data.answers = answers;
+    data.scores = scores;
+    data.overall = overall;
+    data.areasAtencion = areasAtencion;
+    data.fortalezaPrincipal = fortalezaPrincipal;
   }
 
   const supabase = createServiceRoleClient();
