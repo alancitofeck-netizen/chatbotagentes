@@ -58,7 +58,7 @@ const TEMPLATES = [
   { key: "calculadora_brecha_retiro", label: "Calculadora de Brecha de Retiro", available: true },
   { key: "diagnostico_financiero", label: "Diagnóstico Interactivo Financiero", available: true },
   { key: "diagnostico_financiero_retiro", label: "Diagnóstico Financiero - Retiro", available: true },
-  { key: "diagnostico_solidez_financiera", label: "Diagnóstico de Solidez Financiera", available: true },
+  { key: "diagnostico_solidez_financiera", label: "diagnostico financiero - Caballo de Troya", available: true },
   { key: "formulario", label: "Formulario (Próximamente)", available: false },
   { key: "landing", label: "Landing (Próximamente)", available: false },
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
