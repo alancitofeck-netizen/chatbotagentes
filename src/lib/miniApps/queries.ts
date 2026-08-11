@@ -35,13 +35,20 @@ import {
   type DiagnosticoRetiroRecoPool,
   type DiagnosticoRetiroThemePool,
 } from "@/lib/miniApps/diagnosticoRetiroDefaults";
+import {
+  DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND,
+  DEFAULT_DIAGNOSTICO_SOLIDEZ_THEME,
+  type DiagnosticoSolidezBrand,
+  type DiagnosticoSolidezTheme,
+} from "@/lib/miniApps/diagnosticoSolidezDefaults";
 
 export type MiniAppTemplateKey =
   | "simulador_retiro"
   | "calculadora_brecha_retiro"
   | "app_vinculada"
   | "diagnostico_financiero"
-  | "diagnostico_financiero_retiro";
+  | "diagnostico_financiero_retiro"
+  | "diagnostico_solidez_financiera";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -132,12 +139,26 @@ export interface DiagnosticoRetiroConfig {
   assignedAgentName?: string;
 }
 
+/** Config para "Diagnóstico de Solidez Financiera" — ver
+ * diagnosticoSolidezDefaults.ts para el shape de `brand` y el valor por
+ * defecto. A diferencia de DiagnosticoFinancieroConfig: no expone
+ * `questions`/`levels` editables — el archivo original define sus propias
+ * `QUESTIONS`/`TIERS`/`DIM_TEXT` fijas (ver diagnosticoSolidezTemplate.ts),
+ * lo único configurable por asesor es la identidad de marca y qué paleta de
+ * las 5 ya definidas en el HTML (`THEMES`) usar. */
+export interface DiagnosticoSolidezConfig {
+  brand: DiagnosticoSolidezBrand;
+  themeActive: DiagnosticoSolidezTheme;
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
   app_vinculada: LinkedAppConfig;
   diagnostico_financiero: DiagnosticoFinancieroConfig;
   diagnostico_financiero_retiro: DiagnosticoRetiroConfig;
+  diagnostico_solidez_financiera: DiagnosticoSolidezConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -296,6 +317,14 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
       perfiles: Array.isArray(raw.perfiles) && raw.perfiles.length === 3 ? (raw.perfiles as DiagnosticoRetiroPerfil[]) : DEFAULT_DIAGNOSTICO_RETIRO_PERFILES,
       recoPool: { ...DEFAULT_DIAGNOSTICO_RETIRO_RECO_POOL, ...((raw.recoPool as Partial<DiagnosticoRetiroRecoPool>) ?? {}) },
       themePool: { ...DEFAULT_DIAGNOSTICO_RETIRO_THEME_POOL, ...((raw.themePool as Partial<DiagnosticoRetiroThemePool>) ?? {}) },
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "diagnostico_solidez_financiera") {
+    const config: DiagnosticoSolidezConfig = {
+      brand: { ...DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, ...((raw.brand as Partial<DiagnosticoSolidezBrand>) ?? {}) },
+      themeActive: typeof raw.themeActive === "string" ? (raw.themeActive as DiagnosticoSolidezTheme) : DEFAULT_DIAGNOSTICO_SOLIDEZ_THEME,
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];

@@ -25,6 +25,7 @@ import {
   type LinkedAppConfig,
   type DiagnosticoFinancieroConfig,
   type DiagnosticoRetiroConfig,
+  type DiagnosticoSolidezConfig,
 } from "@/lib/miniApps/queries";
 import { getWorkspaceMembersList } from "@/lib/settings/queries";
 import {
@@ -92,7 +93,7 @@ export interface CreateMiniAppInput {
   assignedAgentId: string | null;
   allowedOrigins: string[];
   externalUrl: string;
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig;
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig;
 }
 
 /** Resolves the assigned agent's display name once, under a real
@@ -107,7 +108,7 @@ export interface CreateMiniAppInput {
 async function resolveConfigWithAgentName(
   workspaceId: string,
   assignedAgentId: string | null,
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig,
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig,
 ) {
   if (!assignedAgentId) return config;
   const members = await getWorkspaceMembersList(workspaceId);
@@ -165,7 +166,7 @@ export interface UpdateMiniAppInput {
   allowedOrigins: string[];
   externalUrl: string;
   status: "active" | "inactive";
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig;
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig;
 }
 
 export async function updateMiniApp(id: string, input: UpdateMiniAppInput): Promise<void> {

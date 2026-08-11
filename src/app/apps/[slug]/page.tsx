@@ -7,6 +7,7 @@ import { CalculadoraBrechaApp } from "./CalculadoraBrechaApp";
 import { LinkedAppLanding } from "./LinkedAppLanding";
 import { DiagnosticoFinancieroApp } from "./DiagnosticoFinancieroApp";
 import { DiagnosticoRetiroApp } from "./DiagnosticoRetiroApp";
+import { DiagnosticoSolidezApp } from "./DiagnosticoSolidezApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -77,6 +78,13 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
     // Mismo motivo que diagnostico_financiero: diseño navy/dorado
     // autocontenido (ver DiagnosticoRetiroApp.tsx), sin themeCss/--ma-*.
     return <DiagnosticoRetiroApp app={app} />;
+  }
+
+  if (app.templateKey === "diagnostico_solidez_financiera") {
+    // Mismo motivo que diagnostico_financiero: diseño Fraunces/Hanken
+    // Grotesk autocontenido (ver DiagnosticoSolidezApp.tsx), sin
+    // themeCss/--ma-*.
+    return <DiagnosticoSolidezApp app={app} />;
   }
 
   notFound();

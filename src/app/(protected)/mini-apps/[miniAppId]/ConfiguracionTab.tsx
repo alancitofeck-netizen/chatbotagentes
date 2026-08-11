@@ -45,6 +45,7 @@ import {
   type DiagnosticoRetiroRecoPool,
   type DiagnosticoRetiroThemePool,
 } from "@/lib/miniApps/diagnosticoRetiroDefaults";
+import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -106,6 +107,7 @@ export function ConfiguracionTab({
   const isLinkedApp = miniApp.templateKey === "app_vinculada";
   const isDiagnostico = miniApp.templateKey === "diagnostico_financiero";
   const isRetiro = miniApp.templateKey === "diagnostico_financiero_retiro";
+  const isSolidez = miniApp.templateKey === "diagnostico_solidez_financiera";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -222,6 +224,19 @@ export function ConfiguracionTab({
     setRetiroThemePool((pool) => ({ ...pool, [key]: value }));
   }
 
+  const [solidezAdvisorName, setSolidezAdvisorName] = useState(isSolidez ? miniApp.config.brand.advisorName : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.advisorName);
+  const [solidezCompanyName, setSolidezCompanyName] = useState(isSolidez ? miniApp.config.brand.companyName : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.companyName);
+  const [solidezTitle, setSolidezTitle] = useState(isSolidez ? miniApp.config.brand.title : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.title);
+  const [solidezBadge, setSolidezBadge] = useState(isSolidez ? miniApp.config.brand.badge : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.badge);
+  const [solidezPhotoURL, setSolidezPhotoURL] = useState(isSolidez ? miniApp.config.brand.photoURL : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.photoURL);
+  const [solidezWhatsapp, setSolidezWhatsapp] = useState(isSolidez ? miniApp.config.brand.whatsapp : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.whatsapp);
+  const [solidezCalendly, setSolidezCalendly] = useState(isSolidez ? miniApp.config.brand.calendly : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.calendly);
+  const [solidezPrivacyURL, setSolidezPrivacyURL] = useState(isSolidez ? miniApp.config.brand.privacyURL : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.privacyURL);
+  const [solidezAdvisorID, setSolidezAdvisorID] = useState(isSolidez ? miniApp.config.brand.advisorID : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.advisorID);
+  const [solidezWebhookURL, setSolidezWebhookURL] = useState(isSolidez ? miniApp.config.brand.webhookURL : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.webhookURL);
+  const [solidezWaGreeting, setSolidezWaGreeting] = useState(isSolidez ? miniApp.config.brand.waGreeting : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.waGreeting);
+  const [solidezTheme, setSolidezTheme] = useState<DiagnosticoSolidezTheme>(isSolidez ? miniApp.config.themeActive : "brass");
+
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -293,7 +308,25 @@ export function ConfiguracionTab({
                       recoPool: retiroRecoPool,
                       themePool: retiroThemePool,
                     }
-                  : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+                  : isSolidez
+                    ? {
+                        brand: {
+                          advisorName: solidezAdvisorName,
+                          companyName: solidezCompanyName,
+                          title: solidezTitle,
+                          badge: solidezBadge,
+                          photoURL: solidezPhotoURL,
+                          logoURL: DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.logoURL,
+                          whatsapp: solidezWhatsapp,
+                          calendly: solidezCalendly,
+                          privacyURL: solidezPrivacyURL,
+                          advisorID: solidezAdvisorID,
+                          webhookURL: solidezWebhookURL,
+                          waGreeting: solidezWaGreeting,
+                        },
+                        themeActive: solidezTheme,
+                      }
+                    : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -430,7 +463,7 @@ export function ConfiguracionTab({
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
            * de diseño más allá de estos dos valores. No aplica a los
            * Diagnósticos: tienen su propio CSS autocontenido. */}
-          {!isDiagnostico && !isRetiro && (
+          {!isDiagnostico && !isRetiro && !isSolidez && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -820,6 +853,57 @@ export function ConfiguracionTab({
                       className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
                     />
                   </div>
+                ))}
+              </div>
+            </>
+          ) : isSolidez ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+              <Input label="Nombre a mostrar" value={solidezAdvisorName} onChange={(e) => setSolidezAdvisorName(e.target.value)} />
+              <Input label="Despacho / empresa (opcional)" value={solidezCompanyName} onChange={(e) => setSolidezCompanyName(e.target.value)} />
+              <Input label="Título / rol" value={solidezTitle} onChange={(e) => setSolidezTitle(e.target.value)} />
+              <Input label="Etiqueta superior (badge, opcional)" value={solidezBadge} onChange={(e) => setSolidezBadge(e.target.value)} />
+              <Input label="Foto/logo (URL, opcional)" value={solidezPhotoURL} onChange={(e) => setSolidezPhotoURL(e.target.value)} placeholder="https://..." />
+              <Input
+                label="WhatsApp (solo dígitos, con código de país)"
+                value={solidezWhatsapp}
+                onChange={(e) => setSolidezWhatsapp(e.target.value)}
+                placeholder="5215500000000"
+              />
+              <Input label="URL de agenda (Calendly u otro)" value={solidezCalendly} onChange={(e) => setSolidezCalendly(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input label="URL del Aviso de Privacidad" value={solidezPrivacyURL} onChange={(e) => setSolidezPrivacyURL(e.target.value)} placeholder="https://..." />
+              <Input label="ID interno del asesor (opcional, para tus propios reportes)" value={solidezAdvisorID} onChange={(e) => setSolidezAdvisorID(e.target.value)} />
+              <Input
+                label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                value={solidezWebhookURL}
+                onChange={(e) => setSolidezWebhookURL(e.target.value)}
+                placeholder="https://..."
+              />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Mensaje de WhatsApp sugerido</label>
+                <textarea
+                  value={solidezWaGreeting}
+                  onChange={(e) => setSolidezWaGreeting(e.target.value)}
+                  rows={2}
+                  className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                />
+              </div>
+
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Paleta de color</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                {DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setSolidezTheme(opt.key)}
+                    className={`flex flex-col items-center gap-1.5 rounded-md border p-2.5 text-xs font-medium transition-colors ${
+                      solidezTheme === opt.key ? "border-accent-500 bg-accent-50" : "border-border-default hover:border-border-strong"
+                    }`}
+                  >
+                    <span className="size-6 rounded-full border border-black/10" style={{ backgroundColor: opt.swatch }} />
+                    {opt.label}
+                  </button>
                 ))}
               </div>
             </>

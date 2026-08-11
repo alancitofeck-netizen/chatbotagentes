@@ -1,4 +1,4 @@
-import { PieChart, Calculator, Link2, TrendingUp, ShieldCheck, Layout, Presentation, FileText, Sparkles, type LucideIcon } from "lucide-react";
+import { PieChart, Calculator, Link2, TrendingUp, ShieldCheck, Layout, Presentation, FileText, Sparkles, Landmark, type LucideIcon } from "lucide-react";
 import type { MiniAppListItem, MiniAppTemplateKey } from "@/lib/miniApps/queries";
 import type { LinkedAppIconKey } from "@/lib/miniApps/linkedAppOptions";
 
@@ -29,6 +29,7 @@ const TEMPLATE_VISUAL: Record<MiniAppTemplateKey, { icon: LucideIcon; hue: Hue }
   app_vinculada: { icon: Link2, hue: "violet" },
   diagnostico_financiero: { icon: TrendingUp, hue: "cyan" },
   diagnostico_financiero_retiro: { icon: ShieldCheck, hue: "violet" },
+  diagnostico_solidez_financiera: { icon: Landmark, hue: "orange" },
 };
 
 /** Para "App Vinculada": el ícono real que el usuario eligió al vincularla

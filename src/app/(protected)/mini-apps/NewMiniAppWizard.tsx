@@ -12,7 +12,14 @@ import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { createMiniApp, updateMiniAppBranding } from "@/lib/miniApps/actions";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR, isValidHexColor } from "@/lib/miniApps/paletteEngine";
-import type { MiniAppTemplateKey, MiniAppFieldConfig, CalculadoraBrechaConfig, DiagnosticoFinancieroConfig, DiagnosticoRetiroConfig } from "@/lib/miniApps/queries";
+import type {
+  MiniAppTemplateKey,
+  MiniAppFieldConfig,
+  CalculadoraBrechaConfig,
+  DiagnosticoFinancieroConfig,
+  DiagnosticoRetiroConfig,
+  DiagnosticoSolidezConfig,
+} from "@/lib/miniApps/queries";
 import {
   DEFAULT_DIAGNOSTICO_AGENTE,
   DEFAULT_DIAGNOSTICO_QUESTIONS,
@@ -42,6 +49,7 @@ import {
   type DiagnosticoRetiroThemePool,
   type DiagnosticoRetiroThemeKey,
 } from "@/lib/miniApps/diagnosticoRetiroDefaults";
+import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
@@ -50,6 +58,7 @@ const TEMPLATES = [
   { key: "calculadora_brecha_retiro", label: "Calculadora de Brecha de Retiro", available: true },
   { key: "diagnostico_financiero", label: "Diagnóstico Interactivo Financiero", available: true },
   { key: "diagnostico_financiero_retiro", label: "Diagnóstico Financiero - Retiro", available: true },
+  { key: "diagnostico_solidez_financiera", label: "Diagnóstico de Solidez Financiera", available: true },
   { key: "formulario", label: "Formulario (Próximamente)", available: false },
   { key: "landing", label: "Landing (Próximamente)", available: false },
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
@@ -239,6 +248,24 @@ export function NewMiniAppWizard({
     setRetiroThemePool((pool) => ({ ...pool, [key]: value }));
   }
 
+  // Paso 2 (Diagnóstico de Solidez Financiera) — campos de BRAND_CONFIG que
+  // el HTML original tenía hardcodeados; "advisorName" se autocompleta al
+  // elegir "Agente asignado" igual que en los otros dos Diagnósticos.
+  // QUESTIONS/TIERS/DIM_TEXT/THEMES (los 5 tonos de color) quedan fijos —
+  // solo se elige cuál de esos 5 tonos usar (Paso 3).
+  const [solidezAdvisorName, setSolidezAdvisorName] = useState("");
+  const [solidezCompanyName, setSolidezCompanyName] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.companyName);
+  const [solidezTitle, setSolidezTitle] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.title);
+  const [solidezBadge, setSolidezBadge] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.badge);
+  const [solidezPhotoURL, setSolidezPhotoURL] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.photoURL);
+  const [solidezWhatsapp, setSolidezWhatsapp] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.whatsapp);
+  const [solidezCalendly, setSolidezCalendly] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.calendly);
+  const [solidezPrivacyURL, setSolidezPrivacyURL] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.privacyURL);
+  const [solidezAdvisorID, setSolidezAdvisorID] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.advisorID);
+  const [solidezWebhookURL, setSolidezWebhookURL] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.webhookURL);
+  const [solidezWaGreeting, setSolidezWaGreeting] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.waGreeting);
+  const [solidezTheme, setSolidezTheme] = useState<DiagnosticoSolidezTheme>("brass");
+
   function handleLogoCropped(blob: Blob) {
     setLogoBlob(blob);
     setLogoPreviewUrl(URL.createObjectURL(blob));
@@ -252,7 +279,7 @@ export function NewMiniAppWizard({
     }
     setIsPending(true);
     try {
-      let config: MiniAppFieldConfig | CalculadoraBrechaConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig;
+      let config: MiniAppFieldConfig | CalculadoraBrechaConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig;
       if (templateKey === "calculadora_brecha_retiro") {
         config = { whatsappAsesor, avisoPrivacidadUrl, licenseBadge };
       } else if (templateKey === "diagnostico_financiero") {
@@ -285,6 +312,24 @@ export function NewMiniAppWizard({
           perfiles: retiroPerfiles,
           recoPool: retiroRecoPool,
           themePool: retiroThemePool,
+        };
+      } else if (templateKey === "diagnostico_solidez_financiera") {
+        config = {
+          brand: {
+            advisorName: solidezAdvisorName,
+            companyName: solidezCompanyName,
+            title: solidezTitle,
+            badge: solidezBadge,
+            photoURL: solidezPhotoURL,
+            logoURL: DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.logoURL,
+            whatsapp: solidezWhatsapp,
+            calendly: solidezCalendly,
+            privacyURL: solidezPrivacyURL,
+            advisorID: solidezAdvisorID,
+            webhookURL: solidezWebhookURL,
+            waGreeting: solidezWaGreeting,
+          },
+          themeActive: solidezTheme,
         };
       } else {
         config = {
@@ -404,6 +449,10 @@ export function NewMiniAppWizard({
                 if (templateKey === "diagnostico_financiero_retiro" && !retiroNombre.trim()) {
                   const m = members.find((x) => x.memberId === e.target.value);
                   if (m) setRetiroNombre(m.fullName);
+                }
+                if (templateKey === "diagnostico_solidez_financiera" && !solidezAdvisorName.trim()) {
+                  const m = members.find((x) => x.memberId === e.target.value);
+                  if (m) setSolidezAdvisorName(m.fullName);
                 }
               }}
             >
@@ -526,12 +575,50 @@ export function NewMiniAppWizard({
               </div>
             )}
 
+            {templateKey === "diagnostico_solidez_financiera" && (
+              <div className="flex flex-col gap-4">
+                <div className="my-1 h-px bg-border-default" />
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+                <Input label="Nombre a mostrar" value={solidezAdvisorName} onChange={(e) => setSolidezAdvisorName(e.target.value)} placeholder="Ej. Patricio Jaik" />
+                <Input label="Despacho / empresa (opcional)" value={solidezCompanyName} onChange={(e) => setSolidezCompanyName(e.target.value)} />
+                <Input label="Título / rol" value={solidezTitle} onChange={(e) => setSolidezTitle(e.target.value)} />
+                <Input label="Etiqueta superior (badge, opcional)" value={solidezBadge} onChange={(e) => setSolidezBadge(e.target.value)} />
+                <Input label="Foto/logo (URL, opcional)" value={solidezPhotoURL} onChange={(e) => setSolidezPhotoURL(e.target.value)} placeholder="https://..." />
+                <Input
+                  label="WhatsApp (solo dígitos, con código de país)"
+                  value={solidezWhatsapp}
+                  onChange={(e) => setSolidezWhatsapp(e.target.value)}
+                  placeholder="5215500000000"
+                />
+                <Input label="URL de agenda (Calendly u otro)" value={solidezCalendly} onChange={(e) => setSolidezCalendly(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+                <Input label="URL del Aviso de Privacidad" value={solidezPrivacyURL} onChange={(e) => setSolidezPrivacyURL(e.target.value)} placeholder="https://..." />
+                <Input label="ID interno del asesor (opcional)" value={solidezAdvisorID} onChange={(e) => setSolidezAdvisorID(e.target.value)} />
+                <Input
+                  label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                  value={solidezWebhookURL}
+                  onChange={(e) => setSolidezWebhookURL(e.target.value)}
+                  placeholder="https://..."
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">Mensaje de WhatsApp sugerido</label>
+                  <textarea
+                    value={solidezWaGreeting}
+                    onChange={(e) => setSolidezWaGreeting(e.target.value)}
+                    rows={2}
+                    className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Solo estos dos colores — el resto del sistema visual de la
              * página pública se genera solo (paletteEngine.ts), con
              * contraste WCAG verificado automáticamente. No aplica a los
              * Diagnósticos: tienen su propio CSS autocontenido, sin ningún
              * efecto de estos selectores. */}
-            {templateKey !== "diagnostico_financiero" && templateKey !== "diagnostico_financiero_retiro" && (
+            {templateKey !== "diagnostico_financiero" &&
+              templateKey !== "diagnostico_financiero_retiro" &&
+              templateKey !== "diagnostico_solidez_financiera" && (
             <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -881,6 +968,40 @@ export function NewMiniAppWizard({
           </div>
         )}
 
+        {step === 2 && templateKey === "diagnostico_solidez_financiera" && (
+          <div className="flex flex-col gap-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Paleta de color</p>
+            <p className="text-sm text-neutral-500">
+              El diseño, las preguntas y la lógica de puntaje son fijos — lo único que elegís acá es cuál de estos 5 tonos usar.
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setSolidezTheme(opt.key)}
+                  className={`flex flex-col items-center gap-1.5 rounded-md border p-2.5 text-xs font-medium transition-colors ${
+                    solidezTheme === opt.key ? "border-accent-500 bg-accent-50" : "border-border-default hover:border-border-strong"
+                  }`}
+                >
+                  <span className="size-6 rounded-full border border-black/10" style={{ backgroundColor: opt.swatch }} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS, opcional)</label>
+              <textarea
+                value={allowedOrigins}
+                onChange={(e) => setAllowedOrigins(e.target.value)}
+                placeholder={"Solo si además querés aceptar leads desde un dominio externo"}
+                rows={2}
+                className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+              />
+            </div>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="flex flex-col gap-3 rounded-md border border-border-default bg-surface-2 p-4 text-sm">
             <p>
@@ -895,6 +1016,11 @@ export function NewMiniAppWizard({
             {templateKey === "diagnostico_financiero_retiro" && (
               <p className="text-neutral-500">
                 {retiroQuestions.length} preguntas · {retiroPerfiles.length} perfiles de resultado
+              </p>
+            )}
+            {templateKey === "diagnostico_solidez_financiera" && (
+              <p className="text-neutral-500">
+                {solidezAdvisorName || "(sin nombre de asesor)"} · paleta {DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS.find((o) => o.key === solidezTheme)?.label}
               </p>
             )}
             <p className="text-neutral-500">Se va a publicar en tu propia URL de Growth Link al confirmar.</p>
