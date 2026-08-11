@@ -36,7 +36,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   const enabledModules = (modules ?? []).map((m) => m.module_key as string);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-2">
+    <div className="flex h-screen overflow-hidden bg-surface-2" data-workspace-theme={activeWorkspace.theme}>
       <Sidebar
         enabledModules={enabledModules}
         workspaceName={activeWorkspace.name}

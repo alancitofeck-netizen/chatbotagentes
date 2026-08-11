@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PieChart as PieChartIcon } from "lucide-react";
 import type { LeadSource } from "@/lib/dashboard/queries";
 
-const PALETTE = ["var(--color-accent-500)", "#F5A524", "#2E9563", "#3B82F6", "#EAB308"];
+const PALETTE = ["var(--color-accent-500)", "var(--color-chart-2)", "var(--color-chart-1)", "var(--color-chart-3)", "var(--color-chart-4)"];
 
 export function LeadsBySourceChart({ sources }: { sources: LeadSource[] }) {
   const total = sources.reduce((sum, s) => sum + s.count, 0);

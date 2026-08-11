@@ -29,15 +29,15 @@ export function AdvisorsKpiHeader({ kpis }: { kpis: AdvisorsKpis }) {
       />
       <KpiTile
         icon={<UserPlus className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-blue-100"
-        iconColor="text-blue-700"
+        iconBg="bg-[var(--color-info-bg)]"
+        iconColor="text-[var(--color-info-strong)]"
         value={String(kpis.newThisMonth)}
         label="Nuevas este mes"
       />
       <KpiTile
         icon={<Coins className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-green-100"
-        iconColor="text-green-700"
+        iconBg="bg-[var(--color-success-bg)]"
+        iconColor="text-[var(--color-success-strong)]"
         value={formatCurrency(kpis.totalCommissionThisMonth)}
         label="Comisión del mes"
       />

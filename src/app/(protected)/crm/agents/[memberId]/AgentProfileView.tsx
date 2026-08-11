@@ -35,7 +35,7 @@ const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", age
 function scoreColor(score: number): string {
   if (score >= 85) return "var(--color-success-strong)";
   if (score >= 70) return "var(--color-warning-strong)";
-  if (score >= 50) return "#C2650A";
+  if (score >= 50) return "var(--color-warning)";
   return "var(--color-error-strong)";
 }
 

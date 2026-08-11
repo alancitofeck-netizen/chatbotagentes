@@ -11,6 +11,7 @@ import {
   CreditCard,
   IdCard,
   Workflow,
+  Palette,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils/cn";
@@ -28,6 +29,7 @@ import { AccountSection } from "./sections/AccountSection";
 import { SecuritySection } from "./sections/SecuritySection";
 import { PreferencesSection } from "./sections/PreferencesSection";
 import { WorkspaceSection } from "./sections/WorkspaceSection";
+import { AppearanceSection } from "./sections/AppearanceSection";
 import { AutomationsSection } from "./sections/AutomationsSection";
 import { IntegrationsSection } from "./sections/IntegrationsSection";
 import { BillingSection } from "./sections/BillingSection";
@@ -44,6 +46,7 @@ const TABS = [
   { key: "security", label: "Seguridad", icon: ShieldCheck },
   { key: "preferences", label: "Preferencias", icon: SlidersHorizontal },
   { key: "workspace", label: "Workspace", icon: Building2 },
+  { key: "appearance", label: "Apariencia", icon: Palette },
   { key: "automations", label: "Automatizaciones", icon: Workflow },
   { key: "integrations", label: "Integraciones", icon: Plug },
   { key: "billing", label: "Facturación", icon: CreditCard },
@@ -182,6 +185,7 @@ export function ProfileShell({
               onMembersChanged={refetchMembers}
             />
           )}
+          {activeTab === "appearance" && <AppearanceSection currentTheme={profile.workspaceTheme} canManage={canManage} />}
           {activeTab === "automations" && <AutomationsSection initialAutomations={initialAutomations} />}
           {activeTab === "integrations" && (
             <IntegrationsSection

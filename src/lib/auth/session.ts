@@ -4,12 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveWorkspaceCookie } from "@/lib/auth/workspace-cookie";
 
 export type WorkspaceRole = "owner" | "admin" | "agent";
+export type WorkspaceTheme = "growthlink" | "ocean" | "lime-dark" | "violet";
 
 export interface WorkspaceMembership {
   workspaceId: string;
   name: string;
   slug: string;
   role: WorkspaceRole;
+  /** "Piel" visual del workspace (Configuración → Apariencia) — distinto del
+   * toggle claro/oscuro por navegador (src/lib/theme/ThemeProvider.tsx).
+   * Aplicado como data-workspace-theme en (protected)/layout.tsx. */
+  theme: WorkspaceTheme;
   /** True when this membership is synthetic — a platform admin ("Owner
    * global") viewing a workspace they don't actually belong to, resolved via
    * the is_platform_admin() RLS carve-out rather than a real
@@ -40,7 +45,7 @@ export async function getUserWorkspaces(userId: string): Promise<WorkspaceMember
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("workspace_members")
-    .select("role, workspaces!workspace_members_workspace_id_fkey(id, name, slug)")
+    .select("role, workspaces!workspace_members_workspace_id_fkey(id, name, slug, theme)")
     .eq("user_id", userId);
 
   if (error || !data) return [];
@@ -54,6 +59,7 @@ export async function getUserWorkspaces(userId: string): Promise<WorkspaceMember
         name: workspace.name as string,
         slug: workspace.slug as string,
         role: row.role as WorkspaceRole,
+        theme: (workspace.theme as WorkspaceTheme | null) ?? "growthlink",
       };
     })
     .filter((m): m is WorkspaceMembership => m !== null);
@@ -84,7 +90,7 @@ async function getSupervisedWorkspace(workspaceId: string): Promise<WorkspaceMem
   const { data: isPlatformAdmin } = await supabase.rpc("am_i_platform_admin");
   if (!isPlatformAdmin) return null;
 
-  const { data: workspace } = await supabase.from("workspaces").select("id, name, slug").eq("id", workspaceId).maybeSingle();
+  const { data: workspace } = await supabase.from("workspaces").select("id, name, slug, theme").eq("id", workspaceId).maybeSingle();
   if (!workspace) return null;
 
   return {
@@ -92,6 +98,7 @@ async function getSupervisedWorkspace(workspaceId: string): Promise<WorkspaceMem
     name: workspace.name as string,
     slug: workspace.slug as string,
     role: "agent",
+    theme: (workspace.theme as WorkspaceTheme | null) ?? "growthlink",
     isSupervising: true,
   };
 }

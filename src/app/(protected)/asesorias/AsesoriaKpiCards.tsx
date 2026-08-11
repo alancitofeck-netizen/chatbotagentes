@@ -154,34 +154,34 @@ export function AsesoriaKpiCards({ asesorias, referralActivity }: { asesorias: A
       />
       <KpiCard
         icon={<CheckCircle2 className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-green-100"
-        iconColor="text-green-700"
+        iconBg="bg-[var(--color-success-bg)]"
+        iconColor="text-[var(--color-success-strong)]"
         value={String(finalizadas)}
         label="Finalizadas"
         footnote={pct(finalizadas)}
-        sparklineColor="#2E9563"
+        sparklineColor="var(--color-success)"
         sparklineData={activity}
         sparklineKey="finalizadas"
       />
       <KpiCard
         icon={<Clock className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-orange-100"
-        iconColor="text-orange-700"
+        iconBg="bg-[var(--color-warning-bg)]"
+        iconColor="text-[var(--color-warning-strong)]"
         value={String(enProgreso)}
         label="En progreso"
         footnote={pct(enProgreso)}
-        sparklineColor="#F5A524"
+        sparklineColor="var(--color-warning)"
         sparklineData={activity}
         sparklineKey="enProgreso"
       />
       <KpiCard
         icon={<Users className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-blue-100"
-        iconColor="text-blue-700"
+        iconBg="bg-[var(--color-info-bg)]"
+        iconColor="text-[var(--color-info-strong)]"
         value={String(referidos)}
         label="Referidos"
         footnote={referidos > 0 ? "Compartidos en asesorías" : "Todavía ninguno"}
-        sparklineColor="#3B82F6"
+        sparklineColor="var(--color-info)"
         sparklineData={activity}
         sparklineKey="referidos"
         href="/asesorias/referidos"

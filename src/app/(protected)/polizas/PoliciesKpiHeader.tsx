@@ -92,8 +92,8 @@ export function PoliciesKpiHeader({
       />
       <KpiTile
         icon={<UserPlus className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-blue-100"
-        iconColor="text-blue-700"
+        iconBg="bg-[var(--color-info-bg)]"
+        iconColor="text-[var(--color-info-strong)]"
         value={String(kpis.newThisMonth)}
         label="Nuevas este mes"
       />
@@ -138,8 +138,8 @@ export function PoliciesKpiHeader({
       />
       <KpiTile
         icon={<Coins className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-green-100"
-        iconColor="text-green-700"
+        iconBg="bg-[var(--color-success-bg)]"
+        iconColor="text-[var(--color-success-strong)]"
         value={formatCurrency(kpis.commissionPending)}
         label="Comisión pendiente"
       />
@@ -152,15 +152,15 @@ export function PoliciesKpiHeader({
       />
       <KpiTile
         icon={<Building2 className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-blue-100"
-        iconColor="text-blue-700"
+        iconBg="bg-[var(--color-info-bg)]"
+        iconColor="text-[var(--color-info-strong)]"
         value={String(kpis.activeInsurers)}
         label="Aseguradoras activas"
       />
       <KpiTile
         icon={<ShieldCheck className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-blue-100"
-        iconColor="text-blue-700"
+        iconBg="bg-[var(--color-info-bg)]"
+        iconColor="text-[var(--color-info-strong)]"
         value={kpis.renewalRate !== null ? `${Math.round(kpis.renewalRate * 100)}%` : "—"}
         label="Tasa de renovación"
       />

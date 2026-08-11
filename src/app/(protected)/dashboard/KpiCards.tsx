@@ -116,11 +116,11 @@ export function KpiCards({ kpis, activity, compact = false }: { kpis: DashboardK
 
       <KpiCard
         icon={<MessageCircle className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-blue-100"
-        iconColor="text-blue-700"
+        iconBg="bg-[var(--color-info-bg)]"
+        iconColor="text-[var(--color-info-strong)]"
         value={String(kpis.conversationsActive)}
         label="Conversaciones activas"
-        sparklineColor="#3B82F6"
+        sparklineColor="var(--color-info)"
         sparklineData={activity}
         sparklineKey="mensajes"
         footnote={`${kpis.conversationsUnread} no leídas · ${kpis.conversationsWaiting} esperando`}
@@ -129,11 +129,11 @@ export function KpiCards({ kpis, activity, compact = false }: { kpis: DashboardK
 
       <KpiCard
         icon={<CalendarClock className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-orange-100"
-        iconColor="text-orange-700"
+        iconBg="bg-[var(--color-warning-bg)]"
+        iconColor="text-[var(--color-warning-strong)]"
         value={String(kpis.meetingsToday)}
         label="Reuniones hoy"
-        sparklineColor="#F5A524"
+        sparklineColor="var(--color-warning)"
         sparklineData={activity}
         sparklineKey="reuniones"
         footnote={
@@ -146,11 +146,11 @@ export function KpiCards({ kpis, activity, compact = false }: { kpis: DashboardK
 
       <KpiCard
         icon={<DollarSign className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-green-100"
-        iconColor="text-green-700"
+        iconBg="bg-[var(--color-success-bg)]"
+        iconColor="text-[var(--color-success-strong)]"
         value={formatCurrency(kpis.salesThisMonth)}
         label="Ventas del mes"
-        sparklineColor="#2E9563"
+        sparklineColor="var(--color-success)"
         sparklineData={activity}
         sparklineKey="ventas"
         footnote={`${kpis.conversionRate}% conversión`}

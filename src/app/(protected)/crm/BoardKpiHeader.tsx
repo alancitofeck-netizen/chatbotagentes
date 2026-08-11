@@ -70,31 +70,31 @@ export function BoardKpiHeader({ kpis }: { kpis: BoardKpis }) {
       />
       <KpiTile
         icon={<UserPlus className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-blue-100"
-        iconColor="text-blue-700"
+        iconBg="bg-[var(--color-chart-3)]/15"
+        iconColor="text-[var(--color-chart-3)]"
         value={String(kpis.newLeadsThisMonth)}
         label="Nuevos leads (mes)"
         deltaPct={kpis.newLeadsDeltaPct}
       />
       <KpiTile
         icon={<CalendarClock className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-orange-100"
-        iconColor="text-orange-700"
+        iconBg="bg-[var(--color-chart-2)]/15"
+        iconColor="text-[var(--color-chart-2)]"
         value={String(kpis.meetingsScheduled)}
         label="Reuniones agendadas"
         footnote="Próximas, todo el workspace"
       />
       <KpiTile
         icon={<FileText className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-yellow-100"
-        iconColor="text-yellow-700"
+        iconBg="bg-[var(--color-chart-4)]/15"
+        iconColor="text-[var(--color-chart-4)]"
         value={String(kpis.proposalsSent)}
         label="Propuestas enviadas"
       />
       <KpiTile
         icon={<Award className="size-[18px]" aria-hidden="true" />}
-        iconBg="bg-green-100"
-        iconColor="text-green-700"
+        iconBg="bg-[var(--color-success-bg)]"
+        iconColor="text-[var(--color-success-strong)]"
         value={String(kpis.dealsWonThisMonth)}
         label="Ventas cerradas (mes)"
         deltaPct={kpis.dealsWonDeltaPct}

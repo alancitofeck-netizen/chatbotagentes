@@ -81,8 +81,8 @@ function SidebarNavItem({
           item.comingSoon
             ? "cursor-default text-neutral-600"
             : isActive
-              ? "bg-accent-500 text-white shadow-[var(--elevation-glow-accent)]"
-              : "text-neutral-400 hover:bg-accent-500/12 hover:text-neutral-100",
+              ? "bg-[var(--sidebar-accent)] text-[var(--on-accent)] shadow-[var(--elevation-glow-accent)]"
+              : "text-neutral-400 hover:bg-[var(--sidebar-accent)]/12 hover:text-neutral-100",
         )}
       >
         {isActive && (
@@ -244,7 +244,7 @@ export function Sidebar({
         }}
         aria-expanded={isExpanded}
         className={cn(
-          "fixed inset-y-0 left-0 z-[60] hidden flex-col overflow-hidden bg-neutral-950 transition-[width] duration-[220ms] ease-out motion-reduce:transition-none md:flex",
+          "fixed inset-y-0 left-0 z-[60] hidden flex-col overflow-hidden bg-[var(--sidebar-bg)] transition-[width] duration-[220ms] ease-out motion-reduce:transition-none md:flex",
           isExpanded ? "w-[280px]" : "w-[72px]",
         )}
       >

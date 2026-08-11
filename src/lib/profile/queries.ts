@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { getUser, requireActiveWorkspace } from "@/lib/auth/session";
+import { getUser, requireActiveWorkspace, type WorkspaceTheme } from "@/lib/auth/session";
 
 export interface MyProfile {
   userId: string;
@@ -20,6 +20,7 @@ export interface MyProfile {
   role: string;
   workspaceName: string;
   workspaceSlug: string;
+  workspaceTheme: WorkspaceTheme;
   createdAt: string;
 }
 
@@ -31,7 +32,7 @@ export interface MyProfile {
  * registration (src/app/(auth)/register/actions.ts). */
 export async function getMyProfile(): Promise<MyProfile> {
   const user = await getUser();
-  const { role, name: workspaceName, slug: workspaceSlug } = await requireActiveWorkspace();
+  const { role, name: workspaceName, slug: workspaceSlug, theme: workspaceTheme } = await requireActiveWorkspace();
 
   const metadata = (user?.user_metadata ?? {}) as {
     full_name?: string;
@@ -50,6 +51,7 @@ export async function getMyProfile(): Promise<MyProfile> {
     role,
     workspaceName,
     workspaceSlug,
+    workspaceTheme,
     createdAt: user?.created_at ?? "",
   };
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireActiveWorkspace, type WorkspaceTheme } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { getMyProfile, getMySessions } from "@/lib/profile/queries";
 
@@ -79,4 +79,21 @@ export async function updateWorkspaceName(name: string) {
   if (error) throw new Error("No se pudo actualizar el nombre del workspace.");
 
   revalidatePath("/profile");
+}
+
+/** Tema visual del workspace (Configuración → Apariencia) — mismo patrón que
+ * updateWorkspaceName. Distinto del toggle claro/oscuro existente
+ * (src/lib/theme/ThemeProvider.tsx, por navegador): esto es la "piel" de
+ * marca completa, persistida en DB, aplicada vía data-workspace-theme en
+ * (protected)/layout.tsx. */
+export async function updateWorkspaceTheme(theme: WorkspaceTheme) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("workspaces").update({ theme }).eq("id", workspaceId);
+  if (error) throw new Error("No se pudo actualizar el tema del workspace.");
+
+  revalidatePath("/profile");
+  revalidatePath("/", "layout");
 }

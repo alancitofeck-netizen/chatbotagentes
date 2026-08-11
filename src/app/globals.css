@@ -111,10 +111,33 @@
   --elevation-lg: 0 20px 48px rgba(16, 24, 40, 0.14);
 
   /* Accent-tinted glow — active sidebar item only (Sidebar.tsx redesign).
-     Same accent-500 (#6c63ff) in both themes since the sidebar rail stays
-     dark regardless of site theme, so this doesn't need a dark-mode override
-     like the neutral elevation tokens above do. */
-  --elevation-glow-accent: 0 0 0 1px rgba(108, 99, 255, 0.5), 0 0 16px rgba(108, 99, 255, 0.35);
+     Built from --sidebar-accent via color-mix (not a fixed rgba) so it
+     follows whichever workspace theme is active — same visual result as the
+     old fixed rgba(108,99,255,...) for GrowthLink, since color-mix(accent
+     50%, transparent) == accent at 50% alpha. */
+  --elevation-glow-accent: 0 0 0 1px color-mix(in srgb, var(--sidebar-accent) 50%, transparent), 0 0 16px color-mix(in srgb, var(--sidebar-accent) 35%, transparent);
+
+  /* Sidebar — el rail queda siempre oscuro sin importar el modo claro/oscuro
+     del sitio (decisión ya existente), pero SÍ cambia entre los 4 temas de
+     marca (Configuración → Apariencia, data-workspace-theme). */
+  --sidebar-bg: var(--color-neutral-950);
+  --sidebar-accent: var(--color-accent-500);
+
+  /* Texto sobre el color de acento (botón primario, badges accent) — blanco
+     por default; un acento muy claro (ej. lima brillante de Lime Dark)
+     necesita texto oscuro encima para contraste real. */
+  --on-accent: #ffffff;
+
+  /* Charts (recharts) — 5 colores categóricos. Mismos 5 hex que ya se usaban
+     sueltos en AsesoriaKpiCards.tsx/dashboard/KpiCards.tsx/
+     LeadsBySourceChart.tsx/AgentProfileView.tsx — acá quedan idénticos para
+     GrowthLink, y cambian por tema en los bloques [data-workspace-theme] de
+     abajo. */
+  --color-chart-1: #2e9563;
+  --color-chart-2: #f5a524;
+  --color-chart-3: #3b82f6;
+  --color-chart-4: #eab308;
+  --color-chart-5: #c2650a;
 }
 
 @theme inline {
@@ -173,6 +196,135 @@
   --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.34);
   --elevation-md: 0 8px 24px rgba(0, 0, 0, 0.42);
   --elevation-lg: 0 20px 48px rgba(0, 0, 0, 0.5);
+}
+
+/* ===========================================================================
+   Temas de workspace (Configuración → Apariencia) — data-workspace-theme,
+   aplicado en el div contenedor de (protected)/layout.tsx (NO en <html>, a
+   propósito: al ser un descendiente, cualquier token que se redefina acá
+   pisa automáticamente lo heredado del data-theme claro/oscuro del
+   navegador de arriba, sin pelear especificidad CSS ni tocar
+   src/lib/theme/ThemeProvider.tsx). "growthlink" (default) no tiene bloque
+   propio — es el estado actual, sin cambios. Los otros 3 son autocontenidos
+   (redefinen TODO, incluida elevation) porque Ocean siempre es claro y Lime
+   Dark/Violet siempre oscuros, sin importar el toggle claro/oscuro del sitio.
+   =========================================================================== */
+
+/* Ocean — cyan/turquesa (acento) + azul profundo (sidebar/nav), claro. */
+[data-workspace-theme="ocean"] {
+  --background: #ffffff;
+  --foreground: #0f2a3d;
+  --surface-1: #ffffff;
+  --surface-2: #f0fbfc;
+  --surface-3: #e0f7fa;
+  --border-default: #d3eef1;
+  --border-strong: #a9dde3;
+  --tint-violet-subtle: #d6f5f8;
+  --tint-blue-subtle: #eaf9fb;
+
+  --color-accent-50: #eafcfd;
+  --color-accent-100: #d1f5f9;
+  --color-accent-200: #a3ebf3;
+  --color-accent-300: #7fe3ed;
+  --color-accent-400: #3fcadb;
+  --color-accent-500: #17b8cc;
+  --color-accent-600: #119aab;
+  --color-accent-700: #0c7c8a;
+  --color-accent-800: #0a5f6a;
+  --color-accent-900: #084850;
+  --on-accent: #ffffff;
+
+  --sidebar-bg: #0b3b6f;
+  --sidebar-accent: #17b8cc;
+
+  --color-chart-1: #17b8cc;
+  --color-chart-2: #0b3b6f;
+  --color-chart-3: #5fd4e0;
+  --color-chart-4: #2e5c8a;
+  --color-chart-5: #0891a8;
+
+  --elevation-xs: 0 1px 2px rgba(11, 59, 111, 0.05);
+  --elevation-sm: 0 4px 16px rgba(11, 59, 111, 0.08);
+  --elevation-md: 0 8px 24px rgba(11, 59, 111, 0.1);
+  --elevation-lg: 0 20px 48px rgba(11, 59, 111, 0.16);
+}
+
+/* Lime Dark — negro casi puro + verde lima brillante, oscuro. */
+[data-workspace-theme="lime-dark"] {
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  --surface-1: #141414;
+  --surface-2: #1c1c1c;
+  --surface-3: #242424;
+  --border-default: #2a2a2a;
+  --border-strong: #3a3a3a;
+  --tint-violet-subtle: #16210a;
+  --tint-blue-subtle: #101a08;
+
+  --color-accent-50: #1a2a08;
+  --color-accent-100: #2b3d0f;
+  --color-accent-200: #3f5714;
+  --color-accent-300: #5f8a10;
+  --color-accent-400: #7cba00;
+  --color-accent-500: #9cff00;
+  --color-accent-600: #86db00;
+  --color-accent-700: #6bb000;
+  --color-accent-800: #4f8300;
+  --color-accent-900: #375c00;
+  --on-accent: #0a0a0a;
+
+  --sidebar-bg: #0d0d0d;
+  --sidebar-accent: #9cff00;
+
+  --color-chart-1: #9cff00;
+  --color-chart-2: #4ade80;
+  --color-chart-3: #22c55e;
+  --color-chart-4: #84cc16;
+  --color-chart-5: #65a30d;
+
+  --elevation-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.44);
+  --elevation-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --elevation-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* Violet — gris/violeta oscuro + violeta primario + lavanda sutil, oscuro. */
+[data-workspace-theme="violet"] {
+  --background: #14101f;
+  --foreground: #f2eefa;
+  --surface-1: #1c1730;
+  --surface-2: #241d3d;
+  --surface-3: #2c2449;
+  --border-default: #33294f;
+  --border-strong: #443465;
+  --tint-violet-subtle: #241a42;
+  --tint-blue-subtle: #1e1a42;
+
+  --color-accent-50: #241a42;
+  --color-accent-100: #3a2d5c;
+  --color-accent-200: #4c3b78;
+  --color-accent-300: #6b52a8;
+  --color-accent-400: #7d55d6;
+  --color-accent-500: #6c41c8;
+  --color-accent-600: #7d55d6;
+  --color-accent-700: #5a34a8;
+  --color-accent-800: #442680;
+  --color-accent-900: #301a5c;
+  --on-accent: #ffffff;
+
+  --sidebar-bg: #120d1f;
+  --sidebar-accent: #6c41c8;
+
+  --color-chart-1: #6c41c8;
+  --color-chart-2: #a78bfa;
+  --color-chart-3: #c084fc;
+  --color-chart-4: #8b5cf6;
+  --color-chart-5: #d946ef;
+
+  --elevation-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.44);
+  --elevation-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --elevation-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
 }
 
 body {
