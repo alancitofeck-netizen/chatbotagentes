@@ -36,6 +36,7 @@ export interface PolicyFormDefaultContact {
 export function PolicyFormSheet({
   policy,
   defaultContact,
+  initialClientId,
   members,
   onClose,
   onSaved,
@@ -45,6 +46,10 @@ export function PolicyFormSheet({
    * (ContactInfoPanel.tsx's "Nueva póliza", ?createContact=...) — solo
    * aplica en alta, se ignora si `policy` ya trae sus propios datos. */
   defaultContact?: PolicyFormDefaultContact | null;
+  /** Cuando se abre desde la pestaña Pólizas de un Cliente (Clientes >
+   * [clientId] > Pólizas) — nunca editable en el formulario, solo viaja al
+   * crear para que policies.client_id quede seteado (ver PolicyFormInput). */
+  initialClientId?: string | null;
   members: WorkspaceMemberOption[];
   onClose: () => void;
   onSaved: () => void;
@@ -102,6 +107,7 @@ export function PolicyFormSheet({
       typeDetails: policy?.typeDetails ?? {},
       notes,
       ownerId: ownerId || null,
+      clientId: isEdit ? undefined : initialClientId,
     };
 
     startTransition(async () => {

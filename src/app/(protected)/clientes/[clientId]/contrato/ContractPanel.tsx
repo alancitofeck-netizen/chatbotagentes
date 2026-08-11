@@ -11,7 +11,8 @@ import { toast } from "@/components/toast/toast";
 import { uploadDocumentFile } from "@/lib/documents/uploadClient";
 import { recordUploadedDocument, getDownloadUrl } from "@/lib/documents/actions";
 import { updateContractAction, renewContractAction } from "@/lib/clients/actions";
-import type { ClientContract, ClientContractStatus } from "@/lib/clients/queries";
+import type { ClientContract, ClientContractStatus, ClientTimelineEvent } from "@/lib/clients/queries";
+import { ClientTimelineList } from "../../ClientTimelineList";
 
 const STATUS_META: Record<ClientContractStatus, { label: string; variant: "success" | "warning" | "error" | "info" | "neutral" }> = {
   borrador: { label: "Borrador", variant: "neutral" },
@@ -29,12 +30,48 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function ContractPanel({ clientId, contracts }: { clientId: string; contracts: ClientContract[] }) {
+function daysSince(iso: string, now: number): number {
+  return Math.max(0, Math.round((now - new Date(iso).getTime()) / 86400000));
+}
+
+/** Anillo de progreso circular — SVG simple con stroke-dasharray, misma
+ * técnica ya usada en las Mini Apps de diagnóstico (gauge arc), sin
+ * dependencias nuevas. */
+function ProgressRing({ elapsedDays, totalDays, progressPct }: { elapsedDays: number; totalDays: number; progressPct: number }) {
+  const r = 52;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - progressPct / 100);
+  return (
+    <div className="relative size-[132px] shrink-0">
+      <svg width="132" height="132" viewBox="0 0 132 132" className="-rotate-90">
+        <circle cx="66" cy="66" r={r} fill="none" stroke="var(--border-default)" strokeWidth="10" />
+        <circle
+          cx="66"
+          cy="66"
+          r={r}
+          fill="none"
+          stroke="var(--color-accent-500)"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-semibold text-foreground">{elapsedDays}</span>
+        <span className="text-xs text-neutral-500">de {totalDays} días</span>
+      </div>
+    </div>
+  );
+}
+
+export function ContractPanel({ clientId, contracts, timeline, nameById }: { clientId: string; contracts: ClientContract[]; timeline: ClientTimelineEvent[]; nameById: Map<string, string> }) {
   const active = contracts.find((c) => c.status === "activo") ?? contracts[0] ?? null;
-  const history = contracts.filter((c) => c.id !== active?.id);
   const [isPending, startTransition] = useTransition();
   const [uploading, setUploading] = useState(false);
   const [showRenew, setShowRenew] = useState(false);
+  const [now] = useState(() => Date.now());
 
   const [form, setForm] = useState(() =>
     active
@@ -46,9 +83,14 @@ export function ContractPanel({ clientId, contracts }: { clientId: string; contr
           amountPaid: active.amountPaid?.toString() ?? "",
           commissionModel: active.commissionModel ?? "",
           status: active.status,
+          terms: active.notes ?? "",
         }
       : null,
   );
+
+  const totalDays = active ? Math.max(1, Math.round((new Date(active.endDate).getTime() - new Date(active.startDate).getTime()) / 86400000)) : 0;
+  const elapsedDays = active ? daysSince(active.startDate, now) : 0;
+  const progressPct = totalDays > 0 ? Math.min(100, Math.round((elapsedDays / totalDays) * 100)) : 0;
 
   const [renewForm, setRenewForm] = useState({ startDate: todayIso(), endDate: todayIso(), totalValue: "", monthlyValue: "", commissionModel: "" });
 
@@ -64,6 +106,7 @@ export function ContractPanel({ clientId, contracts }: { clientId: string; contr
           amountPaid: form.amountPaid ? Number(form.amountPaid) : null,
           commissionModel: form.commissionModel || null,
           status: form.status,
+          notes: form.terms || null,
         });
         toast.success("Contrato actualizado.");
       } catch (err) {
@@ -145,6 +188,21 @@ export function ContractPanel({ clientId, contracts }: { clientId: string; contr
           <p className="text-sm text-neutral-500">Este cliente todavía no tiene un contrato cargado.</p>
         ) : (
           <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-5 rounded-lg bg-surface-2 p-4">
+              <ProgressRing elapsedDays={elapsedDays} totalDays={totalDays} progressPct={progressPct} />
+              <div className="flex flex-col gap-1 text-sm">
+                <p className="text-neutral-500">
+                  Progreso del contrato — <span className="font-medium text-foreground">{progressPct}% completado</span>
+                </p>
+                <p className="text-neutral-500">
+                  Días restantes: <span className="font-medium text-foreground">{Math.max(0, totalDays - elapsedDays)}</span>
+                </p>
+                <p className="text-neutral-500">
+                  {formatDate(active.startDate)} — {formatDate(active.endDate)}
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <Input label="Fecha de inicio" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
               <Input label="Fecha de finalización" type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
@@ -200,6 +258,17 @@ export function ContractPanel({ clientId, contracts }: { clientId: string; contr
               )}
             </div>
 
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-foreground">Términos y condiciones</span>
+              <textarea
+                value={form.terms}
+                onChange={(e) => setForm({ ...form, terms: e.target.value })}
+                rows={4}
+                placeholder="Un término por línea — ej. Duración del contrato: 120 días a partir de la fecha de inicio."
+                className="rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+              />
+            </label>
+
             <Button onClick={handleSave} loading={isPending} className="mt-2 self-start">
               Guardar cambios
             </Button>
@@ -227,21 +296,10 @@ export function ContractPanel({ clientId, contracts }: { clientId: string; contr
         </Card>
       )}
 
-      {history.length > 0 && (
-        <Card>
-          <CardHeader title="Historial de contratos" />
-          <div className="flex flex-col gap-2">
-            {history.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm">
-                <span className="text-foreground">
-                  {formatDate(c.startDate)} — {formatDate(c.endDate)}
-                </span>
-                <Badge variant={STATUS_META[c.status].variant}>{STATUS_META[c.status].label}</Badge>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      <Card>
+        <CardHeader title="Historial del contrato" />
+        <ClientTimelineList events={timeline} nameById={nameById} emptyMessage="Todavía no hay actividad registrada para este contrato." />
+      </Card>
     </div>
   );
 }

@@ -310,6 +310,7 @@ export interface ClientPolicy {
   id: string;
   contactId: string;
   contactName: string | null;
+  policyNumber: string | null;
   product: string;
   company: string;
   premium: number | null;
@@ -317,6 +318,7 @@ export interface ClientPolicy {
   commissionAmount: number | null;
   status: string;
   issueDate: string | null;
+  endDate: string | null;
 }
 
 /** Pestaña Pólizas — reutiliza policies.client_id (0125), mismas filas que
@@ -325,7 +327,7 @@ export async function getClientPolicies(workspaceId: string, clientId: string): 
   const supabase = await createClient();
   const { data } = await supabase
     .from("policies")
-    .select("id, contact_id, product, company, premium, premium_currency, commission_amount, status, issue_date, contacts(name)")
+    .select("id, contact_id, policy_number, product, company, premium, premium_currency, commission_amount, status, issue_date, end_date, contacts(name)")
     .eq("workspace_id", workspaceId)
     .eq("client_id", clientId)
     .order("issue_date", { ascending: false });
@@ -336,6 +338,7 @@ export async function getClientPolicies(workspaceId: string, clientId: string): 
       id: r.id as string,
       contactId: r.contact_id as string,
       contactName: (contact?.name as string | undefined) ?? null,
+      policyNumber: r.policy_number as string | null,
       product: r.product as string,
       company: r.company as string,
       premium: r.premium as number | null,
@@ -343,8 +346,140 @@ export async function getClientPolicies(workspaceId: string, clientId: string): 
       commissionAmount: r.commission_amount as number | null,
       status: r.status as string,
       issueDate: r.issue_date as string | null,
+      endDate: r.end_date as string | null,
     };
   });
+}
+
+export interface ClientPolicyPayment {
+  id: string;
+  policyId: string;
+  policyProduct: string;
+  dueDate: string;
+  amount: number;
+  currency: string;
+  status: string;
+}
+
+/** "Próximos cierres" del panel lateral de Pólizas — cuotas pendientes de
+ * las pólizas de este cliente (policy_payments, 0097_policy_payments.sql),
+ * nunca inventadas: si no hay cronograma cargado para ninguna póliza, esto
+ * devuelve vacío. */
+export async function getClientUpcomingPolicyPayments(workspaceId: string, clientId: string, limit = 5): Promise<ClientPolicyPayment[]> {
+  const supabase = await createClient();
+  const { data: policyRows } = await supabase.from("policies").select("id, product").eq("workspace_id", workspaceId).eq("client_id", clientId);
+  const policies = policyRows ?? [];
+  if (policies.length === 0) return [];
+
+  const productById = new Map(policies.map((p) => [p.id as string, p.product as string]));
+  const { data } = await supabase
+    .from("policy_payments")
+    .select("id, policy_id, due_date, amount, currency, status")
+    .in("policy_id", policies.map((p) => p.id as string))
+    .eq("status", "pendiente")
+    .order("due_date", { ascending: true })
+    .limit(limit);
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    policyId: r.policy_id as string,
+    policyProduct: productById.get(r.policy_id as string) ?? "—",
+    dueDate: r.due_date as string,
+    amount: r.amount as number,
+    currency: r.currency as string,
+    status: r.status as string,
+  }));
+}
+
+export interface ClientAccess {
+  id: string;
+  platform: string;
+  accountLabel: string;
+  permission: string | null;
+  expiresAt: string | null;
+  status: "active" | "inactive";
+  notes: string | null;
+  createdAt: string;
+}
+
+export async function getClientAccess(workspaceId: string, clientId: string): Promise<ClientAccess[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("client_access")
+    .select("id, platform, account_label, permission, expires_at, status, notes, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    platform: r.platform as string,
+    accountLabel: r.account_label as string,
+    permission: r.permission as string | null,
+    expiresAt: r.expires_at as string | null,
+    status: r.status as "active" | "inactive",
+    notes: r.notes as string | null,
+    createdAt: r.created_at as string,
+  }));
+}
+
+export interface ClientContractPayment {
+  id: string;
+  contractId: string;
+  dueDate: string;
+  amount: number;
+  currency: string;
+  status: "pendiente" | "pagado";
+  paidAt: string | null;
+  paymentMethod: string | null;
+  documentId: string | null;
+  notes: string | null;
+}
+
+export async function getClientContractPayments(workspaceId: string, contractId: string): Promise<ClientContractPayment[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("client_contract_payments")
+    .select("id, contract_id, due_date, amount, currency, status, paid_at, payment_method, document_id, notes")
+    .eq("workspace_id", workspaceId)
+    .eq("contract_id", contractId)
+    .order("due_date", { ascending: true });
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    contractId: r.contract_id as string,
+    dueDate: r.due_date as string,
+    amount: r.amount as number,
+    currency: r.currency as string,
+    status: r.status as "pendiente" | "pagado",
+    paidAt: r.paid_at as string | null,
+    paymentMethod: r.payment_method as string | null,
+    documentId: r.document_id as string | null,
+    notes: r.notes as string | null,
+  }));
+}
+
+export interface ClientNote {
+  id: string;
+  body: string;
+  authorId: string | null;
+  createdAt: string;
+}
+
+/** "Notas internas" del Contrato — notable_type='client' (no
+ * 'client_contract') para que las notas sobrevivan a una renovación, mismo
+ * mecanismo polimórfico que ya usan Pólizas/CRM/Tareas (public.notes). */
+export async function getClientNotes(workspaceId: string, clientId: string): Promise<ClientNote[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("notes")
+    .select("id, body, author_id, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("notable_type", "client")
+    .eq("notable_id", clientId)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((n) => ({ id: n.id as string, body: n.body as string, authorId: n.author_id as string | null, createdAt: n.created_at as string }));
 }
 
 export type ClientTaskOwnerSide = "client" | "growth_link" | null;
@@ -448,6 +583,7 @@ export async function getClientTimeline(workspaceId: string, clientId: string, l
     client_created: "Cliente creado",
     contract_renewed: "Contrato renovado",
     client_status_changed: "Estado actualizado",
+    contract_updated: "Contrato actualizado",
   };
   for (const a of activity ?? []) {
     const action = a.action as string;

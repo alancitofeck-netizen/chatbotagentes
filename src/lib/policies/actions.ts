@@ -130,6 +130,10 @@ export interface PolicyFormInput {
   typeDetails: Record<string, unknown>;
   notes: string;
   ownerId: string | null;
+  /** Solo lo setea internamente PolicyFormSheet cuando se abre desde la
+   * pestaña Pólizas de un Cliente (nunca un campo editable del formulario)
+   * — así getClientPolicies (src/lib/clients/queries.ts) la encuentra. */
+  clientId?: string | null;
 }
 
 
@@ -175,6 +179,7 @@ export async function createPolicyAction(input: PolicyFormInput): Promise<{ id: 
       type_details: input.typeDetails,
       notes: input.notes.trim() || null,
       source: "manual",
+      client_id: input.clientId ?? null,
     })
     .select("id")
     .single();
@@ -193,6 +198,7 @@ export async function createPolicyAction(input: PolicyFormInput): Promise<{ id: 
   await ensurePolicyPaymentSchedule(workspaceId, policy.id as string);
 
   revalidatePolicies();
+  if (input.clientId) revalidatePath(`/clientes/${input.clientId}`);
   void role; // reservado para un futuro gate de permisos más fino
   return { id: policy.id as string, contactId };
 }

@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
-import { CalendarDays, CheckCircle2, FileCheck2, DollarSign, Link2, MessageSquare, CalendarCheck2, ListChecks, ShieldCheck, Sparkles } from "lucide-react";
+import { CalendarDays, CheckCircle2, FileCheck2, DollarSign, Link2, MessageSquare } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getClientProfile, getClientContracts, getClientPolicies, getClientAppointments, getClientTimeline, type ClientTimelineEventType } from "@/lib/clients/queries";
+import { getClientProfile, getClientContracts, getClientPolicies, getClientAppointments, getClientTimeline } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { MetricCard } from "@/components/responseSummary/MetricCard";
-
-const TIMELINE_ICON: Record<ClientTimelineEventType, typeof CalendarCheck2> = {
-  booking: CalendarCheck2,
-  task_completed: ListChecks,
-  policy: ShieldCheck,
-  activity: Sparkles,
-};
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
+import { ClientTimelineList } from "../../ClientTimelineList";
 
 export const metadata: Metadata = { title: "Resumen — Cliente — Growth Link" };
 
@@ -152,31 +142,7 @@ export default async function ClientResumenPage({ params }: { params: Promise<{ 
 
       <Card>
         <CardHeader title="Timeline" />
-        {timeline.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no hay actividad registrada para este cliente.</p>
-        ) : (
-          <ul className="flex flex-col gap-4">
-            {timeline.map((event) => {
-              const Icon = TIMELINE_ICON[event.type];
-              const actorName = event.actorId ? (nameById.get(event.actorId) ?? null) : null;
-              return (
-                <li key={event.id} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-500/15 text-accent-600">
-                    <Icon className="size-4" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                      <p className="text-sm font-medium text-foreground">{event.label}</p>
-                      <p className="text-xs text-neutral-400">{formatDateTime(event.at)}</p>
-                    </div>
-                    {event.detail && <p className="text-[13px] text-neutral-500">{event.detail}</p>}
-                    {actorName && <p className="text-xs text-neutral-400">Por {actorName}</p>}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <ClientTimelineList events={timeline} nameById={nameById} emptyMessage="Todavía no hay actividad registrada para este cliente." />
       </Card>
     </div>
   );

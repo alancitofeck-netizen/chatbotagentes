@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
-import { KeyRound } from "lucide-react";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { requireActiveWorkspace } from "@/lib/auth/session";
+import { getClientAccess, getClientProfile } from "@/lib/clients/queries";
+import { getWorkspaceMembers } from "@/lib/inbox/queries";
+import { ClientAccessPanel } from "./ClientAccessPanel";
 
 export const metadata: Metadata = { title: "Accesos — Cliente — Growth Link" };
 
-/** Fase 4 del módulo: credenciales cifradas vía Supabase Vault + flujo de
- * revelado con reautenticación y auditoría — deliberadamente al final por
- * ser la mayor superficie de riesgo del módulo. Ver plan del módulo. */
-export default function ClientAccesosPage() {
-  return (
-    <EmptyState
-      icon={KeyRound}
-      title="Próximamente"
-      description="Accesos y credenciales cifradas (LinkedIn, Sales Navigator, Meta Ads, etc.) — se habilita en la siguiente etapa del módulo."
-    />
-  );
+export default async function ClientAccesosPage({ params }: { params: Promise<{ clientId: string }> }) {
+  const { clientId } = await params;
+  const { workspaceId } = await requireActiveWorkspace();
+  const [client, access, members] = await Promise.all([
+    getClientProfile(workspaceId, clientId),
+    getClientAccess(workspaceId, clientId),
+    getWorkspaceMembers(workspaceId),
+  ]);
+  if (!client) return null;
+
+  const nameById = new Map(members.map((m) => [m.memberId, m.fullName]));
+  const shared = [
+    client.setterId ? { role: "Setter", name: nameById.get(client.setterId) } : null,
+    client.trafficManagerId ? { role: "Traffic Manager", name: nameById.get(client.trafficManagerId) } : null,
+    client.accountManagerId ? { role: "Account Manager", name: nameById.get(client.accountManagerId) } : null,
+  ].filter((x): x is { role: string; name: string | undefined } => x !== null);
+
+  return <ClientAccessPanel clientId={clientId} initialAccess={access} shared={shared} />;
 }
