@@ -6,12 +6,11 @@ import { Presentation, Plus, Trash2, Copy, Link2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Input } from "@/components/ui/Input";
-import { Sheet } from "@/components/ui/Sheet";
 import { toast } from "@/components/toast/toast";
 import type { AsesoriaListItem, AsesoriaStatus, ReferralActivityPoint } from "@/lib/asesorias/queries";
 import { createAsesoriaAction, deleteAsesoriaAction, duplicateAsesoriaAction } from "@/lib/asesorias/actions";
 import { AsesoriaKpiCards } from "./AsesoriaKpiCards";
+import { CreateAsesoriaDrawer } from "./CreateAsesoriaDrawer";
 
 const STATUS_VARIANT: Record<AsesoriaStatus, "success" | "warning" | "neutral"> = {
   no_iniciada: "neutral",
@@ -216,17 +215,18 @@ export function AsesoriasListShell({
         </div>
       )}
 
-      <Sheet open={creating} onClose={() => setCreating(false)} title="Crear Asesoría">
-        <div className="flex flex-col gap-4 p-5">
-          <p className="text-sm text-neutral-500">Ingresá los datos del prospecto para empezar — es opcional, también podés arrancar sin datos y completarlos adentro.</p>
-          <Input label="Nombre del prospecto" value={newName} onChange={(e) => setNewName(e.target.value)} />
-          <Input label="Teléfono" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
-          <Input label="Correo (opcional)" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-          <Button onClick={handleCreate} loading={isPending}>
-            Crear Asesoría
-          </Button>
-        </div>
-      </Sheet>
+      <CreateAsesoriaDrawer
+        open={creating}
+        onClose={() => setCreating(false)}
+        name={newName}
+        onNameChange={setNewName}
+        phone={newPhone}
+        onPhoneChange={setNewPhone}
+        email={newEmail}
+        onEmailChange={setNewEmail}
+        onSubmit={handleCreate}
+        isPending={isPending}
+      />
     </div>
   );
 }
