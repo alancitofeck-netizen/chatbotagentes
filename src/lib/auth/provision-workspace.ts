@@ -73,6 +73,7 @@ export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: s
     { workspace_id: workspace.id, module_key: "advisors", enabled: true },
     { workspace_id: workspace.id, module_key: "mini_apps", enabled: true },
     { workspace_id: workspace.id, module_key: "asesorias", enabled: true },
+    { workspace_id: workspace.id, module_key: "clientes", enabled: true },
     { workspace_id: workspace.id, module_key: "tasks", enabled: true },
     { workspace_id: workspace.id, module_key: "policies", enabled: true },
     { workspace_id: workspace.id, module_key: "insurance_prospects", enabled: true },

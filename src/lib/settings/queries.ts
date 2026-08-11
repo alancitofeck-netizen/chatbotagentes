@@ -7,6 +7,7 @@ const MODULE_KEYS = [
   "advisors",
   "mini_apps",
   "asesorias",
+  "clientes",
   "tasks",
   "insurance_prospects",
   "policies",

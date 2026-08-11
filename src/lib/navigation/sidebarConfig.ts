@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trophy,
+  Users,
   Zap,
   ArrowLeftRight,
 } from "lucide-react";
@@ -69,6 +70,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   { id: "advisors", name: "Prospectos", icon: ShieldCheck, route: "/advisors", section: "Clientes", moduleKey: "advisors", order: 1 },
   { id: "mini_apps", name: "Mini Apps", icon: AppWindow, route: "/mini-apps", section: "Clientes", moduleKey: "mini_apps", order: 2 },
   { id: "asesorias", name: "Asesorías", icon: Presentation, route: "/asesorias", section: "Clientes", moduleKey: "asesorias", order: 3 },
+  { id: "clientes", name: "Clientes", icon: Users, route: "/clientes", section: "Clientes", moduleKey: "clientes", order: 4 },
 
   { id: "policies", name: "Pólizas", icon: FileCheck2, route: "/polizas", section: "Pólizas", moduleKey: "policies", order: 0 },
 
