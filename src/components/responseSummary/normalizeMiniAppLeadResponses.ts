@@ -1,7 +1,7 @@
 import type { MiniAppLeadDetail, MiniAppDetail } from "@/lib/miniApps/queries";
 import type { DiagnosticoQuestion } from "@/lib/miniApps/diagnosticoDefaults";
 import type { DiagnosticoRetiroQuestion } from "@/lib/miniApps/diagnosticoRetiroDefaults";
-import { getDiagnosticoSolidezTier } from "@/lib/miniApps/diagnosticoSolidezDefaults";
+import { getDiagnosticoSolidezTier, DIAGNOSTICO_SOLIDEZ_DIMS } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import type { ResponseViewModel } from "./types";
 
 /** Mismos labels que LeadDetailDrawer.tsx (duplicados a propósito — ese
@@ -148,16 +148,25 @@ function normalizeDiagnosticoSolidez(lead: MiniAppLeadDetail): ResponseViewModel
     out.push({ key: "overall", question: "Puntaje general", answer: `${lead.data.overall}/100`, answerType: "field", section: "Resultado", order: baseOrder });
     out.push({ key: "tier", question: tier.name, answer: tier.desc, answerType: "field", section: "Resultado", order: baseOrder + 1 });
   }
+  if (lead.data.scores && typeof lead.data.scores === "object") {
+    const scores = lead.data.scores as Record<string, number>;
+    const formatted = Object.entries(scores)
+      .sort(([, a], [, b]) => b - a)
+      .map(([dim, score]) => `${DIAGNOSTICO_SOLIDEZ_DIMS[dim] ?? dim}: ${score}%`);
+    if (formatted.length > 0) {
+      out.push({ key: "scoresPorArea", question: "Puntuación por área", answer: formatted, answerType: "multi_choice", section: "Resultado", order: baseOrder + 2 });
+    }
+  }
   if (Array.isArray(lead.data.areasAtencion) && lead.data.areasAtencion.length > 0) {
     const areas = lead.data.areasAtencion as { dimLabel?: string; score?: number }[];
     const formatted = areas.filter((a) => a.dimLabel).map((a) => `${a.dimLabel}: ${a.score}%`);
     if (formatted.length > 0) {
-      out.push({ key: "areasAtencion", question: "Áreas de atención", answer: formatted, answerType: "multi_choice", section: "Resultado", order: baseOrder + 2 });
+      out.push({ key: "areasAtencion", question: "Áreas de atención", answer: formatted, answerType: "multi_choice", section: "Resultado", order: baseOrder + 3 });
     }
   }
   const fortaleza = lead.data.fortalezaPrincipal as { dimLabel?: string; score?: number } | null | undefined;
   if (fortaleza?.dimLabel) {
-    out.push({ key: "fortaleza", question: "Fortaleza principal", answer: `${fortaleza.dimLabel}: ${fortaleza.score}%`, answerType: "field", section: "Resultado", order: baseOrder + 3 });
+    out.push({ key: "fortaleza", question: "Fortaleza principal", answer: `${fortaleza.dimLabel}: ${fortaleza.score}%`, answerType: "field", section: "Resultado", order: baseOrder + 4 });
   }
 
   return out;
