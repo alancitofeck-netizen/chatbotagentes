@@ -18,7 +18,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { ScoreGauge } from "@/components/responseSummary/ScoreGauge";
 import { ClientTimelineList } from "../../ClientTimelineList";
+import { DeltaLabel } from "../../DeltaLabel";
 import { ResumenSideCardEdit } from "./ResumenSideCardEdit";
+import { bucketByDay, monthOverMonthDelta } from "@/lib/clients/statsHelpers";
 
 export const metadata: Metadata = { title: "Resumen — Cliente — Growth Link" };
 
@@ -44,47 +46,6 @@ const CONTRACT_STATUS_META: Record<string, { label: string; variant: "success" |
   renovado: { label: "Renovado", variant: "info" },
   cancelado: { label: "Cancelado", variant: "neutral" },
 };
-
-/** Serie diaria (últimos `days`) para las sparklines de los KPI — agregada
- * en JS a partir de fechas reales ya fetcheadas (citas/pólizas), no una
- * query nueva. */
-function bucketByDay(dates: string[], days: number): number[] {
-  const buckets = new Array(days).fill(0);
-  const todayMidnight = new Date(new Date().toDateString());
-  for (const iso of dates) {
-    const dayMidnight = new Date(new Date(iso).toDateString());
-    const diffDays = Math.round((todayMidnight.getTime() - dayMidnight.getTime()) / 86400000);
-    const idx = days - 1 - diffDays;
-    if (idx >= 0 && idx < days) buckets[idx] += 1;
-  }
-  return buckets;
-}
-
-/** % este mes vs. mes anterior — null si el mes anterior no tiene datos
- * para comparar (evita mostrar un "+∞%" sin sentido), mismo criterio que
- * la tendencia de citas de computeClientHealthScore. */
-function monthOverMonthDelta(dates: string[]): number | null {
-  const now = new Date();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const thisMonth = dates.filter((d) => new Date(d) >= thisMonthStart).length;
-  const lastMonth = dates.filter((d) => {
-    const x = new Date(d);
-    return x >= lastMonthStart && x < thisMonthStart;
-  }).length;
-  if (lastMonth === 0) return null;
-  return Math.round(((thisMonth - lastMonth) / lastMonth) * 100);
-}
-
-function DeltaLabel({ pct, footnote }: { pct: number | null; footnote?: string }) {
-  if (pct === null) return footnote ? <p className="text-xs text-neutral-500">{footnote}</p> : null;
-  return (
-    <p className={`text-xs font-medium ${pct >= 0 ? "text-success-strong" : "text-error-strong"}`}>
-      {pct >= 0 ? "+" : ""}
-      {pct}% vs mes anterior
-    </p>
-  );
-}
 
 export default async function ClientResumenPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;

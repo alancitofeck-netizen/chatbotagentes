@@ -267,6 +267,9 @@ export async function getClientContracts(workspaceId: string, clientId: string):
   return (data ?? []).map(mapContract);
 }
 
+export type BookingFuente = "linkedin" | "referido" | "meta_ads" | "otro";
+export type BookingResultado = "interesado" | "calificado" | "sin_respuesta" | "no_interesado";
+
 export interface ClientAppointment {
   id: string;
   contactId: string | null;
@@ -276,17 +279,19 @@ export interface ClientAppointment {
   status: string;
   attended: boolean | null;
   ownerId: string | null;
+  fuente: BookingFuente | null;
+  campana: string | null;
+  resultado: BookingResultado | null;
 }
 
 /** Pestaña Agenda — bookings.client_id ya trae la asociación (0125), nada se
- * carga a mano. "Fuente" se lee de `provider`, "Resultado" de `attended`
- * (show/no-show) hasta que exista un campo más rico — ver plan, sección
- * Alertas + Health Score. */
+ * carga a mano salvo fuente/campana/resultado (0127 — carga manual, cita
+ * por cita, desde la propia pestaña Agenda). */
 export async function getClientAppointments(workspaceId: string, clientId: string): Promise<ClientAppointment[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("bookings")
-    .select("id, contact_id, start_time, provider, status, attended, owner_id, contacts(name)")
+    .select("id, contact_id, start_time, provider, status, attended, owner_id, fuente, campana, resultado, contacts(name)")
     .eq("workspace_id", workspaceId)
     .eq("client_id", clientId)
     .order("start_time", { ascending: false });
@@ -302,6 +307,9 @@ export async function getClientAppointments(workspaceId: string, clientId: strin
       status: r.status as string,
       attended: r.attended as boolean | null,
       ownerId: r.owner_id as string | null,
+      fuente: r.fuente as BookingFuente | null,
+      campana: r.campana as string | null,
+      resultado: r.resultado as BookingResultado | null,
     };
   });
 }
@@ -487,21 +495,25 @@ export type ClientTaskOwnerSide = "client" | "growth_link" | null;
 export interface ClientTask {
   id: string;
   title: string;
+  description: string | null;
   status: string;
   priority: string;
   ownerSide: ClientTaskOwnerSide;
   assignedTo: string | null;
   dueAt: string | null;
+  completedAt: string | null;
+  relatedArea: string | null;
+  createdAt: string;
 }
 
-/** Pestaña Tareas — reutiliza tasks.client_id + tasks.owner_side (0125),
- * separadas en el shell ("Tareas del cliente" vs "Tareas Growth Link") por
- * ClientTasksBoard.tsx, no acá — esta función solo trae las filas. */
+/** Pestaña Tareas — reutiliza tasks.client_id + tasks.owner_side (0125) y
+ * tasks.related_area (0128, carga manual, ver esa migración) — esta función
+ * solo trae las filas, la vista (tabla filtrable + tiles) vive en la UI. */
 export async function getClientTasks(workspaceId: string, clientId: string): Promise<ClientTask[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("tasks")
-    .select("id, title, status, priority, owner_side, assigned_to, due_at")
+    .select("id, title, description, status, priority, owner_side, assigned_to, due_at, completed_at, related_area, created_at")
     .eq("workspace_id", workspaceId)
     .eq("client_id", clientId)
     .order("due_at", { ascending: true, nullsFirst: false });
@@ -509,11 +521,15 @@ export async function getClientTasks(workspaceId: string, clientId: string): Pro
   return (data ?? []).map((r) => ({
     id: r.id as string,
     title: r.title as string,
+    description: r.description as string | null,
     status: r.status as string,
     priority: r.priority as string,
     ownerSide: r.owner_side as ClientTaskOwnerSide,
     assignedTo: r.assigned_to as string | null,
     dueAt: r.due_at as string | null,
+    completedAt: r.completed_at as string | null,
+    relatedArea: r.related_area as string | null,
+    createdAt: r.created_at as string,
   }));
 }
 
@@ -611,3 +627,101 @@ export async function getClientTimeline(workspaceId: string, clientId: string, l
 }
 
 const STATUS_LABEL_ES: Record<string, string> = { en_onboarding: "En onboarding", activo: "Activo", pausado: "Pausado", archivado: "Archivado" };
+
+export interface ClientAudienceFunnel {
+  contactos: number;
+  conversaciones: number;
+  interesados: number;
+  citasGeneradas: number;
+  show: number;
+}
+
+/** "Embudo de citas" de KPIs — cada escalón es un conteo real, nunca
+ * inventado: Contactos = leads generados PARA este cliente
+ * (contacts.client_id, 0125), Conversaciones = conversations de esos
+ * contactos (Inbox), Interesados = bookings.resultado in
+ * ('interesado','calificado') (0127 — carga manual, arranca en 0 hasta que
+ * se etiqueten citas desde Agenda), Citas generadas = todas las bookings
+ * del cliente, Show = bookings.attended = true. */
+export async function getClientAudienceFunnel(workspaceId: string, clientId: string): Promise<ClientAudienceFunnel> {
+  const supabase = await createClient();
+
+  const { data: contactRows } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("client_id", clientId);
+  const contactIds = (contactRows ?? []).map((c) => c.id as string);
+
+  const [{ count: conversacionesCount }, { data: bookingRows }] = await Promise.all([
+    contactIds.length > 0
+      ? supabase.from("conversations").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("contact_id", contactIds)
+      : Promise.resolve({ count: 0 }),
+    supabase.from("bookings").select("attended, resultado").eq("workspace_id", workspaceId).eq("client_id", clientId),
+  ]);
+
+  const bookings = bookingRows ?? [];
+  const interesados = bookings.filter((b) => b.resultado === "interesado" || b.resultado === "calificado").length;
+  const show = bookings.filter((b) => b.attended === true).length;
+
+  return {
+    contactos: contactIds.length,
+    conversaciones: conversacionesCount ?? 0,
+    interesados,
+    citasGeneradas: bookings.length,
+    show,
+  };
+}
+
+export interface ClientSetterPerformance {
+  setterId: string;
+  citas: number;
+  showRate: number;
+  polizas: number;
+}
+
+/** "Rendimiento por setter" / "Setters que más generan" de Operación/KPIs —
+ * agrupa bookings.owner_id (quién generó/atendió la cita) y cruza pólizas
+ * de este cliente por policies.owner_id — aproximado (un setter puede no
+ * ser el mismo owner de la póliza final) pero 100% real, sin inventar
+ * ninguna atribución que no esté en los datos. */
+export async function getClientSetterPerformance(workspaceId: string, clientId: string): Promise<ClientSetterPerformance[]> {
+  const supabase = await createClient();
+  const [{ data: bookingRows }, { data: policyRows }] = await Promise.all([
+    supabase.from("bookings").select("owner_id, attended").eq("workspace_id", workspaceId).eq("client_id", clientId).not("owner_id", "is", null),
+    supabase.from("policies").select("owner_id").eq("workspace_id", workspaceId).eq("client_id", clientId).not("owner_id", "is", null),
+  ]);
+
+  const bySetterCitas = new Map<string, { citas: number; shows: number }>();
+  for (const b of bookingRows ?? []) {
+    const setterId = b.owner_id as string;
+    const entry = bySetterCitas.get(setterId) ?? { citas: 0, shows: 0 };
+    entry.citas += 1;
+    if (b.attended === true) entry.shows += 1;
+    bySetterCitas.set(setterId, entry);
+  }
+  const polizasBySetter = new Map<string, number>();
+  for (const p of policyRows ?? []) {
+    const setterId = p.owner_id as string;
+    polizasBySetter.set(setterId, (polizasBySetter.get(setterId) ?? 0) + 1);
+  }
+
+  return [...bySetterCitas.entries()]
+    .map(([setterId, { citas, shows }]) => ({
+      setterId,
+      citas,
+      showRate: citas > 0 ? Math.round((shows / citas) * 100) : 0,
+      polizas: polizasBySetter.get(setterId) ?? 0,
+    }))
+    .sort((a, b) => b.citas - a.citas);
+}
+
+/** Fechas de conversaciones de TODOS los contactos de este cliente
+ * (contacts.client_id, 0125) — usado por la fila "Conversaciones" de la
+ * "Comparativa mensual" de KPIs, que necesita bucketear por mes (a
+ * diferencia de getClientConversationsCount, que solo da un total). */
+export async function getClientConversationDates(workspaceId: string, clientId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: contactRows } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("client_id", clientId);
+  const contactIds = (contactRows ?? []).map((c) => c.id as string);
+  if (contactIds.length === 0) return [];
+
+  const { data } = await supabase.from("conversations").select("created_at").eq("workspace_id", workspaceId).in("contact_id", contactIds);
+  return (data ?? []).map((r) => r.created_at as string);
+}

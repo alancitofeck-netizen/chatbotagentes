@@ -18,6 +18,8 @@ import {
   getClientContractPayments,
   getClientNotes,
   getClientUpcomingPolicyPayments,
+  getClientAudienceFunnel,
+  getClientSetterPerformance,
   type ClientPolicyPayment,
   type ClientListItem,
   type ClientProfile,
@@ -29,6 +31,10 @@ import {
   type ClientAccess,
   type ClientContractPayment,
   type ClientNote,
+  type ClientAudienceFunnel,
+  type ClientSetterPerformance,
+  type BookingFuente,
+  type BookingResultado,
 } from "@/lib/clients/queries";
 
 const CLIENT_CONTACT_SOURCE = "cliente";
@@ -337,13 +343,14 @@ export interface CreateClientTaskInput {
   dueAt: string | null;
   assignedTo: string;
   ownerSide: "client" | "growth_link";
+  relatedArea?: string | null;
 }
 
 /** Tareas del cliente — mismo `tasks`/`task_groups` de siempre (el grupo por
  * defecto del workspace, getOrCreateDefaultGroup, mismo que usa el módulo
- * Tareas general), solo que con client_id + owner_side seteados para que
- * ClientTasksBoard.tsx pueda separar "esperamos del cliente" vs "debemos
- * nosotros" sin depender de un estado nuevo en tasks.status. */
+ * Tareas general), solo que con client_id + owner_side seteados ("qué
+ * esperamos del cliente" vs "qué le debemos nosotros") y related_area
+ * (0128) para la clasificación libre que usa TareasTable.tsx. */
 export async function createClientTaskAction(clientId: string, input: CreateClientTaskInput): Promise<{ id: string }> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
@@ -368,6 +375,7 @@ export async function createClientTaskAction(clientId: string, input: CreateClie
       due_at: input.dueAt,
       client_id: clientId,
       owner_side: input.ownerSide,
+      related_area: input.relatedArea?.trim() || null,
     })
     .select("id")
     .single();
@@ -388,6 +396,16 @@ export async function updateClientTaskStatusAction(taskId: string, clientId: str
     .eq("id", taskId)
     .eq("workspace_id", workspaceId);
   if (error) throw new Error("No se pudo actualizar la tarea.");
+  revalidateClients(clientId);
+  revalidatePath("/tasks");
+}
+
+export async function deleteClientTaskAction(taskId: string, clientId: string): Promise<void> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const supabase = await createClient();
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId).eq("workspace_id", workspaceId);
+  if (error) throw new Error("No se pudo eliminar la tarea.");
   revalidateClients(clientId);
   revalidatePath("/tasks");
 }
@@ -603,5 +621,42 @@ export async function deleteClientNoteAction(noteId: string, clientId: string): 
   requireManagerRole(role);
   const supabase = await createClient();
   await supabase.from("notes").delete().eq("id", noteId).eq("workspace_id", workspaceId);
+  revalidateClients(clientId);
+}
+
+// ---------------------------------------------------------------------------
+// Agenda / Operación / KPIs — fuente/campaña/resultado (0127) se cargan a
+// mano cita por cita desde la tabla de Agenda; funnel y rendimiento por
+// setter son agregados en vivo sobre bookings/contacts/policies reales.
+// ---------------------------------------------------------------------------
+
+export async function getClientAudienceFunnelAction(clientId: string): Promise<ClientAudienceFunnel> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  return getClientAudienceFunnel(workspaceId, clientId);
+}
+
+export async function getClientSetterPerformanceAction(clientId: string): Promise<ClientSetterPerformance[]> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  return getClientSetterPerformance(workspaceId, clientId);
+}
+
+export interface BookingAttributionInput {
+  fuente?: BookingFuente | null;
+  campana?: string | null;
+  resultado?: BookingResultado | null;
+}
+
+export async function updateBookingAttributionAction(bookingId: string, clientId: string, input: BookingAttributionInput): Promise<void> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = {};
+  if (input.fuente !== undefined) patch.fuente = input.fuente;
+  if (input.campana !== undefined) patch.campana = input.campana?.trim() || null;
+  if (input.resultado !== undefined) patch.resultado = input.resultado;
+  const { error } = await supabase.from("bookings").update(patch).eq("id", bookingId).eq("workspace_id", workspaceId).eq("client_id", clientId);
+  if (error) throw new Error("No se pudo guardar.");
   revalidateClients(clientId);
 }

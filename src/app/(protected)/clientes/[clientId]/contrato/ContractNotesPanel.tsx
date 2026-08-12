@@ -12,7 +12,17 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export function ContractNotesPanel({ clientId, initialNotes, nameById }: { clientId: string; initialNotes: ClientNote[]; nameById: Map<string, string> }) {
+export function ContractNotesPanel({
+  clientId,
+  initialNotes,
+  nameById,
+  title = "Notas internas",
+}: {
+  clientId: string;
+  initialNotes: ClientNote[];
+  nameById: Map<string, string>;
+  title?: string;
+}) {
   const [notes, setNotes] = useState(initialNotes);
   const [newBody, setNewBody] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,7 +68,7 @@ export function ContractNotesPanel({ clientId, initialNotes, nameById }: { clien
 
   return (
     <Card>
-      <CardHeader title="Notas internas" />
+      <CardHeader title={title} />
       <div className="flex flex-col gap-3">
         <div className="flex items-end gap-2">
           <textarea
