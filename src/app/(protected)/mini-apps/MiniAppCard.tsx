@@ -14,10 +14,18 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-/** Tarjeta grilla del listado de Mini Apps — mismo patrón "card-como-botón +
- * menú posicionado encima" que ya usa DocumentsGrid.tsx (el trigger de
- * DropdownMenu ya hace stopPropagation, así que anidarlo dentro del botón
- * que abre la app no dispara los dos handlers a la vez). */
+/** Tarjeta grilla del listado de Mini Apps — mismo lenguaje visual que la
+ * grilla de plantillas del wizard (ícono grande en cuadrado con tinte,
+ * título, descripción de 2 líneas, tarjeta blanca espaciosa) para que
+ * "elegir tipo" y "ver mis mini apps" se sientan como la misma superficie.
+ * A diferencia de las tarjetas de plantilla (sin datos propios), estas SÍ
+ * representan una instancia real con leads/estado/asesor — esa info se
+ * empuja a un pie liviano en vez de ocupar el bloque principal, así el
+ * ícono+título+descripción queda igual de limpio que en el picker. Mismo
+ * patrón "card-como-botón + menú posicionado encima" que ya usa
+ * DocumentsGrid.tsx (el trigger de DropdownMenu ya hace stopPropagation,
+ * así que anidarlo dentro del botón que abre la app no dispara los dos
+ * handlers a la vez). */
 export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDeleted: () => void }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -38,24 +46,16 @@ export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDelete
   }
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-2 transition-colors hover:bg-surface-3">
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-1 transition-all hover:border-accent-300 hover:shadow-[var(--elevation-sm)]">
       <button
         type="button"
         onClick={() => router.push(`/mini-apps/${app.id}`)}
         disabled={isPending}
-        className="flex flex-1 flex-col gap-3 p-4 text-left disabled:opacity-60"
+        className="flex flex-1 flex-col gap-4 p-5 text-left disabled:opacity-60"
       >
-        <div className="flex items-start justify-between gap-2 pr-6">
-          <div className="flex items-start gap-3">
-            <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${visual.tintBg} ${visual.tintText}`}>
-              <Icon className="size-5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[15px] font-semibold text-foreground">{app.name}</h3>
-              <p className="mt-0.5 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">
-                {TEMPLATE_KEY_META[app.templateKey]?.label ?? app.templateKey}
-              </p>
-            </div>
+        <div className="flex items-start justify-between gap-2 pr-8">
+          <div className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${visual.tintBg} ${visual.tintText}`}>
+            <Icon className="size-6" aria-hidden="true" />
           </div>
           <span
             className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -66,24 +66,30 @@ export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDelete
           </span>
         </div>
 
-        <p className="flex items-center gap-1.5 text-[13px] text-neutral-500">
-          <UserRound className="size-3.5" aria-hidden="true" />
-          {app.assignedAgentName ?? "Sin asesor asignado"}
-        </p>
+        <div className="min-w-0">
+          <h3 className="text-[16px] font-semibold text-foreground">{app.name}</h3>
+          <p className="mt-1 line-clamp-2 text-[13px] text-neutral-500">
+            {app.description || `Plantilla: ${TEMPLATE_KEY_META[app.templateKey]?.label ?? app.templateKey}`}
+          </p>
+        </div>
 
-        <div className="mt-auto flex items-center justify-between text-[13px] text-neutral-500">
-          <span className="flex items-center gap-1.5">
-            <Users2 className="size-3.5" aria-hidden="true" />
-            {app.leadsCount} lead{app.leadsCount === 1 ? "" : "s"}
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border-default pt-3 text-[12.5px] text-neutral-500">
+          <span className="flex min-w-0 items-center gap-1.5 truncate">
+            <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{app.assignedAgentName ?? "Sin asesor"}</span>
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex shrink-0 items-center gap-1.5">
+            <Users2 className="size-3.5" aria-hidden="true" />
+            {app.leadsCount}
+          </span>
+          <span className="hidden shrink-0 items-center gap-1.5 sm:flex">
             <CalendarDays className="size-3.5" aria-hidden="true" />
             {formatDate(app.createdAt)}
           </span>
         </div>
       </button>
 
-      <div className="absolute top-3 right-3">
+      <div className="absolute top-4 right-4">
         <DropdownMenu
           trigger={<MoreVertical size={16} aria-hidden="true" />}
           triggerLabel="Más opciones"
@@ -95,8 +101,6 @@ export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDelete
           ]}
         />
       </div>
-
-      <div className={`h-1 w-full ${visual.bar}`} aria-hidden="true" />
     </div>
   );
 }
