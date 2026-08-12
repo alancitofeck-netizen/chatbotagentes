@@ -46,7 +46,7 @@ import {
   type DiagnosticoRetiroThemePool,
 } from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
-import { DEFAULT_CALCULADORA_INGRESOS_BRAND } from "@/lib/miniApps/calculadoraIngresosDefaults";
+import { DEFAULT_META_UNIVERSITARIA_BRAND } from "@/lib/miniApps/metaUniversitariaDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -109,7 +109,7 @@ export function ConfiguracionTab({
   const isDiagnostico = miniApp.templateKey === "diagnostico_financiero";
   const isRetiro = miniApp.templateKey === "diagnostico_financiero_retiro";
   const isSolidez = miniApp.templateKey === "diagnostico_solidez_financiera";
-  const isCalculadoraIngresos = miniApp.templateKey === "calculadora_capacidad_ingresos";
+  const isMetaUniversitaria = miniApp.templateKey === "calculadora_meta_universitaria";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -239,11 +239,15 @@ export function ConfiguracionTab({
   const [solidezWaGreeting, setSolidezWaGreeting] = useState(isSolidez ? miniApp.config.brand.waGreeting : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.waGreeting);
   const [solidezTheme, setSolidezTheme] = useState<DiagnosticoSolidezTheme>(isSolidez ? miniApp.config.themeActive : "brass");
 
-  const [calcAdvisorName, setCalcAdvisorName] = useState(isCalculadoraIngresos ? miniApp.config.brand.advisorName : DEFAULT_CALCULADORA_INGRESOS_BRAND.advisorName);
-  const [calcCompanyName, setCalcCompanyName] = useState(isCalculadoraIngresos ? miniApp.config.brand.companyName : DEFAULT_CALCULADORA_INGRESOS_BRAND.companyName);
-  const [calcWhatsapp, setCalcWhatsapp] = useState(isCalculadoraIngresos ? miniApp.config.brand.whatsapp : DEFAULT_CALCULADORA_INGRESOS_BRAND.whatsapp);
-  const [calcCalendly, setCalcCalendly] = useState(isCalculadoraIngresos ? miniApp.config.brand.calendly : DEFAULT_CALCULADORA_INGRESOS_BRAND.calendly);
-  const [calcWebhookURL, setCalcWebhookURL] = useState(isCalculadoraIngresos ? miniApp.config.brand.webhookURL : DEFAULT_CALCULADORA_INGRESOS_BRAND.webhookURL);
+  const [metaUniAdvisorName, setMetaUniAdvisorName] = useState(isMetaUniversitaria ? miniApp.config.brand.advisorName : DEFAULT_META_UNIVERSITARIA_BRAND.advisorName);
+  const [metaUniTitle, setMetaUniTitle] = useState(isMetaUniversitaria ? miniApp.config.brand.title : DEFAULT_META_UNIVERSITARIA_BRAND.title);
+  const [metaUniWhatsapp, setMetaUniWhatsapp] = useState(isMetaUniversitaria ? miniApp.config.brand.whatsapp : DEFAULT_META_UNIVERSITARIA_BRAND.whatsapp);
+  const [metaUniEmail, setMetaUniEmail] = useState(isMetaUniversitaria ? miniApp.config.brand.email : DEFAULT_META_UNIVERSITARIA_BRAND.email);
+  const [metaUniCalendlyURL, setMetaUniCalendlyURL] = useState(isMetaUniversitaria ? miniApp.config.brand.calendlyURL : DEFAULT_META_UNIVERSITARIA_BRAND.calendlyURL);
+  const [metaUniWebhookURL, setMetaUniWebhookURL] = useState(isMetaUniversitaria ? miniApp.config.brand.webhookURL : DEFAULT_META_UNIVERSITARIA_BRAND.webhookURL);
+  const [metaUniAvisoPrivacidadURL, setMetaUniAvisoPrivacidadURL] = useState(
+    isMetaUniversitaria ? miniApp.config.brand.avisoPrivacidadURL : DEFAULT_META_UNIVERSITARIA_BRAND.avisoPrivacidadURL,
+  );
 
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
@@ -334,15 +338,22 @@ export function ConfiguracionTab({
                         },
                         themeActive: solidezTheme,
                       }
-                    : isCalculadoraIngresos
+                    : isMetaUniversitaria
                       ? {
                           brand: {
-                            advisorName: calcAdvisorName,
-                            companyName: calcCompanyName,
-                            whatsapp: calcWhatsapp,
-                            calendly: calcCalendly,
-                            logoURL: DEFAULT_CALCULADORA_INGRESOS_BRAND.logoURL,
-                            webhookURL: calcWebhookURL,
+                            advisorName: metaUniAdvisorName,
+                            title: metaUniTitle,
+                            whatsapp: metaUniWhatsapp,
+                            email: metaUniEmail,
+                            photoURL: DEFAULT_META_UNIVERSITARIA_BRAND.photoURL,
+                            logoURL: DEFAULT_META_UNIVERSITARIA_BRAND.logoURL,
+                            calendlyURL: metaUniCalendlyURL,
+                            webhookURL: metaUniWebhookURL,
+                            avisoPrivacidadURL: metaUniAvisoPrivacidadURL,
+                            colorMarca: DEFAULT_META_UNIVERSITARIA_BRAND.colorMarca,
+                            monedaDefault: DEFAULT_META_UNIVERSITARIA_BRAND.monedaDefault,
+                            inflacionEducativaDefault: DEFAULT_META_UNIVERSITARIA_BRAND.inflacionEducativaDefault,
+                            rendimientoAnualDefault: DEFAULT_META_UNIVERSITARIA_BRAND.rendimientoAnualDefault,
                           },
                         }
                       : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
@@ -482,7 +493,7 @@ export function ConfiguracionTab({
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
            * de diseño más allá de estos dos valores. No aplica a los
            * Diagnósticos: tienen su propio CSS autocontenido. */}
-          {!isDiagnostico && !isRetiro && !isSolidez && !isCalculadoraIngresos && (
+          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -926,23 +937,24 @@ export function ConfiguracionTab({
                 ))}
               </div>
             </>
-          ) : isCalculadoraIngresos ? (
+          ) : isMetaUniversitaria ? (
             <>
               <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
-              <Input label="Nombre a mostrar" value={calcAdvisorName} onChange={(e) => setCalcAdvisorName(e.target.value)} />
-              <Input label="Despacho / empresa (opcional)" value={calcCompanyName} onChange={(e) => setCalcCompanyName(e.target.value)} />
+              <Input label="Nombre a mostrar" value={metaUniAdvisorName} onChange={(e) => setMetaUniAdvisorName(e.target.value)} />
+              <Input label="Título / rol" value={metaUniTitle} onChange={(e) => setMetaUniTitle(e.target.value)} />
               <Input
                 label="WhatsApp (solo dígitos, con código de país)"
-                value={calcWhatsapp}
-                onChange={(e) => setCalcWhatsapp(e.target.value)}
+                value={metaUniWhatsapp}
+                onChange={(e) => setMetaUniWhatsapp(e.target.value)}
                 placeholder="5215500000000"
-                hint="Si lo dejás vacío, la herramienta le va a pedir su WhatsApp al asesor la primera vez que entre a su link."
               />
-              <Input label="URL de agenda (Calendly u otro)" value={calcCalendly} onChange={(e) => setCalcCalendly(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input label="Correo (opcional)" value={metaUniEmail} onChange={(e) => setMetaUniEmail(e.target.value)} placeholder="tu@correo.com" />
+              <Input label="URL de agenda (Calendly u otro)" value={metaUniCalendlyURL} onChange={(e) => setMetaUniCalendlyURL(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input label="URL del Aviso de Privacidad" value={metaUniAvisoPrivacidadURL} onChange={(e) => setMetaUniAvisoPrivacidadURL(e.target.value)} placeholder="https://..." />
               <Input
                 label="Webhook externo opcional (copia del lead a tu propia herramienta)"
-                value={calcWebhookURL}
-                onChange={(e) => setCalcWebhookURL(e.target.value)}
+                value={metaUniWebhookURL}
+                onChange={(e) => setMetaUniWebhookURL(e.target.value)}
                 placeholder="https://..."
               />
             </>

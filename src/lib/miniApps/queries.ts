@@ -41,7 +41,7 @@ import {
   type DiagnosticoSolidezBrand,
   type DiagnosticoSolidezTheme,
 } from "@/lib/miniApps/diagnosticoSolidezDefaults";
-import { DEFAULT_CALCULADORA_INGRESOS_BRAND, type CalculadoraIngresosBrand } from "@/lib/miniApps/calculadoraIngresosDefaults";
+import { DEFAULT_META_UNIVERSITARIA_BRAND, type MetaUniversitariaBrand } from "@/lib/miniApps/metaUniversitariaDefaults";
 
 export type MiniAppTemplateKey =
   | "simulador_retiro"
@@ -50,7 +50,7 @@ export type MiniAppTemplateKey =
   | "diagnostico_financiero"
   | "diagnostico_financiero_retiro"
   | "diagnostico_solidez_financiera"
-  | "calculadora_capacidad_ingresos";
+  | "calculadora_meta_universitaria";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -154,14 +154,14 @@ export interface DiagnosticoSolidezConfig {
   assignedAgentName?: string;
 }
 
-/** Config para "Calculadora de Capacidad de Generar Ingresos" — ver
- * calculadoraIngresosDefaults.ts para el shape de `brand` y el motor de
+/** Config para "Calculadora de Meta Universitaria" — ver
+ * metaUniversitariaDefaults.ts para el shape de `brand` y el motor de
  * cálculo. Igual que DiagnosticoSolidezConfig: sin `questions`/engine
- * editable — es una calculadora de fórmula fija (proyección de ingresos +
- * valor presente), lo único configurable por asesor es la identidad de
+ * editable — es una calculadora de fórmula fija (costo futuro + brecha +
+ * meta mensual), lo único configurable por asesor es la identidad de
  * marca. */
-export interface CalculadoraIngresosConfig {
-  brand: CalculadoraIngresosBrand;
+export interface MetaUniversitariaConfig {
+  brand: MetaUniversitariaBrand;
   assignedAgentName?: string;
 }
 
@@ -172,7 +172,7 @@ export interface MiniAppConfigByTemplate {
   diagnostico_financiero: DiagnosticoFinancieroConfig;
   diagnostico_financiero_retiro: DiagnosticoRetiroConfig;
   diagnostico_solidez_financiera: DiagnosticoSolidezConfig;
-  calculadora_capacidad_ingresos: CalculadoraIngresosConfig;
+  calculadora_meta_universitaria: MetaUniversitariaConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -343,9 +343,9 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
     };
     return config as MiniAppConfigByTemplate[T];
   }
-  if (templateKey === "calculadora_capacidad_ingresos") {
-    const config: CalculadoraIngresosConfig = {
-      brand: { ...DEFAULT_CALCULADORA_INGRESOS_BRAND, ...((raw.brand as Partial<CalculadoraIngresosBrand>) ?? {}) },
+  if (templateKey === "calculadora_meta_universitaria") {
+    const config: MetaUniversitariaConfig = {
+      brand: { ...DEFAULT_META_UNIVERSITARIA_BRAND, ...((raw.brand as Partial<MetaUniversitariaBrand>) ?? {}) },
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];

@@ -33,12 +33,17 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   areas: "Desglose por área",
   answers: "Respuestas (índices)",
   recomendaciones: "Recomendaciones",
-  crecimiento_salarial_pct: "Crecimiento salarial anual esperado",
-  tasa_descuento_pct: "Tasa de descuento anual",
-  nominal_5_anios: "Ingreso proyectado — 5 años",
-  nominal_10_anios: "Ingreso proyectado — 10 años",
-  nominal_total: "Ingreso proyectado — hasta el retiro",
-  valor_presente: "Valor presente estimado",
+  edad_hijo: "Edad del hijo/a",
+  edad_universidad: "Edad de inicio de universidad",
+  anos_restantes: "Años restantes",
+  duracion_carrera: "Duración de la carrera",
+  tipo_universidad: "Tipo de universidad",
+  costo_actual_estimado: "Costo actual estimado",
+  costo_futuro_estimado: "Costo futuro proyectado",
+  capital_proyectado: "Capital proyectado",
+  brecha_estimada: "Brecha estimada",
+  meta_mensual_estimada: "Meta mensual estimada",
+  moneda: "Moneda",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);

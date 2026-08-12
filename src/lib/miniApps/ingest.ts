@@ -8,7 +8,7 @@ import { computeDiagnosticoScore } from "@/lib/miniApps/diagnosticoEngine";
 import type { DiagnosticoQuestion, DiagnosticoLevel } from "@/lib/miniApps/diagnosticoDefaults";
 import { computeDiagnosticoRetiroScore } from "@/lib/miniApps/diagnosticoRetiroEngine";
 import { computeDiagnosticoSolidezScore, type DiagnosticoSolidezAnswerInput } from "@/lib/miniApps/diagnosticoSolidezDefaults";
-import { computeCalculadoraIngresosResult } from "@/lib/miniApps/calculadoraIngresosDefaults";
+import { computeMetaUniversitariaResult } from "@/lib/miniApps/metaUniversitariaDefaults";
 import {
   DIAGNOSTICO_RETIRO_AREAS,
   DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
@@ -318,29 +318,56 @@ async function processLeadSubmission(
     data.overall = overall;
     data.areasAtencion = areasAtencion;
     data.fortalezaPrincipal = fortalezaPrincipal;
-  } else if (app.template_key === "calculadora_capacidad_ingresos") {
-    const edad = toFiniteNumber(body.edad);
-    const edadRetiro = toFiniteNumber(body.edad_retiro);
-    const ingresoMensual = toFiniteNumber(body.ingreso_actual);
-    if (edad === null || edadRetiro === null || ingresoMensual === null) {
-      return { ok: false, status: 400, error: "invalid_calculadora_ingresos_inputs", allowedOrigins };
+  } else if (app.template_key === "calculadora_meta_universitaria") {
+    // El HTML original (verbatim, nunca modificado) no manda el costo anual
+    // base como campo suelto — solo `costoActualEstimado` ya multiplicado
+    // por `duracionCarrera` (ambos raw en el sentido de que son inputs
+    // directos del usuario/derivados triviales de ellos, no un resultado
+    // financiero proyectado). Se re-deriva el costo anual dividiendo esos
+    // dos valores y se recalcula todo lo demás (costo futuro, capital
+    // proyectado, brecha, meta mensual) desde cero server-side — nunca se
+    // confía en costoFuturoEstimado/brechaEstimada/metaMensualEstimada que
+    // manda el navegador.
+    const edad = toFiniteNumber(body.edadHijo);
+    const edadUniversidad = toFiniteNumber(body.edadUniversidad) ?? 18;
+    const duracionCarrera = toFiniteNumber(body.duracionCarrera) ?? 4;
+    const costoActualEstimado = toFiniteNumber(body.costoActualEstimado);
+    const inflacionEducativa = toFiniteNumber(body.inflacionEducativa);
+    const capitalActual = toFiniteNumber(body.capitalActual) ?? 0;
+    const aportacionActual = toFiniteNumber(body.aportacionActual) ?? 0;
+    if (edad === null || costoActualEstimado === null || inflacionEducativa === null || duracionCarrera <= 0) {
+      return { ok: false, status: 400, error: "invalid_meta_universitaria_inputs", allowedOrigins };
     }
-    const growthPct = toFiniteNumber(body.crecimiento_salarial_pct) ?? 3;
-    const discountPct = toFiniteNumber(body.tasa_descuento_pct) ?? 5;
-    const result = computeCalculadoraIngresosResult({ edad, edadRetiro, ingresoMensual, growthPct, discountPct });
+    const rendimientoAnual =
+      typeof (app.config?.brand as { rendimientoAnualDefault?: number } | undefined)?.rendimientoAnualDefault === "number"
+        ? (app.config!.brand as { rendimientoAnualDefault: number }).rendimientoAnualDefault
+        : 0.06;
+    const result = computeMetaUniversitariaResult(
+      {
+        n: Math.max(0, edadUniversidad - edad),
+        dur: duracionCarrera,
+        inflPct: inflacionEducativa * 100,
+        annualToday: costoActualEstimado / duracionCarrera,
+        capitalNow: capitalActual,
+        monthlyNow: aportacionActual,
+      },
+      rendimientoAnual,
+    );
     if (!result) {
-      return { ok: false, status: 400, error: "invalid_calculadora_ingresos_inputs", allowedOrigins };
+      return { ok: false, status: 400, error: "invalid_meta_universitaria_inputs", allowedOrigins };
     }
 
-    data.edad = edad;
-    data.edad_retiro = edadRetiro;
-    data.ingreso_actual = ingresoMensual;
-    data.crecimiento_salarial_pct = growthPct;
-    data.tasa_descuento_pct = discountPct;
-    data.nominal_5_anios = Math.round(result.nominal5);
-    data.nominal_10_anios = Math.round(result.nominal10);
-    data.nominal_total = Math.round(result.nominalTotal);
-    data.valor_presente = Math.round(result.pvTotal);
+    data.edad_hijo = edad;
+    data.edad_universidad = edadUniversidad;
+    data.anos_restantes = result.n;
+    data.duracion_carrera = result.dur;
+    data.tipo_universidad = typeof body.tipoUniversidad === "string" ? body.tipoUniversidad : null;
+    data.costo_actual_estimado = Math.round(result.totalToday);
+    data.costo_futuro_estimado = Math.round(result.totalFuture);
+    data.capital_proyectado = Math.round(result.capProjected);
+    data.brecha_estimada = Math.round(result.gap);
+    data.meta_mensual_estimada = Math.round(result.monthly);
+    data.moneda = typeof body.moneda === "string" ? body.moneda : "MXN";
   }
 
   const supabase = createServiceRoleClient();
