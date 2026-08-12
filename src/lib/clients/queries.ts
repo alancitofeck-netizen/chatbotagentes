@@ -517,6 +517,16 @@ export async function getClientTasks(workspaceId: string, clientId: string): Pro
   }));
 }
 
+/** "Conversaciones" del KPI de Resumen — dato real (conversations.contact_id
+ * ya existe, módulo Inbox), no un placeholder. "Conexiones LinkedIn" en
+ * cambio no tiene ninguna fuente real hoy (no hay integración de LinkedIn
+ * que cuente conexiones) y queda como "—" en la UI. */
+export async function getClientConversationsCount(workspaceId: string, contactId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from("conversations").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("contact_id", contactId);
+  return count ?? 0;
+}
+
 export type ClientTimelineEventType = "booking" | "task_completed" | "policy" | "activity";
 
 export interface ClientTimelineEvent {

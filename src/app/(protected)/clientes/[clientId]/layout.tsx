@@ -7,11 +7,13 @@ import { assertModuleEnabled } from "@/lib/settings/queries";
 import { getClientProfile } from "@/lib/clients/queries";
 import { getClientAlerts } from "@/lib/clients/alerts";
 import { recomputeAndCacheClientHealth } from "@/lib/clients/health";
+import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ShieldAlert } from "lucide-react";
 import { TabLink } from "@/components/ui/Tabs";
 import { HEALTH_LABEL_META } from "../clientHealthMeta";
+import { ClientHeaderActions } from "./ClientHeaderActions";
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
@@ -69,7 +71,7 @@ export default async function ClientProfileLayout({ children, params }: { childr
     if (!client) notFound();
   }
 
-  const alerts = await getClientAlerts(workspaceId, clientId);
+  const [alerts, members] = await Promise.all([getClientAlerts(workspaceId, clientId), getWorkspaceMembers(workspaceId)]);
   const status = STATUS_META[client.status];
   const health = client.healthScoreLabel ? HEALTH_LABEL_META[client.healthScoreLabel] : null;
 
@@ -103,7 +105,8 @@ export default async function ClientProfileLayout({ children, params }: { childr
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ClientHeaderActions client={client} members={members} />
             {client.linkedinProfileUrl && (
               <a
                 href={client.linkedinProfileUrl}
