@@ -1,4 +1,4 @@
-import { PieChart, Calculator, Link2, TrendingUp, ShieldCheck, Layout, Presentation, FileText, Sparkles, Landmark, GraduationCap, LifeBuoy, type LucideIcon } from "lucide-react";
+import { PieChart, Calculator, Link2, TrendingUp, ShieldCheck, Layout, Presentation, FileText, Sparkles, Landmark, GraduationCap, LifeBuoy, Gauge, type LucideIcon } from "lucide-react";
 import type { MiniAppListItem, MiniAppTemplateKey } from "@/lib/miniApps/queries";
 import type { LinkedAppIconKey } from "@/lib/miniApps/linkedAppOptions";
 
@@ -32,6 +32,7 @@ const TEMPLATE_VISUAL: Record<MiniAppTemplateKey, { icon: LucideIcon; hue: Hue }
   diagnostico_solidez_financiera: { icon: Landmark, hue: "orange" },
   calculadora_meta_universitaria: { icon: GraduationCap, hue: "emerald" },
   kit_emergencia_financiera_familiar: { icon: LifeBuoy, hue: "cyan" },
+  test_preparacion_emergencia_financiera: { icon: Gauge, hue: "pink" },
 };
 
 /** Para "App Vinculada": el ícono real que el usuario eligió al vincularla

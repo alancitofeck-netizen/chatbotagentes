@@ -48,6 +48,7 @@ import {
 import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { DEFAULT_META_UNIVERSITARIA_BRAND } from "@/lib/miniApps/metaUniversitariaDefaults";
 import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaults";
+import { DEFAULT_TEST_EMERGENCIA_BRAND } from "@/lib/miniApps/testEmergenciaDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -112,6 +113,7 @@ export function ConfiguracionTab({
   const isSolidez = miniApp.templateKey === "diagnostico_solidez_financiera";
   const isMetaUniversitaria = miniApp.templateKey === "calculadora_meta_universitaria";
   const isKitEmergencia = miniApp.templateKey === "kit_emergencia_financiera_familiar";
+  const isTestEmergencia = miniApp.templateKey === "test_preparacion_emergencia_financiera";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -259,6 +261,23 @@ export function ConfiguracionTab({
   const [kitPrivacyURL, setKitPrivacyURL] = useState(isKitEmergencia ? miniApp.config.brand.privacyURL : DEFAULT_KIT_EMERGENCIA_BRAND.privacyURL);
   const [kitWebhookURL, setKitWebhookURL] = useState(isKitEmergencia ? miniApp.config.brand.webhookURL : DEFAULT_KIT_EMERGENCIA_BRAND.webhookURL);
 
+  const [testAdvisorName, setTestAdvisorName] = useState(isTestEmergencia ? miniApp.config.brand.advisorName : DEFAULT_TEST_EMERGENCIA_BRAND.advisorName);
+  const [testTitle, setTestTitle] = useState(isTestEmergencia ? miniApp.config.brand.title : DEFAULT_TEST_EMERGENCIA_BRAND.title);
+  const [testWhatsapp, setTestWhatsapp] = useState(isTestEmergencia ? miniApp.config.brand.whatsapp : DEFAULT_TEST_EMERGENCIA_BRAND.whatsapp);
+  const [testEmail, setTestEmail] = useState(isTestEmergencia ? miniApp.config.brand.email : DEFAULT_TEST_EMERGENCIA_BRAND.email);
+  const [testCalendlyURL, setTestCalendlyURL] = useState(isTestEmergencia ? miniApp.config.brand.calendlyURL : DEFAULT_TEST_EMERGENCIA_BRAND.calendlyURL);
+  const [testPrivacyURL, setTestPrivacyURL] = useState(isTestEmergencia ? miniApp.config.brand.privacyURL : DEFAULT_TEST_EMERGENCIA_BRAND.privacyURL);
+  const [testWebhookURL, setTestWebhookURL] = useState(isTestEmergencia ? miniApp.config.brand.webhookURL : DEFAULT_TEST_EMERGENCIA_BRAND.webhookURL);
+  const [testKitEmergenciaURL, setTestKitEmergenciaURL] = useState(
+    isTestEmergencia ? miniApp.config.brand.kitEmergenciaURL : DEFAULT_TEST_EMERGENCIA_BRAND.kitEmergenciaURL,
+  );
+  const [testFondoEmergenciaURL, setTestFondoEmergenciaURL] = useState(
+    isTestEmergencia ? miniApp.config.brand.fondoEmergenciaURL : DEFAULT_TEST_EMERGENCIA_BRAND.fondoEmergenciaURL,
+  );
+  const [testSeguroSaludNombre, setTestSeguroSaludNombre] = useState(
+    isTestEmergencia ? miniApp.config.brand.seguroSaludNombre : DEFAULT_TEST_EMERGENCIA_BRAND.seguroSaludNombre,
+  );
+
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -381,7 +400,25 @@ export function ConfiguracionTab({
                               webhookURL: kitWebhookURL,
                             },
                           }
-                        : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+                        : isTestEmergencia
+                          ? {
+                              brand: {
+                                advisorName: testAdvisorName,
+                                title: testTitle,
+                                whatsapp: testWhatsapp,
+                                email: testEmail,
+                                photoURL: DEFAULT_TEST_EMERGENCIA_BRAND.photoURL,
+                                logoURL: DEFAULT_TEST_EMERGENCIA_BRAND.logoURL,
+                                colorMarca: DEFAULT_TEST_EMERGENCIA_BRAND.colorMarca,
+                                calendlyURL: testCalendlyURL,
+                                privacyURL: testPrivacyURL,
+                                webhookURL: testWebhookURL,
+                                kitEmergenciaURL: testKitEmergenciaURL,
+                                fondoEmergenciaURL: testFondoEmergenciaURL,
+                                seguroSaludNombre: testSeguroSaludNombre,
+                              },
+                            }
+                          : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -518,7 +555,7 @@ export function ConfiguracionTab({
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
            * de diseño más allá de estos dos valores. No aplica a los
            * Diagnósticos: tienen su propio CSS autocontenido. */}
-          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && !isKitEmergencia && (
+          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && !isKitEmergencia && !isTestEmergencia && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -1001,6 +1038,40 @@ export function ConfiguracionTab({
                 label="Webhook externo opcional (copia del lead a tu propia herramienta)"
                 value={kitWebhookURL}
                 onChange={(e) => setKitWebhookURL(e.target.value)}
+                placeholder="https://..."
+              />
+            </>
+          ) : isTestEmergencia ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+              <Input label="Nombre a mostrar" value={testAdvisorName} onChange={(e) => setTestAdvisorName(e.target.value)} />
+              <Input label="Título / rol" value={testTitle} onChange={(e) => setTestTitle(e.target.value)} />
+              <Input
+                label="WhatsApp (solo dígitos, con código de país)"
+                value={testWhatsapp}
+                onChange={(e) => setTestWhatsapp(e.target.value)}
+                placeholder="5215500000000"
+              />
+              <Input label="Correo (opcional)" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} placeholder="tu@correo.com" />
+              <Input label="URL de agenda (Calendly u otro)" value={testCalendlyURL} onChange={(e) => setTestCalendlyURL(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input label="URL del Aviso de Privacidad" value={testPrivacyURL} onChange={(e) => setTestPrivacyURL(e.target.value)} placeholder="https://..." />
+              <Input
+                label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                value={testWebhookURL}
+                onChange={(e) => setTestWebhookURL(e.target.value)}
+                placeholder="https://..."
+              />
+              <Input label="Nombre del seguro de salud (pregunta 7)" value={testSeguroSaludNombre} onChange={(e) => setTestSeguroSaludNombre(e.target.value)} />
+              <Input
+                label="URL del Kit de Emergencia Financiera Familiar (opcional, recurso recomendado al final)"
+                value={testKitEmergenciaURL}
+                onChange={(e) => setTestKitEmergenciaURL(e.target.value)}
+                placeholder="https://..."
+              />
+              <Input
+                label="URL de la Calculadora de Fondo de Emergencia (opcional, aún no existe en Growth Link)"
+                value={testFondoEmergenciaURL}
+                onChange={(e) => setTestFondoEmergenciaURL(e.target.value)}
                 placeholder="https://..."
               />
             </>

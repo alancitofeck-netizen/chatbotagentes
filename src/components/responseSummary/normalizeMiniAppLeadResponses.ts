@@ -2,6 +2,7 @@ import type { MiniAppLeadDetail, MiniAppDetail } from "@/lib/miniApps/queries";
 import type { DiagnosticoQuestion } from "@/lib/miniApps/diagnosticoDefaults";
 import type { DiagnosticoRetiroQuestion } from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import { getDiagnosticoSolidezTier, DIAGNOSTICO_SOLIDEZ_DIMS } from "@/lib/miniApps/diagnosticoSolidezDefaults";
+import { TEST_EMERGENCIA_DIMENSION_LABELS, type TestEmergenciaDimension } from "@/lib/miniApps/testEmergenciaDefaults";
 import type { ResponseViewModel } from "./types";
 
 /** Mismos labels que LeadDetailDrawer.tsx (duplicados a propósito — ese
@@ -47,6 +48,16 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   score_preparacion: "Puntaje de preparación",
   categorias_completadas: "Categorías completadas",
   conteos: "Cantidades por categoría",
+  emergency_score: "Emergency Readiness Score",
+  score_reserva: "Reserva",
+  score_liquidez: "Liquidez",
+  score_resiliencia: "Resiliencia",
+  score_proteccion: "Protección",
+  meses_respaldo_categoria: "Meses de respaldo",
+  numero_dependientes: "Dependientes económicos",
+  prioridad_1: "Prioridad 1",
+  prioridad_2: "Prioridad 2",
+  prioridad_3: "Prioridad 3",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
@@ -241,6 +252,54 @@ function normalizeKitEmergencia(lead: MiniAppLeadDetail): ResponseViewModel[] {
   return out;
 }
 
+/** "Test de Preparación para Emergencias Financieras" — a diferencia de los
+ * Diagnósticos, no hay preguntas/respuestas individuales que reconstruir
+ * (ver testEmergenciaDefaults.ts: SEND_DETAILED_RESPONSES viene en `false`
+ * por diseño del archivo original, así que `lead.data` nunca trae
+ * respuesta por respuesta) — solo el score agregado, las 4 dimensiones y
+ * las prioridades detectadas, ya saneados server-side. `prioridad_1/2/3`
+ * guardan la clave interna de dimensión (reserva/liquidez/resiliencia/
+ * proteccion), nunca un texto ya formateado, por eso necesitan mapearse acá
+ * como THEME_LABELS ya hace para `theme`. */
+function normalizeTestEmergencia(lead: MiniAppLeadDetail): ResponseViewModel[] {
+  const out: ResponseViewModel[] = [];
+
+  if (typeof lead.data.emergency_score === "number") {
+    out.push({ key: "score", question: "Emergency Readiness Score", answer: `${lead.data.emergency_score}/100`, answerType: "field", section: "Resultado", order: 0 });
+  }
+
+  const dims: { key: TestEmergenciaDimension; field: string }[] = [
+    { key: "reserva", field: "score_reserva" },
+    { key: "liquidez", field: "score_liquidez" },
+    { key: "resiliencia", field: "score_resiliencia" },
+    { key: "proteccion", field: "score_proteccion" },
+  ];
+  const dimFormatted = dims
+    .filter((d) => typeof lead.data[d.field] === "number")
+    .map((d) => `${TEST_EMERGENCIA_DIMENSION_LABELS[d.key]}: ${lead.data[d.field]}/100`);
+  if (dimFormatted.length > 0) {
+    out.push({ key: "dims", question: "Tus 4 dimensiones", answer: dimFormatted, answerType: "multi_choice", section: "Resultado", order: 1 });
+  }
+
+  if (typeof lead.data.meses_respaldo_categoria === "string" && lead.data.meses_respaldo_categoria) {
+    out.push({ key: "meses", question: "Meses de respaldo", answer: lead.data.meses_respaldo_categoria, answerType: "field", section: "Resultado", order: 2 });
+  }
+
+  if (typeof lead.data.numero_dependientes === "number") {
+    out.push({ key: "dependientes", question: "Dependientes económicos", answer: String(lead.data.numero_dependientes), answerType: "field", section: "Resultado", order: 3 });
+  }
+
+  const prioridades = ["prioridad_1", "prioridad_2", "prioridad_3"]
+    .map((f) => lead.data[f])
+    .filter((v): v is TestEmergenciaDimension => typeof v === "string" && v in TEST_EMERGENCIA_DIMENSION_LABELS)
+    .map((v) => TEST_EMERGENCIA_DIMENSION_LABELS[v]);
+  if (prioridades.length > 0) {
+    out.push({ key: "prioridades", question: "Tres puntos que conviene fortalecer", answer: prioridades, answerType: "multi_choice", section: "Resultado", order: 4 });
+  }
+
+  return out;
+}
+
 function normalizeGeneric(lead: MiniAppLeadDetail): ResponseViewModel[] {
   return Object.entries(lead.data)
     .filter(([key]) => !SKIP_GENERIC_KEYS.has(key))
@@ -271,6 +330,9 @@ export function normalizeMiniAppLeadResponses(lead: MiniAppLeadDetail, miniApp: 
   }
   if (miniApp?.templateKey === "kit_emergencia_financiera_familiar") {
     return normalizeKitEmergencia(lead);
+  }
+  if (miniApp?.templateKey === "test_preparacion_emergencia_financiera") {
+    return normalizeTestEmergencia(lead);
   }
   return normalizeGeneric(lead);
 }

@@ -28,6 +28,7 @@ import {
   type DiagnosticoSolidezConfig,
   type MetaUniversitariaConfig,
   type KitEmergenciaConfig,
+  type TestEmergenciaConfig,
 } from "@/lib/miniApps/queries";
 import { getWorkspaceMembersList } from "@/lib/settings/queries";
 import {
@@ -95,7 +96,7 @@ export interface CreateMiniAppInput {
   assignedAgentId: string | null;
   allowedOrigins: string[];
   externalUrl: string;
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig | MetaUniversitariaConfig | KitEmergenciaConfig;
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig | MetaUniversitariaConfig | KitEmergenciaConfig | TestEmergenciaConfig;
 }
 
 /** Resolves the assigned agent's display name once, under a real
@@ -110,7 +111,7 @@ export interface CreateMiniAppInput {
 async function resolveConfigWithAgentName(
   workspaceId: string,
   assignedAgentId: string | null,
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig | MetaUniversitariaConfig | KitEmergenciaConfig,
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig | MetaUniversitariaConfig | KitEmergenciaConfig | TestEmergenciaConfig,
 ) {
   if (!assignedAgentId) return config;
   const members = await getWorkspaceMembersList(workspaceId);
@@ -168,7 +169,7 @@ export interface UpdateMiniAppInput {
   allowedOrigins: string[];
   externalUrl: string;
   status: "active" | "inactive";
-  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig | MetaUniversitariaConfig | KitEmergenciaConfig;
+  config: MiniAppFieldConfig | CalculadoraBrechaConfig | LinkedAppConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig | MetaUniversitariaConfig | KitEmergenciaConfig | TestEmergenciaConfig;
 }
 
 export async function updateMiniApp(id: string, input: UpdateMiniAppInput): Promise<void> {

@@ -10,6 +10,7 @@ import { computeDiagnosticoRetiroScore } from "@/lib/miniApps/diagnosticoRetiroE
 import { computeDiagnosticoSolidezScore, type DiagnosticoSolidezAnswerInput } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { computeMetaUniversitariaResult } from "@/lib/miniApps/metaUniversitariaDefaults";
 import { sanitizeKitEmergenciaLead } from "@/lib/miniApps/kitEmergenciaDefaults";
+import { sanitizeTestEmergenciaLead } from "@/lib/miniApps/testEmergenciaDefaults";
 import {
   DIAGNOSTICO_RETIRO_AREAS,
   DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
@@ -412,6 +413,51 @@ async function processLeadSubmission(
     // (borrarlo aquí eliminaría el valor recién saneado).
     delete data.scorePreparacion;
     delete data.categoriasCompletadas;
+  } else if (app.template_key === "test_preparacion_emergencia_financiera") {
+    // Tampoco hay recómputo "autoritativo" posible acá, pero por un motivo
+    // distinto al de Kit Emergencia: el archivo original SÍ calcula el score
+    // a partir de respuestas individuales (applyContext()/computeScores()),
+    // pero esas respuestas crudas (`respuestas`) solo viajan si
+    // SEND_DETAILED_RESPONSES (una constante de ingeniería del propio
+    // archivo, fuera del objeto CONFIG que esta integración personaliza)
+    // está en `true` — y llega en `false` por diseño. Ver el comentario de
+    // sanitizeTestEmergenciaLead en testEmergenciaDefaults.ts.
+    const sanitized = sanitizeTestEmergenciaLead({
+      emergencyScore: body.emergencyScore,
+      scoreReserva: body.scoreReserva,
+      scoreLiquidez: body.scoreLiquidez,
+      scoreResiliencia: body.scoreResiliencia,
+      scoreProteccion: body.scoreProteccion,
+      mesesRespaldoCategoria: body.mesesRespaldoCategoria,
+      numeroDependientes: body.numeroDependientes,
+      prioridad1: body.prioridad1,
+      prioridad2: body.prioridad2,
+      prioridad3: body.prioridad3,
+    });
+    data.emergency_score = sanitized.emergencyScore;
+    data.score_reserva = sanitized.scoreReserva;
+    data.score_liquidez = sanitized.scoreLiquidez;
+    data.score_resiliencia = sanitized.scoreResiliencia;
+    data.score_proteccion = sanitized.scoreProteccion;
+    data.meses_respaldo_categoria = sanitized.mesesRespaldoCategoria;
+    data.numero_dependientes = sanitized.numeroDependientes;
+    data.prioridad_1 = sanitized.prioridad1;
+    data.prioridad_2 = sanitized.prioridad2;
+    data.prioridad_3 = sanitized.prioridad3;
+    // El loop genérico de arriba ya copió los campos crudos con su nombre
+    // camelCase original (no están en KNOWN_TOP_LEVEL_FIELDS) — se borran
+    // para que el detalle del lead no muestre el valor sin sanear junto al
+    // saneado.
+    delete data.emergencyScore;
+    delete data.scoreReserva;
+    delete data.scoreLiquidez;
+    delete data.scoreResiliencia;
+    delete data.scoreProteccion;
+    delete data.mesesRespaldoCategoria;
+    delete data.numeroDependientes;
+    delete data.prioridad1;
+    delete data.prioridad2;
+    delete data.prioridad3;
   }
 
   const supabase = createServiceRoleClient();

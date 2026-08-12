@@ -43,6 +43,7 @@ import {
 } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { DEFAULT_META_UNIVERSITARIA_BRAND, type MetaUniversitariaBrand } from "@/lib/miniApps/metaUniversitariaDefaults";
 import { DEFAULT_KIT_EMERGENCIA_BRAND, type KitEmergenciaBrand } from "@/lib/miniApps/kitEmergenciaDefaults";
+import { DEFAULT_TEST_EMERGENCIA_BRAND, type TestEmergenciaBrand } from "@/lib/miniApps/testEmergenciaDefaults";
 
 export type MiniAppTemplateKey =
   | "simulador_retiro"
@@ -52,7 +53,8 @@ export type MiniAppTemplateKey =
   | "diagnostico_financiero_retiro"
   | "diagnostico_solidez_financiera"
   | "calculadora_meta_universitaria"
-  | "kit_emergencia_financiera_familiar";
+  | "kit_emergencia_financiera_familiar"
+  | "test_preparacion_emergencia_financiera";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -176,6 +178,17 @@ export interface KitEmergenciaConfig {
   assignedAgentName?: string;
 }
 
+/** Config para "Test de Preparación para Emergencias Financieras" — ver
+ * testEmergenciaDefaults.ts para el shape de `brand` y el saneamiento del
+ * lead. Sin engine/preguntas editables: es un quiz de 10 preguntas de
+ * formato fijo, lo único configurable por asesor es la identidad de marca y
+ * los dos enlaces complementarios (Kit de Emergencia / Fondo de
+ * Emergencia). */
+export interface TestEmergenciaConfig {
+  brand: TestEmergenciaBrand;
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
@@ -185,6 +198,7 @@ export interface MiniAppConfigByTemplate {
   diagnostico_solidez_financiera: DiagnosticoSolidezConfig;
   calculadora_meta_universitaria: MetaUniversitariaConfig;
   kit_emergencia_financiera_familiar: KitEmergenciaConfig;
+  test_preparacion_emergencia_financiera: TestEmergenciaConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -365,6 +379,13 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
   if (templateKey === "kit_emergencia_financiera_familiar") {
     const config: KitEmergenciaConfig = {
       brand: { ...DEFAULT_KIT_EMERGENCIA_BRAND, ...((raw.brand as Partial<KitEmergenciaBrand>) ?? {}) },
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "test_preparacion_emergencia_financiera") {
+    const config: TestEmergenciaConfig = {
+      brand: { ...DEFAULT_TEST_EMERGENCIA_BRAND, ...((raw.brand as Partial<TestEmergenciaBrand>) ?? {}) },
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];

@@ -21,6 +21,7 @@ import type {
   DiagnosticoSolidezConfig,
   MetaUniversitariaConfig,
   KitEmergenciaConfig,
+  TestEmergenciaConfig,
 } from "@/lib/miniApps/queries";
 import {
   DEFAULT_DIAGNOSTICO_AGENTE,
@@ -54,6 +55,7 @@ import {
 import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { DEFAULT_META_UNIVERSITARIA_BRAND } from "@/lib/miniApps/metaUniversitariaDefaults";
 import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaults";
+import { DEFAULT_TEST_EMERGENCIA_BRAND } from "@/lib/miniApps/testEmergenciaDefaults";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
@@ -65,6 +67,7 @@ const TEMPLATES = [
   { key: "diagnostico_solidez_financiera", label: "diagnostico financiero - Caballo de Troya", available: true },
   { key: "calculadora_meta_universitaria", label: "Calculadora de Meta Universitaria", available: true },
   { key: "kit_emergencia_financiera_familiar", label: "Kit de Emergencia Financiera Familiar", available: true },
+  { key: "test_preparacion_emergencia_financiera", label: "Test de Preparación para Emergencias Financieras", available: true },
   { key: "formulario", label: "Formulario (Próximamente)", available: false },
   { key: "landing", label: "Landing (Próximamente)", available: false },
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
@@ -288,6 +291,17 @@ export function NewMiniAppWizard({
   const [kitPrivacyURL, setKitPrivacyURL] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.privacyURL);
   const [kitWebhookURL, setKitWebhookURL] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.webhookURL);
 
+  const [testAdvisorName, setTestAdvisorName] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.advisorName);
+  const [testTitle, setTestTitle] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.title);
+  const [testWhatsapp, setTestWhatsapp] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.whatsapp);
+  const [testEmail, setTestEmail] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.email);
+  const [testCalendlyURL, setTestCalendlyURL] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.calendlyURL);
+  const [testPrivacyURL, setTestPrivacyURL] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.privacyURL);
+  const [testWebhookURL, setTestWebhookURL] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.webhookURL);
+  const [testKitEmergenciaURL, setTestKitEmergenciaURL] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.kitEmergenciaURL);
+  const [testFondoEmergenciaURL, setTestFondoEmergenciaURL] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.fondoEmergenciaURL);
+  const [testSeguroSaludNombre, setTestSeguroSaludNombre] = useState(DEFAULT_TEST_EMERGENCIA_BRAND.seguroSaludNombre);
+
   function handleLogoCropped(blob: Blob) {
     setLogoBlob(blob);
     setLogoPreviewUrl(URL.createObjectURL(blob));
@@ -308,7 +322,8 @@ export function NewMiniAppWizard({
         | DiagnosticoRetiroConfig
         | DiagnosticoSolidezConfig
         | MetaUniversitariaConfig
-        | KitEmergenciaConfig;
+        | KitEmergenciaConfig
+        | TestEmergenciaConfig;
       if (templateKey === "calculadora_brecha_retiro") {
         config = { whatsappAsesor, avisoPrivacidadUrl, licenseBadge };
       } else if (templateKey === "diagnostico_financiero") {
@@ -391,6 +406,24 @@ export function NewMiniAppWizard({
             calendlyURL: kitCalendlyURL,
             privacyURL: kitPrivacyURL,
             webhookURL: kitWebhookURL,
+          },
+        };
+      } else if (templateKey === "test_preparacion_emergencia_financiera") {
+        config = {
+          brand: {
+            advisorName: testAdvisorName,
+            title: testTitle,
+            whatsapp: testWhatsapp,
+            email: testEmail,
+            photoURL: DEFAULT_TEST_EMERGENCIA_BRAND.photoURL,
+            logoURL: DEFAULT_TEST_EMERGENCIA_BRAND.logoURL,
+            colorMarca: DEFAULT_TEST_EMERGENCIA_BRAND.colorMarca,
+            calendlyURL: testCalendlyURL,
+            privacyURL: testPrivacyURL,
+            webhookURL: testWebhookURL,
+            kitEmergenciaURL: testKitEmergenciaURL,
+            fondoEmergenciaURL: testFondoEmergenciaURL,
+            seguroSaludNombre: testSeguroSaludNombre,
           },
         };
       } else {
@@ -523,6 +556,10 @@ export function NewMiniAppWizard({
                 if (templateKey === "kit_emergencia_financiera_familiar" && !kitAdvisorName.trim()) {
                   const m = members.find((x) => x.memberId === e.target.value);
                   if (m) setKitAdvisorName(m.fullName);
+                }
+                if (templateKey === "test_preparacion_emergencia_financiera" && !testAdvisorName.trim()) {
+                  const m = members.find((x) => x.memberId === e.target.value);
+                  if (m) setTestAdvisorName(m.fullName);
                 }
               }}
             >
@@ -729,6 +766,43 @@ export function NewMiniAppWizard({
               </div>
             )}
 
+            {templateKey === "test_preparacion_emergencia_financiera" && (
+              <div className="flex flex-col gap-4">
+                <div className="my-1 h-px bg-border-default" />
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+                <Input label="Nombre a mostrar" value={testAdvisorName} onChange={(e) => setTestAdvisorName(e.target.value)} placeholder="Ej. Diego Tinoco" />
+                <Input label="Título / rol" value={testTitle} onChange={(e) => setTestTitle(e.target.value)} />
+                <Input
+                  label="WhatsApp (solo dígitos, con código de país)"
+                  value={testWhatsapp}
+                  onChange={(e) => setTestWhatsapp(e.target.value)}
+                  placeholder="5215500000000"
+                />
+                <Input label="Correo (opcional)" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} placeholder="tu@correo.com" />
+                <Input label="URL de agenda (Calendly u otro)" value={testCalendlyURL} onChange={(e) => setTestCalendlyURL(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+                <Input label="URL del Aviso de Privacidad" value={testPrivacyURL} onChange={(e) => setTestPrivacyURL(e.target.value)} placeholder="https://..." />
+                <Input
+                  label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                  value={testWebhookURL}
+                  onChange={(e) => setTestWebhookURL(e.target.value)}
+                  placeholder="https://..."
+                />
+                <Input label="Nombre del seguro de salud (pregunta 7)" value={testSeguroSaludNombre} onChange={(e) => setTestSeguroSaludNombre(e.target.value)} />
+                <Input
+                  label="URL del Kit de Emergencia Financiera Familiar (opcional, recurso recomendado al final)"
+                  value={testKitEmergenciaURL}
+                  onChange={(e) => setTestKitEmergenciaURL(e.target.value)}
+                  placeholder="https://..."
+                />
+                <Input
+                  label="URL de la Calculadora de Fondo de Emergencia (opcional, aún no existe en Growth Link)"
+                  value={testFondoEmergenciaURL}
+                  onChange={(e) => setTestFondoEmergenciaURL(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            )}
+
             {/* Solo estos dos colores — el resto del sistema visual de la
              * página pública se genera solo (paletteEngine.ts), con
              * contraste WCAG verificado automáticamente. No aplica a los
@@ -738,7 +812,8 @@ export function NewMiniAppWizard({
               templateKey !== "diagnostico_financiero_retiro" &&
               templateKey !== "diagnostico_solidez_financiera" &&
               templateKey !== "calculadora_meta_universitaria" &&
-              templateKey !== "kit_emergencia_financiera_familiar" && (
+              templateKey !== "kit_emergencia_financiera_familiar" &&
+              templateKey !== "test_preparacion_emergencia_financiera" && (
             <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -1160,6 +1235,25 @@ export function NewMiniAppWizard({
           </div>
         )}
 
+        {step === 2 && templateKey === "test_preparacion_emergencia_financiera" && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-neutral-500">
+              El diseño, las 10 preguntas y la lógica de puntaje (con redistribución de ponderaciones según dependientes económicos) son fijos — lo único configurable acá es la identidad del
+              asesor y los dos enlaces complementarios de la pestaña anterior.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS, opcional)</label>
+              <textarea
+                value={allowedOrigins}
+                onChange={(e) => setAllowedOrigins(e.target.value)}
+                placeholder={"Solo si además querés aceptar leads desde un dominio externo"}
+                rows={2}
+                className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+              />
+            </div>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="flex flex-col gap-3 rounded-md border border-border-default bg-surface-2 p-4 text-sm">
             <p>
@@ -1183,6 +1277,7 @@ export function NewMiniAppWizard({
             )}
             {templateKey === "calculadora_meta_universitaria" && <p className="text-neutral-500">{metaUniAdvisorName || "(sin nombre de asesor)"}</p>}
             {templateKey === "kit_emergencia_financiera_familiar" && <p className="text-neutral-500">{kitAdvisorName || "(sin nombre de asesor)"}</p>}
+            {templateKey === "test_preparacion_emergencia_financiera" && <p className="text-neutral-500">{testAdvisorName || "(sin nombre de asesor)"}</p>}
             <p className="text-neutral-500">Se va a publicar en tu propia URL de Growth Link al confirmar.</p>
           </div>
         )}
