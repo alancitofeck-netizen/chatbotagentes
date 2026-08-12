@@ -7,7 +7,7 @@ import {
   getClientPolicies,
   getClientAppointments,
   getClientTimeline,
-  getClientConversationsCount,
+  getClientConversationDates,
   getClientNotes,
 } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
@@ -60,7 +60,7 @@ export default async function ClientResumenPage({ params }: { params: Promise<{ 
     getClientAppointments(workspaceId, clientId),
     getWorkspaceMembers(workspaceId),
     getClientTimeline(workspaceId, clientId),
-    client.contactId ? getClientConversationsCount(workspaceId, client.contactId) : Promise.resolve(0),
+    getClientConversationDates(workspaceId, clientId),
     getClientNotes(workspaceId, clientId),
   ]);
 

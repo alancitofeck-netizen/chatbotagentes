@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Ban, CheckCircle2, ListTodo, ListChecks, CalendarClock, RefreshCw } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getClientTasks } from "@/lib/clients/queries";
+import { getClientProfile, getClientRealTasks, getClientTasks } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -12,6 +12,7 @@ import { estadoCategory, formatDueLabel } from "./taskStatusMeta";
 import { TaskStatusDonutChart } from "./TaskStatusDonutChart";
 import { HorizontalBarList } from "./HorizontalBarList";
 import { TareasTable } from "./TareasTable";
+import { RealTasksPanel } from "./RealTasksPanel";
 
 export const metadata: Metadata = { title: "Tareas — Cliente — Growth Link" };
 
@@ -22,7 +23,17 @@ function formatDate(iso: string) {
 export default async function ClientTareasPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
   const { workspaceId } = await requireActiveWorkspace();
-  const [tasks, members] = await Promise.all([getClientTasks(workspaceId, clientId), getWorkspaceMembers(workspaceId)]);
+  const client = await getClientProfile(workspaceId, clientId);
+  if (!client) return null;
+  // Tareas es doble: "tasks" es tu to-do interno (gente de TU equipo,
+  // getWorkspaceMembers(workspaceId) sin tocar) y "realTasks" son las
+  // tareas reales del asesor en su propio CRM (gente de SU equipo).
+  const [tasks, members, realTasks, realMembers] = await Promise.all([
+    getClientTasks(workspaceId, clientId),
+    getWorkspaceMembers(workspaceId),
+    getClientRealTasks(workspaceId, clientId),
+    getWorkspaceMembers(client.linkedWorkspaceId ?? workspaceId),
+  ]);
   const nameById = new Map(members.map((m) => [m.memberId, m.fullName]));
   const avatarById = new Map(members.map((m) => [m.memberId, m.avatarUrl]));
 
@@ -100,11 +111,12 @@ export default async function ClientTareasPage({ params }: { params: Promise<{ c
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div id="tareas-table">
+        <div id="tareas-table" className="flex flex-col gap-4">
           <Card>
             <CardHeader title="Tareas" />
             <TareasTable clientId={clientId} initialTasks={tasks} members={members} />
           </Card>
+          <RealTasksPanel tasks={realTasks} members={realMembers} />
         </div>
 
         <div className="flex flex-col gap-4">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole, requirePlatformAdmin } from "@/lib/auth/roles";
 import { getOrCreateDefaultGroup } from "@/lib/tasks/groups/actions";
@@ -19,6 +20,7 @@ import {
   getClientUpcomingPolicyPayments,
   getClientAudienceFunnel,
   getClientSetterPerformance,
+  getClientRealTasks,
   getRealAdvisorWorkspaces,
   type ClientPolicyPayment,
   type ClientListItem,
@@ -33,6 +35,7 @@ import {
   type ClientNote,
   type ClientAudienceFunnel,
   type ClientSetterPerformance,
+  type ClientRealTask,
   type RealAdvisorWorkspace,
   type BookingFuente,
   type BookingResultado,
@@ -85,15 +88,20 @@ export async function getClientContractsAction(clientId: string): Promise<Client
   return getClientContracts(workspaceId, clientId);
 }
 
+/** Lee bookings del workspace REAL del asesor — mismo motivo que
+ * getClientsListAction: requirePlatformAdmin además de requireManagerRole,
+ * porque ya no es un dato scopeado a tu propio workspace. */
 export async function getClientAppointmentsAction(clientId: string): Promise<ClientAppointment[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  await requirePlatformAdmin();
   return getClientAppointments(workspaceId, clientId);
 }
 
 export async function getClientPoliciesAction(clientId: string): Promise<ClientPolicy[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  await requirePlatformAdmin();
   return getClientPolicies(workspaceId, clientId);
 }
 
@@ -644,13 +652,22 @@ export async function deleteClientNoteAction(noteId: string, clientId: string): 
 export async function getClientAudienceFunnelAction(clientId: string): Promise<ClientAudienceFunnel> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  await requirePlatformAdmin();
   return getClientAudienceFunnel(workspaceId, clientId);
 }
 
 export async function getClientSetterPerformanceAction(clientId: string): Promise<ClientSetterPerformance[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  await requirePlatformAdmin();
   return getClientSetterPerformance(workspaceId, clientId);
+}
+
+export async function getClientRealTasksAction(clientId: string): Promise<ClientRealTask[]> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  await requirePlatformAdmin();
+  return getClientRealTasks(workspaceId, clientId);
 }
 
 export interface BookingAttributionInput {
@@ -659,15 +676,30 @@ export interface BookingAttributionInput {
   resultado?: BookingResultado | null;
 }
 
+/** Fuente/Campaña/Resultado se anotan sobre la cita REAL del asesor (su
+ * propio workspace) — RLS de bookings solo permite UPDATE a miembros reales
+ * de ese workspace (core.has_workspace_role, sin el carve-out de platform
+ * admin que sí tiene el SELECT), así que el UPDATE en sí va con
+ * createServiceRoleClient(), mismo patrón que toggleWorkspaceStatus
+ * (src/lib/platform/actions.ts). requirePlatformAdmin() es el único gate
+ * real acá — el service role bypassea RLS por diseño. */
 export async function updateBookingAttributionAction(bookingId: string, clientId: string, input: BookingAttributionInput): Promise<void> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  await requirePlatformAdmin();
+
   const supabase = await createClient();
+  const { data: clientRow } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).eq("id", clientId).maybeSingle();
+  const linkedWorkspaceId = clientRow?.linked_workspace_id as string | null;
+  if (!linkedWorkspaceId) throw new Error("Este asesor no tiene un workspace real vinculado.");
+
   const patch: Record<string, unknown> = {};
   if (input.fuente !== undefined) patch.fuente = input.fuente;
   if (input.campana !== undefined) patch.campana = input.campana?.trim() || null;
   if (input.resultado !== undefined) patch.resultado = input.resultado;
-  const { error } = await supabase.from("bookings").update(patch).eq("id", bookingId).eq("workspace_id", workspaceId).eq("client_id", clientId);
+
+  const serviceClient = createServiceRoleClient();
+  const { error } = await serviceClient.from("bookings").update(patch).eq("id", bookingId).eq("workspace_id", linkedWorkspaceId);
   if (error) throw new Error("No se pudo guardar.");
   revalidateClients(clientId);
 }

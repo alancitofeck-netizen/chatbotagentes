@@ -182,14 +182,23 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
   if (!rows || rows.length === 0) return [];
 
   const clientIds = rows.map((r) => r.id as string);
+  const linkedWorkspaceIds = rows.map((r) => r.linked_workspace_id as string | null).filter((id): id is string => !!id);
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
+  // bookings/policies se leen del workspace REAL de cada asesor (en lote,
+  // un solo round-trip para los ~8) — citas/pólizas ya no dependen de que
+  // alguien las etiquete a mano en tu workspace. tasks se queda como tu
+  // to-do interno (client_id, ver Tareas), eso sí sigue siendo tuyo.
   const [{ data: contracts }, { data: bookings }, { data: policies }, { data: tasks }] = await Promise.all([
     supabase.from("client_contracts").select(CONTRACT_SELECT).in("client_id", clientIds).order("start_date", { ascending: false }),
-    supabase.from("bookings").select("client_id, start_time").eq("workspace_id", workspaceId).in("client_id", clientIds),
-    supabase.from("policies").select("client_id, issue_date").eq("workspace_id", workspaceId).in("client_id", clientIds),
+    linkedWorkspaceIds.length > 0
+      ? supabase.from("bookings").select("workspace_id, start_time").in("workspace_id", linkedWorkspaceIds)
+      : Promise.resolve({ data: [] }),
+    linkedWorkspaceIds.length > 0
+      ? supabase.from("policies").select("workspace_id, issue_date").in("workspace_id", linkedWorkspaceIds)
+      : Promise.resolve({ data: [] }),
     supabase.from("tasks").select("client_id, status, owner_side, due_at").eq("workspace_id", workspaceId).in("client_id", clientIds),
   ]);
 
@@ -200,7 +209,22 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
     if (row.status === "activo") activeContractByClient.set(clientId, mapContract(row));
   }
 
-  const countBy = (source: { client_id: unknown }[] | null, predicate?: (r: Record<string, unknown>) => boolean) => {
+  const countBy = (source: { workspace_id: unknown }[] | null, predicate?: (r: Record<string, unknown>) => boolean) => {
+    const map = new Map<string, number>();
+    for (const row of source ?? []) {
+      if (predicate && !predicate(row as Record<string, unknown>)) continue;
+      const wsId = row.workspace_id as string;
+      map.set(wsId, (map.get(wsId) ?? 0) + 1);
+    }
+    return map;
+  };
+
+  const citasByWorkspace = countBy(bookings);
+  const citasMesByWorkspace = countBy(bookings, (r) => typeof r.start_time === "string" && r.start_time >= monthStart);
+  const polizasByWorkspace = countBy(policies);
+  const polizasMesByWorkspace = countBy(policies, (r) => typeof r.issue_date === "string" && r.issue_date >= monthStart);
+
+  const countByClientId = (source: { client_id: unknown }[] | null, predicate?: (r: Record<string, unknown>) => boolean) => {
     const map = new Map<string, number>();
     for (const row of source ?? []) {
       if (predicate && !predicate(row as Record<string, unknown>)) continue;
@@ -209,23 +233,18 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
     }
     return map;
   };
+  const tareasPendientesByClient = countByClientId(tasks, (r) => r.status !== "completed");
 
-  const citasByClient = countBy(bookings);
-  const citasMesByClient = countBy(bookings, (r) => typeof r.start_time === "string" && r.start_time >= monthStart);
-  const polizasByClient = countBy(policies);
-  const polizasMesByClient = countBy(policies, (r) => typeof r.issue_date === "string" && r.issue_date >= monthStart);
-  const tareasPendientesByClient = countBy(tasks, (r) => r.status !== "completed");
-
-  // Última cita por cliente — para la alerta "sin citas recientes"
-  // (ver alerts.ts, noRecentActivitySeverity). `bookings` ya viene sin
-  // ordenar acá (se pide todo el historial para citasCount), así que se
-  // resuelve el máximo en JS en vez de un segundo round-trip ordenado.
-  const lastBookingByClient = new Map<string, string>();
+  // Última cita por workspace — para la alerta "sin citas recientes" (ver
+  // alerts.ts, noRecentActivitySeverity). `bookings` ya viene sin ordenar
+  // acá (se pide todo el historial para citasCount), así que se resuelve
+  // el máximo en JS en vez de un segundo round-trip ordenado.
+  const lastBookingByWorkspace = new Map<string, string>();
   for (const row of bookings ?? []) {
-    const clientId = row.client_id as string;
+    const wsId = row.workspace_id as string;
     const startTime = row.start_time as string;
-    const current = lastBookingByClient.get(clientId);
-    if (!current || startTime > current) lastBookingByClient.set(clientId, startTime);
+    const current = lastBookingByWorkspace.get(wsId);
+    if (!current || startTime > current) lastBookingByWorkspace.set(wsId, startTime);
   }
 
   // Tareas agrupadas (no solo el conteo) — buildClientAlerts necesita
@@ -245,11 +264,13 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
     const linkedWorkspaceId = r.linked_workspace_id as string | null;
     const advisor = linkedWorkspaceId ? advisorByWorkspace.get(linkedWorkspaceId) : undefined;
     const activeContract = activeContractByClient.get(id) ?? null;
+    const citasMesCount = linkedWorkspaceId ? (citasMesByWorkspace.get(linkedWorkspaceId) ?? 0) : 0;
+    const polizasMesCount = linkedWorkspaceId ? (polizasMesByWorkspace.get(linkedWorkspaceId) ?? 0) : 0;
     const alerts = buildClientAlerts({
       contract: activeContract,
       tasks: tasksByClient.get(id) ?? [],
-      lastBookingAt: lastBookingByClient.get(id) ?? null,
-      policiesThisMonthCount: polizasMesByClient.get(id) ?? 0,
+      lastBookingAt: (linkedWorkspaceId ? lastBookingByWorkspace.get(linkedWorkspaceId) : null) ?? null,
+      policiesThisMonthCount: polizasMesCount,
     });
     return {
       id,
@@ -272,10 +293,10 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
       healthScore: r.health_score as number | null,
       healthScoreLabel: r.health_score_label as ClientHealthLabel | null,
       activeContract,
-      citasCount: citasByClient.get(id) ?? 0,
-      citasMesCount: citasMesByClient.get(id) ?? 0,
-      polizasCount: polizasByClient.get(id) ?? 0,
-      polizasMesCount: polizasMesByClient.get(id) ?? 0,
+      citasCount: linkedWorkspaceId ? (citasByWorkspace.get(linkedWorkspaceId) ?? 0) : 0,
+      citasMesCount,
+      polizasCount: linkedWorkspaceId ? (polizasByWorkspace.get(linkedWorkspaceId) ?? 0) : 0,
+      polizasMesCount,
       tareasPendientesCount: tareasPendientesByClient.get(id) ?? 0,
       alertTypes: alerts.map((a) => a.type),
       createdAt: r.created_at as string,
@@ -335,6 +356,19 @@ async function resolveAdvisorIdentity(linkedWorkspaceId: string): Promise<{ name
     email: data.user.email ?? "—",
     avatarUrl: (data.user.user_metadata?.avatar_url as string | undefined) ?? null,
   };
+}
+
+/** Resuelve el workspace real detrás de una ficha administrativa — usado por
+ * toda función que necesita leer la ACTIVIDAD real del asesor (Agenda/
+ * Pólizas/KPIs/Operación/Tareas), a diferencia de getClientProfile que lee
+ * la ficha en sí. RLS de bookings/policies/tasks/contacts/conversations ya
+ * te deja LEER cualquier workspace real como platform admin (core.
+ * is_workspace_member tiene el carve-out is_platform_admin()) — nada
+ * especial hace falta acá más que saber a cuál workspace mirar. */
+async function getLinkedWorkspaceId(workspaceId: string, clientId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).eq("id", clientId).maybeSingle();
+  return (data?.linked_workspace_id as string | null) ?? null;
 }
 
 export async function getClientProfile(workspaceId: string, clientId: string): Promise<ClientProfile | null> {
@@ -409,16 +443,19 @@ export interface ClientAppointment {
   resultado: BookingResultado | null;
 }
 
-/** Pestaña Agenda — bookings.client_id ya trae la asociación (0125), nada se
- * carga a mano salvo fuente/campana/resultado (0127 — carga manual, cita
- * por cita, desde la propia pestaña Agenda). */
+/** Pestaña Agenda — lee las citas REALES del workspace del asesor (no
+ * bookings.client_id, que exigía cargarlas a mano dentro de tu propio
+ * workspace y nunca se completaba solo). fuente/campana/resultado (0127)
+ * siguen siendo carga manual tuya, cita por cita, pero ahora anotando la
+ * cita real del asesor en vez de una fabricada. */
 export async function getClientAppointments(workspaceId: string, clientId: string): Promise<ClientAppointment[]> {
+  const linkedWorkspaceId = await getLinkedWorkspaceId(workspaceId, clientId);
+  if (!linkedWorkspaceId) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("bookings")
     .select("id, contact_id, start_time, provider, status, attended, owner_id, fuente, campana, resultado, contacts(name)")
-    .eq("workspace_id", workspaceId)
-    .eq("client_id", clientId)
+    .eq("workspace_id", linkedWorkspaceId)
     .order("start_time", { ascending: false });
 
   return (data ?? []).map((r) => {
@@ -454,15 +491,17 @@ export interface ClientPolicy {
   endDate: string | null;
 }
 
-/** Pestaña Pólizas — reutiliza policies.client_id (0125), mismas filas que
- * ya administra el módulo Pólizas, filtradas nada más. */
+/** Pestaña Pólizas — lee las pólizas REALES que el asesor cargó en su propio
+ * módulo Pólizas (mismo criterio que getClientAppointments: workspace real,
+ * no policies.client_id tageado a mano). */
 export async function getClientPolicies(workspaceId: string, clientId: string): Promise<ClientPolicy[]> {
+  const linkedWorkspaceId = await getLinkedWorkspaceId(workspaceId, clientId);
+  if (!linkedWorkspaceId) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("policies")
     .select("id, contact_id, policy_number, product, company, premium, premium_currency, commission_amount, status, issue_date, end_date, contacts(name)")
-    .eq("workspace_id", workspaceId)
-    .eq("client_id", clientId)
+    .eq("workspace_id", linkedWorkspaceId)
     .order("issue_date", { ascending: false });
 
   return (data ?? []).map((r) => {
@@ -658,14 +697,40 @@ export async function getClientTasks(workspaceId: string, clientId: string): Pro
   }));
 }
 
-/** "Conversaciones" del KPI de Resumen — dato real (conversations.contact_id
- * ya existe, módulo Inbox), no un placeholder. "Conexiones LinkedIn" en
- * cambio no tiene ninguna fuente real hoy (no hay integración de LinkedIn
- * que cuente conexiones) y queda como "—" en la UI. */
-export async function getClientConversationsCount(workspaceId: string, contactId: string): Promise<number> {
+export interface ClientRealTask {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  assignedTo: string | null;
+  dueAt: string | null;
+  completedAt: string | null;
+}
+
+/** Sección "Tareas del asesor" — solo lectura de las tareas REALES que el
+ * asesor tiene cargadas en su propio módulo Tareas (workspace real, sin
+ * owner_side/related_area: esos son conceptos de tu to-do interno, no
+ * existen conceptualmente en su CRM). No hay acción de escritura a
+ * propósito — es su workflow, no el tuyo. */
+export async function getClientRealTasks(workspaceId: string, clientId: string): Promise<ClientRealTask[]> {
+  const linkedWorkspaceId = await getLinkedWorkspaceId(workspaceId, clientId);
+  if (!linkedWorkspaceId) return [];
   const supabase = await createClient();
-  const { count } = await supabase.from("conversations").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("contact_id", contactId);
-  return count ?? 0;
+  const { data } = await supabase
+    .from("tasks")
+    .select("id, title, status, priority, assigned_to, due_at, completed_at")
+    .eq("workspace_id", linkedWorkspaceId)
+    .order("due_at", { ascending: true, nullsFirst: false });
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    title: r.title as string,
+    status: r.status as string,
+    priority: r.priority as string,
+    assignedTo: r.assigned_to as string | null,
+    dueAt: r.due_at as string | null,
+    completedAt: r.completed_at as string | null,
+  }));
 }
 
 export type ClientTimelineEventType = "booking" | "task_completed" | "policy" | "activity";
@@ -687,17 +752,20 @@ export interface ClientTimelineEvent {
  * evento distintos — nombre del actor se resuelve en el caller (ya trae
  * getWorkspaceMembers para Setter/AM/TM, no duplicar el fetch acá). */
 export async function getClientTimeline(workspaceId: string, clientId: string, limit = 30): Promise<ClientTimelineEvent[]> {
+  const linkedWorkspaceId = await getLinkedWorkspaceId(workspaceId, clientId);
   const supabase = await createClient();
   const [{ data: bookings }, { data: tasks }, { data: policies }, { data: activity }] = await Promise.all([
-    supabase.from("bookings").select("id, start_time, provider, contacts(name)").eq("workspace_id", workspaceId).eq("client_id", clientId),
-    supabase
-      .from("tasks")
-      .select("id, title, completed_at")
-      .eq("workspace_id", workspaceId)
-      .eq("client_id", clientId)
-      .eq("status", "completed")
-      .not("completed_at", "is", null),
-    supabase.from("policies").select("id, product, company, issue_date").eq("workspace_id", workspaceId).eq("client_id", clientId).not("issue_date", "is", null),
+    linkedWorkspaceId
+      ? supabase.from("bookings").select("id, start_time, provider, contacts(name)").eq("workspace_id", linkedWorkspaceId)
+      : Promise.resolve({ data: [] }),
+    linkedWorkspaceId
+      ? supabase.from("tasks").select("id, title, completed_at").eq("workspace_id", linkedWorkspaceId).eq("status", "completed").not("completed_at", "is", null)
+      : Promise.resolve({ data: [] }),
+    linkedWorkspaceId
+      ? supabase.from("policies").select("id, product, company, issue_date").eq("workspace_id", linkedWorkspaceId).not("issue_date", "is", null)
+      : Promise.resolve({ data: [] }),
+    // audit_log es tuyo (renovación de contrato, cambios de estado que VOS
+    // hiciste sobre la ficha) — se queda en tu workspace, no en el del asesor.
     supabase.from("audit_log").select("id, action, metadata, created_at, actor_id").eq("workspace_id", workspaceId).eq("entity_type", "client").eq("entity_id", clientId),
   ]);
 
@@ -761,24 +829,21 @@ export interface ClientAudienceFunnel {
   show: number;
 }
 
-/** "Embudo de citas" de KPIs — cada escalón es un conteo real, nunca
- * inventado: Contactos = leads generados PARA este cliente
- * (contacts.client_id, 0125), Conversaciones = conversations de esos
- * contactos (Inbox), Interesados = bookings.resultado in
- * ('interesado','calificado') (0127 — carga manual, arranca en 0 hasta que
- * se etiqueten citas desde Agenda), Citas generadas = todas las bookings
- * del cliente, Show = bookings.attended = true. */
+/** "Embudo de citas" de KPIs — cada escalón es un conteo real del workspace
+ * del asesor, nunca inventado: Contactos = TODOS los leads reales de su CRM,
+ * Conversaciones = conversations de esos contactos (su Inbox), Interesados =
+ * bookings.resultado in ('interesado','calificado') (0127 — carga manual
+ * tuya, arranca en 0 hasta que etiquetes citas reales desde Agenda), Citas
+ * generadas = todas sus bookings, Show = bookings.attended = true. */
 export async function getClientAudienceFunnel(workspaceId: string, clientId: string): Promise<ClientAudienceFunnel> {
+  const linkedWorkspaceId = await getLinkedWorkspaceId(workspaceId, clientId);
+  if (!linkedWorkspaceId) return { contactos: 0, conversaciones: 0, interesados: 0, citasGeneradas: 0, show: 0 };
   const supabase = await createClient();
 
-  const { data: contactRows } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("client_id", clientId);
-  const contactIds = (contactRows ?? []).map((c) => c.id as string);
-
-  const [{ count: conversacionesCount }, { data: bookingRows }] = await Promise.all([
-    contactIds.length > 0
-      ? supabase.from("conversations").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("contact_id", contactIds)
-      : Promise.resolve({ count: 0 }),
-    supabase.from("bookings").select("attended, resultado").eq("workspace_id", workspaceId).eq("client_id", clientId),
+  const [{ count: contactosCount }, { count: conversacionesCount }, { data: bookingRows }] = await Promise.all([
+    supabase.from("contacts").select("id", { count: "exact", head: true }).eq("workspace_id", linkedWorkspaceId),
+    supabase.from("conversations").select("id", { count: "exact", head: true }).eq("workspace_id", linkedWorkspaceId),
+    supabase.from("bookings").select("attended, resultado").eq("workspace_id", linkedWorkspaceId),
   ]);
 
   const bookings = bookingRows ?? [];
@@ -786,7 +851,7 @@ export async function getClientAudienceFunnel(workspaceId: string, clientId: str
   const show = bookings.filter((b) => b.attended === true).length;
 
   return {
-    contactos: contactIds.length,
+    contactos: contactosCount ?? 0,
     conversaciones: conversacionesCount ?? 0,
     interesados,
     citasGeneradas: bookings.length,
@@ -803,14 +868,16 @@ export interface ClientSetterPerformance {
 
 /** "Rendimiento por setter" / "Setters que más generan" de Operación/KPIs —
  * agrupa bookings.owner_id (quién generó/atendió la cita) y cruza pólizas
- * de este cliente por policies.owner_id — aproximado (un setter puede no
- * ser el mismo owner de la póliza final) pero 100% real, sin inventar
- * ninguna atribución que no esté en los datos. */
+ * por policies.owner_id, ambos del workspace REAL del asesor — son sus
+ * propios miembros de equipo, no los tuyos (resolver nombres con
+ * getWorkspaceMembers(linkedWorkspaceId), no el workspaceId del caller). */
 export async function getClientSetterPerformance(workspaceId: string, clientId: string): Promise<ClientSetterPerformance[]> {
+  const linkedWorkspaceId = await getLinkedWorkspaceId(workspaceId, clientId);
+  if (!linkedWorkspaceId) return [];
   const supabase = await createClient();
   const [{ data: bookingRows }, { data: policyRows }] = await Promise.all([
-    supabase.from("bookings").select("owner_id, attended").eq("workspace_id", workspaceId).eq("client_id", clientId).not("owner_id", "is", null),
-    supabase.from("policies").select("owner_id").eq("workspace_id", workspaceId).eq("client_id", clientId).not("owner_id", "is", null),
+    supabase.from("bookings").select("owner_id, attended").eq("workspace_id", linkedWorkspaceId).not("owner_id", "is", null),
+    supabase.from("policies").select("owner_id").eq("workspace_id", linkedWorkspaceId).not("owner_id", "is", null),
   ]);
 
   const bySetterCitas = new Map<string, { citas: number; shows: number }>();
@@ -837,16 +904,14 @@ export async function getClientSetterPerformance(workspaceId: string, clientId: 
     .sort((a, b) => b.citas - a.citas);
 }
 
-/** Fechas de conversaciones de TODOS los contactos de este cliente
- * (contacts.client_id, 0125) — usado por la fila "Conversaciones" de la
- * "Comparativa mensual" de KPIs, que necesita bucketear por mes (a
- * diferencia de getClientConversationsCount, que solo da un total). */
+/** Fechas de conversaciones REALES del workspace del asesor — usado por la
+ * fila "Conversaciones" de la "Comparativa mensual" de KPIs, que necesita
+ * bucketear por mes (a diferencia de getClientConversationsCount, que solo
+ * da un total). */
 export async function getClientConversationDates(workspaceId: string, clientId: string): Promise<string[]> {
+  const linkedWorkspaceId = await getLinkedWorkspaceId(workspaceId, clientId);
+  if (!linkedWorkspaceId) return [];
   const supabase = await createClient();
-  const { data: contactRows } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("client_id", clientId);
-  const contactIds = (contactRows ?? []).map((c) => c.id as string);
-  if (contactIds.length === 0) return [];
-
-  const { data } = await supabase.from("conversations").select("created_at").eq("workspace_id", workspaceId).in("contact_id", contactIds);
+  const { data } = await supabase.from("conversations").select("created_at").eq("workspace_id", linkedWorkspaceId);
   return (data ?? []).map((r) => r.created_at as string);
 }

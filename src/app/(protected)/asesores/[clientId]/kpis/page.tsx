@@ -6,6 +6,7 @@ import {
   getClientAudienceFunnel,
   getClientConversationDates,
   getClientPolicies,
+  getClientProfile,
   getClientSetterPerformance,
 } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
@@ -26,10 +27,12 @@ function DeltaCell({ pct }: { pct: number | null }) {
 export default async function ClientKpisPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
   const { workspaceId } = await requireActiveWorkspace();
+  const client = await getClientProfile(workspaceId, clientId);
+  if (!client) return null;
   const [appointments, policies, members, funnel, setters, conversationDates] = await Promise.all([
     getClientAppointments(workspaceId, clientId),
     getClientPolicies(workspaceId, clientId),
-    getWorkspaceMembers(workspaceId),
+    getWorkspaceMembers(client.linkedWorkspaceId ?? workspaceId),
     getClientAudienceFunnel(workspaceId, clientId),
     getClientSetterPerformance(workspaceId, clientId),
     getClientConversationDates(workspaceId, clientId),

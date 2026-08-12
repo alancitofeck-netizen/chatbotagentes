@@ -20,14 +20,17 @@ export function estadoCategory(task: Pick<ClientTask, "status" | "dueAt">): Task
   return task.status === "in_progress" ? "in_progress" : "pending";
 }
 
-export function getTaskEstadoMeta(task: ClientTask): { label: string; variant: BadgeVariant } {
+/** Tipado con `Pick` a propósito (igual que isOverdue/estadoCategory arriba)
+ * — solo lee status/dueAt, así se puede reusar tal cual para ClientRealTask
+ * (RealTasksPanel.tsx, tareas reales del asesor) sin duplicar la lógica. */
+export function getTaskEstadoMeta(task: Pick<ClientTask, "status" | "dueAt">): { label: string; variant: BadgeVariant } {
   if (task.status === "completed") return { label: "Completada", variant: "success" };
   if (isOverdue(task)) return { label: "Vencida", variant: "error" };
   if (task.status === "in_progress") return { label: "En progreso", variant: "accent" };
   return { label: "Pendiente", variant: "neutral" };
 }
 
-export function formatDueLabel(task: ClientTask): { text: string; tone: "success" | "warning" | "error" | "neutral" } {
+export function formatDueLabel(task: Pick<ClientTask, "status" | "dueAt">): { text: string; tone: "success" | "warning" | "error" | "neutral" } {
   if (task.status === "completed") return { text: "Completado", tone: "success" };
   if (!task.dueAt) return { text: "Sin fecha", tone: "neutral" };
   const days = Math.round((new Date(task.dueAt).getTime() - Date.now()) / 86400000);

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { CalendarDays, CalendarClock, CheckCircle2, XCircle, Ban, RotateCcw, Users } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getClientAppointments, getClientNotes, getClientSetterPerformance } from "@/lib/clients/queries";
+import { getClientAppointments, getClientNotes, getClientProfile, getClientSetterPerformance } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatTile } from "../../StatTile";
@@ -16,9 +16,11 @@ export const metadata: Metadata = { title: "Operación — Cliente — Growth Li
 export default async function ClientOperacionPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
   const { workspaceId } = await requireActiveWorkspace();
+  const client = await getClientProfile(workspaceId, clientId);
+  if (!client) return null;
   const [appointments, members, setters, notes] = await Promise.all([
     getClientAppointments(workspaceId, clientId),
-    getWorkspaceMembers(workspaceId),
+    getWorkspaceMembers(client.linkedWorkspaceId ?? workspaceId),
     getClientSetterPerformance(workspaceId, clientId),
     getClientNotes(workspaceId, clientId),
   ]);

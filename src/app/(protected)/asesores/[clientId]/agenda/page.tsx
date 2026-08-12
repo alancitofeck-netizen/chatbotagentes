@@ -16,12 +16,14 @@ export const metadata: Metadata = { title: "Agenda — Cliente — Growth Link" 
 export default async function ClientAgendaPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
   const { workspaceId } = await requireActiveWorkspace();
-  const [client, appointments, members] = await Promise.all([
-    getClientProfile(workspaceId, clientId),
-    getClientAppointments(workspaceId, clientId),
-    getWorkspaceMembers(workspaceId),
-  ]);
+  const client = await getClientProfile(workspaceId, clientId);
   if (!client) return null;
+  // "Setter"/"Responsable" es gente del EQUIPO DEL ASESOR (su propio
+  // workspace real), no el tuyo — ver plan "Agenda en vivo".
+  const [appointments, members] = await Promise.all([
+    getClientAppointments(workspaceId, clientId),
+    getWorkspaceMembers(client.linkedWorkspaceId ?? workspaceId),
+  ]);
   const nameById = new Map(members.map((m) => [m.memberId, m.fullName]));
 
   const now = new Date();
