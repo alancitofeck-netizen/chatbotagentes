@@ -9,6 +9,7 @@ import { DiagnosticoFinancieroApp } from "./DiagnosticoFinancieroApp";
 import { DiagnosticoRetiroApp } from "./DiagnosticoRetiroApp";
 import { DiagnosticoSolidezApp } from "./DiagnosticoSolidezApp";
 import { MetaUniversitariaApp } from "./MetaUniversitariaApp";
+import { KitEmergenciaApp } from "./KitEmergenciaApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -93,6 +94,13 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
     // Hanken Grotesk autocontenido (ver MetaUniversitariaApp.tsx), sin
     // themeCss/--ma-*.
     return <MetaUniversitariaApp app={app} />;
+  }
+
+  if (app.templateKey === "kit_emergencia_financiera_familiar") {
+    // Mismo motivo que diagnostico_solidez_financiera: diseño Fraunces/
+    // Hanken Grotesk autocontenido (ver KitEmergenciaApp.tsx), sin
+    // themeCss/--ma-*.
+    return <KitEmergenciaApp app={app} />;
   }
 
   notFound();

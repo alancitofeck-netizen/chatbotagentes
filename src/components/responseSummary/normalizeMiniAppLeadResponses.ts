@@ -44,6 +44,9 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   brecha_estimada: "Brecha estimada",
   meta_mensual_estimada: "Meta mensual estimada",
   moneda: "Moneda",
+  score_preparacion: "Puntaje de preparación",
+  categorias_completadas: "Categorías completadas",
+  conteos: "Cantidades por categoría",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
@@ -183,6 +186,61 @@ function normalizeDiagnosticoSolidez(lead: MiniAppLeadDetail): ResponseViewModel
   return out;
 }
 
+const KIT_EMERGENCIA_CATEGORY_LABELS: Record<string, string> = {
+  familia: "Familia",
+  seguros: "Seguros",
+  patrimonio: "Patrimonio",
+  deudas: "Deudas",
+  documentos: "Documentos",
+  contactos: "Contactos",
+};
+
+const KIT_EMERGENCIA_COUNT_LABELS: Record<string, string> = {
+  familiares: "Familiares",
+  seguros: "Seguros",
+  activos: "Activos",
+  deudas: "Deudas",
+  documentos: "Documentos localizados",
+  contactos: "Contactos clave",
+};
+
+/** "Kit de Emergencia Financiera Familiar" — a diferencia de las
+ * calculadoras (Solidez, Meta Universitaria), acá no hay preguntas/
+ * respuestas individuales que mostrar: por diseño del propio archivo
+ * (privacidad), el detalle financiero de la familia nunca sale del
+ * navegador — solo llega un puntaje agregado, las categorías completadas y
+ * conteos por categoría (ver kitEmergenciaDefaults.ts). `conteos` es un
+ * objeto anidado — el fallback genérico (normalizeGeneric) lo mostraría
+ * como "[object Object]" si cayera ahí, por eso tiene caso propio. */
+function normalizeKitEmergencia(lead: MiniAppLeadDetail): ResponseViewModel[] {
+  const out: ResponseViewModel[] = [];
+
+  if (typeof lead.data.score_preparacion === "number") {
+    out.push({ key: "score", question: "Puntaje de preparación", answer: `${lead.data.score_preparacion}/100`, answerType: "field", section: "Resultado", order: 0 });
+  }
+
+  if (Array.isArray(lead.data.categorias_completadas) && lead.data.categorias_completadas.length > 0) {
+    const formatted = (lead.data.categorias_completadas as unknown[])
+      .filter((c): c is string => typeof c === "string")
+      .map((c) => KIT_EMERGENCIA_CATEGORY_LABELS[c] ?? c);
+    if (formatted.length > 0) {
+      out.push({ key: "categorias", question: "Categorías completadas", answer: formatted, answerType: "multi_choice", section: "Resultado", order: 1 });
+    }
+  }
+
+  if (lead.data.conteos && typeof lead.data.conteos === "object") {
+    const conteos = lead.data.conteos as Record<string, number>;
+    const formatted = Object.entries(conteos)
+      .filter(([, n]) => typeof n === "number")
+      .map(([key, n]) => `${KIT_EMERGENCIA_COUNT_LABELS[key] ?? key}: ${n}`);
+    if (formatted.length > 0) {
+      out.push({ key: "conteos", question: "Cantidades por categoría", answer: formatted, answerType: "multi_choice", section: "Resultado", order: 2 });
+    }
+  }
+
+  return out;
+}
+
 function normalizeGeneric(lead: MiniAppLeadDetail): ResponseViewModel[] {
   return Object.entries(lead.data)
     .filter(([key]) => !SKIP_GENERIC_KEYS.has(key))
@@ -210,6 +268,9 @@ export function normalizeMiniAppLeadResponses(lead: MiniAppLeadDetail, miniApp: 
   }
   if (miniApp?.templateKey === "diagnostico_solidez_financiera") {
     return normalizeDiagnosticoSolidez(lead);
+  }
+  if (miniApp?.templateKey === "kit_emergencia_financiera_familiar") {
+    return normalizeKitEmergencia(lead);
   }
   return normalizeGeneric(lead);
 }

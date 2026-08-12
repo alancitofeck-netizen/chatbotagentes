@@ -42,6 +42,7 @@ import {
   type DiagnosticoSolidezTheme,
 } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { DEFAULT_META_UNIVERSITARIA_BRAND, type MetaUniversitariaBrand } from "@/lib/miniApps/metaUniversitariaDefaults";
+import { DEFAULT_KIT_EMERGENCIA_BRAND, type KitEmergenciaBrand } from "@/lib/miniApps/kitEmergenciaDefaults";
 
 export type MiniAppTemplateKey =
   | "simulador_retiro"
@@ -50,7 +51,8 @@ export type MiniAppTemplateKey =
   | "diagnostico_financiero"
   | "diagnostico_financiero_retiro"
   | "diagnostico_solidez_financiera"
-  | "calculadora_meta_universitaria";
+  | "calculadora_meta_universitaria"
+  | "kit_emergencia_financiera_familiar";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -165,6 +167,15 @@ export interface MetaUniversitariaConfig {
   assignedAgentName?: string;
 }
 
+/** Config para "Kit de Emergencia Financiera Familiar" — ver
+ * kitEmergenciaDefaults.ts para el shape de `brand`. Sin engine/preguntas
+ * editables: es un checklist/organizador de formato fijo, lo único
+ * configurable por asesor es la identidad de marca. */
+export interface KitEmergenciaConfig {
+  brand: KitEmergenciaBrand;
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
@@ -173,6 +184,7 @@ export interface MiniAppConfigByTemplate {
   diagnostico_financiero_retiro: DiagnosticoRetiroConfig;
   diagnostico_solidez_financiera: DiagnosticoSolidezConfig;
   calculadora_meta_universitaria: MetaUniversitariaConfig;
+  kit_emergencia_financiera_familiar: KitEmergenciaConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -346,6 +358,13 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
   if (templateKey === "calculadora_meta_universitaria") {
     const config: MetaUniversitariaConfig = {
       brand: { ...DEFAULT_META_UNIVERSITARIA_BRAND, ...((raw.brand as Partial<MetaUniversitariaBrand>) ?? {}) },
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "kit_emergencia_financiera_familiar") {
+    const config: KitEmergenciaConfig = {
+      brand: { ...DEFAULT_KIT_EMERGENCIA_BRAND, ...((raw.brand as Partial<KitEmergenciaBrand>) ?? {}) },
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];

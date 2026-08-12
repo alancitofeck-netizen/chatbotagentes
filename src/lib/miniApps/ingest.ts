@@ -9,6 +9,7 @@ import type { DiagnosticoQuestion, DiagnosticoLevel } from "@/lib/miniApps/diagn
 import { computeDiagnosticoRetiroScore } from "@/lib/miniApps/diagnosticoRetiroEngine";
 import { computeDiagnosticoSolidezScore, type DiagnosticoSolidezAnswerInput } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { computeMetaUniversitariaResult } from "@/lib/miniApps/metaUniversitariaDefaults";
+import { sanitizeKitEmergenciaLead } from "@/lib/miniApps/kitEmergenciaDefaults";
 import {
   DIAGNOSTICO_RETIRO_AREAS,
   DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
@@ -368,6 +369,49 @@ async function processLeadSubmission(
     data.brecha_estimada = Math.round(result.gap);
     data.meta_mensual_estimada = Math.round(result.monthly);
     data.moneda = typeof body.moneda === "string" ? body.moneda : "MXN";
+    // El loop genérico de arriba ya copió los campos crudos con su nombre
+    // camelCase original (no están en KNOWN_TOP_LEVEL_FIELDS) — se borran
+    // para que el detalle del lead no muestre el valor sin recalcular
+    // (potencialmente manipulado) junto al autoritativo.
+    delete data.edadHijo;
+    delete data.edadUniversidad;
+    delete data.anosRestantes;
+    delete data.tipoUniversidad;
+    delete data.duracionCarrera;
+    delete data.inflacionEducativa;
+    delete data.costoActualEstimado;
+    delete data.costoFuturoEstimado;
+    delete data.capitalActual;
+    delete data.aportacionActual;
+    delete data.brechaEstimada;
+    delete data.metaMensualEstimada;
+  } else if (app.template_key === "kit_emergencia_financiera_familiar") {
+    // A diferencia de las calculadoras (Solidez, Meta Universitaria), este
+    // Mini App no tiene un recómputo "autoritativo" posible: por diseño del
+    // propio archivo (privacidad — ver su comentario original), el detalle
+    // financiero de la familia nunca sale del navegador, solo un lead
+    // mínimo con score/categorías/conteos ya agregados. sanitizeKitEmergenciaLead
+    // acota lo que llega (score 0-100, categorías válidas, conteos enteros
+    // no negativos) en vez de intentar recalcular con datos que no existen
+    // acá — ver el comentario de esa función en kitEmergenciaDefaults.ts.
+    const sanitized = sanitizeKitEmergenciaLead({
+      scorePreparacion: body.scorePreparacion,
+      categoriasCompletadas: body.categoriasCompletadas,
+      conteos: body.conteos,
+    });
+    data.score_preparacion = sanitized.scorePreparacion;
+    data.categorias_completadas = sanitized.categoriasCompletadas;
+    data.conteos = sanitized.conteos;
+    // El loop genérico de arriba ya copió `scorePreparacion`/
+    // `categoriasCompletadas` crudos con su nombre camelCase original (no
+    // están en KNOWN_TOP_LEVEL_FIELDS) — se borran para que el detalle del
+    // lead no muestre el valor sin sanear junto al saneado. `conteos` no
+    // tiene variante camelCase distinta (es una sola palabra) — el nombre
+    // que manda el cliente y el que se usa acá son el mismo, así que la
+    // asignación de arriba ya lo sobrescribe directo; NO hay que borrarlo
+    // (borrarlo aquí eliminaría el valor recién saneado).
+    delete data.scorePreparacion;
+    delete data.categoriasCompletadas;
   }
 
   const supabase = createServiceRoleClient();

@@ -47,6 +47,7 @@ import {
 } from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { DEFAULT_META_UNIVERSITARIA_BRAND } from "@/lib/miniApps/metaUniversitariaDefaults";
+import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -110,6 +111,7 @@ export function ConfiguracionTab({
   const isRetiro = miniApp.templateKey === "diagnostico_financiero_retiro";
   const isSolidez = miniApp.templateKey === "diagnostico_solidez_financiera";
   const isMetaUniversitaria = miniApp.templateKey === "calculadora_meta_universitaria";
+  const isKitEmergencia = miniApp.templateKey === "kit_emergencia_financiera_familiar";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -249,6 +251,14 @@ export function ConfiguracionTab({
     isMetaUniversitaria ? miniApp.config.brand.avisoPrivacidadURL : DEFAULT_META_UNIVERSITARIA_BRAND.avisoPrivacidadURL,
   );
 
+  const [kitAdvisorName, setKitAdvisorName] = useState(isKitEmergencia ? miniApp.config.brand.advisorName : DEFAULT_KIT_EMERGENCIA_BRAND.advisorName);
+  const [kitTitle, setKitTitle] = useState(isKitEmergencia ? miniApp.config.brand.title : DEFAULT_KIT_EMERGENCIA_BRAND.title);
+  const [kitWhatsapp, setKitWhatsapp] = useState(isKitEmergencia ? miniApp.config.brand.whatsapp : DEFAULT_KIT_EMERGENCIA_BRAND.whatsapp);
+  const [kitEmail, setKitEmail] = useState(isKitEmergencia ? miniApp.config.brand.email : DEFAULT_KIT_EMERGENCIA_BRAND.email);
+  const [kitCalendlyURL, setKitCalendlyURL] = useState(isKitEmergencia ? miniApp.config.brand.calendlyURL : DEFAULT_KIT_EMERGENCIA_BRAND.calendlyURL);
+  const [kitPrivacyURL, setKitPrivacyURL] = useState(isKitEmergencia ? miniApp.config.brand.privacyURL : DEFAULT_KIT_EMERGENCIA_BRAND.privacyURL);
+  const [kitWebhookURL, setKitWebhookURL] = useState(isKitEmergencia ? miniApp.config.brand.webhookURL : DEFAULT_KIT_EMERGENCIA_BRAND.webhookURL);
+
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -356,7 +366,22 @@ export function ConfiguracionTab({
                             rendimientoAnualDefault: DEFAULT_META_UNIVERSITARIA_BRAND.rendimientoAnualDefault,
                           },
                         }
-                      : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+                      : isKitEmergencia
+                        ? {
+                            brand: {
+                              advisorName: kitAdvisorName,
+                              title: kitTitle,
+                              whatsapp: kitWhatsapp,
+                              email: kitEmail,
+                              photoURL: DEFAULT_KIT_EMERGENCIA_BRAND.photoURL,
+                              logoURL: DEFAULT_KIT_EMERGENCIA_BRAND.logoURL,
+                              colorMarca: DEFAULT_KIT_EMERGENCIA_BRAND.colorMarca,
+                              calendlyURL: kitCalendlyURL,
+                              privacyURL: kitPrivacyURL,
+                              webhookURL: kitWebhookURL,
+                            },
+                          }
+                        : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -493,7 +518,7 @@ export function ConfiguracionTab({
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
            * de diseño más allá de estos dos valores. No aplica a los
            * Diagnósticos: tienen su propio CSS autocontenido. */}
-          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && (
+          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && !isKitEmergencia && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -955,6 +980,27 @@ export function ConfiguracionTab({
                 label="Webhook externo opcional (copia del lead a tu propia herramienta)"
                 value={metaUniWebhookURL}
                 onChange={(e) => setMetaUniWebhookURL(e.target.value)}
+                placeholder="https://..."
+              />
+            </>
+          ) : isKitEmergencia ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+              <Input label="Nombre a mostrar" value={kitAdvisorName} onChange={(e) => setKitAdvisorName(e.target.value)} />
+              <Input label="Título / rol" value={kitTitle} onChange={(e) => setKitTitle(e.target.value)} />
+              <Input
+                label="WhatsApp (solo dígitos, con código de país)"
+                value={kitWhatsapp}
+                onChange={(e) => setKitWhatsapp(e.target.value)}
+                placeholder="5215500000000"
+              />
+              <Input label="Correo (opcional)" value={kitEmail} onChange={(e) => setKitEmail(e.target.value)} placeholder="tu@correo.com" />
+              <Input label="URL de agenda (Calendly u otro)" value={kitCalendlyURL} onChange={(e) => setKitCalendlyURL(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input label="URL del Aviso de Privacidad" value={kitPrivacyURL} onChange={(e) => setKitPrivacyURL(e.target.value)} placeholder="https://..." />
+              <Input
+                label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                value={kitWebhookURL}
+                onChange={(e) => setKitWebhookURL(e.target.value)}
                 placeholder="https://..."
               />
             </>

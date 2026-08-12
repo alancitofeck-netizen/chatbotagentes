@@ -20,6 +20,7 @@ import type {
   DiagnosticoRetiroConfig,
   DiagnosticoSolidezConfig,
   MetaUniversitariaConfig,
+  KitEmergenciaConfig,
 } from "@/lib/miniApps/queries";
 import {
   DEFAULT_DIAGNOSTICO_AGENTE,
@@ -52,6 +53,7 @@ import {
 } from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { DEFAULT_META_UNIVERSITARIA_BRAND } from "@/lib/miniApps/metaUniversitariaDefaults";
+import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaults";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
@@ -62,6 +64,7 @@ const TEMPLATES = [
   { key: "diagnostico_financiero_retiro", label: "Diagnóstico Financiero - Retiro", available: true },
   { key: "diagnostico_solidez_financiera", label: "diagnostico financiero - Caballo de Troya", available: true },
   { key: "calculadora_meta_universitaria", label: "Calculadora de Meta Universitaria", available: true },
+  { key: "kit_emergencia_financiera_familiar", label: "Kit de Emergencia Financiera Familiar", available: true },
   { key: "formulario", label: "Formulario (Próximamente)", available: false },
   { key: "landing", label: "Landing (Próximamente)", available: false },
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
@@ -277,6 +280,14 @@ export function NewMiniAppWizard({
   const [metaUniWebhookURL, setMetaUniWebhookURL] = useState(DEFAULT_META_UNIVERSITARIA_BRAND.webhookURL);
   const [metaUniAvisoPrivacidadURL, setMetaUniAvisoPrivacidadURL] = useState(DEFAULT_META_UNIVERSITARIA_BRAND.avisoPrivacidadURL);
 
+  const [kitAdvisorName, setKitAdvisorName] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.advisorName);
+  const [kitTitle, setKitTitle] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.title);
+  const [kitWhatsapp, setKitWhatsapp] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.whatsapp);
+  const [kitEmail, setKitEmail] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.email);
+  const [kitCalendlyURL, setKitCalendlyURL] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.calendlyURL);
+  const [kitPrivacyURL, setKitPrivacyURL] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.privacyURL);
+  const [kitWebhookURL, setKitWebhookURL] = useState(DEFAULT_KIT_EMERGENCIA_BRAND.webhookURL);
+
   function handleLogoCropped(blob: Blob) {
     setLogoBlob(blob);
     setLogoPreviewUrl(URL.createObjectURL(blob));
@@ -296,7 +307,8 @@ export function NewMiniAppWizard({
         | DiagnosticoFinancieroConfig
         | DiagnosticoRetiroConfig
         | DiagnosticoSolidezConfig
-        | MetaUniversitariaConfig;
+        | MetaUniversitariaConfig
+        | KitEmergenciaConfig;
       if (templateKey === "calculadora_brecha_retiro") {
         config = { whatsappAsesor, avisoPrivacidadUrl, licenseBadge };
       } else if (templateKey === "diagnostico_financiero") {
@@ -364,6 +376,21 @@ export function NewMiniAppWizard({
             monedaDefault: DEFAULT_META_UNIVERSITARIA_BRAND.monedaDefault,
             inflacionEducativaDefault: DEFAULT_META_UNIVERSITARIA_BRAND.inflacionEducativaDefault,
             rendimientoAnualDefault: DEFAULT_META_UNIVERSITARIA_BRAND.rendimientoAnualDefault,
+          },
+        };
+      } else if (templateKey === "kit_emergencia_financiera_familiar") {
+        config = {
+          brand: {
+            advisorName: kitAdvisorName,
+            title: kitTitle,
+            whatsapp: kitWhatsapp,
+            email: kitEmail,
+            photoURL: DEFAULT_KIT_EMERGENCIA_BRAND.photoURL,
+            logoURL: DEFAULT_KIT_EMERGENCIA_BRAND.logoURL,
+            colorMarca: DEFAULT_KIT_EMERGENCIA_BRAND.colorMarca,
+            calendlyURL: kitCalendlyURL,
+            privacyURL: kitPrivacyURL,
+            webhookURL: kitWebhookURL,
           },
         };
       } else {
@@ -492,6 +519,10 @@ export function NewMiniAppWizard({
                 if (templateKey === "calculadora_meta_universitaria" && !metaUniAdvisorName.trim()) {
                   const m = members.find((x) => x.memberId === e.target.value);
                   if (m) setMetaUniAdvisorName(m.fullName);
+                }
+                if (templateKey === "kit_emergencia_financiera_familiar" && !kitAdvisorName.trim()) {
+                  const m = members.find((x) => x.memberId === e.target.value);
+                  if (m) setKitAdvisorName(m.fullName);
                 }
               }}
             >
@@ -674,6 +705,30 @@ export function NewMiniAppWizard({
               </div>
             )}
 
+            {templateKey === "kit_emergencia_financiera_familiar" && (
+              <div className="flex flex-col gap-4">
+                <div className="my-1 h-px bg-border-default" />
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+                <Input label="Nombre a mostrar" value={kitAdvisorName} onChange={(e) => setKitAdvisorName(e.target.value)} placeholder="Ej. Patricio Jaik" />
+                <Input label="Título / rol" value={kitTitle} onChange={(e) => setKitTitle(e.target.value)} />
+                <Input
+                  label="WhatsApp (solo dígitos, con código de país)"
+                  value={kitWhatsapp}
+                  onChange={(e) => setKitWhatsapp(e.target.value)}
+                  placeholder="5215500000000"
+                />
+                <Input label="Correo (opcional)" value={kitEmail} onChange={(e) => setKitEmail(e.target.value)} placeholder="tu@correo.com" />
+                <Input label="URL de agenda (Calendly u otro)" value={kitCalendlyURL} onChange={(e) => setKitCalendlyURL(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+                <Input label="URL del Aviso de Privacidad" value={kitPrivacyURL} onChange={(e) => setKitPrivacyURL(e.target.value)} placeholder="https://..." />
+                <Input
+                  label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                  value={kitWebhookURL}
+                  onChange={(e) => setKitWebhookURL(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            )}
+
             {/* Solo estos dos colores — el resto del sistema visual de la
              * página pública se genera solo (paletteEngine.ts), con
              * contraste WCAG verificado automáticamente. No aplica a los
@@ -682,7 +737,8 @@ export function NewMiniAppWizard({
             {templateKey !== "diagnostico_financiero" &&
               templateKey !== "diagnostico_financiero_retiro" &&
               templateKey !== "diagnostico_solidez_financiera" &&
-              templateKey !== "calculadora_meta_universitaria" && (
+              templateKey !== "calculadora_meta_universitaria" &&
+              templateKey !== "kit_emergencia_financiera_familiar" && (
             <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -1085,6 +1141,25 @@ export function NewMiniAppWizard({
           </div>
         )}
 
+        {step === 2 && templateKey === "kit_emergencia_financiera_familiar" && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-neutral-500">
+              El contenido que carga cada familia (familiares, seguros, activos, deudas, documentos, contactos) queda solo en su navegador — al CRM únicamente llega un lead mínimo con
+              nombre/WhatsApp/email y un puntaje de preparación agregado, nunca el detalle financiero.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS, opcional)</label>
+              <textarea
+                value={allowedOrigins}
+                onChange={(e) => setAllowedOrigins(e.target.value)}
+                placeholder={"Solo si además querés aceptar leads desde un dominio externo"}
+                rows={2}
+                className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+              />
+            </div>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="flex flex-col gap-3 rounded-md border border-border-default bg-surface-2 p-4 text-sm">
             <p>
@@ -1107,6 +1182,7 @@ export function NewMiniAppWizard({
               </p>
             )}
             {templateKey === "calculadora_meta_universitaria" && <p className="text-neutral-500">{metaUniAdvisorName || "(sin nombre de asesor)"}</p>}
+            {templateKey === "kit_emergencia_financiera_familiar" && <p className="text-neutral-500">{kitAdvisorName || "(sin nombre de asesor)"}</p>}
             <p className="text-neutral-500">Se va a publicar en tu propia URL de Growth Link al confirmar.</p>
           </div>
         )}
