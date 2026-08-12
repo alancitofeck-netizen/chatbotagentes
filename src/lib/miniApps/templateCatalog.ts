@@ -33,6 +33,7 @@ export const TEMPLATE_KEY_META: Record<MiniAppTemplateKey, { label: string; cate
   calculadora_meta_universitaria: { label: "Calculadora de Meta Universitaria", category: "calculadoras" },
   kit_emergencia_financiera_familiar: { label: "Kit de Emergencia Financiera Familiar", category: "formularios" },
   test_preparacion_emergencia_financiera: { label: "Test de Preparación para Emergencias Financieras", category: "quizzes" },
+  diagnostico_salud_financiera: { label: "Diagnóstico de Salud Financiera", category: "quizzes" },
 };
 
 export function templateKeysForCategory(category: MiniAppTemplateCategory): MiniAppTemplateKey[] {

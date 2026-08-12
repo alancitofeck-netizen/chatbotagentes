@@ -11,6 +11,7 @@ import { computeDiagnosticoSolidezScore, type DiagnosticoSolidezAnswerInput } fr
 import { computeMetaUniversitariaResult } from "@/lib/miniApps/metaUniversitariaDefaults";
 import { sanitizeKitEmergenciaLead } from "@/lib/miniApps/kitEmergenciaDefaults";
 import { sanitizeTestEmergenciaLead } from "@/lib/miniApps/testEmergenciaDefaults";
+import { sanitizeDiagnosticoSaludLead } from "@/lib/miniApps/diagnosticoSaludDefaults";
 import {
   DIAGNOSTICO_RETIRO_AREAS,
   DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
@@ -455,6 +456,50 @@ async function processLeadSubmission(
     delete data.scoreProteccion;
     delete data.mesesRespaldoCategoria;
     delete data.numeroDependientes;
+    delete data.prioridad1;
+    delete data.prioridad2;
+    delete data.prioridad3;
+  } else if (app.template_key === "diagnostico_salud_financiera") {
+    // Mismo caso que test_preparacion_emergencia_financiera: no hay
+    // recómputo autoritativo posible porque las respuestas individuales
+    // (state.ans) solo viajan si SEND_DETAILED_RESPONSES — fuera del
+    // objeto CONFIG que esta integración personaliza — está en `true`, y
+    // llega en `false` por diseño. Ver sanitizeDiagnosticoSaludLead en
+    // diagnosticoSaludDefaults.ts (incluye por qué los scores de pilar
+    // preservan `null` en vez de caer a 0).
+    const sanitized = sanitizeDiagnosticoSaludLead({
+      financialScore: body.financialScore,
+      scoreLiquidez: body.scoreLiquidez,
+      scoreAhorro: body.scoreAhorro,
+      scoreDeuda: body.scoreDeuda,
+      scoreProteccion: body.scoreProteccion,
+      scoreRetiro: body.scoreRetiro,
+      scorePatrimonio: body.scorePatrimonio,
+      prioridad1: body.prioridad1,
+      prioridad2: body.prioridad2,
+      prioridad3: body.prioridad3,
+    });
+    data.financial_score = sanitized.financialScore;
+    data.score_liquidez = sanitized.scoreLiquidez;
+    data.score_ahorro = sanitized.scoreAhorro;
+    data.score_deuda = sanitized.scoreDeuda;
+    data.score_proteccion = sanitized.scoreProteccion;
+    data.score_retiro = sanitized.scoreRetiro;
+    data.score_patrimonio = sanitized.scorePatrimonio;
+    data.prioridad_1 = sanitized.prioridad1;
+    data.prioridad_2 = sanitized.prioridad2;
+    data.prioridad_3 = sanitized.prioridad3;
+    // El loop genérico de arriba ya copió los campos crudos con su nombre
+    // camelCase original (no están en KNOWN_TOP_LEVEL_FIELDS) — se borran
+    // para que el detalle del lead no muestre el valor sin sanear junto al
+    // saneado.
+    delete data.financialScore;
+    delete data.scoreLiquidez;
+    delete data.scoreAhorro;
+    delete data.scoreDeuda;
+    delete data.scoreProteccion;
+    delete data.scoreRetiro;
+    delete data.scorePatrimonio;
     delete data.prioridad1;
     delete data.prioridad2;
     delete data.prioridad3;

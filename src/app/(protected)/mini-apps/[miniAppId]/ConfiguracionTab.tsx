@@ -49,6 +49,7 @@ import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, t
 import { DEFAULT_META_UNIVERSITARIA_BRAND } from "@/lib/miniApps/metaUniversitariaDefaults";
 import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaults";
 import { DEFAULT_TEST_EMERGENCIA_BRAND } from "@/lib/miniApps/testEmergenciaDefaults";
+import { DEFAULT_DIAGNOSTICO_SALUD_BRAND } from "@/lib/miniApps/diagnosticoSaludDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -114,6 +115,7 @@ export function ConfiguracionTab({
   const isMetaUniversitaria = miniApp.templateKey === "calculadora_meta_universitaria";
   const isKitEmergencia = miniApp.templateKey === "kit_emergencia_financiera_familiar";
   const isTestEmergencia = miniApp.templateKey === "test_preparacion_emergencia_financiera";
+  const isDiagnosticoSalud = miniApp.templateKey === "diagnostico_salud_financiera";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -278,6 +280,21 @@ export function ConfiguracionTab({
     isTestEmergencia ? miniApp.config.brand.seguroSaludNombre : DEFAULT_TEST_EMERGENCIA_BRAND.seguroSaludNombre,
   );
 
+  const [saludAdvisorName, setSaludAdvisorName] = useState(isDiagnosticoSalud ? miniApp.config.brand.advisorName : DEFAULT_DIAGNOSTICO_SALUD_BRAND.advisorName);
+  const [saludTitle, setSaludTitle] = useState(isDiagnosticoSalud ? miniApp.config.brand.title : DEFAULT_DIAGNOSTICO_SALUD_BRAND.title);
+  const [saludWhatsapp, setSaludWhatsapp] = useState(isDiagnosticoSalud ? miniApp.config.brand.whatsapp : DEFAULT_DIAGNOSTICO_SALUD_BRAND.whatsapp);
+  const [saludCalendlyURL, setSaludCalendlyURL] = useState(isDiagnosticoSalud ? miniApp.config.brand.calendlyURL : DEFAULT_DIAGNOSTICO_SALUD_BRAND.calendlyURL);
+  const [saludPrivacyURL, setSaludPrivacyURL] = useState(isDiagnosticoSalud ? miniApp.config.brand.privacyURL : DEFAULT_DIAGNOSTICO_SALUD_BRAND.privacyURL);
+  const [saludWebhookURL, setSaludWebhookURL] = useState(isDiagnosticoSalud ? miniApp.config.brand.webhookURL : DEFAULT_DIAGNOSTICO_SALUD_BRAND.webhookURL);
+  const [saludUrlRetiro, setSaludUrlRetiro] = useState(isDiagnosticoSalud ? miniApp.config.brand.urlRetiro : DEFAULT_DIAGNOSTICO_SALUD_BRAND.urlRetiro);
+  const [saludUrlEmergencia, setSaludUrlEmergencia] = useState(isDiagnosticoSalud ? miniApp.config.brand.urlEmergencia : DEFAULT_DIAGNOSTICO_SALUD_BRAND.urlEmergencia);
+  const [saludUrlUniversidad, setSaludUrlUniversidad] = useState(
+    isDiagnosticoSalud ? miniApp.config.brand.urlUniversidad : DEFAULT_DIAGNOSTICO_SALUD_BRAND.urlUniversidad,
+  );
+  const [saludUrlProteccion, setSaludUrlProteccion] = useState(
+    isDiagnosticoSalud ? miniApp.config.brand.urlProteccion : DEFAULT_DIAGNOSTICO_SALUD_BRAND.urlProteccion,
+  );
+
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -418,7 +435,25 @@ export function ConfiguracionTab({
                                 seguroSaludNombre: testSeguroSaludNombre,
                               },
                             }
-                          : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+                          : isDiagnosticoSalud
+                            ? {
+                                brand: {
+                                  advisorName: saludAdvisorName,
+                                  title: saludTitle,
+                                  whatsapp: saludWhatsapp,
+                                  photoURL: DEFAULT_DIAGNOSTICO_SALUD_BRAND.photoURL,
+                                  logoURL: DEFAULT_DIAGNOSTICO_SALUD_BRAND.logoURL,
+                                  colorMarca: DEFAULT_DIAGNOSTICO_SALUD_BRAND.colorMarca,
+                                  calendlyURL: saludCalendlyURL,
+                                  privacyURL: saludPrivacyURL,
+                                  webhookURL: saludWebhookURL,
+                                  urlRetiro: saludUrlRetiro,
+                                  urlEmergencia: saludUrlEmergencia,
+                                  urlUniversidad: saludUrlUniversidad,
+                                  urlProteccion: saludUrlProteccion,
+                                },
+                              }
+                            : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -555,7 +590,7 @@ export function ConfiguracionTab({
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
            * de diseño más allá de estos dos valores. No aplica a los
            * Diagnósticos: tienen su propio CSS autocontenido. */}
-          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && !isKitEmergencia && !isTestEmergencia && (
+          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && !isKitEmergencia && !isTestEmergencia && !isDiagnosticoSalud && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -1072,6 +1107,37 @@ export function ConfiguracionTab({
                 label="URL de la Calculadora de Fondo de Emergencia (opcional, aún no existe en Growth Link)"
                 value={testFondoEmergenciaURL}
                 onChange={(e) => setTestFondoEmergenciaURL(e.target.value)}
+                placeholder="https://..."
+              />
+            </>
+          ) : isDiagnosticoSalud ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+              <Input label="Nombre a mostrar" value={saludAdvisorName} onChange={(e) => setSaludAdvisorName(e.target.value)} />
+              <Input label="Título / rol" value={saludTitle} onChange={(e) => setSaludTitle(e.target.value)} />
+              <Input
+                label="WhatsApp (solo dígitos, con código de país)"
+                value={saludWhatsapp}
+                onChange={(e) => setSaludWhatsapp(e.target.value)}
+                placeholder="5215500000000"
+              />
+              <Input label="URL de agenda (Calendly u otro)" value={saludCalendlyURL} onChange={(e) => setSaludCalendlyURL(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input label="URL del Aviso de Privacidad" value={saludPrivacyURL} onChange={(e) => setSaludPrivacyURL(e.target.value)} placeholder="https://..." />
+              <Input
+                label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                value={saludWebhookURL}
+                onChange={(e) => setSaludWebhookURL(e.target.value)}
+                placeholder="https://..."
+              />
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Recursos recomendados según la principal brecha</p>
+              <Input label="URL de Calculadora de Brecha de Retiro (opcional)" value={saludUrlRetiro} onChange={(e) => setSaludUrlRetiro(e.target.value)} placeholder="https://..." />
+              <Input label="URL de Calculadora de Fondo de Emergencia (opcional)" value={saludUrlEmergencia} onChange={(e) => setSaludUrlEmergencia(e.target.value)} placeholder="https://..." />
+              <Input label="URL de Calculadora de Meta Universitaria (opcional)" value={saludUrlUniversidad} onChange={(e) => setSaludUrlUniversidad(e.target.value)} placeholder="https://..." />
+              <Input
+                label="URL de Diagnóstico de Protección Familiar (opcional, aún no existe en Growth Link)"
+                value={saludUrlProteccion}
+                onChange={(e) => setSaludUrlProteccion(e.target.value)}
                 placeholder="https://..."
               />
             </>

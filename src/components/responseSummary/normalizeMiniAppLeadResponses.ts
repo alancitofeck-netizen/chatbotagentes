@@ -3,6 +3,7 @@ import type { DiagnosticoQuestion } from "@/lib/miniApps/diagnosticoDefaults";
 import type { DiagnosticoRetiroQuestion } from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import { getDiagnosticoSolidezTier, DIAGNOSTICO_SOLIDEZ_DIMS } from "@/lib/miniApps/diagnosticoSolidezDefaults";
 import { TEST_EMERGENCIA_DIMENSION_LABELS, type TestEmergenciaDimension } from "@/lib/miniApps/testEmergenciaDefaults";
+import { DIAGNOSTICO_SALUD_PILLAR_LABELS, type DiagnosticoSaludPillar } from "@/lib/miniApps/diagnosticoSaludDefaults";
 import type { ResponseViewModel } from "./types";
 
 /** Mismos labels que LeadDetailDrawer.tsx (duplicados a propósito — ese
@@ -58,6 +59,11 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   prioridad_1: "Prioridad 1",
   prioridad_2: "Prioridad 2",
   prioridad_3: "Prioridad 3",
+  financial_score: "Financial Score",
+  score_ahorro: "Ahorro",
+  score_deuda: "Deuda",
+  score_retiro: "Retiro",
+  score_patrimonio: "Patrimonio",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
@@ -300,6 +306,46 @@ function normalizeTestEmergencia(lead: MiniAppLeadDetail): ResponseViewModel[] {
   return out;
 }
 
+/** "Diagnóstico de Salud Financiera" — mismo caso que Test de Preparación:
+ * sin preguntas/respuestas individuales que reconstruir (SEND_DETAILED_RESPONSES
+ * en `false` por diseño, ver diagnosticoSaludDefaults.ts), solo el score
+ * agregado, los 6 pilares y las prioridades, ya saneados server-side. A
+ * diferencia de Test de Preparación, un pilar puede legítimamente venir en
+ * `null` ("No aplica") — se omite del listado de dimensiones en vez de
+ * mostrar un falso "0/100". */
+function normalizeDiagnosticoSalud(lead: MiniAppLeadDetail): ResponseViewModel[] {
+  const out: ResponseViewModel[] = [];
+
+  if (typeof lead.data.financial_score === "number") {
+    out.push({ key: "score", question: "Financial Score", answer: `${lead.data.financial_score}/100`, answerType: "field", section: "Resultado", order: 0 });
+  }
+
+  const pillars: { key: DiagnosticoSaludPillar; field: string }[] = [
+    { key: "liquidez", field: "score_liquidez" },
+    { key: "ahorro", field: "score_ahorro" },
+    { key: "deuda", field: "score_deuda" },
+    { key: "proteccion", field: "score_proteccion" },
+    { key: "retiro", field: "score_retiro" },
+    { key: "patrimonio", field: "score_patrimonio" },
+  ];
+  const pillarsFormatted = pillars
+    .filter((p) => typeof lead.data[p.field] === "number")
+    .map((p) => `${DIAGNOSTICO_SALUD_PILLAR_LABELS[p.key]}: ${lead.data[p.field]}/100`);
+  if (pillarsFormatted.length > 0) {
+    out.push({ key: "pillars", question: "Tus 6 pilares", answer: pillarsFormatted, answerType: "multi_choice", section: "Resultado", order: 1 });
+  }
+
+  const prioridades = ["prioridad_1", "prioridad_2", "prioridad_3"]
+    .map((f) => lead.data[f])
+    .filter((v): v is DiagnosticoSaludPillar => typeof v === "string" && v in DIAGNOSTICO_SALUD_PILLAR_LABELS)
+    .map((v) => DIAGNOSTICO_SALUD_PILLAR_LABELS[v]);
+  if (prioridades.length > 0) {
+    out.push({ key: "prioridades", question: "Si mejoraras solamente 3 cosas…", answer: prioridades, answerType: "multi_choice", section: "Resultado", order: 2 });
+  }
+
+  return out;
+}
+
 function normalizeGeneric(lead: MiniAppLeadDetail): ResponseViewModel[] {
   return Object.entries(lead.data)
     .filter(([key]) => !SKIP_GENERIC_KEYS.has(key))
@@ -333,6 +379,9 @@ export function normalizeMiniAppLeadResponses(lead: MiniAppLeadDetail, miniApp: 
   }
   if (miniApp?.templateKey === "test_preparacion_emergencia_financiera") {
     return normalizeTestEmergencia(lead);
+  }
+  if (miniApp?.templateKey === "diagnostico_salud_financiera") {
+    return normalizeDiagnosticoSalud(lead);
   }
   return normalizeGeneric(lead);
 }
