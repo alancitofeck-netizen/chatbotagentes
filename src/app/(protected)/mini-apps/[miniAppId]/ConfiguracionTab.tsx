@@ -46,6 +46,7 @@ import {
   type DiagnosticoRetiroThemePool,
 } from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
+import { DEFAULT_CALCULADORA_INGRESOS_BRAND } from "@/lib/miniApps/calculadoraIngresosDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -108,6 +109,7 @@ export function ConfiguracionTab({
   const isDiagnostico = miniApp.templateKey === "diagnostico_financiero";
   const isRetiro = miniApp.templateKey === "diagnostico_financiero_retiro";
   const isSolidez = miniApp.templateKey === "diagnostico_solidez_financiera";
+  const isCalculadoraIngresos = miniApp.templateKey === "calculadora_capacidad_ingresos";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -237,6 +239,12 @@ export function ConfiguracionTab({
   const [solidezWaGreeting, setSolidezWaGreeting] = useState(isSolidez ? miniApp.config.brand.waGreeting : DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.waGreeting);
   const [solidezTheme, setSolidezTheme] = useState<DiagnosticoSolidezTheme>(isSolidez ? miniApp.config.themeActive : "brass");
 
+  const [calcAdvisorName, setCalcAdvisorName] = useState(isCalculadoraIngresos ? miniApp.config.brand.advisorName : DEFAULT_CALCULADORA_INGRESOS_BRAND.advisorName);
+  const [calcCompanyName, setCalcCompanyName] = useState(isCalculadoraIngresos ? miniApp.config.brand.companyName : DEFAULT_CALCULADORA_INGRESOS_BRAND.companyName);
+  const [calcWhatsapp, setCalcWhatsapp] = useState(isCalculadoraIngresos ? miniApp.config.brand.whatsapp : DEFAULT_CALCULADORA_INGRESOS_BRAND.whatsapp);
+  const [calcCalendly, setCalcCalendly] = useState(isCalculadoraIngresos ? miniApp.config.brand.calendly : DEFAULT_CALCULADORA_INGRESOS_BRAND.calendly);
+  const [calcWebhookURL, setCalcWebhookURL] = useState(isCalculadoraIngresos ? miniApp.config.brand.webhookURL : DEFAULT_CALCULADORA_INGRESOS_BRAND.webhookURL);
+
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -326,7 +334,18 @@ export function ConfiguracionTab({
                         },
                         themeActive: solidezTheme,
                       }
-                    : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+                    : isCalculadoraIngresos
+                      ? {
+                          brand: {
+                            advisorName: calcAdvisorName,
+                            companyName: calcCompanyName,
+                            whatsapp: calcWhatsapp,
+                            calendly: calcCalendly,
+                            logoURL: DEFAULT_CALCULADORA_INGRESOS_BRAND.logoURL,
+                            webhookURL: calcWebhookURL,
+                          },
+                        }
+                      : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -463,7 +482,7 @@ export function ConfiguracionTab({
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
            * de diseño más allá de estos dos valores. No aplica a los
            * Diagnósticos: tienen su propio CSS autocontenido. */}
-          {!isDiagnostico && !isRetiro && !isSolidez && (
+          {!isDiagnostico && !isRetiro && !isSolidez && !isCalculadoraIngresos && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -906,6 +925,26 @@ export function ConfiguracionTab({
                   </button>
                 ))}
               </div>
+            </>
+          ) : isCalculadoraIngresos ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+              <Input label="Nombre a mostrar" value={calcAdvisorName} onChange={(e) => setCalcAdvisorName(e.target.value)} />
+              <Input label="Despacho / empresa (opcional)" value={calcCompanyName} onChange={(e) => setCalcCompanyName(e.target.value)} />
+              <Input
+                label="WhatsApp (solo dígitos, con código de país)"
+                value={calcWhatsapp}
+                onChange={(e) => setCalcWhatsapp(e.target.value)}
+                placeholder="5215500000000"
+                hint="Si lo dejás vacío, la herramienta le va a pedir su WhatsApp al asesor la primera vez que entre a su link."
+              />
+              <Input label="URL de agenda (Calendly u otro)" value={calcCalendly} onChange={(e) => setCalcCalendly(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input
+                label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                value={calcWebhookURL}
+                onChange={(e) => setCalcWebhookURL(e.target.value)}
+                placeholder="https://..."
+              />
             </>
           ) : (
             <>

@@ -8,6 +8,7 @@ import { computeDiagnosticoScore } from "@/lib/miniApps/diagnosticoEngine";
 import type { DiagnosticoQuestion, DiagnosticoLevel } from "@/lib/miniApps/diagnosticoDefaults";
 import { computeDiagnosticoRetiroScore } from "@/lib/miniApps/diagnosticoRetiroEngine";
 import { computeDiagnosticoSolidezScore, type DiagnosticoSolidezAnswerInput } from "@/lib/miniApps/diagnosticoSolidezDefaults";
+import { computeCalculadoraIngresosResult } from "@/lib/miniApps/calculadoraIngresosDefaults";
 import {
   DIAGNOSTICO_RETIRO_AREAS,
   DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
@@ -317,6 +318,29 @@ async function processLeadSubmission(
     data.overall = overall;
     data.areasAtencion = areasAtencion;
     data.fortalezaPrincipal = fortalezaPrincipal;
+  } else if (app.template_key === "calculadora_capacidad_ingresos") {
+    const edad = toFiniteNumber(body.edad);
+    const edadRetiro = toFiniteNumber(body.edad_retiro);
+    const ingresoMensual = toFiniteNumber(body.ingreso_actual);
+    if (edad === null || edadRetiro === null || ingresoMensual === null) {
+      return { ok: false, status: 400, error: "invalid_calculadora_ingresos_inputs", allowedOrigins };
+    }
+    const growthPct = toFiniteNumber(body.crecimiento_salarial_pct) ?? 3;
+    const discountPct = toFiniteNumber(body.tasa_descuento_pct) ?? 5;
+    const result = computeCalculadoraIngresosResult({ edad, edadRetiro, ingresoMensual, growthPct, discountPct });
+    if (!result) {
+      return { ok: false, status: 400, error: "invalid_calculadora_ingresos_inputs", allowedOrigins };
+    }
+
+    data.edad = edad;
+    data.edad_retiro = edadRetiro;
+    data.ingreso_actual = ingresoMensual;
+    data.crecimiento_salarial_pct = growthPct;
+    data.tasa_descuento_pct = discountPct;
+    data.nominal_5_anios = Math.round(result.nominal5);
+    data.nominal_10_anios = Math.round(result.nominal10);
+    data.nominal_total = Math.round(result.nominalTotal);
+    data.valor_presente = Math.round(result.pvTotal);
   }
 
   const supabase = createServiceRoleClient();

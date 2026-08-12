@@ -19,6 +19,7 @@ import type {
   DiagnosticoFinancieroConfig,
   DiagnosticoRetiroConfig,
   DiagnosticoSolidezConfig,
+  CalculadoraIngresosConfig,
 } from "@/lib/miniApps/queries";
 import {
   DEFAULT_DIAGNOSTICO_AGENTE,
@@ -50,6 +51,7 @@ import {
   type DiagnosticoRetiroThemeKey,
 } from "@/lib/miniApps/diagnosticoRetiroDefaults";
 import { DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS, type DiagnosticoSolidezTheme } from "@/lib/miniApps/diagnosticoSolidezDefaults";
+import { DEFAULT_CALCULADORA_INGRESOS_BRAND } from "@/lib/miniApps/calculadoraIngresosDefaults";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
@@ -59,6 +61,7 @@ const TEMPLATES = [
   { key: "diagnostico_financiero", label: "Diagnóstico Interactivo Financiero", available: true },
   { key: "diagnostico_financiero_retiro", label: "Diagnóstico Financiero - Retiro", available: true },
   { key: "diagnostico_solidez_financiera", label: "diagnostico financiero - Caballo de Troya", available: true },
+  { key: "calculadora_capacidad_ingresos", label: "Calculadora de Capacidad de Generar Ingresos", available: true },
   { key: "formulario", label: "Formulario (Próximamente)", available: false },
   { key: "landing", label: "Landing (Próximamente)", available: false },
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
@@ -266,6 +269,12 @@ export function NewMiniAppWizard({
   const [solidezWaGreeting, setSolidezWaGreeting] = useState(DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND.waGreeting);
   const [solidezTheme, setSolidezTheme] = useState<DiagnosticoSolidezTheme>("brass");
 
+  const [calcAdvisorName, setCalcAdvisorName] = useState(DEFAULT_CALCULADORA_INGRESOS_BRAND.advisorName);
+  const [calcCompanyName, setCalcCompanyName] = useState(DEFAULT_CALCULADORA_INGRESOS_BRAND.companyName);
+  const [calcWhatsapp, setCalcWhatsapp] = useState(DEFAULT_CALCULADORA_INGRESOS_BRAND.whatsapp);
+  const [calcCalendly, setCalcCalendly] = useState(DEFAULT_CALCULADORA_INGRESOS_BRAND.calendly);
+  const [calcWebhookURL, setCalcWebhookURL] = useState(DEFAULT_CALCULADORA_INGRESOS_BRAND.webhookURL);
+
   function handleLogoCropped(blob: Blob) {
     setLogoBlob(blob);
     setLogoPreviewUrl(URL.createObjectURL(blob));
@@ -279,7 +288,13 @@ export function NewMiniAppWizard({
     }
     setIsPending(true);
     try {
-      let config: MiniAppFieldConfig | CalculadoraBrechaConfig | DiagnosticoFinancieroConfig | DiagnosticoRetiroConfig | DiagnosticoSolidezConfig;
+      let config:
+        | MiniAppFieldConfig
+        | CalculadoraBrechaConfig
+        | DiagnosticoFinancieroConfig
+        | DiagnosticoRetiroConfig
+        | DiagnosticoSolidezConfig
+        | CalculadoraIngresosConfig;
       if (templateKey === "calculadora_brecha_retiro") {
         config = { whatsappAsesor, avisoPrivacidadUrl, licenseBadge };
       } else if (templateKey === "diagnostico_financiero") {
@@ -330,6 +345,17 @@ export function NewMiniAppWizard({
             waGreeting: solidezWaGreeting,
           },
           themeActive: solidezTheme,
+        };
+      } else if (templateKey === "calculadora_capacidad_ingresos") {
+        config = {
+          brand: {
+            advisorName: calcAdvisorName,
+            companyName: calcCompanyName,
+            whatsapp: calcWhatsapp,
+            calendly: calcCalendly,
+            logoURL: DEFAULT_CALCULADORA_INGRESOS_BRAND.logoURL,
+            webhookURL: calcWebhookURL,
+          },
         };
       } else {
         config = {
@@ -453,6 +479,10 @@ export function NewMiniAppWizard({
                 if (templateKey === "diagnostico_solidez_financiera" && !solidezAdvisorName.trim()) {
                   const m = members.find((x) => x.memberId === e.target.value);
                   if (m) setSolidezAdvisorName(m.fullName);
+                }
+                if (templateKey === "calculadora_capacidad_ingresos" && !calcAdvisorName.trim()) {
+                  const m = members.find((x) => x.memberId === e.target.value);
+                  if (m) setCalcAdvisorName(m.fullName);
                 }
               }}
             >
@@ -611,6 +641,29 @@ export function NewMiniAppWizard({
               </div>
             )}
 
+            {templateKey === "calculadora_capacidad_ingresos" && (
+              <div className="flex flex-col gap-4">
+                <div className="my-1 h-px bg-border-default" />
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+                <Input label="Nombre a mostrar" value={calcAdvisorName} onChange={(e) => setCalcAdvisorName(e.target.value)} placeholder="Ej. Patricio Jaik" />
+                <Input label="Despacho / empresa (opcional)" value={calcCompanyName} onChange={(e) => setCalcCompanyName(e.target.value)} />
+                <Input
+                  label="WhatsApp (solo dígitos, con código de país)"
+                  value={calcWhatsapp}
+                  onChange={(e) => setCalcWhatsapp(e.target.value)}
+                  placeholder="5215500000000"
+                  hint="Si lo dejás vacío, la herramienta le va a pedir su WhatsApp al asesor la primera vez que entre a su link."
+                />
+                <Input label="URL de agenda (Calendly u otro)" value={calcCalendly} onChange={(e) => setCalcCalendly(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+                <Input
+                  label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                  value={calcWebhookURL}
+                  onChange={(e) => setCalcWebhookURL(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            )}
+
             {/* Solo estos dos colores — el resto del sistema visual de la
              * página pública se genera solo (paletteEngine.ts), con
              * contraste WCAG verificado automáticamente. No aplica a los
@@ -618,7 +671,8 @@ export function NewMiniAppWizard({
              * efecto de estos selectores. */}
             {templateKey !== "diagnostico_financiero" &&
               templateKey !== "diagnostico_financiero_retiro" &&
-              templateKey !== "diagnostico_solidez_financiera" && (
+              templateKey !== "diagnostico_solidez_financiera" &&
+              templateKey !== "calculadora_capacidad_ingresos" && (
             <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -1002,6 +1056,25 @@ export function NewMiniAppWizard({
           </div>
         )}
 
+        {step === 2 && templateKey === "calculadora_capacidad_ingresos" && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-neutral-500">
+              El diseño, la fórmula de proyección y los supuestos por defecto (crecimiento salarial 3%, tasa de descuento 5%) son fijos — la persona que usa la calculadora puede ajustar esos dos
+              supuestos ella misma desde la herramienta.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS, opcional)</label>
+              <textarea
+                value={allowedOrigins}
+                onChange={(e) => setAllowedOrigins(e.target.value)}
+                placeholder={"Solo si además querés aceptar leads desde un dominio externo"}
+                rows={2}
+                className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+              />
+            </div>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="flex flex-col gap-3 rounded-md border border-border-default bg-surface-2 p-4 text-sm">
             <p>
@@ -1023,6 +1096,7 @@ export function NewMiniAppWizard({
                 {solidezAdvisorName || "(sin nombre de asesor)"} · paleta {DIAGNOSTICO_SOLIDEZ_THEME_OPTIONS.find((o) => o.key === solidezTheme)?.label}
               </p>
             )}
+            {templateKey === "calculadora_capacidad_ingresos" && <p className="text-neutral-500">{calcAdvisorName || "(sin nombre de asesor)"}</p>}
             <p className="text-neutral-500">Se va a publicar en tu propia URL de Growth Link al confirmar.</p>
           </div>
         )}

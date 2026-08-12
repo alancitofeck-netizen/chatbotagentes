@@ -33,6 +33,12 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   areas: "Desglose por área",
   answers: "Respuestas (índices)",
   recomendaciones: "Recomendaciones",
+  crecimiento_salarial_pct: "Crecimiento salarial anual esperado",
+  tasa_descuento_pct: "Tasa de descuento anual",
+  nominal_5_anios: "Ingreso proyectado — 5 años",
+  nominal_10_anios: "Ingreso proyectado — 10 años",
+  nominal_total: "Ingreso proyectado — hasta el retiro",
+  valor_presente: "Valor presente estimado",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);

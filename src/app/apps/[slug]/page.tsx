@@ -8,6 +8,7 @@ import { LinkedAppLanding } from "./LinkedAppLanding";
 import { DiagnosticoFinancieroApp } from "./DiagnosticoFinancieroApp";
 import { DiagnosticoRetiroApp } from "./DiagnosticoRetiroApp";
 import { DiagnosticoSolidezApp } from "./DiagnosticoSolidezApp";
+import { CalculadoraIngresosApp } from "./CalculadoraIngresosApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -85,6 +86,13 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
     // Grotesk autocontenido (ver DiagnosticoSolidezApp.tsx), sin
     // themeCss/--ma-*.
     return <DiagnosticoSolidezApp app={app} />;
+  }
+
+  if (app.templateKey === "calculadora_capacidad_ingresos") {
+    // Mismo motivo que diagnostico_solidez_financiera: diseño Fraunces/
+    // Inter/IBM Plex Mono autocontenido (ver CalculadoraIngresosApp.tsx),
+    // sin themeCss/--ma-*.
+    return <CalculadoraIngresosApp app={app} />;
   }
 
   notFound();

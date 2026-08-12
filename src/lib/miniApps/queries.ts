@@ -41,6 +41,7 @@ import {
   type DiagnosticoSolidezBrand,
   type DiagnosticoSolidezTheme,
 } from "@/lib/miniApps/diagnosticoSolidezDefaults";
+import { DEFAULT_CALCULADORA_INGRESOS_BRAND, type CalculadoraIngresosBrand } from "@/lib/miniApps/calculadoraIngresosDefaults";
 
 export type MiniAppTemplateKey =
   | "simulador_retiro"
@@ -48,7 +49,8 @@ export type MiniAppTemplateKey =
   | "app_vinculada"
   | "diagnostico_financiero"
   | "diagnostico_financiero_retiro"
-  | "diagnostico_solidez_financiera";
+  | "diagnostico_solidez_financiera"
+  | "calculadora_capacidad_ingresos";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -152,6 +154,17 @@ export interface DiagnosticoSolidezConfig {
   assignedAgentName?: string;
 }
 
+/** Config para "Calculadora de Capacidad de Generar Ingresos" — ver
+ * calculadoraIngresosDefaults.ts para el shape de `brand` y el motor de
+ * cálculo. Igual que DiagnosticoSolidezConfig: sin `questions`/engine
+ * editable — es una calculadora de fórmula fija (proyección de ingresos +
+ * valor presente), lo único configurable por asesor es la identidad de
+ * marca. */
+export interface CalculadoraIngresosConfig {
+  brand: CalculadoraIngresosBrand;
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
@@ -159,6 +172,7 @@ export interface MiniAppConfigByTemplate {
   diagnostico_financiero: DiagnosticoFinancieroConfig;
   diagnostico_financiero_retiro: DiagnosticoRetiroConfig;
   diagnostico_solidez_financiera: DiagnosticoSolidezConfig;
+  calculadora_capacidad_ingresos: CalculadoraIngresosConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -325,6 +339,13 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
     const config: DiagnosticoSolidezConfig = {
       brand: { ...DEFAULT_DIAGNOSTICO_SOLIDEZ_BRAND, ...((raw.brand as Partial<DiagnosticoSolidezBrand>) ?? {}) },
       themeActive: typeof raw.themeActive === "string" ? (raw.themeActive as DiagnosticoSolidezTheme) : DEFAULT_DIAGNOSTICO_SOLIDEZ_THEME,
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "calculadora_capacidad_ingresos") {
+    const config: CalculadoraIngresosConfig = {
+      brand: { ...DEFAULT_CALCULADORA_INGRESOS_BRAND, ...((raw.brand as Partial<CalculadoraIngresosBrand>) ?? {}) },
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];
