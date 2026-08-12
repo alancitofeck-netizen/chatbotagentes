@@ -60,7 +60,7 @@ export default async function ClientResumenPage({ params }: { params: Promise<{ 
     getClientAppointments(workspaceId, clientId),
     getWorkspaceMembers(workspaceId),
     getClientTimeline(workspaceId, clientId),
-    getClientConversationsCount(workspaceId, client.contactId),
+    client.contactId ? getClientConversationsCount(workspaceId, client.contactId) : Promise.resolve(0),
     getClientNotes(workspaceId, clientId),
   ]);
 
@@ -300,7 +300,7 @@ export default async function ClientResumenPage({ params }: { params: Promise<{ 
             <CardHeader
               title="Notas internas"
               action={
-                <a href={`/clientes/${clientId}/contrato`} className="text-xs font-medium text-accent-600 hover:underline">
+                <a href={`/asesores/${clientId}/contrato`} className="text-xs font-medium text-accent-600 hover:underline">
                   Editar
                 </a>
               }

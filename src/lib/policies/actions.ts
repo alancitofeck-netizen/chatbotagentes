@@ -198,7 +198,7 @@ export async function createPolicyAction(input: PolicyFormInput): Promise<{ id: 
   await ensurePolicyPaymentSchedule(workspaceId, policy.id as string);
 
   revalidatePolicies();
-  if (input.clientId) revalidatePath(`/clientes/${input.clientId}`);
+  if (input.clientId) revalidatePath(`/asesores/${input.clientId}`);
   void role; // reservado para un futuro gate de permisos más fino
   return { id: policy.id as string, contactId };
 }

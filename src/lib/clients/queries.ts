@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { buildClientAlerts, type ClientAlertType, type ClientAlertTaskInput } from "@/lib/clients/alerts";
 
 export type ClientStatus = "en_onboarding" | "activo" | "pausado" | "archivado";
@@ -47,9 +48,11 @@ function mapContract(r: Record<string, unknown>): ClientContract {
 
 export interface ClientListItem {
   id: string;
-  contactId: string;
+  linkedWorkspaceId: string | null;
+  contactId: string | null;
   contactName: string;
   contactAvatarUrl: string | null;
+  contactEmail: string | null;
   company: string | null;
   profession: string | null;
   insurer: string | null;
@@ -73,18 +76,106 @@ export interface ClientListItem {
   createdAt: string;
 }
 
+export interface RealAdvisorWorkspace {
+  workspaceId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  workspaceCreatedAt: string;
+}
+
+/** Fuente de verdad de "quién es asesor de Growth Link": workspaces reales
+ * (cada asesor que se registró tiene el suyo, provisionDefaultWorkspaceIfNeeded)
+ * — nunca un contacto fabricado. Excluye el/los workspace(s) de cualquier
+ * platform_admin (vos) — ese es tu propio workspace, no un asesor. Mismo
+ * criterio de resolución de "usuario principal" (primer miembro por
+ * created_at) + auth.admin.getUserById que ya usa getAllWorkspacesForSupervision
+ * (src/lib/platform/queries.ts) para la tabla "Agentes" — deliberadamente NO
+ * se reutiliza esa función directa porque trae leads/conversaciones/
+ * integraciones que esta ficha no necesita (esos datos son del CRM del
+ * asesor, no de la administración de Growth Link sobre el asesor). */
+export async function getRealAdvisorWorkspaces(): Promise<RealAdvisorWorkspace[]> {
+  const supabase = await createClient();
+  const [{ data: workspaces }, { data: members }, { data: platformAdmins }] = await Promise.all([
+    supabase.from("workspaces").select("id, created_at").order("created_at", { ascending: true }),
+    supabase.from("workspace_members").select("workspace_id, user_id, created_at").order("created_at", { ascending: true }),
+    supabase.from("platform_admins").select("user_id"),
+  ]);
+  if (!workspaces) return [];
+
+  const platformAdminIds = new Set((platformAdmins ?? []).map((p) => p.user_id as string));
+  const primaryUserByWorkspace = new Map<string, string>();
+  for (const m of members ?? []) {
+    const wid = m.workspace_id as string;
+    if (!primaryUserByWorkspace.has(wid)) primaryUserByWorkspace.set(wid, m.user_id as string);
+  }
+
+  const realWorkspaces = workspaces.filter((w) => {
+    const primaryUserId = primaryUserByWorkspace.get(w.id as string);
+    return primaryUserId && !platformAdminIds.has(primaryUserId);
+  });
+
+  const serviceClient = createServiceRoleClient();
+  const userInfoByWorkspace = new Map<string, { name: string; email: string; avatarUrl: string | null }>();
+  await Promise.all(
+    realWorkspaces.map(async (w) => {
+      const primaryUserId = primaryUserByWorkspace.get(w.id as string)!;
+      const { data } = await serviceClient.auth.admin.getUserById(primaryUserId);
+      if (data?.user) {
+        userInfoByWorkspace.set(w.id as string, {
+          name: (data.user.user_metadata?.full_name as string | undefined) || data.user.email || "—",
+          email: data.user.email ?? "—",
+          avatarUrl: (data.user.user_metadata?.avatar_url as string | undefined) ?? null,
+        });
+      }
+    }),
+  );
+
+  return realWorkspaces.map((w) => {
+    const info = userInfoByWorkspace.get(w.id as string);
+    return {
+      workspaceId: w.id as string,
+      name: info?.name ?? "—",
+      email: info?.email ?? "—",
+      avatarUrl: info?.avatarUrl ?? null,
+      workspaceCreatedAt: w.created_at as string,
+    };
+  });
+}
+
+/** Da de alta la ficha administrativa (fila `clients`, todo vacío salvo el
+ * ancla `linked_workspace_id`) para cualquier asesor real que todavía no la
+ * tenga — para que la lista de Asesores nunca dependa de que vos crees la
+ * tarjeta a mano (punto explícito del pedido). No fabrica NINGÚN dato: la
+ * fila arranca en los defaults de la tabla (status 'en_onboarding', sin
+ * contrato/setter/health score) hasta que se cargue algo real. */
+async function ensureAdvisorRecordsExist(workspaceId: string, advisors: RealAdvisorWorkspace[]): Promise<void> {
+  if (advisors.length === 0) return;
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).not("linked_workspace_id", "is", null);
+  const existingIds = new Set((existing ?? []).map((r) => r.linked_workspace_id as string));
+  const missing = advisors.filter((a) => !existingIds.has(a.workspaceId));
+  if (missing.length === 0) return;
+  await supabase.from("clients").insert(missing.map((a) => ({ workspace_id: workspaceId, linked_workspace_id: a.workspaceId })));
+}
+
 /** Mismo patrón que getMiniAppsList (src/lib/miniApps/queries.ts): un select
  * principal + selects de conteo por client_id, agregados en JS con un Map —
  * a esta escala (decenas de clientes, no miles) es más simple que armar
  * vistas/RPCs de agregación y sigue el criterio ya usado en el resto del
- * proyecto para listados con KPIs derivados. */
+ * proyecto para listados con KPIs derivados. La identidad (nombre/foto/
+ * email) ya no sale de un contacto fabricado — sale de getRealAdvisorWorkspaces. */
 export async function getClientsList(workspaceId: string): Promise<ClientListItem[]> {
   const supabase = await createClient();
+
+  const advisors = await getRealAdvisorWorkspaces();
+  await ensureAdvisorRecordsExist(workspaceId, advisors);
+  const advisorByWorkspace = new Map(advisors.map((a) => [a.workspaceId, a]));
 
   const { data: rows } = await supabase
     .from("clients")
     .select(
-      "id, contact_id, profession, insurer, country, city, status, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url)",
+      "id, contact_id, linked_workspace_id, profession, insurer, country, city, status, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url)",
     )
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false });
@@ -151,6 +242,8 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
   return rows.map((r) => {
     const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
     const id = r.id as string;
+    const linkedWorkspaceId = r.linked_workspace_id as string | null;
+    const advisor = linkedWorkspaceId ? advisorByWorkspace.get(linkedWorkspaceId) : undefined;
     const activeContract = activeContractByClient.get(id) ?? null;
     const alerts = buildClientAlerts({
       contract: activeContract,
@@ -160,9 +253,11 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
     });
     return {
       id,
-      contactId: r.contact_id as string,
-      contactName: (contact?.name as string | undefined) ?? "Sin nombre",
-      contactAvatarUrl: (contact?.avatar_url as string | undefined) ?? null,
+      linkedWorkspaceId,
+      contactId: r.contact_id as string | null,
+      contactName: advisor?.name ?? (contact?.name as string | undefined) ?? "Sin nombre",
+      contactAvatarUrl: advisor?.avatarUrl ?? (contact?.avatar_url as string | undefined) ?? null,
+      contactEmail: advisor?.email ?? null,
       company: (contact?.company as string | undefined) ?? null,
       profession: r.profession as string | null,
       insurer: r.insurer as string | null,
@@ -191,7 +286,8 @@ export async function getClientsList(workspaceId: string): Promise<ClientListIte
 export interface ClientProfile {
   id: string;
   workspaceId: string;
-  contactId: string;
+  linkedWorkspaceId: string | null;
+  contactId: string | null;
   contactName: string;
   contactAvatarUrl: string | null;
   contactEmail: string | null;
@@ -215,12 +311,38 @@ export interface ClientProfile {
   createdAt: string;
 }
 
+/** Resuelve nombre/email/foto real del asesor dueño de `linkedWorkspaceId`
+ * (primer miembro de ese workspace + auth.admin.getUserById) — variante de
+ * fila única de la misma resolución que getRealAdvisorWorkspaces hace en
+ * lote para la lista; separada porque acá alcanza con un solo workspace, no
+ * hace falta traer los otros 7. */
+async function resolveAdvisorIdentity(linkedWorkspaceId: string): Promise<{ name: string; email: string; avatarUrl: string | null } | null> {
+  const supabase = await createClient();
+  const { data: member } = await supabase
+    .from("workspace_members")
+    .select("user_id")
+    .eq("workspace_id", linkedWorkspaceId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!member) return null;
+
+  const serviceClient = createServiceRoleClient();
+  const { data } = await serviceClient.auth.admin.getUserById(member.user_id as string);
+  if (!data?.user) return null;
+  return {
+    name: (data.user.user_metadata?.full_name as string | undefined) || data.user.email || "—",
+    email: data.user.email ?? "—",
+    avatarUrl: (data.user.user_metadata?.avatar_url as string | undefined) ?? null,
+  };
+}
+
 export async function getClientProfile(workspaceId: string, clientId: string): Promise<ClientProfile | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("clients")
     .select(
-      "id, workspace_id, contact_id, profession, insurer, country, city, status, service_type, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, health_score_updated_at, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url, email, phone)",
+      "id, workspace_id, contact_id, linked_workspace_id, profession, insurer, country, city, status, service_type, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, health_score_updated_at, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url, email, phone)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", clientId)
@@ -228,13 +350,16 @@ export async function getClientProfile(workspaceId: string, clientId: string): P
   if (!data) return null;
 
   const contact = Array.isArray(data.contacts) ? data.contacts[0] : data.contacts;
+  const linkedWorkspaceId = data.linked_workspace_id as string | null;
+  const advisor = linkedWorkspaceId ? await resolveAdvisorIdentity(linkedWorkspaceId) : null;
   return {
     id: data.id as string,
     workspaceId: data.workspace_id as string,
-    contactId: data.contact_id as string,
-    contactName: (contact?.name as string | undefined) ?? "Sin nombre",
-    contactAvatarUrl: (contact?.avatar_url as string | undefined) ?? null,
-    contactEmail: (contact?.email as string | undefined) ?? null,
+    linkedWorkspaceId,
+    contactId: data.contact_id as string | null,
+    contactName: advisor?.name ?? (contact?.name as string | undefined) ?? "Sin nombre",
+    contactAvatarUrl: advisor?.avatarUrl ?? (contact?.avatar_url as string | undefined) ?? null,
+    contactEmail: advisor?.email ?? (contact?.email as string | undefined) ?? null,
     contactPhone: (contact?.phone as string | undefined) ?? null,
     company: (contact?.company as string | undefined) ?? null,
     profession: data.profession as string | null,

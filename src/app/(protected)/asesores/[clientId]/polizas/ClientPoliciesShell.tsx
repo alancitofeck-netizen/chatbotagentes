@@ -203,7 +203,7 @@ export function ClientPoliciesShell({
       {creating && (
         <PolicyFormSheet
           policy={null}
-          defaultContact={{ id: client.contactId, name: client.contactName, phone: client.contactPhone ?? undefined, email: client.contactEmail ?? undefined }}
+          defaultContact={client.contactId ? { id: client.contactId, name: client.contactName, phone: client.contactPhone ?? undefined, email: client.contactEmail ?? undefined } : null}
           initialClientId={clientId}
           members={members}
           onClose={() => setCreating(false)}

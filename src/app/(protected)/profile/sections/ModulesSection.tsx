@@ -16,7 +16,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   insurance_prospects: { name: "Posibles Pólizas", description: "Prospectos de seguro capturados desde Mini Apps, calculadoras y formularios." },
   policies: { name: "Pólizas", description: "Gestión completa de pólizas activas: prima, comisión, coberturas, vencimientos y renovaciones." },
   asesorias: { name: "Asesorías", description: "Reuniones guiadas con el prospecto (Meeting OS) — se guardan solas y quedan en el historial del contacto." },
-  clientes: { name: "Clientes", description: "Centro de control interno de los clientes propios de GrowthLink: contrato, salud, KPIs y accesos. Solo owners/admins." },
+  asesores: { name: "Asesores", description: "Panel administrativo del Owner global sobre las cuentas reales de asesores de Growth Link: contrato, salud, KPIs y accesos. Solo el Owner." },
   collections: { name: "Cobranza", description: "Centro financiero: pagos, recibos, vencimientos, renovaciones y comisiones de toda la cartera." },
   policy_extraction: { name: "Extracción IA", description: "Subí el PDF de una póliza y la IA completa los datos clave listos para guardar en Pólizas." },
   goals: { name: "Metas y Bonificaciones", description: "Objetivos de producción, ranking entre asesores, logros y proyecciones de cumplimiento." },

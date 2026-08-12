@@ -51,11 +51,11 @@ export function EditClientSheet({ client, members, onClose, onSaved }: { client:
           accountManagerId: accountManagerId || null,
           trafficManagerId: trafficManagerId || null,
         });
-        toast.success("Cliente actualizado.");
+        toast.success("Asesor actualizado.");
         onSaved();
         onClose();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "No se pudo actualizar el cliente.");
+        toast.error(err instanceof Error ? err.message : "No se pudo actualizar el asesor.");
       }
     });
   }

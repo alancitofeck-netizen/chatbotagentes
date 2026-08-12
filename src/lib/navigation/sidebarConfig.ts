@@ -70,7 +70,6 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   { id: "advisors", name: "Prospectos", icon: ShieldCheck, route: "/advisors", section: "Clientes", moduleKey: "advisors", order: 1 },
   { id: "mini_apps", name: "Mini Apps", icon: AppWindow, route: "/mini-apps", section: "Clientes", moduleKey: "mini_apps", order: 2 },
   { id: "asesorias", name: "Asesorías", icon: Presentation, route: "/asesorias", section: "Clientes", moduleKey: "asesorias", order: 3 },
-  { id: "clientes", name: "Clientes", icon: Users, route: "/clientes", section: "Clientes", moduleKey: "clientes", order: 4 },
 
   { id: "policies", name: "Pólizas", icon: FileCheck2, route: "/polizas", section: "Pólizas", moduleKey: "policies", order: 0 },
 
@@ -139,6 +138,15 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   },
 
   { id: "classroom", name: "Classroom", icon: GraduationCap, route: "/classroom", section: "Aprendizaje", order: 0 },
+
+  // "Asesores" es el panel administrativo del Owner global sobre las
+  // cuentas reales de asesores de Growth Link — deliberadamente en su
+  // propia sección "Administración", separada de "Clientes" (que agrupa
+  // el CRM propio de CADA workspace) para que no se confundan los dos
+  // conceptos. moduleEnabled sigue viniendo de workspace_modules como
+  // cualquier otro módulo — el gate real de "quién puede verlo" vive en la
+  // página (isPlatformAdmin), no acá.
+  { id: "asesores", name: "Asesores", icon: Users, route: "/asesores", section: "Administración", moduleKey: "asesores", order: 0 },
 
   {
     id: "data_transfer",

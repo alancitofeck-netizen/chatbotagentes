@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Link2, CalendarCheck, MessageCircle, FileText, AlertTriangle, OctagonAlert } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { isPlatformAdmin } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
 import { getClientProfile } from "@/lib/clients/queries";
 import { getClientAlerts } from "@/lib/clients/alerts";
@@ -41,22 +42,24 @@ const TABS = [
   { href: "contrato", label: "Contrato" },
 ];
 
-/** Fase 1: acceso restringido a owner/admin en TODO el módulo — mismo
- * criterio que clientes/page.tsx. Un solo fetch de perfil acá; cada
+/** Acceso restringido al Owner global — mismo criterio que asesores/page.tsx
+ * (isPlatformAdmin, no solo el rol dentro de este workspace: la ficha
+ * resuelve identidad de OTRO workspace real vía service role, ver
+ * resolveAdvisorIdentity en queries.ts). Un solo fetch de perfil acá; cada
  * pestaña (children) trae solo lo que le corresponde. */
 export default async function ClientProfileLayout({ children, params }: { children: ReactNode; params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
   const { workspaceId, role } = await requireActiveWorkspace();
 
-  if (role !== "owner" && role !== "admin") {
+  if ((role !== "owner" && role !== "admin") || !(await isPlatformAdmin())) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
-        <EmptyState icon={ShieldAlert} title="Acceso restringido" description="Este módulo es solo para owners y admins del workspace." />
+        <EmptyState icon={ShieldAlert} title="Acceso restringido" description="Este módulo es solo para el Owner global de Growth Link." />
       </div>
     );
   }
 
-  await assertModuleEnabled(workspaceId, "clientes");
+  await assertModuleEnabled(workspaceId, "asesores");
   let client = await getClientProfile(workspaceId, clientId);
   if (!client) notFound();
 
@@ -78,9 +81,9 @@ export default async function ClientProfileLayout({ children, params }: { childr
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <div className="flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/clientes" className="flex w-fit items-center gap-1.5 text-sm text-neutral-500 hover:text-foreground">
+        <Link href="/asesores" className="flex w-fit items-center gap-1.5 text-sm text-neutral-500 hover:text-foreground">
           <ArrowLeft className="size-4" aria-hidden="true" />
-          Volver a Clientes
+          Volver a Asesores
         </Link>
 
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -141,7 +144,7 @@ export default async function ClientProfileLayout({ children, params }: { childr
               </a>
             )}
             <Link
-              href={`/clientes/${clientId}/contrato`}
+              href={`/asesores/${clientId}/contrato`}
               className="flex items-center gap-1.5 rounded-full border border-border-default bg-surface-1 px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-2"
             >
               <FileText className="size-3.5" aria-hidden="true" />
@@ -167,7 +170,7 @@ export default async function ClientProfileLayout({ children, params }: { childr
 
         <div role="tablist" className="flex flex-wrap gap-5 overflow-x-auto border-b border-border-default">
           {TABS.map((tab) => (
-            <TabLink key={tab.href} href={`/clientes/${clientId}/${tab.href}`}>
+            <TabLink key={tab.href} href={`/asesores/${clientId}/${tab.href}`}>
               {tab.label}
             </TabLink>
           ))}

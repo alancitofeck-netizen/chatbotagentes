@@ -41,7 +41,7 @@ export function ClientListRow({ client, accountManagerName, onChanged }: { clien
     <div className="flex items-center gap-3 rounded-xl border border-border-default bg-surface-2 p-3 transition-colors hover:bg-surface-3">
       <button
         type="button"
-        onClick={() => router.push(`/clientes/${client.id}`)}
+        onClick={() => router.push(`/asesores/${client.id}`)}
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
       >
         <Avatar name={client.contactName} src={client.contactAvatarUrl} size={36} />
@@ -75,18 +75,18 @@ export function ClientListRow({ client, accountManagerName, onChanged }: { clien
         triggerLabel="Más opciones"
         triggerClassName="flex size-7 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-surface-3 hover:text-foreground"
         items={[
-          { label: "Ver cliente", icon: <Eye size={14} aria-hidden="true" />, onSelect: () => router.push(`/clientes/${client.id}`) },
+          { label: "Ver asesor", icon: <Eye size={14} aria-hidden="true" />, onSelect: () => router.push(`/asesores/${client.id}`) },
           client.status === "pausado"
-            ? { label: "Reactivar", icon: <Play size={14} aria-hidden="true" />, onSelect: () => run(() => reactivateClientAction(client.id), "Cliente reactivado.") }
-            : { label: "Pausar", icon: <Pause size={14} aria-hidden="true" />, onSelect: () => run(() => pauseClientAction(client.id), "Cliente pausado.") },
-          { label: "Renovar contrato", icon: <RefreshCw size={14} aria-hidden="true" />, onSelect: () => router.push(`/clientes/${client.id}/contrato`) },
+            ? { label: "Reactivar", icon: <Play size={14} aria-hidden="true" />, onSelect: () => run(() => reactivateClientAction(client.id), "Asesor reactivado.") }
+            : { label: "Pausar", icon: <Pause size={14} aria-hidden="true" />, onSelect: () => run(() => pauseClientAction(client.id), "Asesor pausado.") },
+          { label: "Renovar contrato", icon: <RefreshCw size={14} aria-hidden="true" />, onSelect: () => router.push(`/asesores/${client.id}/contrato`) },
           ...(client.linkedinProfileUrl
             ? [{ label: "Abrir LinkedIn", icon: <Link2 size={14} aria-hidden="true" />, onSelect: () => window.open(client.linkedinProfileUrl!, "_blank") }]
             : []),
           ...(client.calendlyUrl
             ? [{ label: "Abrir Calendly", icon: <CalendarCheck size={14} aria-hidden="true" />, onSelect: () => window.open(client.calendlyUrl!, "_blank") }]
             : []),
-          { label: "Archivar", icon: <Archive size={14} aria-hidden="true" />, destructive: true, onSelect: () => run(() => archiveClientAction(client.id), "Cliente archivado.") },
+          { label: "Archivar", icon: <Archive size={14} aria-hidden="true" />, destructive: true, onSelect: () => run(() => archiveClientAction(client.id), "Asesor archivado.") },
         ]}
       />
     </div>

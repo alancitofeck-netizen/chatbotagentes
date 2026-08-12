@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { toast } from "@/components/toast/toast";
-import { getContactListAction } from "@/lib/contacts/actions";
-import type { ContactListItem } from "@/lib/contacts/queries";
-import { createClientAction } from "@/lib/clients/actions";
-
-interface PickedContact {
-  id: string;
-  name: string;
-  company: string | null;
-}
+import { getAvailableAdvisorWorkspacesAction, createClientAction } from "@/lib/clients/actions";
+import type { RealAdvisorWorkspace } from "@/lib/clients/queries";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -27,20 +20,18 @@ function addDaysIso(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-/** Wizard de creación — mismo espíritu que ContactPicker.tsx (Calendario):
- * hand-rolled search-and-pick combobox, no hay primitivo formal en
- * src/components/ui/. Si no elige un contacto existente, arma uno nuevo
- * inline (createClientAction lo resuelve via findOrCreateContact). */
+/** Wizard de alta — a diferencia de la versión anterior, NO fabrica ningún
+ * contacto: solo se puede elegir una cuenta REAL de asesor que todavía no
+ * tenga ficha administrativa (getAvailableAdvisorWorkspacesAction, filtra
+ * los que ya tienen `clients.linked_workspace_id`). En la práctica esto casi
+ * no hace falta usarlo — ensureAdvisorRecordsExist (queries.ts) ya da de
+ * alta la ficha automáticamente para cualquier asesor real apenas se abre
+ * la lista — pero queda para el caso de un asesor nuevo que se registró
+ * recién y todavía no se refrescó la lista. */
 export function NewClientWizard({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [picked, setPicked] = useState<PickedContact | null>(null);
+  const [available, setAvailable] = useState<RealAdvisorWorkspace[] | null>(null);
+  const [picked, setPicked] = useState<RealAdvisorWorkspace | null>(null);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ContactListItem[]>([]);
-  const [open, setOpen] = useState(false);
-  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newEmail, setNewEmail] = useState("");
 
   const [profession, setProfession] = useState("");
   const [insurer, setInsurer] = useState("");
@@ -56,22 +47,18 @@ export function NewClientWizard({ onClose, onCreated }: { onClose: () => void; o
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (debounce.current) clearTimeout(debounce.current);
-    if (!query.trim()) return;
-    debounce.current = setTimeout(() => {
-      getContactListAction({ search: query }).then((fresh) => {
-        setResults(fresh);
-        setOpen(true);
-      });
-    }, 300);
-    return () => {
-      if (debounce.current) clearTimeout(debounce.current);
-    };
-  }, [query]);
+    getAvailableAdvisorWorkspacesAction().then(setAvailable);
+  }, []);
+
+  const filtered = (available ?? []).filter((a) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q);
+  });
 
   async function handleSubmit() {
-    if (!picked && !newName.trim() && !newPhone.trim() && !newEmail.trim()) {
-      toast.error("Elegí un contacto existente o completá los datos de uno nuevo.");
+    if (!picked) {
+      toast.error("Elegí un asesor real de la lista.");
       return;
     }
     if (!startDate || !endDate) {
@@ -81,10 +68,7 @@ export function NewClientWizard({ onClose, onCreated }: { onClose: () => void; o
     setSaving(true);
     try {
       await createClientAction({
-        contactId: picked?.id ?? null,
-        contactName: newName || undefined,
-        contactPhone: newPhone || undefined,
-        contactEmail: newEmail || undefined,
+        linkedWorkspaceId: picked.workspaceId,
         profession: profession || undefined,
         insurer: insurer || undefined,
         country: country || undefined,
@@ -97,24 +81,28 @@ export function NewClientWizard({ onClose, onCreated }: { onClose: () => void; o
           commissionModel: commissionModel || null,
         },
       });
-      toast.success("Cliente creado.");
+      toast.success("Ficha del asesor creada.");
       onCreated();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "No se pudo crear el cliente.");
+      toast.error(err instanceof Error ? err.message : "No se pudo crear la ficha del asesor.");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Sheet open onClose={onClose} title="Nuevo cliente">
+    <Sheet open onClose={onClose} title="Nuevo asesor">
       <div className="flex flex-col gap-4 p-5">
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">Contacto</label>
+          <label className="text-sm font-medium text-foreground">Asesor</label>
           {picked ? (
             <div className="flex items-center justify-between rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm">
-              <span className="text-foreground">{picked.name}</span>
+              <div className="flex items-center gap-2">
+                <Avatar name={picked.name} src={picked.avatarUrl} size={24} />
+                <span className="text-foreground">{picked.name}</span>
+                <span className="text-xs text-neutral-500">{picked.email}</span>
+              </div>
               <button type="button" onClick={() => setPicked(null)} className="text-xs text-accent-600 hover:underline">
                 Cambiar
               </button>
@@ -125,46 +113,36 @@ export function NewClientWizard({ onClose, onCreated }: { onClose: () => void; o
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => results.length > 0 && setOpen(true)}
-                placeholder="Buscar contacto existente por nombre, teléfono, empresa…"
+                placeholder="Buscar por nombre o email…"
                 className="w-full rounded-sm border border-border-strong bg-surface-1 py-2 pr-3 pl-9 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
               />
-              {open && results.length > 0 && (
-                <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border-default bg-surface-1 shadow-[var(--elevation-md)]">
-                  {results.map((c) => (
-                    <li key={c.id}>
+              <ul className="mt-1 max-h-56 overflow-y-auto rounded-md border border-border-default bg-surface-1 shadow-[var(--elevation-md)]">
+                {available === null ? (
+                  <li className="px-3 py-2 text-sm text-neutral-500">Cargando asesores…</li>
+                ) : filtered.length === 0 ? (
+                  <li className="px-3 py-2 text-sm text-neutral-500">Todos los asesores reales ya tienen ficha.</li>
+                ) : (
+                  filtered.map((a) => (
+                    <li key={a.workspaceId}>
                       <button
                         type="button"
                         onClick={() => {
-                          setPicked({ id: c.id, name: c.name, company: c.company });
+                          setPicked(a);
                           setQuery("");
-                          setResults([]);
-                          setOpen(false);
                         }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-2"
                       >
-                        <Avatar name={c.name} src={c.avatarUrl} size={24} />
-                        <span className="truncate">{c.name}</span>
-                        {c.company && <span className="truncate text-xs text-neutral-500">{c.company}</span>}
+                        <Avatar name={a.name} src={a.avatarUrl} size={24} />
+                        <span className="truncate">{a.name}</span>
+                        <span className="truncate text-xs text-neutral-500">{a.email}</span>
                       </button>
                     </li>
-                  ))}
-                </ul>
-              )}
+                  ))
+                )}
+              </ul>
             </div>
           )}
         </div>
-
-        {!picked && (
-          <>
-            <p className="text-xs text-neutral-500">O completá los datos para crear un contacto nuevo:</p>
-            <Input label="Nombre" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Teléfono" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
-              <Input label="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-            </div>
-          </>
-        )}
 
         <div className="my-1 h-px bg-border-default" />
         <p className="text-xs font-medium tracking-wide text-neutral-400 uppercase">Datos de agencia</p>
@@ -190,7 +168,7 @@ export function NewClientWizard({ onClose, onCreated }: { onClose: () => void; o
         <Input label="Modelo de comisión" value={commissionModel} onChange={(e) => setCommissionModel(e.target.value)} placeholder="20% sobre pólizas cerradas" />
 
         <Button onClick={handleSubmit} loading={saving} className="mt-2">
-          Crear cliente
+          Crear ficha
         </Button>
       </div>
     </Sheet>

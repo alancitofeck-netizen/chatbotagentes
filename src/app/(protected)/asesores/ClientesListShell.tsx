@@ -97,8 +97,8 @@ export function ClientesListShell({
     return (
       <EmptyState
         icon={Users}
-        title="El módulo Clientes no está activo"
-        description="Activalo desde tu perfil, en Configuración > Módulos, para empezar a gestionar tus clientes."
+        title="El módulo Asesores no está activo"
+        description="Activalo desde tu perfil, en Configuración > Módulos, para empezar a gestionar los asesores de Growth Link."
       />
     );
   }
@@ -108,21 +108,21 @@ export function ClientesListShell({
       <div className="flex justify-end gap-2">
         <Button onClick={() => setShowCreate(true)}>
           <Plus size={16} aria-hidden="true" />
-          Nuevo cliente
+          Nuevo asesor
         </Button>
       </div>
 
       {clients.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="Todavía no hay clientes"
-          description="Creá el primero vinculando un contacto existente o cargando uno nuevo."
-          action={<Button onClick={() => setShowCreate(true)}>Nuevo cliente</Button>}
+          title="Todavía no hay asesores"
+          description="Los asesores que se registren en Growth Link van a aparecer automáticamente acá."
+          action={<Button onClick={() => setShowCreate(true)}>Nuevo asesor</Button>}
         />
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            <MetricCard icon={UserCheck} label="Clientes activos" value={String(metrics.activos)} />
+            <MetricCard icon={UserCheck} label="Asesores activos" value={String(metrics.activos)} />
             <MetricCard icon={CalendarDays} label="Citas este mes" value={String(metrics.citasMes)} />
             <MetricCard icon={FileCheck2} label="Pólizas este mes" value={String(metrics.polizasMes)} />
             <MetricCard icon={DollarSign} label="MRR activo" value={`USD ${metrics.mrr.toLocaleString("es-MX")}`} />
@@ -167,7 +167,7 @@ export function ClientesListShell({
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar clientes…"
+                placeholder="Buscar asesores…"
                 className="w-full rounded-full border border-border-default bg-surface-1 py-2 pr-3 pl-9 text-sm text-foreground placeholder:text-neutral-400 outline-none focus:border-accent-500"
               />
             </div>

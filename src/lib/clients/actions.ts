@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
-import { requireManagerRole } from "@/lib/auth/roles";
-import { findOrCreateContact } from "@/lib/contacts/match";
+import { requireManagerRole, requirePlatformAdmin } from "@/lib/auth/roles";
 import { getOrCreateDefaultGroup } from "@/lib/tasks/groups/actions";
 import { logActivity } from "@/lib/activity/log";
 import {
@@ -20,6 +19,7 @@ import {
   getClientUpcomingPolicyPayments,
   getClientAudienceFunnel,
   getClientSetterPerformance,
+  getRealAdvisorWorkspaces,
   type ClientPolicyPayment,
   type ClientListItem,
   type ClientProfile,
@@ -33,27 +33,50 @@ import {
   type ClientNote,
   type ClientAudienceFunnel,
   type ClientSetterPerformance,
+  type RealAdvisorWorkspace,
   type BookingFuente,
   type BookingResultado,
 } from "@/lib/clients/queries";
 
-const CLIENT_CONTACT_SOURCE = "cliente";
-
 function revalidateClients(clientId?: string) {
-  revalidatePath("/clientes");
-  if (clientId) revalidatePath(`/clientes/${clientId}`);
+  revalidatePath("/asesores");
+  if (clientId) revalidatePath(`/asesores/${clientId}`);
 }
 
+/** `getRealAdvisorWorkspaces`/`resolveAdvisorIdentity` (queries.ts) resuelven
+ * nombre/email real vía el service-role client (auth.admin.getUserById),
+ * que ignora RLS por diseño — a diferencia del resto de las acciones de este
+ * archivo (ya protegidas de cruce entre tenants porque siempre filtran por
+ * el workspace_id de QUIEN llama), acá `requireManagerRole` solo no alcanza:
+ * cualquier admin/owner de CUALQUIER workspace pasaría ese check. El gate
+ * real es ser platform admin (vos) — mismo criterio que ya usa
+ * PlatformWorkspacesTable/enterSupervisorMode (src/lib/platform/actions.ts). */
 export async function getClientsListAction(): Promise<ClientListItem[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  await requirePlatformAdmin();
   return getClientsList(workspaceId);
 }
 
 export async function getClientProfileAction(clientId: string): Promise<ClientProfile | null> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  await requirePlatformAdmin();
   return getClientProfile(workspaceId, clientId);
+}
+
+/** Para el buscador de "+ Asesor" — solo los workspaces reales que TODAVÍA
+ * no tienen ficha administrativa (`clients.linked_workspace_id`), para que
+ * nunca se pueda elegir dos veces al mismo asesor. */
+export async function getAvailableAdvisorWorkspacesAction(): Promise<RealAdvisorWorkspace[]> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  await requirePlatformAdmin();
+  const advisors = await getRealAdvisorWorkspaces();
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).not("linked_workspace_id", "is", null);
+  const linkedIds = new Set((existing ?? []).map((r) => r.linked_workspace_id as string));
+  return advisors.filter((a) => !linkedIds.has(a.workspaceId));
 }
 
 export async function getClientContractsAction(clientId: string): Promise<ClientContract[]> {
@@ -87,10 +110,7 @@ export async function getClientUpcomingPolicyPaymentsAction(clientId: string): P
 }
 
 export interface CreateClientInput {
-  contactId?: string | null;
-  contactName?: string;
-  contactPhone?: string;
-  contactEmail?: string;
+  linkedWorkspaceId: string;
   profession?: string;
   insurer?: string;
   country?: string;
@@ -105,37 +125,28 @@ export interface CreateClientInput {
   };
 }
 
-/** Crea (o reutiliza) el contacto ancla vía findOrCreateContact — mismo
- * helper que ya usan Pólizas/Asesorías — y en el mismo paso arma el primer
- * contrato (status "activo"), para que un cliente nuevo nunca quede sin
- * contrato asociado. `clients.contact_id` es unique: si el contacto elegido
- * ya es cliente, el insert falla con un mensaje claro en vez de un error
- * crudo de Postgres. */
+/** Da de alta la ficha administrativa de un asesor REAL (linkedWorkspaceId
+ * ya es un workspace real, elegido de getAvailableAdvisorWorkspacesAction —
+ * ver ensureAdvisorRecordsExist en queries.ts para el alta automática sin
+ * pasar por acá). Ya no fabrica ningún contacto — contact_id queda null. En
+ * el mismo paso arma el primer contrato (status "activo") para que la ficha
+ * nunca quede sin contrato asociado. `linked_workspace_id` es unique: si ese
+ * asesor ya tiene ficha, el insert falla con un mensaje claro. */
 export async function createClientAction(input: CreateClientInput): Promise<{ id: string }> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
+  await requirePlatformAdmin();
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
 
-  let contactId = input.contactId ?? null;
-  if (!contactId && (input.contactName || input.contactPhone || input.contactEmail)) {
-    contactId = await findOrCreateContact(
-      supabase,
-      workspaceId,
-      { name: input.contactName, phone: input.contactPhone, email: input.contactEmail },
-      CLIENT_CONTACT_SOURCE,
-    );
-  }
-  if (!contactId) throw new Error("Elegí un contacto existente o completá nombre/teléfono/email para crear uno nuevo.");
-
-  const { data: existing } = await supabase.from("clients").select("id").eq("workspace_id", workspaceId).eq("contact_id", contactId).maybeSingle();
-  if (existing) throw new Error("Este contacto ya es un cliente.");
+  const { data: existing } = await supabase.from("clients").select("id").eq("workspace_id", workspaceId).eq("linked_workspace_id", input.linkedWorkspaceId).maybeSingle();
+  if (existing) throw new Error("Este asesor ya tiene una ficha administrativa.");
 
   const { data: created, error } = await supabase
     .from("clients")
     .insert({
       workspace_id: workspaceId,
-      contact_id: contactId,
+      linked_workspace_id: input.linkedWorkspaceId,
       profession: input.profession?.trim() || null,
       insurer: input.insurer?.trim() || null,
       country: input.country?.trim() || null,
@@ -147,7 +158,7 @@ export async function createClientAction(input: CreateClientInput): Promise<{ id
     })
     .select("id")
     .single();
-  if (error || !created) throw new Error("No se pudo crear el cliente.");
+  if (error || !created) throw new Error("No se pudo crear la ficha del asesor.");
 
   const clientId = created.id as string;
   const { error: contractError } = await supabase.from("client_contracts").insert({
@@ -163,7 +174,7 @@ export async function createClientAction(input: CreateClientInput): Promise<{ id
   });
   if (contractError) throw new Error("El cliente se creó pero no se pudo guardar el contrato inicial.");
 
-  await logActivity(supabase, workspaceId, memberId, "client", clientId, "client_created", { contactId });
+  await logActivity(supabase, workspaceId, memberId, "client", clientId, "client_created", { linkedWorkspaceId: input.linkedWorkspaceId });
 
   revalidateClients();
   return { id: clientId };
