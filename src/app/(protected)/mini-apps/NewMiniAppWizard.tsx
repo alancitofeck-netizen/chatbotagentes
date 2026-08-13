@@ -1,12 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Copy } from "lucide-react";
-import { Sheet } from "@/components/ui/Sheet";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  Check,
+  Copy,
+  X,
+  LayoutGrid,
+  Sparkles,
+  Plus,
+  PieChart,
+  Calculator,
+  TrendingUp,
+  ShieldCheck,
+  Landmark,
+  GraduationCap,
+  LifeBuoy,
+  Gauge,
+  Activity,
+  Percent,
+  FileText,
+  Layout as LayoutIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
+import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/client";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { createMiniApp, updateMiniAppBranding } from "@/lib/miniApps/actions";
@@ -63,21 +84,143 @@ import { DEFAULT_AHORRO_FISCAL_BRAND } from "@/lib/miniApps/ahorroFiscalDefaults
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
+// `description`/`icon` son puramente visuales (grid de cards del Paso 1) —
+// no afectan `key`/`label`/`available`, que siguen siendo la misma fuente
+// de verdad que usan el resto del wizard y createMiniApp.
 const TEMPLATES = [
-  { key: "simulador_retiro", label: "Simulador de Retiro", available: true },
-  { key: "calculadora_brecha_retiro", label: "Calculadora de Brecha de Retiro", available: true },
-  { key: "diagnostico_financiero", label: "Diagnóstico Interactivo Financiero", available: true },
-  { key: "diagnostico_financiero_retiro", label: "Diagnóstico Financiero - Retiro", available: true },
-  { key: "diagnostico_solidez_financiera", label: "diagnostico financiero - Caballo de Troya", available: true },
-  { key: "calculadora_meta_universitaria", label: "Calculadora de Meta Universitaria", available: true },
-  { key: "kit_emergencia_financiera_familiar", label: "Kit de Emergencia Financiera Familiar", available: true },
-  { key: "test_preparacion_emergencia_financiera", label: "Test de Preparación para Emergencias Financieras", available: true },
-  { key: "diagnostico_salud_financiera", label: "Diagnóstico de Salud Financiera", available: true },
-  { key: "calculadora_ahorro_fiscal", label: "Calculadora de Ahorro Fiscal", available: true },
-  { key: "formulario", label: "Formulario (Próximamente)", available: false },
-  { key: "landing", label: "Landing (Próximamente)", available: false },
-  { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
+  { key: "simulador_retiro", label: "Simulador de Retiro", available: true, description: "Simula tu retiro ideal según tus metas y estilo de vida.", icon: PieChart },
+  {
+    key: "calculadora_brecha_retiro",
+    label: "Calculadora de Brecha de Retiro",
+    available: true,
+    description: "Descubre la diferencia entre el retiro deseado y el que puede lograr tu prospecto.",
+    icon: Calculator,
+  },
+  {
+    key: "diagnostico_financiero",
+    label: "Diagnóstico Interactivo Financiero",
+    available: true,
+    description: "Evalúa la salud financiera de tu prospecto en minutos.",
+    icon: TrendingUp,
+  },
+  {
+    key: "diagnostico_financiero_retiro",
+    label: "Diagnóstico Financiero - Retiro",
+    available: true,
+    description: "Análisis enfocado en el retiro y la jubilación futura.",
+    icon: ShieldCheck,
+  },
+  {
+    key: "diagnostico_solidez_financiera",
+    label: "diagnostico financiero - Caballo de Troya",
+    available: true,
+    description: "Diagnóstico de solidez financiera en 6 pilares clave.",
+    icon: Landmark,
+  },
+  {
+    key: "calculadora_meta_universitaria",
+    label: "Calculadora de Meta Universitaria",
+    available: true,
+    description: "Calcula cuánto necesita ahorrar tu prospecto para la universidad.",
+    icon: GraduationCap,
+  },
+  {
+    key: "kit_emergencia_financiera_familiar",
+    label: "Kit de Emergencia Financiera Familiar",
+    available: true,
+    description: "Organiza el fondo y los recursos de emergencia de la familia.",
+    icon: LifeBuoy,
+  },
+  {
+    key: "test_preparacion_emergencia_financiera",
+    label: "Test de Preparación para Emergencias Financieras",
+    available: true,
+    description: "Evalúa el nivel de preparación de tu prospecto ante imprevistos.",
+    icon: Gauge,
+  },
+  {
+    key: "diagnostico_salud_financiera",
+    label: "Diagnóstico de Salud Financiera",
+    available: true,
+    description: "Evalúa los 6 pilares de la salud financiera del prospecto.",
+    icon: Activity,
+  },
+  {
+    key: "calculadora_ahorro_fiscal",
+    label: "Calculadora de Ahorro Fiscal",
+    available: true,
+    description: "Estima el ahorro fiscal aprovechando deducciones y PPR.",
+    icon: Percent,
+  },
+  { key: "formulario", label: "Formulario (Próximamente)", available: false, description: "Formulario personalizado — disponible próximamente.", icon: FileText },
+  { key: "landing", label: "Landing (Próximamente)", available: false, description: "Página de aterrizaje personalizada — disponible próximamente.", icon: LayoutIcon },
+  {
+    key: "personalizado",
+    label: "Personalizado (Próximamente)",
+    available: false,
+    description: "Crea una mini app desde una plantilla en blanco — disponible próximamente.",
+    icon: Plus,
+  },
 ] as const;
+
+/** Modal grande y centrado para el flujo "Nueva Mini App" — distinto del
+ * Sheet.tsx compartido (panel lateral, usado por edición/detalle en el
+ * resto del CRM): a propósito NO se reutiliza/edita ese componente acá para
+ * no afectar a sus otros usos, ver comentario del propio Sheet.tsx. Mismo
+ * patrón de overlay/backdrop/Escape que ConfirmDialog.tsx, pero con ancho
+ * amplio (~80-85% en desktop) y contenido scrolleable. */
+function WizardModal({
+  open,
+  onClose,
+  title,
+  widthClassName,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: ReactNode;
+  widthClassName?: string;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button aria-label="Cerrar" onClick={onClose} className="absolute inset-0 bg-neutral-950/40" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={typeof title === "string" ? title : undefined}
+        className={cn(
+          "relative flex max-h-[88vh] w-full flex-col rounded-2xl bg-surface-1 shadow-[var(--elevation-lg)]",
+          widthClassName ?? "sm:w-[90%] lg:w-[85%] sm:max-w-4xl",
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-border-default px-6 py-4">
+          <div className="text-base font-semibold text-foreground">{title}</div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 const RETIRO_TIERS = ["low", "mid", "high"] as const;
 const RETIRO_TIER_LABELS: Record<(typeof RETIRO_TIERS)[number], string> = { low: "Puntaje bajo", mid: "Puntaje medio", high: "Puntaje alto" };
@@ -544,7 +687,7 @@ export function NewMiniAppWizard({
     const publicUrl = `${window.location.origin}/apps/${created.slug}`;
     const endpointUrl = `${window.location.origin}/api/public/mini-apps/${created.slug}/leads`;
     return (
-      <Sheet open onClose={onClose} title="Mini App publicada" className="max-w-2xl">
+      <WizardModal open onClose={onClose} title="Mini App publicada" widthClassName="sm:max-w-2xl">
         <div className="flex flex-col gap-4 p-5">
           <p className="text-sm text-neutral-500">Tu mini app ya está en línea — compartí este link con tus prospectos.</p>
           <CopyableField label="URL pública" value={publicUrl} />
@@ -558,40 +701,79 @@ export function NewMiniAppWizard({
           </details>
           <Button onClick={onClose}>Listo</Button>
         </div>
-      </Sheet>
+      </WizardModal>
     );
   }
 
   return (
-    <Sheet open onClose={onClose} title="Nueva Mini App" className="max-w-2xl">
-      <div className="flex flex-col gap-5 p-5">
+    <WizardModal open onClose={onClose} title="Crear nueva mini app">
+      <div className="flex flex-col gap-5 p-5 sm:p-6">
         <div role="tablist" className="flex gap-2">
           {STEPS.map((label, i) => (
-            <div key={label} className={`flex-1 rounded-full px-2 py-1.5 text-center text-[11px] font-medium ${i === step ? "bg-accent-500 text-white" : "bg-surface-2 text-neutral-500"}`}>
+            <div
+              key={label}
+              className={`flex-1 rounded-full px-3 py-2 text-center text-xs font-medium sm:text-sm ${i === step ? "bg-accent-500 text-white" : "bg-surface-2 text-neutral-500"}`}
+            >
               {i + 1}. {label}
             </div>
           ))}
         </div>
 
         {step === 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            {TEMPLATES.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                disabled={!t.available}
-                onClick={() => t.available && setTemplateKey(t.key as MiniAppTemplateKey)}
-                className={`rounded-lg border p-4 text-left text-sm ${
-                  !t.available
-                    ? "border-border-default text-neutral-400"
-                    : templateKey === t.key
-                      ? "border-accent-500 bg-accent-50 font-medium text-accent-700"
-                      : "border-border-default hover:border-accent-300"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="flex flex-col gap-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Selecciona el tipo de mini app</h3>
+                <p className="mt-1 text-sm text-neutral-500">Elige una plantilla prediseñada o comienza desde cero.</p>
+              </div>
+              <span className="hidden shrink-0 items-center gap-1.5 text-sm font-medium text-accent-600 sm:flex">
+                <LayoutGrid size={16} aria-hidden="true" />
+                Ver todas
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {TEMPLATES.map((t) => {
+                const Icon: LucideIcon = t.icon;
+                const selected = templateKey === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    disabled={!t.available}
+                    onClick={() => t.available && setTemplateKey(t.key as MiniAppTemplateKey)}
+                    className={cn(
+                      "relative flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-colors",
+                      !t.available
+                        ? "border-dashed border-border-strong text-neutral-400"
+                        : selected
+                          ? "border-accent-500 bg-accent-50"
+                          : "border-border-default hover:border-accent-300",
+                    )}
+                  >
+                    {selected && (
+                      <span className="absolute right-3 top-3 flex size-5 items-center justify-center rounded-full bg-accent-500 text-white">
+                        <Check size={12} aria-hidden="true" />
+                      </span>
+                    )}
+                    <span className={cn("flex size-9 items-center justify-center rounded-lg", t.available ? "bg-accent-100 text-accent-600" : "bg-surface-2 text-neutral-400")}>
+                      <Icon size={18} aria-hidden="true" />
+                    </span>
+                    <span>
+                      <span className={cn("block text-sm font-medium", selected ? "text-accent-700" : t.available ? "text-foreground" : "text-neutral-400")}>{t.label}</span>
+                      <span className="mt-0.5 block text-xs text-neutral-500">{t.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-start gap-2.5 rounded-lg bg-accent-50 px-3.5 py-3">
+              <Sparkles size={16} className="mt-0.5 shrink-0 text-accent-600" aria-hidden="true" />
+              <p className="text-xs text-neutral-600">
+                <span className="font-medium text-accent-700">Tip Growth Link:</span> Puedes duplicar o editar cualquier mini app existente desde el panel de Mini Apps.
+              </p>
+            </div>
           </div>
         )}
 
@@ -1514,6 +1696,6 @@ export function NewMiniAppWizard({
       </div>
 
       {showLogoDialog && <LogoCropDialog open onClose={() => setShowLogoDialog(false)} onCropped={handleLogoCropped} />}
-    </Sheet>
+    </WizardModal>
   );
 }
