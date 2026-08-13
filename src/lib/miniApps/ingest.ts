@@ -12,6 +12,7 @@ import { computeMetaUniversitariaResult } from "@/lib/miniApps/metaUniversitaria
 import { sanitizeKitEmergenciaLead } from "@/lib/miniApps/kitEmergenciaDefaults";
 import { sanitizeTestEmergenciaLead } from "@/lib/miniApps/testEmergenciaDefaults";
 import { sanitizeDiagnosticoSaludLead } from "@/lib/miniApps/diagnosticoSaludDefaults";
+import { computeAhorroFiscalResult, type AhorroFiscalDeductionItems, type AhorroFiscalInputs } from "@/lib/miniApps/ahorroFiscalDefaults";
 import {
   DIAGNOSTICO_RETIRO_AREAS,
   DEFAULT_DIAGNOSTICO_RETIRO_UMBRAL_1,
@@ -503,6 +504,74 @@ async function processLeadSubmission(
     delete data.prioridad1;
     delete data.prioridad2;
     delete data.prioridad3;
+  } else if (app.template_key === "calculadora_ahorro_fiscal") {
+    // Recómputo autoritativo — nunca se confía en ahorroFiscalEstimado/
+    // saldoFavorEstimado/tasaMarginal/opportunityLevel que manda el
+    // navegador (el visitante puede editar el DOM o repetir una request
+    // manipulada). computeAhorroFiscalResult es el mismo motor ISR/PPR/
+    // EFI/colegiaturas que el HTML original, portado server-side.
+    const ingresoAnual = toFiniteNumber(body.ingresoAnual);
+    const isrRetenido = body.isrRetenido === null ? null : toFiniteNumber(body.isrRetenido);
+    const deducciones: AhorroFiscalDeductionItems = {
+      medicos: toFiniteNumber(body.medicos) ?? 0,
+      dentales: toFiniteNumber(body.dentales) ?? 0,
+      hospitalarios: toFiniteNumber(body.hospitalarios) ?? 0,
+      seguroGMM: toFiniteNumber(body.seguroGMM) ?? 0,
+      interesesHipotecarios: toFiniteNumber(body.interesesHipotecarios) ?? 0,
+      donativos: toFiniteNumber(body.donativos) ?? 0,
+      transporteEscolar: toFiniteNumber(body.transporteEscolar) ?? 0,
+      otros: toFiniteNumber(body.otros) ?? 0,
+      colegiaturasNivel: typeof body.colegiaturasNivel === "string" ? body.colegiaturasNivel : "",
+      colegiaturasMonto: toFiniteNumber(body.colegiaturasMonto) ?? 0,
+    };
+    const pprEstado: AhorroFiscalInputs["pprEstado"] =
+      body.pprEstado === "si" || body.pprEstado === "no" || body.pprEstado === "evaluando" ? body.pprEstado : "";
+    const pprMonto = toFiniteNumber(body.pprMonto) ?? 0;
+    const efiMonto = toFiniteNumber(body.efiMonto) ?? 0;
+
+    if (ingresoAnual === null || ingresoAnual <= 0) {
+      return { ok: false, status: 400, error: "invalid_ahorro_fiscal_inputs", allowedOrigins };
+    }
+    const result = computeAhorroFiscalResult({ ingresoAnual, isrRetenido, deducciones, pprEstado, pprMonto, efiMonto });
+    if (!result) {
+      return { ok: false, status: 400, error: "invalid_ahorro_fiscal_inputs", allowedOrigins };
+    }
+
+    data.situacion_fiscal = typeof body.situacionFiscal === "string" ? body.situacionFiscal : null;
+    data.ingreso_anual = Math.round(result.ingreso);
+    data.isr_retenido = isrRetenido !== null ? Math.round(isrRetenido) : null;
+    data.deducciones_aplicadas = Math.round(result.dedTotalAplicado);
+    data.colegiaturas_nivel = deducciones.colegiaturasNivel || null;
+    data.ppr_estado = pprEstado || null;
+    data.ppr_aplicada = Math.round(result.pprAplicada);
+    data.efi_aplicada = Math.round(result.efiAplicada);
+    data.base_gravable_estimada = Math.round(result.baseConTodo);
+    data.isr_sin_estrategia = Math.round(result.isrSin);
+    data.isr_con_estrategia = Math.round(result.isrConTodo);
+    data.ahorro_fiscal_estimado = Math.round(result.ahorroFiscal);
+    data.saldo_estimado = result.saldo !== null ? Math.round(result.saldo) : null;
+    data.tasa_marginal = result.tasaMarginal;
+    data.opportunity_level = result.opportunityLevel;
+    // El loop genérico de arriba ya copió los campos crudos con su nombre
+    // camelCase original (no están en KNOWN_TOP_LEVEL_FIELDS) — se borran
+    // para que el detalle del lead no muestre el valor sin recalcular
+    // (potencialmente manipulado) junto al autoritativo.
+    delete data.ingresoAnual;
+    delete data.isrRetenido;
+    delete data.situacionFiscal;
+    delete data.medicos;
+    delete data.dentales;
+    delete data.hospitalarios;
+    delete data.seguroGMM;
+    delete data.interesesHipotecarios;
+    delete data.donativos;
+    delete data.transporteEscolar;
+    delete data.otros;
+    delete data.colegiaturasNivel;
+    delete data.colegiaturasMonto;
+    delete data.pprEstado;
+    delete data.pprMonto;
+    delete data.efiMonto;
   }
 
   const supabase = createServiceRoleClient();

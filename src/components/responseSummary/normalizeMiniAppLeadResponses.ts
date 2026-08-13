@@ -64,6 +64,21 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   score_deuda: "Deuda",
   score_retiro: "Retiro",
   score_patrimonio: "Patrimonio",
+  situacion_fiscal: "Situación fiscal",
+  ingreso_anual: "Ingreso anual",
+  isr_retenido: "ISR retenido",
+  deducciones_aplicadas: "Deducciones aplicadas",
+  colegiaturas_nivel: "Nivel de colegiatura",
+  ppr_estado: "Estado del PPR",
+  ppr_aplicada: "Aportación PPR aplicada",
+  efi_aplicada: "Aportación Art. 185 aplicada",
+  base_gravable_estimada: "Base gravable estimada",
+  isr_sin_estrategia: "ISR sin estrategia",
+  isr_con_estrategia: "ISR con estrategia",
+  ahorro_fiscal_estimado: "Ahorro fiscal estimado",
+  saldo_estimado: "Saldo estimado",
+  tasa_marginal: "Tasa marginal",
+  opportunity_level: "Nivel de oportunidad",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);

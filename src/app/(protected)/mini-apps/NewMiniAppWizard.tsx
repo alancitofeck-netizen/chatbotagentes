@@ -23,6 +23,7 @@ import type {
   KitEmergenciaConfig,
   TestEmergenciaConfig,
   DiagnosticoSaludConfig,
+  AhorroFiscalConfig,
 } from "@/lib/miniApps/queries";
 import {
   DEFAULT_DIAGNOSTICO_AGENTE,
@@ -58,6 +59,7 @@ import { DEFAULT_META_UNIVERSITARIA_BRAND } from "@/lib/miniApps/metaUniversitar
 import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaults";
 import { DEFAULT_TEST_EMERGENCIA_BRAND } from "@/lib/miniApps/testEmergenciaDefaults";
 import { DEFAULT_DIAGNOSTICO_SALUD_BRAND } from "@/lib/miniApps/diagnosticoSaludDefaults";
+import { DEFAULT_AHORRO_FISCAL_BRAND } from "@/lib/miniApps/ahorroFiscalDefaults";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
@@ -71,6 +73,7 @@ const TEMPLATES = [
   { key: "kit_emergencia_financiera_familiar", label: "Kit de Emergencia Financiera Familiar", available: true },
   { key: "test_preparacion_emergencia_financiera", label: "Test de Preparación para Emergencias Financieras", available: true },
   { key: "diagnostico_salud_financiera", label: "Diagnóstico de Salud Financiera", available: true },
+  { key: "calculadora_ahorro_fiscal", label: "Calculadora de Ahorro Fiscal", available: true },
   { key: "formulario", label: "Formulario (Próximamente)", available: false },
   { key: "landing", label: "Landing (Próximamente)", available: false },
   { key: "personalizado", label: "Personalizado (Próximamente)", available: false },
@@ -316,6 +319,17 @@ export function NewMiniAppWizard({
   const [saludUrlUniversidad, setSaludUrlUniversidad] = useState(DEFAULT_DIAGNOSTICO_SALUD_BRAND.urlUniversidad);
   const [saludUrlProteccion, setSaludUrlProteccion] = useState(DEFAULT_DIAGNOSTICO_SALUD_BRAND.urlProteccion);
 
+  const [afAdvisorName, setAfAdvisorName] = useState(DEFAULT_AHORRO_FISCAL_BRAND.advisorName);
+  const [afTitle, setAfTitle] = useState(DEFAULT_AHORRO_FISCAL_BRAND.title);
+  const [afWhatsapp, setAfWhatsapp] = useState(DEFAULT_AHORRO_FISCAL_BRAND.whatsapp);
+  const [afEmail, setAfEmail] = useState(DEFAULT_AHORRO_FISCAL_BRAND.email);
+  const [afCalendlyURL, setAfCalendlyURL] = useState(DEFAULT_AHORRO_FISCAL_BRAND.calendlyURL);
+  const [afWebhookURL, setAfWebhookURL] = useState(DEFAULT_AHORRO_FISCAL_BRAND.webhookURL);
+  const [afAvisoPrivacidadURL, setAfAvisoPrivacidadURL] = useState(DEFAULT_AHORRO_FISCAL_BRAND.avisoPrivacidadURL);
+  const [afUrlRetiro, setAfUrlRetiro] = useState(DEFAULT_AHORRO_FISCAL_BRAND.urlRetiro);
+  const [afUrlDiagnostico, setAfUrlDiagnostico] = useState(DEFAULT_AHORRO_FISCAL_BRAND.urlDiagnostico);
+  const [afCredenciales, setAfCredenciales] = useState(DEFAULT_AHORRO_FISCAL_BRAND.credenciales.join("\n"));
+
   function handleLogoCropped(blob: Blob) {
     setLogoBlob(blob);
     setLogoPreviewUrl(URL.createObjectURL(blob));
@@ -338,7 +352,8 @@ export function NewMiniAppWizard({
         | MetaUniversitariaConfig
         | KitEmergenciaConfig
         | TestEmergenciaConfig
-        | DiagnosticoSaludConfig;
+        | DiagnosticoSaludConfig
+        | AhorroFiscalConfig;
       if (templateKey === "calculadora_brecha_retiro") {
         config = { whatsappAsesor, avisoPrivacidadUrl, licenseBadge };
       } else if (templateKey === "diagnostico_financiero") {
@@ -457,6 +472,27 @@ export function NewMiniAppWizard({
             urlEmergencia: saludUrlEmergencia,
             urlUniversidad: saludUrlUniversidad,
             urlProteccion: saludUrlProteccion,
+          },
+        };
+      } else if (templateKey === "calculadora_ahorro_fiscal") {
+        config = {
+          brand: {
+            advisorName: afAdvisorName,
+            title: afTitle,
+            whatsapp: afWhatsapp,
+            email: afEmail,
+            photoURL: DEFAULT_AHORRO_FISCAL_BRAND.photoURL,
+            logoURL: DEFAULT_AHORRO_FISCAL_BRAND.logoURL,
+            calendlyURL: afCalendlyURL,
+            webhookURL: afWebhookURL,
+            avisoPrivacidadURL: afAvisoPrivacidadURL,
+            colorMarca: DEFAULT_AHORRO_FISCAL_BRAND.colorMarca,
+            urlRetiro: afUrlRetiro,
+            urlDiagnostico: afUrlDiagnostico,
+            credenciales: afCredenciales
+              .split("\n")
+              .map((c) => c.trim())
+              .filter(Boolean),
           },
         };
       } else {
@@ -597,6 +633,10 @@ export function NewMiniAppWizard({
                 if (templateKey === "diagnostico_salud_financiera" && !saludAdvisorName.trim()) {
                   const m = members.find((x) => x.memberId === e.target.value);
                   if (m) setSaludAdvisorName(m.fullName);
+                }
+                if (templateKey === "calculadora_ahorro_fiscal" && !afAdvisorName.trim()) {
+                  const m = members.find((x) => x.memberId === e.target.value);
+                  if (m) setAfAdvisorName(m.fullName);
                 }
               }}
             >
@@ -889,6 +929,53 @@ export function NewMiniAppWizard({
               </div>
             )}
 
+            {templateKey === "calculadora_ahorro_fiscal" && (
+              <div className="flex flex-col gap-4">
+                <div className="my-1 h-px bg-border-default" />
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+                <Input label="Nombre a mostrar" value={afAdvisorName} onChange={(e) => setAfAdvisorName(e.target.value)} placeholder="Ej. Patricio Jaik" />
+                <Input label="Título / rol" value={afTitle} onChange={(e) => setAfTitle(e.target.value)} />
+                <Input
+                  label="WhatsApp (solo dígitos, con código de país)"
+                  value={afWhatsapp}
+                  onChange={(e) => setAfWhatsapp(e.target.value)}
+                  placeholder="5215500000000"
+                />
+                <Input label="Correo (opcional)" value={afEmail} onChange={(e) => setAfEmail(e.target.value)} placeholder="tu@correo.com" />
+                <Input label="URL de agenda (Calendly u otro)" value={afCalendlyURL} onChange={(e) => setAfCalendlyURL(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+                <Input label="URL del Aviso de Privacidad" value={afAvisoPrivacidadURL} onChange={(e) => setAfAvisoPrivacidadURL(e.target.value)} placeholder="https://..." />
+                <Input
+                  label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                  value={afWebhookURL}
+                  onChange={(e) => setAfWebhookURL(e.target.value)}
+                  placeholder="https://..."
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">Credenciales (una por línea, se muestran como checklist en el resultado)</label>
+                  <textarea
+                    value={afCredenciales}
+                    onChange={(e) => setAfCredenciales(e.target.value)}
+                    rows={3}
+                    className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                  />
+                </div>
+                <div className="my-1 h-px bg-border-default" />
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Recursos relacionados (opcional)</p>
+                <Input
+                  label="URL de Calculadora de Brecha de Retiro (opcional)"
+                  value={afUrlRetiro}
+                  onChange={(e) => setAfUrlRetiro(e.target.value)}
+                  placeholder="https://..."
+                />
+                <Input
+                  label="URL de Diagnóstico de Solidez Financiera (opcional)"
+                  value={afUrlDiagnostico}
+                  onChange={(e) => setAfUrlDiagnostico(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            )}
+
             {/* Solo estos dos colores — el resto del sistema visual de la
              * página pública se genera solo (paletteEngine.ts), con
              * contraste WCAG verificado automáticamente. No aplica a los
@@ -900,7 +987,8 @@ export function NewMiniAppWizard({
               templateKey !== "calculadora_meta_universitaria" &&
               templateKey !== "kit_emergencia_financiera_familiar" &&
               templateKey !== "test_preparacion_emergencia_financiera" &&
-              templateKey !== "diagnostico_salud_financiera" && (
+              templateKey !== "diagnostico_salud_financiera" &&
+              templateKey !== "calculadora_ahorro_fiscal" && (
             <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -1360,6 +1448,25 @@ export function NewMiniAppWizard({
           </div>
         )}
 
+        {step === 2 && templateKey === "calculadora_ahorro_fiscal" && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-neutral-500">
+              El motor fiscal (tarifa ISR, topes de deducciones personales, PPR y cuentas del Art. 185, montos de colegiaturas) está fijo para el ejercicio 2026 — lo único configurable acá es la
+              identidad del asesor y los enlaces complementarios de la pestaña anterior.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS, opcional)</label>
+              <textarea
+                value={allowedOrigins}
+                onChange={(e) => setAllowedOrigins(e.target.value)}
+                placeholder={"Solo si además querés aceptar leads desde un dominio externo"}
+                rows={2}
+                className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+              />
+            </div>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="flex flex-col gap-3 rounded-md border border-border-default bg-surface-2 p-4 text-sm">
             <p>
@@ -1385,6 +1492,7 @@ export function NewMiniAppWizard({
             {templateKey === "kit_emergencia_financiera_familiar" && <p className="text-neutral-500">{kitAdvisorName || "(sin nombre de asesor)"}</p>}
             {templateKey === "test_preparacion_emergencia_financiera" && <p className="text-neutral-500">{testAdvisorName || "(sin nombre de asesor)"}</p>}
             {templateKey === "diagnostico_salud_financiera" && <p className="text-neutral-500">{saludAdvisorName || "(sin nombre de asesor)"}</p>}
+            {templateKey === "calculadora_ahorro_fiscal" && <p className="text-neutral-500">{afAdvisorName || "(sin nombre de asesor)"}</p>}
             <p className="text-neutral-500">Se va a publicar en tu propia URL de Growth Link al confirmar.</p>
           </div>
         )}

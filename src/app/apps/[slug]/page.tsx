@@ -12,6 +12,7 @@ import { MetaUniversitariaApp } from "./MetaUniversitariaApp";
 import { KitEmergenciaApp } from "./KitEmergenciaApp";
 import { TestEmergenciaApp } from "./TestEmergenciaApp";
 import { DiagnosticoSaludApp } from "./DiagnosticoSaludApp";
+import { AhorroFiscalApp } from "./AhorroFiscalApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -117,6 +118,13 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
     // Hanken Grotesk autocontenido (ver DiagnosticoSaludApp.tsx), sin
     // themeCss/--ma-*.
     return <DiagnosticoSaludApp app={app} />;
+  }
+
+  if (app.templateKey === "calculadora_ahorro_fiscal") {
+    // Mismo motivo que diagnostico_solidez_financiera: diseño Fraunces/
+    // Hanken Grotesk autocontenido (ver AhorroFiscalApp.tsx), sin
+    // themeCss/--ma-*.
+    return <AhorroFiscalApp app={app} />;
   }
 
   notFound();

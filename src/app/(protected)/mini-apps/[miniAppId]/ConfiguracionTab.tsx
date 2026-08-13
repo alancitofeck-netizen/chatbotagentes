@@ -50,6 +50,7 @@ import { DEFAULT_META_UNIVERSITARIA_BRAND } from "@/lib/miniApps/metaUniversitar
 import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaults";
 import { DEFAULT_TEST_EMERGENCIA_BRAND } from "@/lib/miniApps/testEmergenciaDefaults";
 import { DEFAULT_DIAGNOSTICO_SALUD_BRAND } from "@/lib/miniApps/diagnosticoSaludDefaults";
+import { DEFAULT_AHORRO_FISCAL_BRAND } from "@/lib/miniApps/ahorroFiscalDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -116,6 +117,7 @@ export function ConfiguracionTab({
   const isKitEmergencia = miniApp.templateKey === "kit_emergencia_financiera_familiar";
   const isTestEmergencia = miniApp.templateKey === "test_preparacion_emergencia_financiera";
   const isDiagnosticoSalud = miniApp.templateKey === "diagnostico_salud_financiera";
+  const isAhorroFiscal = miniApp.templateKey === "calculadora_ahorro_fiscal";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -295,6 +297,21 @@ export function ConfiguracionTab({
     isDiagnosticoSalud ? miniApp.config.brand.urlProteccion : DEFAULT_DIAGNOSTICO_SALUD_BRAND.urlProteccion,
   );
 
+  const [afAdvisorName, setAfAdvisorName] = useState(isAhorroFiscal ? miniApp.config.brand.advisorName : DEFAULT_AHORRO_FISCAL_BRAND.advisorName);
+  const [afTitle, setAfTitle] = useState(isAhorroFiscal ? miniApp.config.brand.title : DEFAULT_AHORRO_FISCAL_BRAND.title);
+  const [afWhatsapp, setAfWhatsapp] = useState(isAhorroFiscal ? miniApp.config.brand.whatsapp : DEFAULT_AHORRO_FISCAL_BRAND.whatsapp);
+  const [afEmail, setAfEmail] = useState(isAhorroFiscal ? miniApp.config.brand.email : DEFAULT_AHORRO_FISCAL_BRAND.email);
+  const [afCalendlyURL, setAfCalendlyURL] = useState(isAhorroFiscal ? miniApp.config.brand.calendlyURL : DEFAULT_AHORRO_FISCAL_BRAND.calendlyURL);
+  const [afWebhookURL, setAfWebhookURL] = useState(isAhorroFiscal ? miniApp.config.brand.webhookURL : DEFAULT_AHORRO_FISCAL_BRAND.webhookURL);
+  const [afAvisoPrivacidadURL, setAfAvisoPrivacidadURL] = useState(
+    isAhorroFiscal ? miniApp.config.brand.avisoPrivacidadURL : DEFAULT_AHORRO_FISCAL_BRAND.avisoPrivacidadURL,
+  );
+  const [afUrlRetiro, setAfUrlRetiro] = useState(isAhorroFiscal ? miniApp.config.brand.urlRetiro : DEFAULT_AHORRO_FISCAL_BRAND.urlRetiro);
+  const [afUrlDiagnostico, setAfUrlDiagnostico] = useState(isAhorroFiscal ? miniApp.config.brand.urlDiagnostico : DEFAULT_AHORRO_FISCAL_BRAND.urlDiagnostico);
+  const [afCredenciales, setAfCredenciales] = useState(
+    isAhorroFiscal ? miniApp.config.brand.credenciales.join("\n") : DEFAULT_AHORRO_FISCAL_BRAND.credenciales.join("\n"),
+  );
+
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -453,7 +470,28 @@ export function ConfiguracionTab({
                                   urlProteccion: saludUrlProteccion,
                                 },
                               }
-                            : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+                            : isAhorroFiscal
+                              ? {
+                                  brand: {
+                                    advisorName: afAdvisorName,
+                                    title: afTitle,
+                                    whatsapp: afWhatsapp,
+                                    email: afEmail,
+                                    photoURL: DEFAULT_AHORRO_FISCAL_BRAND.photoURL,
+                                    logoURL: DEFAULT_AHORRO_FISCAL_BRAND.logoURL,
+                                    calendlyURL: afCalendlyURL,
+                                    webhookURL: afWebhookURL,
+                                    avisoPrivacidadURL: afAvisoPrivacidadURL,
+                                    colorMarca: DEFAULT_AHORRO_FISCAL_BRAND.colorMarca,
+                                    urlRetiro: afUrlRetiro,
+                                    urlDiagnostico: afUrlDiagnostico,
+                                    credenciales: afCredenciales
+                                      .split("\n")
+                                      .map((c) => c.trim())
+                                      .filter(Boolean),
+                                  },
+                                }
+                              : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -590,7 +628,7 @@ export function ConfiguracionTab({
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
            * de diseño más allá de estos dos valores. No aplica a los
            * Diagnósticos: tienen su propio CSS autocontenido. */}
-          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && !isKitEmergencia && !isTestEmergencia && !isDiagnosticoSalud && (
+          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && !isKitEmergencia && !isTestEmergencia && !isDiagnosticoSalud && !isAhorroFiscal && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -1140,6 +1178,40 @@ export function ConfiguracionTab({
                 onChange={(e) => setSaludUrlProteccion(e.target.value)}
                 placeholder="https://..."
               />
+            </>
+          ) : isAhorroFiscal ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad del asesor</p>
+              <Input label="Nombre a mostrar" value={afAdvisorName} onChange={(e) => setAfAdvisorName(e.target.value)} />
+              <Input label="Título / rol" value={afTitle} onChange={(e) => setAfTitle(e.target.value)} />
+              <Input
+                label="WhatsApp (solo dígitos, con código de país)"
+                value={afWhatsapp}
+                onChange={(e) => setAfWhatsapp(e.target.value)}
+                placeholder="5215500000000"
+              />
+              <Input label="Correo (opcional)" value={afEmail} onChange={(e) => setAfEmail(e.target.value)} placeholder="tu@correo.com" />
+              <Input label="URL de agenda (Calendly u otro)" value={afCalendlyURL} onChange={(e) => setAfCalendlyURL(e.target.value)} placeholder="https://calendly.com/tu-agenda" />
+              <Input label="URL del Aviso de Privacidad" value={afAvisoPrivacidadURL} onChange={(e) => setAfAvisoPrivacidadURL(e.target.value)} placeholder="https://..." />
+              <Input
+                label="Webhook externo opcional (copia del lead a tu propia herramienta)"
+                value={afWebhookURL}
+                onChange={(e) => setAfWebhookURL(e.target.value)}
+                placeholder="https://..."
+              />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Credenciales (una por línea, se muestran como checklist en el resultado)</label>
+                <textarea
+                  value={afCredenciales}
+                  onChange={(e) => setAfCredenciales(e.target.value)}
+                  rows={3}
+                  className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                />
+              </div>
+              <div className="my-1 h-px bg-border-default" />
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Recursos relacionados (opcional)</p>
+              <Input label="URL de Calculadora de Brecha de Retiro (opcional)" value={afUrlRetiro} onChange={(e) => setAfUrlRetiro(e.target.value)} placeholder="https://..." />
+              <Input label="URL de Diagnóstico de Solidez Financiera (opcional)" value={afUrlDiagnostico} onChange={(e) => setAfUrlDiagnostico(e.target.value)} placeholder="https://..." />
             </>
           ) : (
             <>
