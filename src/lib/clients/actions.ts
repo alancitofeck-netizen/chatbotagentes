@@ -7,6 +7,9 @@ import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole, requirePlatformAdmin } from "@/lib/auth/roles";
 import { getOrCreateDefaultGroup } from "@/lib/tasks/groups/actions";
 import { logActivity } from "@/lib/activity/log";
+import { resolveOpenRouterApiKey } from "@/lib/integrations/openrouter";
+import { extractTextFromPdf } from "@/lib/policies/pdfExtraction";
+import { extractContractDataWithAI, type ExtractedContractData } from "@/lib/clients/contractExtraction";
 import {
   getClientsList,
   getClientProfile,
@@ -253,6 +256,93 @@ export async function reactivateClientAction(clientId: string): Promise<void> {
 
 export async function archiveClientAction(clientId: string): Promise<void> {
   await setClientStatus(clientId, "archivado");
+}
+
+export interface CreateContractInput {
+  startDate: string;
+  endDate: string;
+  totalValue?: number | null;
+  monthlyValue?: number | null;
+  amountPaid?: number | null;
+  commissionModel?: string | null;
+  notes?: string | null;
+  documentId?: string | null;
+}
+
+/** Para un cliente que todavía no tiene NINGÚN contrato — a diferencia de
+ * createClientAction (que arma el primer contrato en el mismo paso que da
+ * de alta la ficha), este cubre el caso real más común hoy: fichas creadas
+ * automáticamente por ensureAdvisorRecordsExist (queries.ts) para cada
+ * asesor real del workspace, que arrancan sin contrato — ahí ContractPanel
+ * no tenía antes ninguna forma de cargar el primero, ni a mano ni por PDF.
+ * El paso defensivo de marcar cualquier 'activo' preexistente como
+ * 'renovado' es el mismo que usa renewContractAction — no debería aplicar
+ * nunca acá (por eso se llama esta acción y no esa), pero evita terminar con
+ * dos contratos 'activo' a la vez si de casualidad ya había uno. */
+export async function createContractAction(clientId: string, input: CreateContractInput): Promise<{ id: string }> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+
+  await supabase
+    .from("client_contracts")
+    .update({ status: "renovado", updated_at: new Date().toISOString() })
+    .eq("client_id", clientId)
+    .eq("workspace_id", workspaceId)
+    .eq("status", "activo");
+
+  const { data: created, error } = await supabase
+    .from("client_contracts")
+    .insert({
+      workspace_id: workspaceId,
+      client_id: clientId,
+      status: "activo",
+      start_date: input.startDate,
+      end_date: input.endDate,
+      total_value: input.totalValue ?? null,
+      monthly_value: input.monthlyValue ?? null,
+      amount_paid: input.amountPaid ?? 0,
+      commission_model: input.commissionModel?.trim() || null,
+      notes: input.notes?.trim() || null,
+      document_id: input.documentId ?? null,
+      created_by: memberId,
+    })
+    .select("id")
+    .single();
+  if (error || !created) throw new Error("No se pudo crear el contrato.");
+
+  await logActivity(supabase, workspaceId, memberId, "client", clientId, "contract_created", { contractId: created.id, startDate: input.startDate, endDate: input.endDate });
+
+  revalidateClients(clientId);
+  return { id: created.id as string };
+}
+
+/** Paso 1 del flujo "leer con IA": el PDF ya se subió a Storage (mismo
+ * endpoint que usa el resto de la app) — esto lee su texto y llama a la IA
+ * para estructurarlo. No crea ni actualiza ningún contrato todavía;
+ * ContractPanel.tsx usa el resultado para precargar el mismo formulario
+ * manual, el usuario revisa/edita y recién ahí guarda (createContractAction/
+ * updateContractAction). Mismo criterio "error como dato, no excepción" que
+ * extractPolicyFromPdfAction (policies/actions.ts) — ver el comentario ahí. */
+export async function extractContractFromPdfAction(storagePath: string): Promise<ExtractedContractData | { error: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const service = createServiceRoleClient();
+
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "leer contratos con IA");
+  if (!credentials.ok) return { error: credentials.error };
+  const apiKey = credentials.apiKey;
+
+  const { data: file, error: downloadError } = await service.storage.from("documents").download(storagePath);
+  if (downloadError || !file) return { error: "No se pudo leer el PDF recién subido." };
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const text = await extractTextFromPdf(buffer);
+  if (!text.trim()) {
+    return { error: "Este PDF no tiene texto legible (probablemente es una imagen escaneada) — cargá el contrato manualmente." };
+  }
+
+  return extractContractDataWithAI(apiKey, text);
 }
 
 export interface RenewContractInput {
