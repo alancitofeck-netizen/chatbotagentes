@@ -2,6 +2,7 @@ import {
   AppWindow,
   BarChart3,
   Bot,
+  CalendarClock,
   CalendarDays,
   CircleDollarSign,
   Presentation,
@@ -74,14 +75,19 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   { id: "policies", name: "Pólizas", icon: FileCheck2, route: "/polizas", section: "Pólizas", moduleKey: "policies", order: 0 },
 
   { id: "calendar", name: "Calendario", icon: CalendarDays, route: "/calendar", section: "Operación", order: 0 },
-  { id: "collections", name: "Cobranza", icon: CircleDollarSign, route: "/cobranza", section: "Operación", moduleKey: "collections", order: 1 },
-  { id: "goals", name: "Metas y Bonos", icon: Trophy, route: "/metas", section: "Operación", moduleKey: "goals", order: 2 },
-  { id: "tasks", name: "Tareas", icon: ListTodo, route: "/tasks", section: "Operación", moduleKey: "tasks", order: 3 },
-  { id: "documents", name: "Documentos", icon: Folder, route: "/documents", section: "Operación", order: 4 },
+  // Módulo independiente, NO anidado en CRM — su fuente es la hoja KPI
+  // sincronizada (agenda_appointments), nunca bookings/Google Calendar (ver
+  // src/lib/appointmentSync/runner.ts). Ícono deliberadamente distinto de
+  // Calendario para no confundir los dos conceptos en el sidebar colapsado.
+  { id: "agenda", name: "Agenda", icon: CalendarClock, route: "/agenda", section: "Operación", moduleKey: "agenda", order: 1 },
+  { id: "collections", name: "Cobranza", icon: CircleDollarSign, route: "/cobranza", section: "Operación", moduleKey: "collections", order: 2 },
+  { id: "goals", name: "Metas y Bonos", icon: Trophy, route: "/metas", section: "Operación", moduleKey: "goals", order: 3 },
+  { id: "tasks", name: "Tareas", icon: ListTodo, route: "/tasks", section: "Operación", moduleKey: "tasks", order: 4 },
+  { id: "documents", name: "Documentos", icon: Folder, route: "/documents", section: "Operación", order: 5 },
   // KPIs no es una feature de IA (sincroniza planillas, no genera nada con
   // un modelo) — vuelve a Operación en vez de quedarse en Inteligencia solo
   // porque compartía categoría con Presentaciones por comodidad.
-  { id: "kpis", name: "KPIs", icon: BarChart3, route: "/kpis", section: "Operación", order: 5 },
+  { id: "kpis", name: "KPIs", icon: BarChart3, route: "/kpis", section: "Operación", order: 6 },
 
   // --- Inteligencia — todo lo que depende de IA vive acá, agrupado, listo
   // para sumar Agentes IA / Voz IA / Análisis IA / Chat IA / Predicciones IA

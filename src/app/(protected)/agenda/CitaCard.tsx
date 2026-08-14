@@ -13,18 +13,18 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Tarjeta de cita del pedido original — hora, cliente, tipo, asesor,
- * setter, estado, fácil de identificar de un vistazo. `canEditEstado`
- * (owner/admin) muestra el estado como un select en vez de solo un badge. */
+/** Tarjeta de cita — hora, cliente, tipo, asesor, setter, estado, fácil de
+ * identificar de un vistazo. `canEditEstado` (owner/admin) muestra el
+ * estado como un select en vez de solo un badge. */
 export function CitaCard({ cita, canEditEstado }: { cita: AgendaAppointment; canEditEstado: boolean }) {
   const [isPending, startTransition] = useTransition();
-  const estado = cita.estadoCita ?? "agendada";
+  const estado = cita.estadoCita;
   const meta = ESTADO_CITA_META[estado];
 
   function handleEstadoChange(next: string) {
     startTransition(async () => {
       try {
-        await updateEstadoCitaAction(cita.id, cita.bookingWorkspaceId, next as (typeof ESTADO_CITA_OPTIONS)[number]);
+        await updateEstadoCitaAction(cita.id, cita.workspaceId, next as (typeof ESTADO_CITA_OPTIONS)[number]);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo actualizar el estado.");
       }

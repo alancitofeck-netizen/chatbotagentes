@@ -95,13 +95,13 @@ function PerformanceTable<T extends { citas: number; realizadas: number; noShow:
   );
 }
 
-/** KPIs → Agendas: analítico, agregado en vivo sobre bookings (mismo
- * criterio "sin rollups" que getClientSetterPerformance) — separado de
- * /crm/agenda (operativo), pedido explícito del usuario de no mezclar
- * ambas funciones. */
+/** KPIs → Agendas: analítico, agregado en vivo sobre agenda_appointments
+ * (mismo criterio "sin rollups" que getClientSetterPerformance) — separado
+ * de /agenda (operativo), pedido explícito del usuario de no mezclar ambas
+ * funciones. */
 export function AgendaKpisSection() {
   const [preset, setPreset] = useState<Preset>("month");
-  const [data, setData] = useState<{ bySetter: AgendaSetterPerformance[]; byAdvisor: AgendaAdvisorPerformance[]; totals: Record<string, number> } | null>(null);
+  const [data, setData] = useState<{ scope: "agency" | "advisor"; bySetter: AgendaSetterPerformance[]; byAdvisor: AgendaAdvisorPerformance[]; totals: Record<string, number> } | null>(null);
   const [loading, startTransition] = useTransition();
 
   const range = useMemo(() => rangeForPreset(preset), [preset]);
@@ -145,7 +145,7 @@ export function AgendaKpisSection() {
           </div>
 
           <PerformanceTable title="Rendimiento por Setter" rows={data.bySetter} nameKey="setterName" nameLabel="Setter" />
-          <PerformanceTable title="Rendimiento por Asesor" rows={data.byAdvisor} nameKey="advisorName" nameLabel="Asesor" />
+          {data.scope === "agency" && <PerformanceTable title="Rendimiento por Asesor" rows={data.byAdvisor} nameKey="advisorName" nameLabel="Asesor" />}
         </>
       )}
     </div>

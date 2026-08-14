@@ -32,7 +32,7 @@ const CRM_TABS = [
 export function CrmAtsTabStrip({ atsEnabled, isAgent }: { atsEnabled: boolean; isAgent: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeKey = pathname.startsWith("/ats") ? "ats" : pathname.startsWith("/crm/agenda") ? "agenda" : (searchParams.get("tab") ?? "board");
+  const activeKey = pathname.startsWith("/ats") ? "ats" : (searchParams.get("tab") ?? "board");
   const visibleTabs = CRM_TABS.filter((tab) => !("managerOnly" in tab && tab.managerOnly && isAgent));
 
   return (
@@ -48,9 +48,6 @@ export function CrmAtsTabStrip({ atsEnabled, isAgent }: { atsEnabled: boolean; i
           {tab.label}
         </Link>
       ))}
-      <Link href="/crm/agenda" role="tab" aria-selected={activeKey === "agenda"} className={tabItemClassName(activeKey === "agenda", false)}>
-        Agenda
-      </Link>
       {!isAgent && (
         <Link
           href={atsEnabled ? "/ats" : "#"}

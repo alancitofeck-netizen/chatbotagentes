@@ -114,7 +114,7 @@ export async function triggerManualAppointmentSheetSyncAction(connectionId: stri
     last_sheet_hash: (data.last_sheet_hash as string | null) ?? null,
   });
   revalidatePath("/profile");
-  revalidatePath("/crm/agenda");
+  revalidatePath("/agenda");
   return result;
 }
 

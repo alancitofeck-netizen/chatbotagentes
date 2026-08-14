@@ -5,9 +5,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { fetchSheetValues, getValidGoogleSheetsAccessToken } from "@/lib/integrations/googleSheets";
 import { normalizeE164 } from "@/lib/integrations/ycloud";
 import { normalizeForMatch } from "@/lib/advisors/import/fuzzyMatch";
-import { pushEventToGoogle } from "@/lib/integrations/googleCalendar";
 import { resolveEstadoCita, type AppointmentSyncFieldKey } from "./fieldDictionary";
-import type { CalendarEvent } from "@/lib/calendar/queries";
 
 export interface AppointmentSheetConnection {
   id: string;
@@ -109,39 +107,6 @@ function resolveAdvisor(advisorText: string | undefined, advisors: AdvisorCandid
   );
 }
 
-const EVENT_TYPE_ALIASES: Record<string, string> = {
-  llamada: "call",
-  call: "call",
-  reunion: "meeting",
-  meeting: "meeting",
-  seguimiento: "follow_up",
-  "follow up": "follow_up",
-  demo: "demo",
-};
-
-function resolveEventType(typeText: string | undefined): string {
-  if (!typeText) return "meeting";
-  const normalized = normalizeForMatch(typeText);
-  return EVENT_TYPE_ALIASES[normalized] ?? "meeting";
-}
-
-/** status/attended derivados de estado_cita — para que /calendar y el push
- * a Google Calendar del asesor sigan mostrando algo coherente aunque no
- * conozcan estado_cita (ver decisión de diseño #1 del plan). */
-function deriveStatusAttended(estadoCita: string): { status: string; attended: boolean | null } {
-  switch (estadoCita) {
-    case "realizada":
-    case "venta":
-      return { status: "completed", attended: true };
-    case "no_show":
-      return { status: "completed", attended: false };
-    case "cancelada":
-      return { status: "cancelled", attended: null };
-    default:
-      return { status: "scheduled", attended: null };
-  }
-}
-
 type RowOutcome = "created" | "updated" | "skipped";
 
 async function processRow(
@@ -171,7 +136,7 @@ async function processRow(
 
   const { data: existingRow } = await supabase
     .from("appointment_sheet_rows")
-    .select("id, booking_id, contact_id, last_row_hash")
+    .select("id, appointment_id, contact_id, last_row_hash")
     .eq("connection_id", connection.id)
     .eq("row_key", rowKey)
     .maybeSingle();
@@ -194,9 +159,9 @@ async function processRow(
   const meetingAt = parseSheetDate(values.date, values.time);
   if (!meetingAt) throw new Error(`Fecha "${values.date}" no reconocida.`);
 
-  // Contact + booking viven en el workspace REAL del asesor — nunca en el
-  // de la agencia. Mismo criterio de find-or-create por (workspace_id,
-  // phone) que src/lib/miniApps/ingest.ts::linkLeadToContact.
+  // Contact + cita viven en el workspace REAL del asesor — nunca en el de
+  // la agencia. Mismo criterio de find-or-create por (workspace_id, phone)
+  // que src/lib/miniApps/ingest.ts::linkLeadToContact.
   const linkedWorkspaceId = advisor.linkedWorkspaceId;
   const { data: upsertedContact } = await supabase
     .from("contacts")
@@ -210,68 +175,41 @@ async function processRow(
   }
   if (!contactId) throw new Error("No se pudo resolver el contacto del lead.");
 
-  // owner_id/created_by = el usuario principal del workspace del asesor
-  // (getRealAdvisorWorkspaces ya asume que existe exactamente uno) — así la
-  // cita queda "asignada a él" en su propio /calendar. setter_id (columna
-  // nueva) es quien la consiguió, un member de OTRO workspace (la agencia)
-  // — mismo patrón cross-tenant que clients.setter_id.
-  const { data: primaryMember } = await supabase.from("workspace_members").select("id").eq("workspace_id", linkedWorkspaceId).order("created_at", { ascending: true }).limit(1).maybeSingle();
-  const advisorMemberId = (primaryMember?.id as string | undefined) ?? null;
-
   const estadoCita = resolveEstadoCita(values.estado);
-  const { status, attended } = deriveStatusAttended(estadoCita);
   const startTime = meetingAt.toISOString();
   const endTime = new Date(meetingAt.getTime() + 30 * 60000).toISOString();
-  const eventType = resolveEventType(values.appointmentType);
 
-  let bookingId = existingRow?.booking_id as string | null | undefined;
+  let appointmentId = existingRow?.appointment_id as string | null | undefined;
   let outcome: RowOutcome;
-  const bookingPayload = {
+  const appointmentPayload = {
     contact_id: contactId,
-    client_id: advisor.clientId,
+    advisor_client_id: advisor.clientId,
     setter_id: setter.memberId,
-    owner_id: advisorMemberId,
     subject: values.appointmentType ? `${values.appointmentType}: ${values.leadName}` : `Cita: ${values.leadName}`,
-    event_type: eventType,
+    appointment_type: values.appointmentType ?? null,
     start_time: startTime,
     end_time: endTime,
-    status,
-    attended,
     estado_cita: estadoCita,
-    source: "google_sheets",
-    provider: "internal",
+    source: "google_sheets_kpi",
     updated_at: new Date().toISOString(),
   };
 
-  if (bookingId) {
-    await supabase.from("bookings").update(bookingPayload).eq("id", bookingId);
+  if (appointmentId) {
+    await supabase.from("agenda_appointments").update(appointmentPayload).eq("id", appointmentId);
     outcome = "updated";
   } else {
-    const { data: booking, error: bookingError } = await supabase
-      .from("bookings")
-      .insert({ workspace_id: linkedWorkspaceId, created_by: advisorMemberId, ...bookingPayload })
-      .select("id, start_time, end_time, subject, event_type, provider")
+    const { data: appointment, error: appointmentError } = await supabase
+      .from("agenda_appointments")
+      .insert({ workspace_id: linkedWorkspaceId, ...appointmentPayload })
+      .select("id")
       .single();
-    if (bookingError || !booking) throw new Error(bookingError?.message ?? "No se pudo crear la cita.");
-    bookingId = booking.id as string;
+    if (appointmentError || !appointment) throw new Error(appointmentError?.message ?? "No se pudo crear la cita.");
+    appointmentId = appointment.id as string;
     outcome = "created";
-
-    // Push a Google Calendar del asesor — reuso directo, fire-and-forget
-    // (mismo criterio que createEvent en src/lib/calendar/actions.ts: un
-    // fallo acá nunca revierte la cita ya guardada).
-    const calendarEvent = {
-      id: bookingId,
-      title: bookingPayload.subject,
-      startTime,
-      endTime,
-      provider: "internal",
-      externalId: null,
-    } as unknown as CalendarEvent;
-    void pushEventToGoogle(linkedWorkspaceId, calendarEvent); // nunca lanza, ya se auto-atrapa
   }
 
   await supabase.from("appointment_sheet_rows").upsert(
-    { connection_id: connection.id, row_key: rowKey, booking_id: bookingId, contact_id: contactId, status: "ok", error_message: null, last_row_hash: hash, synced_at: new Date().toISOString() },
+    { connection_id: connection.id, row_key: rowKey, appointment_id: appointmentId, contact_id: contactId, status: "ok", error_message: null, last_row_hash: hash, synced_at: new Date().toISOString() },
     { onConflict: "connection_id,row_key" },
   );
 

@@ -13,24 +13,24 @@ import { getAgendaAppointments, getAgendaPerformance, updateEstadoCita, type Est
  * filtre lo que ya recibió). */
 export async function getAgendaAppointmentsAction(range: { start: string; end: string }) {
   const { workspaceId, role } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "asesores");
+  await assertModuleEnabled(workspaceId, "agenda");
   const memberId = await getCurrentMemberId(workspaceId);
   return getAgendaAppointments(workspaceId, range, { memberId, role });
 }
 
-/** KPIs → Agendas es vista de equipo completo, siempre — gateada a
+/** KPIs → Agendas es vista de equipo/asesor completo, siempre — gateada a
  * owner/admin (mismo nivel que el resto de Configuración/KPIs). */
 export async function getAgendaPerformanceAction(range: { start: string; end: string }) {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
-  await assertModuleEnabled(workspaceId, "asesores");
+  await assertModuleEnabled(workspaceId, "agenda");
   return getAgendaPerformance(workspaceId, range);
 }
 
-export async function updateEstadoCitaAction(bookingId: string, bookingWorkspaceId: string, estadoCita: EstadoCita) {
+export async function updateEstadoCitaAction(appointmentId: string, appointmentWorkspaceId: string, estadoCita: EstadoCita) {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
-  await assertModuleEnabled(workspaceId, "asesores");
-  await updateEstadoCita(workspaceId, bookingId, bookingWorkspaceId, estadoCita);
-  revalidatePath("/crm/agenda");
+  await assertModuleEnabled(workspaceId, "agenda");
+  await updateEstadoCita(workspaceId, appointmentId, appointmentWorkspaceId, estadoCita);
+  revalidatePath("/agenda");
 }
