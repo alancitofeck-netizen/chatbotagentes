@@ -35,6 +35,7 @@ export const TEMPLATE_KEY_META: Record<MiniAppTemplateKey, { label: string; cate
   test_preparacion_emergencia_financiera: { label: "Test de Preparación para Emergencias Financieras", category: "quizzes" },
   diagnostico_salud_financiera: { label: "Diagnóstico de Salud Financiera", category: "quizzes" },
   calculadora_ahorro_fiscal: { label: "Calculadora de Ahorro Fiscal", category: "calculadoras" },
+  control_financiero_base_cero: { label: "Top Apps, de ingresos y gastos", category: "calculadoras" },
 };
 
 export function templateKeysForCategory(category: MiniAppTemplateCategory): MiniAppTemplateKey[] {

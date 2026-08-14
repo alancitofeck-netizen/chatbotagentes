@@ -51,6 +51,7 @@ import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaul
 import { DEFAULT_TEST_EMERGENCIA_BRAND } from "@/lib/miniApps/testEmergenciaDefaults";
 import { DEFAULT_DIAGNOSTICO_SALUD_BRAND } from "@/lib/miniApps/diagnosticoSaludDefaults";
 import { DEFAULT_AHORRO_FISCAL_BRAND } from "@/lib/miniApps/ahorroFiscalDefaults";
+import { DEFAULT_CONTROL_FINANCIERO_BRAND } from "@/lib/miniApps/controlFinancieroDefaults";
 import { BundleDropzone } from "../BundleDropzone";
 import { BundlePreviewModal } from "../BundlePreviewModal";
 
@@ -118,6 +119,7 @@ export function ConfiguracionTab({
   const isTestEmergencia = miniApp.templateKey === "test_preparacion_emergencia_financiera";
   const isDiagnosticoSalud = miniApp.templateKey === "diagnostico_salud_financiera";
   const isAhorroFiscal = miniApp.templateKey === "calculadora_ahorro_fiscal";
+  const isControlFinanciero = miniApp.templateKey === "control_financiero_base_cero";
   const [annualReturnRatePct, setAnnualReturnRatePct] = useState(isSimulador ? miniApp.config.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT);
   const [showIngresoActual, setShowIngresoActual] = useState(isSimulador ? miniApp.config.showIngresoActual : true);
   const [labelEdad, setLabelEdad] = useState(isSimulador ? (miniApp.config.fieldLabels.edad ?? "Tu edad actual") : "Tu edad actual");
@@ -312,6 +314,12 @@ export function ConfiguracionTab({
     isAhorroFiscal ? miniApp.config.brand.credenciales.join("\n") : DEFAULT_AHORRO_FISCAL_BRAND.credenciales.join("\n"),
   );
 
+  const [cfAdvisorName, setCfAdvisorName] = useState(isControlFinanciero ? miniApp.config.brand.advisorName : DEFAULT_CONTROL_FINANCIERO_BRAND.advisorName);
+  const [cfTitle, setCfTitle] = useState(isControlFinanciero ? miniApp.config.brand.title : DEFAULT_CONTROL_FINANCIERO_BRAND.title);
+  const [cfSubtitle, setCfSubtitle] = useState(isControlFinanciero ? miniApp.config.brand.subtitle : DEFAULT_CONTROL_FINANCIERO_BRAND.subtitle);
+  const [cfMonedaDefault, setCfMonedaDefault] = useState(isControlFinanciero ? miniApp.config.brand.monedaDefault : DEFAULT_CONTROL_FINANCIERO_BRAND.monedaDefault);
+  const [cfAnio, setCfAnio] = useState(isControlFinanciero ? miniApp.config.brand.anio : DEFAULT_CONTROL_FINANCIERO_BRAND.anio);
+
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const isUploadedApp = isLinkedApp && miniApp.config.hostingMode === "upload";
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -491,7 +499,19 @@ export function ConfiguracionTab({
                                       .filter(Boolean),
                                   },
                                 }
-                              : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
+                              : isControlFinanciero
+                                ? {
+                                    brand: {
+                                      advisorName: cfAdvisorName,
+                                      title: cfTitle,
+                                      subtitle: cfSubtitle,
+                                      logoURL: DEFAULT_CONTROL_FINANCIERO_BRAND.logoURL,
+                                      colorMarca: DEFAULT_CONTROL_FINANCIERO_BRAND.colorMarca,
+                                      monedaDefault: cfMonedaDefault,
+                                      anio: cfAnio,
+                                    },
+                                  }
+                                : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
         });
         toast.success("Configuración guardada.");
         router.refresh();
@@ -628,7 +648,15 @@ export function ConfiguracionTab({
            * contraste WCAG verificado — el usuario no vuelve a decidir nada
            * de diseño más allá de estos dos valores. No aplica a los
            * Diagnósticos: tienen su propio CSS autocontenido. */}
-          {!isDiagnostico && !isRetiro && !isSolidez && !isMetaUniversitaria && !isKitEmergencia && !isTestEmergencia && !isDiagnosticoSalud && !isAhorroFiscal && (
+          {!isDiagnostico &&
+            !isRetiro &&
+            !isSolidez &&
+            !isMetaUniversitaria &&
+            !isKitEmergencia &&
+            !isTestEmergencia &&
+            !isDiagnosticoSalud &&
+            !isAhorroFiscal &&
+            !isControlFinanciero && (
           <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -1212,6 +1240,23 @@ export function ConfiguracionTab({
               <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Recursos relacionados (opcional)</p>
               <Input label="URL de Calculadora de Brecha de Retiro (opcional)" value={afUrlRetiro} onChange={(e) => setAfUrlRetiro(e.target.value)} placeholder="https://..." />
               <Input label="URL de Diagnóstico de Solidez Financiera (opcional)" value={afUrlDiagnostico} onChange={(e) => setAfUrlDiagnostico(e.target.value)} placeholder="https://..." />
+            </>
+          ) : isControlFinanciero ? (
+            <>
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad y branding</p>
+              <Input label="Nombre a mostrar (crédito al pie de la app)" value={cfAdvisorName} onChange={(e) => setCfAdvisorName(e.target.value)} />
+              <Input label="Título de la app" value={cfTitle} onChange={(e) => setCfTitle(e.target.value)} />
+              <Input label="Subtítulo" value={cfSubtitle} onChange={(e) => setCfSubtitle(e.target.value)} />
+              <Input label="Moneda por defecto" value={cfMonedaDefault} onChange={(e) => setCfMonedaDefault(e.target.value)} placeholder="$" />
+              <Input
+                label="Año"
+                type="number"
+                value={String(cfAnio)}
+                onChange={(e) => setCfAnio(parseInt(e.target.value, 10) || DEFAULT_CONTROL_FINANCIERO_BRAND.anio)}
+              />
+              <p className="text-xs text-neutral-500">
+                Esta Mini App no captura leads: el presupuesto y las transacciones que carga cada persona quedan solo en su navegador, nunca llegan al CRM.
+              </p>
             </>
           ) : (
             <>

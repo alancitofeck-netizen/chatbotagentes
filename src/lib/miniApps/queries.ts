@@ -46,6 +46,7 @@ import { DEFAULT_KIT_EMERGENCIA_BRAND, type KitEmergenciaBrand } from "@/lib/min
 import { DEFAULT_TEST_EMERGENCIA_BRAND, type TestEmergenciaBrand } from "@/lib/miniApps/testEmergenciaDefaults";
 import { DEFAULT_DIAGNOSTICO_SALUD_BRAND, type DiagnosticoSaludBrand } from "@/lib/miniApps/diagnosticoSaludDefaults";
 import { DEFAULT_AHORRO_FISCAL_BRAND, type AhorroFiscalBrand } from "@/lib/miniApps/ahorroFiscalDefaults";
+import { DEFAULT_CONTROL_FINANCIERO_BRAND, type ControlFinancieroBrand } from "@/lib/miniApps/controlFinancieroDefaults";
 
 export type MiniAppTemplateKey =
   | "simulador_retiro"
@@ -58,7 +59,8 @@ export type MiniAppTemplateKey =
   | "kit_emergencia_financiera_familiar"
   | "test_preparacion_emergencia_financiera"
   | "diagnostico_salud_financiera"
-  | "calculadora_ahorro_fiscal";
+  | "calculadora_ahorro_fiscal"
+  | "control_financiero_base_cero";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -214,6 +216,17 @@ export interface AhorroFiscalConfig {
   assignedAgentName?: string;
 }
 
+/** Config para "Top Apps, de ingresos y gastos" (Control Financiero —
+ * Presupuesto Base Cero) — ver controlFinancieroDefaults.ts para el shape
+ * de `brand` y el porqué de que no exista un tipo de lead/saneamiento para
+ * este template: el archivo original no captura ningún dato de contacto,
+ * todo el presupuesto y las transacciones viven solo en el localStorage
+ * del visitante. */
+export interface ControlFinancieroConfig {
+  brand: ControlFinancieroBrand;
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
@@ -226,6 +239,7 @@ export interface MiniAppConfigByTemplate {
   test_preparacion_emergencia_financiera: TestEmergenciaConfig;
   diagnostico_salud_financiera: DiagnosticoSaludConfig;
   calculadora_ahorro_fiscal: AhorroFiscalConfig;
+  control_financiero_base_cero: ControlFinancieroConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -427,6 +441,13 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
   if (templateKey === "calculadora_ahorro_fiscal") {
     const config: AhorroFiscalConfig = {
       brand: { ...DEFAULT_AHORRO_FISCAL_BRAND, ...((raw.brand as Partial<AhorroFiscalBrand>) ?? {}) },
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "control_financiero_base_cero") {
+    const config: ControlFinancieroConfig = {
+      brand: { ...DEFAULT_CONTROL_FINANCIERO_BRAND, ...((raw.brand as Partial<ControlFinancieroBrand>) ?? {}) },
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
     };
     return config as MiniAppConfigByTemplate[T];

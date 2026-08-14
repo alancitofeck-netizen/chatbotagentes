@@ -19,6 +19,7 @@ import {
   Gauge,
   Activity,
   Percent,
+  Wallet,
   FileText,
   Layout as LayoutIcon,
   type LucideIcon,
@@ -45,6 +46,7 @@ import type {
   TestEmergenciaConfig,
   DiagnosticoSaludConfig,
   AhorroFiscalConfig,
+  ControlFinancieroConfig,
 } from "@/lib/miniApps/queries";
 import {
   DEFAULT_DIAGNOSTICO_AGENTE,
@@ -81,6 +83,7 @@ import { DEFAULT_KIT_EMERGENCIA_BRAND } from "@/lib/miniApps/kitEmergenciaDefaul
 import { DEFAULT_TEST_EMERGENCIA_BRAND } from "@/lib/miniApps/testEmergenciaDefaults";
 import { DEFAULT_DIAGNOSTICO_SALUD_BRAND } from "@/lib/miniApps/diagnosticoSaludDefaults";
 import { DEFAULT_AHORRO_FISCAL_BRAND } from "@/lib/miniApps/ahorroFiscalDefaults";
+import { DEFAULT_CONTROL_FINANCIERO_BRAND } from "@/lib/miniApps/controlFinancieroDefaults";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { MiniAppPalettePreview } from "./MiniAppPalettePreview";
 
@@ -151,6 +154,13 @@ const TEMPLATES = [
     available: true,
     description: "Estima el ahorro fiscal aprovechando deducciones y PPR.",
     icon: Percent,
+  },
+  {
+    key: "control_financiero_base_cero",
+    label: "Top Apps, de ingresos y gastos",
+    available: true,
+    description: "Presupuesto base cero y seguimiento de ingresos y gastos, mes a mes.",
+    icon: Wallet,
   },
   { key: "formulario", label: "Formulario (Próximamente)", available: false, description: "Formulario personalizado — disponible próximamente.", icon: FileText },
   { key: "landing", label: "Landing (Próximamente)", available: false, description: "Página de aterrizaje personalizada — disponible próximamente.", icon: LayoutIcon },
@@ -473,6 +483,12 @@ export function NewMiniAppWizard({
   const [afUrlDiagnostico, setAfUrlDiagnostico] = useState(DEFAULT_AHORRO_FISCAL_BRAND.urlDiagnostico);
   const [afCredenciales, setAfCredenciales] = useState(DEFAULT_AHORRO_FISCAL_BRAND.credenciales.join("\n"));
 
+  const [cfAdvisorName, setCfAdvisorName] = useState(DEFAULT_CONTROL_FINANCIERO_BRAND.advisorName);
+  const [cfTitle, setCfTitle] = useState(DEFAULT_CONTROL_FINANCIERO_BRAND.title);
+  const [cfSubtitle, setCfSubtitle] = useState(DEFAULT_CONTROL_FINANCIERO_BRAND.subtitle);
+  const [cfMonedaDefault, setCfMonedaDefault] = useState(DEFAULT_CONTROL_FINANCIERO_BRAND.monedaDefault);
+  const [cfAnio, setCfAnio] = useState(DEFAULT_CONTROL_FINANCIERO_BRAND.anio);
+
   function handleLogoCropped(blob: Blob) {
     setLogoBlob(blob);
     setLogoPreviewUrl(URL.createObjectURL(blob));
@@ -496,7 +512,8 @@ export function NewMiniAppWizard({
         | KitEmergenciaConfig
         | TestEmergenciaConfig
         | DiagnosticoSaludConfig
-        | AhorroFiscalConfig;
+        | AhorroFiscalConfig
+        | ControlFinancieroConfig;
       if (templateKey === "calculadora_brecha_retiro") {
         config = { whatsappAsesor, avisoPrivacidadUrl, licenseBadge };
       } else if (templateKey === "diagnostico_financiero") {
@@ -636,6 +653,18 @@ export function NewMiniAppWizard({
               .split("\n")
               .map((c) => c.trim())
               .filter(Boolean),
+          },
+        };
+      } else if (templateKey === "control_financiero_base_cero") {
+        config = {
+          brand: {
+            advisorName: cfAdvisorName,
+            title: cfTitle,
+            subtitle: cfSubtitle,
+            logoURL: DEFAULT_CONTROL_FINANCIERO_BRAND.logoURL,
+            colorMarca: DEFAULT_CONTROL_FINANCIERO_BRAND.colorMarca,
+            monedaDefault: cfMonedaDefault,
+            anio: cfAnio,
           },
         };
       } else {
@@ -819,6 +848,10 @@ export function NewMiniAppWizard({
                 if (templateKey === "calculadora_ahorro_fiscal" && !afAdvisorName.trim()) {
                   const m = members.find((x) => x.memberId === e.target.value);
                   if (m) setAfAdvisorName(m.fullName);
+                }
+                if (templateKey === "control_financiero_base_cero" && !cfAdvisorName.trim()) {
+                  const m = members.find((x) => x.memberId === e.target.value);
+                  if (m) setCfAdvisorName(m.fullName);
                 }
               }}
             >
@@ -1158,6 +1191,26 @@ export function NewMiniAppWizard({
               </div>
             )}
 
+            {templateKey === "control_financiero_base_cero" && (
+              <div className="flex flex-col gap-4">
+                <div className="my-1 h-px bg-border-default" />
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Identidad y branding</p>
+                <Input label="Nombre a mostrar (crédito al pie de la app)" value={cfAdvisorName} onChange={(e) => setCfAdvisorName(e.target.value)} placeholder="Ej. Patricio Jaik" />
+                <Input label="Título de la app" value={cfTitle} onChange={(e) => setCfTitle(e.target.value)} />
+                <Input label="Subtítulo" value={cfSubtitle} onChange={(e) => setCfSubtitle(e.target.value)} />
+                <Input label="Moneda por defecto" value={cfMonedaDefault} onChange={(e) => setCfMonedaDefault(e.target.value)} placeholder="$" />
+                <Input
+                  label="Año"
+                  type="number"
+                  value={String(cfAnio)}
+                  onChange={(e) => setCfAnio(parseInt(e.target.value, 10) || DEFAULT_CONTROL_FINANCIERO_BRAND.anio)}
+                />
+                <p className="text-xs text-neutral-500">
+                  Esta Mini App no captura leads: el presupuesto y las transacciones que carga cada persona quedan solo en su navegador, nunca llegan al CRM.
+                </p>
+              </div>
+            )}
+
             {/* Solo estos dos colores — el resto del sistema visual de la
              * página pública se genera solo (paletteEngine.ts), con
              * contraste WCAG verificado automáticamente. No aplica a los
@@ -1170,7 +1223,8 @@ export function NewMiniAppWizard({
               templateKey !== "kit_emergencia_financiera_familiar" &&
               templateKey !== "test_preparacion_emergencia_financiera" &&
               templateKey !== "diagnostico_salud_financiera" &&
-              templateKey !== "calculadora_ahorro_fiscal" && (
+              templateKey !== "calculadora_ahorro_fiscal" &&
+              templateKey !== "control_financiero_base_cero" && (
             <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -1649,6 +1703,15 @@ export function NewMiniAppWizard({
           </div>
         )}
 
+        {step === 2 && templateKey === "control_financiero_base_cero" && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-neutral-500">
+              El diseño, las 6 categorías (Ingresos, Esenciales, Discrecionales, Deudas, Ahorros, Inversiones) y toda la lógica de presupuesto/transacciones son fijos — lo único configurable es la
+              identidad y el branding de la pestaña anterior. No hay dominios que permitir: esta Mini App nunca envía datos a ningún servidor.
+            </p>
+          </div>
+        )}
+
         {step === 3 && (
           <div className="flex flex-col gap-3 rounded-md border border-border-default bg-surface-2 p-4 text-sm">
             <p>
@@ -1675,6 +1738,7 @@ export function NewMiniAppWizard({
             {templateKey === "test_preparacion_emergencia_financiera" && <p className="text-neutral-500">{testAdvisorName || "(sin nombre de asesor)"}</p>}
             {templateKey === "diagnostico_salud_financiera" && <p className="text-neutral-500">{saludAdvisorName || "(sin nombre de asesor)"}</p>}
             {templateKey === "calculadora_ahorro_fiscal" && <p className="text-neutral-500">{afAdvisorName || "(sin nombre de asesor)"}</p>}
+            {templateKey === "control_financiero_base_cero" && <p className="text-neutral-500">{cfTitle} · {cfAnio}</p>}
             <p className="text-neutral-500">Se va a publicar en tu propia URL de Growth Link al confirmar.</p>
           </div>
         )}
