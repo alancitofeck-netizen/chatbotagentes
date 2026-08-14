@@ -329,6 +329,9 @@ export interface ClientProfile {
   healthScore: number | null;
   healthScoreLabel: ClientHealthLabel | null;
   healthScoreUpdatedAt: string | null;
+  /** Texto exacto esperado en la columna "Asesor" de la hoja de Agenda —
+   * ver UpdateClientInput.sheetAlias (clients/actions.ts). */
+  sheetAlias: string | null;
   createdAt: string;
 }
 
@@ -376,7 +379,7 @@ export async function getClientProfile(workspaceId: string, clientId: string): P
   const { data } = await supabase
     .from("clients")
     .select(
-      "id, workspace_id, contact_id, linked_workspace_id, profession, insurer, country, city, status, service_type, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, health_score_updated_at, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url, email, phone)",
+      "id, workspace_id, contact_id, linked_workspace_id, profession, insurer, country, city, status, service_type, setter_id, account_manager_id, traffic_manager_id, linkedin_profile_url, linkedin_sales_navigator_url, calendly_url, health_score, health_score_label, health_score_updated_at, sheet_alias, created_at, contacts!clients_contact_id_fkey(name, company, avatar_url, email, phone)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", clientId)
@@ -411,6 +414,7 @@ export async function getClientProfile(workspaceId: string, clientId: string): P
     healthScore: data.health_score as number | null,
     healthScoreLabel: data.health_score_label as ClientHealthLabel | null,
     healthScoreUpdatedAt: data.health_score_updated_at as string | null,
+    sheetAlias: data.sheet_alias as string | null,
     createdAt: data.created_at as string,
   };
 }

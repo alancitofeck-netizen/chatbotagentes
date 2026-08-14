@@ -203,6 +203,10 @@ export interface UpdateClientInput {
   setterId?: string | null;
   accountManagerId?: string | null;
   trafficManagerId?: string | null;
+  /** Texto exacto esperado en la columna "Asesor" de la hoja de Agenda del
+   * setter (Sistema de Agendas) — sin esto, el sync resuelve por nombre
+   * normalizado contra getRealAdvisorWorkspaces() (ver appointmentSync/runner.ts). */
+  sheetAlias?: string;
 }
 
 export async function updateClientAction(clientId: string, input: UpdateClientInput): Promise<void> {
@@ -223,6 +227,7 @@ export async function updateClientAction(clientId: string, input: UpdateClientIn
       setter_id: input.setterId ?? null,
       account_manager_id: input.accountManagerId ?? null,
       traffic_manager_id: input.trafficManagerId ?? null,
+      ...(input.sheetAlias !== undefined ? { sheet_alias: input.sheetAlias.trim() || null } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", clientId)

@@ -33,6 +33,7 @@ export function EditClientSheet({ client, members, onClose, onSaved }: { client:
   const [setterId, setSetterId] = useState(client.setterId ?? "");
   const [accountManagerId, setAccountManagerId] = useState(client.accountManagerId ?? "");
   const [trafficManagerId, setTrafficManagerId] = useState(client.trafficManagerId ?? "");
+  const [sheetAlias, setSheetAlias] = useState(client.sheetAlias ?? "");
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
@@ -50,6 +51,7 @@ export function EditClientSheet({ client, members, onClose, onSaved }: { client:
           setterId: setterId || null,
           accountManagerId: accountManagerId || null,
           trafficManagerId: trafficManagerId || null,
+          sheetAlias,
         });
         toast.success("Asesor actualizado.");
         onSaved();
@@ -94,6 +96,18 @@ export function EditClientSheet({ client, members, onClose, onSaved }: { client:
         <Input label="Perfil de LinkedIn" value={linkedinProfileUrl} onChange={(e) => setLinkedinProfileUrl(e.target.value)} placeholder="https://linkedin.com/in/…" />
         <Input label="LinkedIn Sales Navigator" value={linkedinSalesNavigatorUrl} onChange={(e) => setLinkedinSalesNavigatorUrl(e.target.value)} placeholder="https://linkedin.com/sales/…" />
         <Input label="Calendly" value={calendlyUrl} onChange={(e) => setCalendlyUrl(e.target.value)} placeholder="https://calendly.com/…" />
+
+        <div className="my-1 h-px bg-border-default" />
+        <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Sistema de Agendas</p>
+        <Input
+          label="Nombre exacto en la hoja de Agenda"
+          value={sheetAlias}
+          onChange={(e) => setSheetAlias(e.target.value)}
+          placeholder={client.contactName}
+        />
+        <p className="-mt-2 text-xs text-neutral-500">
+          Texto exacto que tus setters escriben en la columna &quot;Asesor&quot; de la hoja — dejalo vacío para resolverlo automáticamente por nombre.
+        </p>
 
         <div className="my-1 h-px bg-border-default" />
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Equipo asignado</p>

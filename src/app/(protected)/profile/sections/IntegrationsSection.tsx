@@ -26,6 +26,8 @@ import { WhatsAppIntegrationSheet } from "./WhatsAppIntegrationSheet";
 import { OpenRouterIntegrationSheet } from "./OpenRouterIntegrationSheet";
 import { KpiSettersManager } from "./KpiSettersManager";
 import { LeadSheetConnectionsManager } from "./LeadSheetConnectionsManager";
+import { AppointmentSheetConnectionsManager } from "./AppointmentSheetConnectionsManager";
+import { AdvisorSetterAssignmentsManager } from "./AdvisorSetterAssignmentsManager";
 import { WhatsAppWebConnectionsCard } from "./WhatsAppWebConnectionsCard";
 
 /** Moved from the old standalone /settings/integrations page into the
@@ -317,6 +319,8 @@ export function IntegrationsSection({
 
         <KpiSettersManager key={String(googleSheets.connected)} canManage={canManage} accountConnected={googleSheets.connected} />
         <LeadSheetConnectionsManager key={`leads-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
+        <AppointmentSheetConnectionsManager key={`agenda-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
+        {googleSheets.connected && <AdvisorSetterAssignmentsManager canManage={canManage} />}
       </Card>
 
       <Card>
