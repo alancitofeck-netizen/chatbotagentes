@@ -42,3 +42,38 @@ export async function requirePlatformAdmin() {
     throw new Error("No tenés permiso para hacer esto.");
   }
 }
+
+/** `ws_id` es "el workspace real de la agencia" — específicamente aquel
+ * donde el platform admin MÁS ANTIGUO (alancitofeck@gmail.com, sembrado en
+ * 0039, resuelto acá de forma data-driven vía `order by created_at asc`,
+ * nunca hardcodeado) es miembro real. A propósito NO alcanza con "algún
+ * platform admin cualquiera": un asesor al que también se le otorgó
+ * platform_admin (ver 0144) sería trivialmente "miembro platform admin"
+ * de SU PROPIO workspace, lo cual volvía a habilitar por accidente el
+ * mismo bug que esto corrige — ver 0144_agency_workspace_fix_original_admin.sql
+ * para el root cause completo. */
+export async function isAgencyWorkspace(workspaceId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("workspace_has_platform_admin_member", { ws_id: workspaceId });
+  return Boolean(data);
+}
+
+/** Gate real para "Asesores" (src/lib/clients/actions.ts y las páginas del
+ * módulo) — reemplaza el patrón anterior `requireManagerRole(role); await
+ * requirePlatformAdmin();`. Ese patrón tenía dos problemas: (1) dejaba el
+ * módulo utilizable solo por el Owner global exclusivamente, ni siquiera
+ * otro owner/admin real de la MISMA agencia podía usarlo (el bug que pidió
+ * corregir el usuario); y (2) al ser platform_admin un check "global" sin
+ * atarse a NINGÚN workspace en particular, un platform admin que operaba
+ * desde su PROPIO workspace individual (no el de la agencia) terminaba
+ * auto-provisionando fichas de otros asesores ahí por error (
+ * ensureAdvisorRecordsExist, clients/queries.ts) — la causa real del error
+ * genérico que se reportó. Acá, en cambio, siempre exige estar realmente
+ * parado en el workspace de la agencia (isAgencyWorkspace), sea cual sea
+ * el rol/estatus del que llama. */
+export async function requireAgencyManagerRole(workspaceId: string, role: string): Promise<void> {
+  requireManagerRole(role);
+  if (!(await isAgencyWorkspace(workspaceId))) {
+    throw new Error("No tenés permiso para hacer esto.");
+  }
+}

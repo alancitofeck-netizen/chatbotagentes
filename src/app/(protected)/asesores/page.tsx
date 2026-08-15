@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Users, ShieldAlert } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { isPlatformAdmin } from "@/lib/auth/roles";
+import { isAgencyWorkspace } from "@/lib/auth/roles";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getClientsList } from "@/lib/clients/queries";
@@ -12,16 +12,19 @@ export const metadata: Metadata = {
   title: "Asesores — Growth Link",
 };
 
-/** Panel administrativo del Owner global sobre las cuentas reales de
- * asesores de Growth Link (workspaces/workspace_members/auth.users, ver
- * getRealAdvisorWorkspaces en queries.ts) — nunca clientes comerciales de
- * un asesor, y nunca entra al workspace del asesor (eso es "Administrar"
- * en CRM → Agentes, un flujo aparte, sin tocar). Gate real: isPlatformAdmin
- * (mismo criterio que PlatformWorkspacesTable) — `role` de este workspace
- * ya no alcanza, porque la lista es cross-tenant. */
+/** Panel administrativo de owner/admin reales de la agencia sobre las
+ * cuentas reales de asesores de Growth Link (workspaces/workspace_members/
+ * auth.users, ver getRealAdvisorWorkspaces en queries.ts) — nunca clientes
+ * comerciales de un asesor, y nunca entra al workspace del asesor (eso es
+ * "Administrar" en CRM → Agentes, un flujo aparte, sin tocar). Gate real:
+ * isAgencyWorkspace — `role` de este workspace ya no alcanza por sí solo,
+ * porque la lista es cross-tenant, pero exigir además "estar parado en el
+ * workspace real de la agencia" (en vez de "ser el Owner global" a secas)
+ * es lo que permite que cualquier owner/admin real de esa agencia use el
+ * módulo, no solo esa única cuenta — ver auth/roles.ts. */
 export default async function AsesoresPage() {
   const { workspaceId, role } = await requireActiveWorkspace();
-  const isManager = (role === "owner" || role === "admin") && (await isPlatformAdmin());
+  const isManager = (role === "owner" || role === "admin") && (await isAgencyWorkspace(workspaceId));
 
   const moduleStatus = await getWorkspaceModuleStatus(workspaceId);
   const moduleEnabled = moduleStatus.some((m) => m.moduleKey === "asesores" && m.enabled);
@@ -44,7 +47,7 @@ export default async function AsesoresPage() {
           <EmptyState
             icon={ShieldAlert}
             title="Acceso restringido"
-            description="Este módulo es solo para el Owner global de Growth Link."
+            description="Este módulo es solo para owner/admin del workspace de la agencia."
           />
         ) : (
           <ClientesListShell initialClients={clients} members={members} moduleEnabled={moduleEnabled} />

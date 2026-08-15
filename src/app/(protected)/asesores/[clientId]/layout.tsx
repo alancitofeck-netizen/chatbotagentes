@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Link2, CalendarCheck, MessageCircle, FileText, AlertTriangle, OctagonAlert } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { isPlatformAdmin } from "@/lib/auth/roles";
+import { isAgencyWorkspace } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
 import { getClientProfile } from "@/lib/clients/queries";
 import { getClientAlerts } from "@/lib/clients/alerts";
@@ -42,19 +42,20 @@ const TABS = [
   { href: "contrato", label: "Contrato" },
 ];
 
-/** Acceso restringido al Owner global — mismo criterio que asesores/page.tsx
- * (isPlatformAdmin, no solo el rol dentro de este workspace: la ficha
- * resuelve identidad de OTRO workspace real vía service role, ver
- * resolveAdvisorIdentity en queries.ts). Un solo fetch de perfil acá; cada
- * pestaña (children) trae solo lo que le corresponde. */
+/** Acceso restringido a owner/admin reales del workspace de la agencia —
+ * mismo criterio que asesores/page.tsx (isAgencyWorkspace, no solo el rol
+ * dentro de este workspace: la ficha resuelve identidad de OTRO workspace
+ * real vía service role, ver resolveAdvisorIdentity en queries.ts). Un
+ * solo fetch de perfil acá; cada pestaña (children) trae solo lo que le
+ * corresponde. */
 export default async function ClientProfileLayout({ children, params }: { children: ReactNode; params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
   const { workspaceId, role } = await requireActiveWorkspace();
 
-  if ((role !== "owner" && role !== "admin") || !(await isPlatformAdmin())) {
+  if ((role !== "owner" && role !== "admin") || !(await isAgencyWorkspace(workspaceId))) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
-        <EmptyState icon={ShieldAlert} title="Acceso restringido" description="Este módulo es solo para el Owner global de Growth Link." />
+        <EmptyState icon={ShieldAlert} title="Acceso restringido" description="Este módulo es solo para owner/admin del workspace de la agencia." />
       </div>
     );
   }

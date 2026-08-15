@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
-import { requireManagerRole, requirePlatformAdmin } from "@/lib/auth/roles";
+import { requireManagerRole, requireAgencyManagerRole } from "@/lib/auth/roles";
 import { getOrCreateDefaultGroup } from "@/lib/tasks/groups/actions";
 import { logActivity } from "@/lib/activity/log";
 import { resolveOpenRouterApiKey } from "@/lib/integrations/openrouter";
@@ -54,20 +54,22 @@ function revalidateClients(clientId?: string) {
  * que ignora RLS por diseño — a diferencia del resto de las acciones de este
  * archivo (ya protegidas de cruce entre tenants porque siempre filtran por
  * el workspace_id de QUIEN llama), acá `requireManagerRole` solo no alcanza:
- * cualquier admin/owner de CUALQUIER workspace pasaría ese check. El gate
- * real es ser platform admin (vos) — mismo criterio que ya usa
- * PlatformWorkspacesTable/enterSupervisorMode (src/lib/platform/actions.ts). */
+ * cualquier admin/owner de CUALQUIER workspace pasaría ese check (ej. el
+ * owner de un workspace propio de un asesor individual). El gate real es
+ * `requireAgencyManagerRole`: owner/admin real, pero solo si además está
+ * parado en el workspace real de la agencia (isAgencyWorkspace — ver
+ * auth/roles.ts y 0144). Antes esto exigía ser el Owner global
+ * exclusivamente (ni siquiera otro owner/admin de la misma agencia podía
+ * usarlo) — corregido a pedido explícito del usuario. */
 export async function getClientsListAction(): Promise<ClientListItem[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   return getClientsList(workspaceId);
 }
 
 export async function getClientProfileAction(clientId: string): Promise<ClientProfile | null> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   return getClientProfile(workspaceId, clientId);
 }
 
@@ -76,8 +78,7 @@ export async function getClientProfileAction(clientId: string): Promise<ClientPr
  * nunca se pueda elegir dos veces al mismo asesor. */
 export async function getAvailableAdvisorWorkspacesAction(): Promise<RealAdvisorWorkspace[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   const advisors = await getRealAdvisorWorkspaces();
   const supabase = await createClient();
   const { data: existing } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).not("linked_workspace_id", "is", null);
@@ -92,19 +93,17 @@ export async function getClientContractsAction(clientId: string): Promise<Client
 }
 
 /** Lee bookings del workspace REAL del asesor — mismo motivo que
- * getClientsListAction: requirePlatformAdmin además de requireManagerRole,
- * porque ya no es un dato scopeado a tu propio workspace. */
+ * getClientsListAction: requireAgencyManagerRole, porque ya no es un dato
+ * scopeado a tu propio workspace. */
 export async function getClientAppointmentsAction(clientId: string): Promise<ClientAppointment[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   return getClientAppointments(workspaceId, clientId);
 }
 
 export async function getClientPoliciesAction(clientId: string): Promise<ClientPolicy[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   return getClientPolicies(workspaceId, clientId);
 }
 
@@ -145,8 +144,7 @@ export interface CreateClientInput {
  * asesor ya tiene ficha, el insert falla con un mensaje claro. */
 export async function createClientAction(input: CreateClientInput): Promise<{ id: string }> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
 
@@ -746,22 +744,19 @@ export async function deleteClientNoteAction(noteId: string, clientId: string): 
 
 export async function getClientAudienceFunnelAction(clientId: string): Promise<ClientAudienceFunnel> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   return getClientAudienceFunnel(workspaceId, clientId);
 }
 
 export async function getClientSetterPerformanceAction(clientId: string): Promise<ClientSetterPerformance[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   return getClientSetterPerformance(workspaceId, clientId);
 }
 
 export async function getClientRealTasksAction(clientId: string): Promise<ClientRealTask[]> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
   return getClientRealTasks(workspaceId, clientId);
 }
 
@@ -776,12 +771,11 @@ export interface BookingAttributionInput {
  * de ese workspace (core.has_workspace_role, sin el carve-out de platform
  * admin que sí tiene el SELECT), así que el UPDATE en sí va con
  * createServiceRoleClient(), mismo patrón que toggleWorkspaceStatus
- * (src/lib/platform/actions.ts). requirePlatformAdmin() es el único gate
- * real acá — el service role bypassea RLS por diseño. */
+ * (src/lib/platform/actions.ts). requireAgencyManagerRole() es el único
+ * gate real acá — el service role bypassea RLS por diseño. */
 export async function updateBookingAttributionAction(bookingId: string, clientId: string, input: BookingAttributionInput): Promise<void> {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
-  await requirePlatformAdmin();
+  await requireAgencyManagerRole(workspaceId, role);
 
   const supabase = await createClient();
   const { data: clientRow } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).eq("id", clientId).maybeSingle();
