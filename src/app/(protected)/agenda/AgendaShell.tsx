@@ -10,10 +10,10 @@ import type { AgendaAppointment } from "@/lib/agenda/queries";
 import { AgendaTimeline } from "./AgendaTimeline";
 import { AgendaAppointmentsTable } from "./AgendaAppointmentsTable";
 import { AgendaMiniCalendar } from "./AgendaMiniCalendar";
-import { AgendaUpcomingList } from "./AgendaUpcomingList";
 import { AgendaKpiTiles } from "./AgendaKpiTiles";
 import { AgendaEstadoDonut } from "./AgendaEstadoDonut";
 import { AgendaTipoBars } from "./AgendaTipoBars";
+import { AgendaAttendanceRate } from "./AgendaAttendanceRate";
 import { useAgendaPerformance } from "./useAgendaPerformance";
 
 const GRANULARITY_OPTIONS: { key: Granularity; label: string }[] = [
@@ -79,7 +79,6 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
   const [calendarMonth, setCalendarMonth] = useState(() => firstOfMonth(new Date()));
 
   const [citas, setCitas] = useState<AgendaAppointment[] | null>(null);
-  const [upcoming, setUpcoming] = useState<AgendaAppointment[] | null>(null);
   const [monthCitas, setMonthCitas] = useState<AgendaAppointment[]>([]);
   const [loading, startTransition] = useTransition();
 
@@ -105,17 +104,6 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range.start, range.end]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const start = new Date();
-    const end = addDays(startOfDay(start), 14);
-    getAgendaAppointmentsAction({ start: start.toISOString(), end: end.toISOString() }).then((data) => {
-      if (!cancelled) setUpcoming(data.slice(0, 5));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -352,9 +340,9 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
           <AgendaAppointmentsTable citas={filteredCitas} canEditEstado exportHref={exportHref} />
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <AgendaUpcomingList citas={upcoming ?? []} />
             <AgendaEstadoDonut data={analytics.data} />
             <AgendaTipoBars data={analytics.data} />
+            <AgendaAttendanceRate data={analytics.data} />
           </div>
         </div>
 

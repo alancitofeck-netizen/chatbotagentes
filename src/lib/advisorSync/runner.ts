@@ -33,17 +33,27 @@ function sha256(input: string): string {
   return createHash("sha256").update(input).digest("hex");
 }
 
+/** `last_synced_at` se actualiza acá (no solo en claim_pending_advisor_sheet_syncs,
+ * que es del cron) para que "Sincronizar ahora" también quede reflejado en
+ * la UI — si no, un sync manual exitoso seguía mostrando "Todavía no
+ * sincronizó" porque ese campo nunca se tocaba fuera del claim del cron. */
 async function markConnectionError(supabase: SupabaseClient, connectionId: string, message: string) {
   await supabase
     .from("advisor_sheet_connections")
-    .update({ last_sync_status: "error", last_sync_error: message.slice(0, 500) })
+    .update({ last_sync_status: "error", last_sync_error: message.slice(0, 500), last_synced_at: new Date().toISOString() })
     .eq("id", connectionId);
 }
 
 async function markConnectionOk(supabase: SupabaseClient, connectionId: string, rowCount: number, sheetHash: string | null) {
   await supabase
     .from("advisor_sheet_connections")
-    .update({ last_sync_status: "ok", last_sync_error: null, row_count: rowCount, ...(sheetHash ? { last_sheet_hash: sheetHash } : {}) })
+    .update({
+      last_sync_status: "ok",
+      last_sync_error: null,
+      row_count: rowCount,
+      last_synced_at: new Date().toISOString(),
+      ...(sheetHash ? { last_sheet_hash: sheetHash } : {}),
+    })
     .eq("id", connectionId);
 }
 
