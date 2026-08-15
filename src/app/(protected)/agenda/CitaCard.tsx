@@ -1,9 +1,10 @@
 "use client";
 
 import { useTransition } from "react";
-import { UserRound, Users2 } from "lucide-react";
+import { UserRound, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
+import { Avatar } from "@/components/ui/Avatar";
 import { toast } from "@/components/toast/toast";
 import type { AgendaAppointment } from "@/lib/agenda/queries";
 import { ESTADO_CITA_META, ESTADO_CITA_OPTIONS } from "@/lib/agenda/estadoMeta";
@@ -55,17 +56,25 @@ export function CitaCard({ cita, canEditEstado }: { cita: AgendaAppointment; can
       <div>
         <p className="text-[14px] font-medium text-foreground">{cita.contactName ?? "Sin nombre"}</p>
         <p className="text-[12.5px] text-neutral-500">{cita.subject}</p>
+        {cita.contactPhone && (
+          <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-neutral-500">
+            <Phone className="size-3.5 shrink-0" aria-hidden="true" />
+            {cita.contactPhone}
+          </p>
+        )}
       </div>
 
-      <div className="mt-1 flex flex-col gap-1 border-t border-border-default pt-2.5 text-[12.5px] text-neutral-500">
+      <div className="mt-1 flex items-center justify-between gap-2 border-t border-border-default pt-2.5 text-[12.5px] text-neutral-500">
         <span className="flex items-center gap-1.5">
           <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
           Asesor: <span className="font-medium text-foreground">{cita.advisorName}</span>
         </span>
-        <span className="flex items-center gap-1.5">
-          <Users2 className="size-3.5 shrink-0" aria-hidden="true" />
-          Setter: <span className="font-medium text-foreground">{cita.setterName ?? "—"}</span>
-        </span>
+        {cita.setterName && (
+          <span className="flex items-center gap-1.5">
+            <Avatar name={cita.setterName} src={cita.setterAvatarUrl} size={18} />
+            <span className="font-medium text-foreground">{cita.setterName}</span>
+          </span>
+        )}
       </div>
     </div>
   );

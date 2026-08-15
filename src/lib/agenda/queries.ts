@@ -20,10 +20,17 @@ export interface AgendaAppointment {
   estadoCita: EstadoCita;
   contactId: string | null;
   contactName: string | null;
+  contactPhone: string | null;
   advisorClientId: string;
   advisorName: string;
   setterId: string | null;
   setterName: string | null;
+  setterAvatarUrl: string | null;
+}
+
+interface SetterInfo {
+  name: string;
+  avatarUrl: string | null;
 }
 
 interface AdvisorLookup {
@@ -116,7 +123,7 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
     const client = await createClient();
     const { data } = await client
       .from("agenda_appointments")
-      .select("id, workspace_id, contact_id, setter_id, start_time, end_time, subject, appointment_type, estado_cita, contacts(name)")
+      .select("id, workspace_id, contact_id, setter_id, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
       .eq("workspace_id", scope.workspaceId)
       .gte("start_time", range.start)
       .lt("start_time", range.end)
@@ -125,9 +132,9 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
 
     const advisorName = await getOwnWorkspaceDisplayName(scope.workspaceId);
     const setterIds = [...new Set(data.map((r) => r.setter_id as string | null).filter((id): id is string => !!id))];
-    const setterNameById = await resolveSetterNames(setterIds);
+    const setterInfoById = await resolveSetterNames(setterIds);
 
-    return data.map((r) => mapAppointmentRow(r, "", advisorName, setterNameById));
+    return data.map((r) => mapAppointmentRow(r, "", advisorName, setterInfoById));
   }
 
   const advisorByWorkspace = new Map(scope.advisors.map((a) => [a.linkedWorkspaceId, a]));
@@ -136,7 +143,7 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
   const supabase = createServiceRoleClient();
   let query = supabase
     .from("agenda_appointments")
-    .select("id, workspace_id, contact_id, setter_id, start_time, end_time, subject, appointment_type, estado_cita, contacts(name)")
+    .select("id, workspace_id, contact_id, setter_id, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
     .in("workspace_id", linkedWorkspaceIds)
     .gte("start_time", range.start)
     .lt("start_time", range.end)
@@ -151,11 +158,11 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
   if (!data || data.length === 0) return [];
 
   const setterIds = [...new Set(data.map((r) => r.setter_id as string | null).filter((id): id is string => !!id))];
-  const setterNameById = await resolveSetterNamesForWorkspace(workspaceId, setterIds);
+  const setterInfoById = await resolveSetterNamesForWorkspace(workspaceId, setterIds);
 
   return data.map((r) => {
     const advisor = advisorByWorkspace.get(r.workspace_id as string);
-    return mapAppointmentRow(r, advisor?.clientId ?? "", advisor?.advisorName ?? "—", setterNameById);
+    return mapAppointmentRow(r, advisor?.clientId ?? "", advisor?.advisorName ?? "—", setterInfoById);
   });
 }
 
@@ -170,14 +177,15 @@ function mapAppointmentRow(
     subject: string | null;
     appointment_type: string | null;
     estado_cita: string;
-    contacts: { name: string } | { name: string }[] | null;
+    contacts: { name: string; phone: string | null } | { name: string; phone: string | null }[] | null;
   },
   advisorClientId: string,
   advisorName: string,
-  setterNameById: Map<string, string>,
+  setterInfoById: Map<string, SetterInfo>,
 ): AgendaAppointment {
   const contact = Array.isArray(r.contacts) ? r.contacts[0] : r.contacts;
   const setterId = r.setter_id;
+  const setterInfo = setterId ? setterInfoById.get(setterId) : undefined;
   return {
     id: r.id,
     workspaceId: r.workspace_id,
@@ -188,20 +196,22 @@ function mapAppointmentRow(
     estadoCita: r.estado_cita as EstadoCita,
     contactId: r.contact_id,
     contactName: contact?.name ?? null,
+    contactPhone: contact?.phone ?? null,
     advisorClientId,
     advisorName,
     setterId,
-    setterName: setterId ? (setterNameById.get(setterId) ?? "—") : null,
+    setterName: setterId ? (setterInfo?.name ?? "—") : null,
+    setterAvatarUrl: setterInfo?.avatarUrl ?? null,
   };
 }
 
-async function resolveSetterNamesForWorkspace(agencyWorkspaceId: string, setterIds: string[]): Promise<Map<string, string>> {
+async function resolveSetterNamesForWorkspace(agencyWorkspaceId: string, setterIds: string[]): Promise<Map<string, SetterInfo>> {
   if (setterIds.length === 0) return new Map();
   const supabase = createServiceRoleClient();
   const { data: members } = await supabase.rpc("workspace_member_names", { ws_id: agencyWorkspaceId });
-  const map = new Map<string, string>();
-  for (const m of (members ?? []) as { member_id: string; full_name: string }[]) {
-    if (setterIds.includes(m.member_id)) map.set(m.member_id, m.full_name);
+  const map = new Map<string, SetterInfo>();
+  for (const m of (members ?? []) as { member_id: string; full_name: string; avatar_url: string | null }[]) {
+    if (setterIds.includes(m.member_id)) map.set(m.member_id, { name: m.full_name, avatarUrl: m.avatar_url ?? null });
   }
   return map;
 }
@@ -210,17 +220,20 @@ async function resolveSetterNamesForWorkspace(agencyWorkspaceId: string, setterI
  * otra vuelta — se resuelve directo por auth.admin.getUserById sobre cada
  * setter_id (mismo patrón que getOwnWorkspaceDisplayName), evitando
  * depender de `workspace_member_names` (que está scopeado a un workspace
- * que acá no conocemos de antemano). */
-async function resolveSetterNames(setterIds: string[]): Promise<Map<string, string>> {
+ * que acá no conocemos de antemano). user_metadata.avatar_url — mismo campo
+ * que ya usa el resto del proyecto para fotos de perfil de Google/email. */
+async function resolveSetterNames(setterIds: string[]): Promise<Map<string, SetterInfo>> {
   if (setterIds.length === 0) return new Map();
   const supabase = createServiceRoleClient();
-  const map = new Map<string, string>();
+  const map = new Map<string, SetterInfo>();
   await Promise.all(
     setterIds.map(async (id) => {
       const { data: member } = await supabase.from("workspace_members").select("user_id").eq("id", id).maybeSingle();
       if (!member) return;
       const { data } = await supabase.auth.admin.getUserById(member.user_id as string);
-      map.set(id, (data?.user?.user_metadata?.full_name as string | undefined) || data?.user?.email || "—");
+      const name = (data?.user?.user_metadata?.full_name as string | undefined) || data?.user?.email || "—";
+      const avatarUrl = (data?.user?.user_metadata?.avatar_url as string | undefined) ?? null;
+      map.set(id, { name, avatarUrl });
     }),
   );
   return map;
@@ -246,66 +259,140 @@ export interface AgendaAdvisorPerformance {
   ventas: number;
 }
 
+export interface AgendaTypeBreakdown {
+  type: string;
+  count: number;
+}
+
 export interface AgendaPerformance {
   scope: "agency" | "advisor";
   bySetter: AgendaSetterPerformance[];
   byAdvisor: AgendaAdvisorPerformance[];
+  byType: AgendaTypeBreakdown[];
   totals: Record<EstadoCita | "total", number>;
+  /** Mismos totales, mismo shape, del período inmediatamente anterior (misma
+   * duración, corrido hacia atrás) — para las flechas "+X% vs período
+   * anterior" en las tiles de KPI. `null` solo si el período pedido dura
+   * <1ms (no debería pasar con los presets de la UI). */
+  previousTotals: Record<EstadoCita | "total", number> | null;
 }
 
-/** KPIs → Agendas: rendimiento por setter y por asesor del período, ambos
+function emptyTotals(): Record<EstadoCita | "total", number> {
+  return { total: 0, agendada: 0, confirmada: 0, realizada: 0, no_show: 0, cancelada: 0, venta: 0 };
+}
+
+/** Solo el conteo por estado (sin desglose por setter/asesor/tipo) — usado
+ * para el período anterior de comparación, donde no hace falta el detalle
+ * completo, solo los totales. */
+async function fetchEstadoTotals(scope: AgendaScope, workspaceId: string, range: { start: string; end: string }): Promise<Record<EstadoCita | "total", number>> {
+  const totals = emptyTotals();
+  if (scope.kind === "advisor") {
+    const client = await createClient();
+    const { data } = await client.from("agenda_appointments").select("estado_cita").eq("workspace_id", scope.workspaceId).gte("start_time", range.start).lt("start_time", range.end);
+    for (const r of (data ?? []) as { estado_cita: EstadoCita }[]) {
+      totals.total += 1;
+      totals[r.estado_cita] += 1;
+    }
+    return totals;
+  }
+  if (scope.advisors.length === 0) return totals;
+  const supabase = createServiceRoleClient();
+  const linkedWorkspaceIds = scope.advisors.map((a) => a.linkedWorkspaceId);
+  const { data } = await supabase.from("agenda_appointments").select("estado_cita").in("workspace_id", linkedWorkspaceIds).gte("start_time", range.start).lt("start_time", range.end);
+  for (const r of (data ?? []) as { estado_cita: EstadoCita }[]) {
+    totals.total += 1;
+    totals[r.estado_cita] += 1;
+  }
+  return totals;
+}
+
+function previousRangeFor(range: { start: string; end: string }): { start: string; end: string } | null {
+  const start = new Date(range.start).getTime();
+  const end = new Date(range.end).getTime();
+  const duration = end - start;
+  if (duration <= 0) return null;
+  return { start: new Date(start - duration).toISOString(), end: range.start };
+}
+
+function applyType(byTypeMap: Map<string, number>, appointmentType: string | null) {
+  const type = appointmentType?.trim();
+  if (!type) return;
+  byTypeMap.set(type, (byTypeMap.get(type) ?? 0) + 1);
+}
+
+/** KPIs → Agendas: rendimiento por setter/asesor/tipo del período, todos
  * derivados de la misma lectura de agenda_appointments (una sola query,
- * dos agrupaciones en JS). En scope "advisor" `byAdvisor` siempre queda
- * vacío (un solo asesor, la tabla no aporta nada) — la UI lo oculta según
- * `scope`, no según `byAdvisor.length` (eso sería ambiguo con "sin datos
- * en el período"). Siempre vista completa del equipo/asesor (nunca
- * filtrada por viewer): la pantalla de KPIs ya gatea owner/admin en la
- * Server Action. */
+ * varias agrupaciones en JS) + una segunda lectura liviana (solo estado_cita)
+ * del período anterior para las comparaciones. En scope "advisor" `byAdvisor`
+ * siempre queda vacío (un solo asesor, la tabla no aporta nada) — la UI lo
+ * oculta según `scope`, no según `byAdvisor.length` (eso sería ambiguo con
+ * "sin datos en el período"). `byType` cuenta solo citas con tipo cargado en
+ * la hoja — sin tipo queda afuera, nunca agrupado como "otro" inventado
+ * (mismo criterio que FuenteDonutChart con las citas sin fuente). Siempre
+ * vista completa del equipo/asesor (nunca filtrada por viewer): la pantalla
+ * de KPIs ya gatea owner/admin en la Server Action. */
 export async function getAgendaPerformance(workspaceId: string, range: { start: string; end: string }): Promise<AgendaPerformance> {
   const scope = await resolveAgendaScope(workspaceId);
-  const totals: Record<EstadoCita | "total", number> = { total: 0, agendada: 0, confirmada: 0, realizada: 0, no_show: 0, cancelada: 0, venta: 0 };
+  const totals = emptyTotals();
+  const previousRange = previousRangeFor(range);
+  const previousTotals = previousRange ? await fetchEstadoTotals(scope, workspaceId, previousRange) : null;
 
   if (scope.kind === "advisor") {
     const client = await createClient();
-    const { data } = await client.from("agenda_appointments").select("setter_id, estado_cita").eq("workspace_id", scope.workspaceId).gte("start_time", range.start).lt("start_time", range.end);
-    const rows = (data ?? []) as { setter_id: string | null; estado_cita: EstadoCita }[];
-    if (rows.length === 0) return { scope: "advisor", bySetter: [], byAdvisor: [], totals };
+    const { data } = await client
+      .from("agenda_appointments")
+      .select("setter_id, estado_cita, appointment_type")
+      .eq("workspace_id", scope.workspaceId)
+      .gte("start_time", range.start)
+      .lt("start_time", range.end);
+    const rows = (data ?? []) as { setter_id: string | null; estado_cita: EstadoCita; appointment_type: string | null }[];
+    if (rows.length === 0) return { scope: "advisor", bySetter: [], byAdvisor: [], byType: [], totals, previousTotals };
 
     const setterIds = [...new Set(rows.map((r) => r.setter_id).filter((id): id is string => !!id))];
-    const setterNameById = await resolveSetterNames(setterIds);
+    const setterInfoById = await resolveSetterNames(setterIds);
     const bySetterMap = new Map<string, AgendaSetterPerformance>();
+    const byTypeMap = new Map<string, number>();
     for (const r of rows) {
       totals.total += 1;
       totals[r.estado_cita] += 1;
+      applyType(byTypeMap, r.appointment_type);
       if (!r.setter_id) continue;
-      const entry = bySetterMap.get(r.setter_id) ?? { setterId: r.setter_id, setterName: setterNameById.get(r.setter_id) ?? "—", citas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
+      const entry = bySetterMap.get(r.setter_id) ?? { setterId: r.setter_id, setterName: setterInfoById.get(r.setter_id)?.name ?? "—", citas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
       applyEstado(entry, r.estado_cita);
       bySetterMap.set(r.setter_id, entry);
     }
-    return { scope: "advisor", bySetter: [...bySetterMap.values()].sort((a, b) => b.citas - a.citas), byAdvisor: [], totals };
+    const byType = [...byTypeMap.entries()].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count);
+    return { scope: "advisor", bySetter: [...bySetterMap.values()].sort((a, b) => b.citas - a.citas), byAdvisor: [], byType, totals, previousTotals };
   }
 
-  if (scope.advisors.length === 0) return { scope: "agency", bySetter: [], byAdvisor: [], totals };
+  if (scope.advisors.length === 0) return { scope: "agency", bySetter: [], byAdvisor: [], byType: [], totals, previousTotals };
   const advisorByWorkspace = new Map(scope.advisors.map((a) => [a.linkedWorkspaceId, a]));
   const linkedWorkspaceIds = scope.advisors.map((a) => a.linkedWorkspaceId);
 
   const supabase = createServiceRoleClient();
-  const { data } = await supabase.from("agenda_appointments").select("workspace_id, setter_id, estado_cita").in("workspace_id", linkedWorkspaceIds).gte("start_time", range.start).lt("start_time", range.end);
-  const rows = (data ?? []) as { workspace_id: string; setter_id: string | null; estado_cita: EstadoCita }[];
-  if (rows.length === 0) return { scope: "agency", bySetter: [], byAdvisor: [], totals };
+  const { data } = await supabase
+    .from("agenda_appointments")
+    .select("workspace_id, setter_id, estado_cita, appointment_type")
+    .in("workspace_id", linkedWorkspaceIds)
+    .gte("start_time", range.start)
+    .lt("start_time", range.end);
+  const rows = (data ?? []) as { workspace_id: string; setter_id: string | null; estado_cita: EstadoCita; appointment_type: string | null }[];
+  if (rows.length === 0) return { scope: "agency", bySetter: [], byAdvisor: [], byType: [], totals, previousTotals };
 
   const setterIds = [...new Set(rows.map((r) => r.setter_id).filter((id): id is string => !!id))];
-  const setterNameById = await resolveSetterNamesForWorkspace(workspaceId, setterIds);
+  const setterInfoById = await resolveSetterNamesForWorkspace(workspaceId, setterIds);
 
   const bySetterMap = new Map<string, AgendaSetterPerformance>();
   const byAdvisorMap = new Map<string, AgendaAdvisorPerformance>();
+  const byTypeMap = new Map<string, number>();
 
   for (const r of rows) {
     totals.total += 1;
     totals[r.estado_cita] += 1;
+    applyType(byTypeMap, r.appointment_type);
 
     if (r.setter_id) {
-      const entry = bySetterMap.get(r.setter_id) ?? { setterId: r.setter_id, setterName: setterNameById.get(r.setter_id) ?? "—", citas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
+      const entry = bySetterMap.get(r.setter_id) ?? { setterId: r.setter_id, setterName: setterInfoById.get(r.setter_id)?.name ?? "—", citas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
       applyEstado(entry, r.estado_cita);
       bySetterMap.set(r.setter_id, entry);
     }
@@ -322,7 +409,9 @@ export async function getAgendaPerformance(workspaceId: string, range: { start: 
     scope: "agency",
     bySetter: [...bySetterMap.values()].sort((a, b) => b.citas - a.citas),
     byAdvisor: [...byAdvisorMap.values()].sort((a, b) => b.citas - a.citas),
+    byType: [...byTypeMap.entries()].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count),
     totals,
+    previousTotals,
   };
 }
 
