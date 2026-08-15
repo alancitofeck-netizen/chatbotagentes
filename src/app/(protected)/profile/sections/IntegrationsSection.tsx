@@ -25,9 +25,7 @@ import {
 import { WhatsAppIntegrationSheet } from "./WhatsAppIntegrationSheet";
 import { OpenRouterIntegrationSheet } from "./OpenRouterIntegrationSheet";
 import { KpiSettersManager } from "./KpiSettersManager";
-import { LeadSheetConnectionsManager } from "./LeadSheetConnectionsManager";
-import { AppointmentSheetConnectionsManager } from "./AppointmentSheetConnectionsManager";
-import { AdvisorSetterAssignmentsManager } from "./AdvisorSetterAssignmentsManager";
+import { AdvisorSheetConnectionsManager } from "./AdvisorSheetConnectionsManager";
 import { WhatsAppWebConnectionsCard } from "./WhatsAppWebConnectionsCard";
 
 /** Moved from the old standalone /settings/integrations page into the
@@ -289,7 +287,7 @@ export function IntegrationsSection({
             <span className="flex size-8 items-center justify-center rounded-full bg-success-bg text-success-strong">
               <Table2 className="size-4" aria-hidden="true" />
             </span>
-            <h3 className="text-[15px] font-medium text-foreground">Google Sheets (KPIs)</h3>
+            <h3 className="text-[15px] font-medium text-foreground">Google Sheets</h3>
           </div>
           <Badge variant={googleSheets.connected ? "success" : "neutral"}>
             {googleSheets.connected ? "🟢 Conectado" : "No conectado"}
@@ -300,8 +298,8 @@ export function IntegrationsSection({
           <p className="text-sm text-neutral-600">Cuenta de Google: {googleSheets.email}</p>
         ) : (
           <p className="text-sm text-neutral-500">
-            Conectá una cuenta de Google para ver los KPIs de tus setters directamente en el CRM — cada setter comparte su
-            propia hoja (permiso de lectura) con esta cuenta, no hace falta que cada uno haga su propio login.
+            Conectá una cuenta de Google para traer Leads, Agenda y KPIs de Agenda directamente al CRM desde la hoja de
+            cada asesor — no hace falta que cada uno haga su propio login.
           </p>
         )}
 
@@ -317,10 +315,8 @@ export function IntegrationsSection({
           )}
         </div>
 
+        <AdvisorSheetConnectionsManager key={`advisor-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
         <KpiSettersManager key={String(googleSheets.connected)} canManage={canManage} accountConnected={googleSheets.connected} />
-        <LeadSheetConnectionsManager key={`leads-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
-        <AppointmentSheetConnectionsManager key={`agenda-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
-        {googleSheets.connected && <AdvisorSetterAssignmentsManager canManage={canManage} />}
       </Card>
 
       <Card>

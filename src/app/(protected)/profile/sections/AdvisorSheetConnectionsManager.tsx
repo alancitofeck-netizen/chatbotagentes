@@ -7,33 +7,35 @@ import { Badge } from "@/components/ui/Badge";
 import { toast } from "@/components/toast/toast";
 import { formatRelativeTime } from "@/lib/utils/format";
 import {
-  getAppointmentSheetConnectionsAction,
-  pauseAppointmentSheetConnectionAction,
-  deleteAppointmentSheetConnectionAction,
-  triggerManualAppointmentSheetSyncAction,
-  getAppointmentSheetRowErrorsAction,
-} from "@/lib/appointmentSync/actions";
-import type { AppointmentSheetConnectionRow, AppointmentSheetRowErrorItem } from "@/lib/appointmentSync/queries";
-import { AppointmentSheetConnectionWizard } from "./AppointmentSheetConnectionWizard";
+  getAdvisorSheetConnectionsAction,
+  pauseAdvisorSheetConnectionAction,
+  deleteAdvisorSheetConnectionAction,
+  triggerManualAdvisorSheetSyncAction,
+  getAdvisorSheetRowErrorsAction,
+} from "@/lib/advisorSync/actions";
+import type { AdvisorSheetRowErrorItem } from "@/lib/advisorSync/queries";
+import type { AdvisorSheetConnectionRow } from "@/lib/advisorSync/types";
+import { AdvisorSheetConnectionWizard } from "./AdvisorSheetConnectionWizard";
 
-const STATUS_BADGE: Record<AppointmentSheetConnectionRow["lastSyncStatus"], { variant: "success" | "warning" | "error"; label: string }> = {
+const STATUS_BADGE: Record<AdvisorSheetConnectionRow["lastSyncStatus"], { variant: "success" | "warning" | "error"; label: string }> = {
   ok: { variant: "success", label: "Sincronizado" },
   pending: { variant: "warning", label: "Pendiente" },
   error: { variant: "error", label: "Error" },
 };
 
-/** Vive dentro de la card "Google Sheets" de IntegrationsSection.tsx, mismo
- * criterio que LeadSheetConnectionsManager — reutiliza la misma conexión
- * OAuth 'google_sheets', no pide "Conectar Google" de nuevo. */
-export function AppointmentSheetConnectionsManager({ canManage, accountConnected }: { canManage: boolean; accountConnected: boolean }) {
-  const [connections, setConnections] = useState<AppointmentSheetConnectionRow[] | null>(null);
+/** Vive dentro de la card "Google Sheets" de IntegrationsSection.tsx —
+ * reemplaza LeadSheetConnectionsManager + AppointmentSheetConnectionsManager
+ * + AdvisorSetterAssignmentsManager: una conexión por asesor alimenta Leads,
+ * Agenda y KPIs de Agenda a la vez (ver src/lib/advisorSync/runner.ts). */
+export function AdvisorSheetConnectionsManager({ canManage, accountConnected }: { canManage: boolean; accountConnected: boolean }) {
+  const [connections, setConnections] = useState<AdvisorSheetConnectionRow[] | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
-  const [errorsFor, setErrorsFor] = useState<{ connectionId: string; rows: AppointmentSheetRowErrorItem[] } | null>(null);
+  const [errorsFor, setErrorsFor] = useState<{ connectionId: string; rows: AdvisorSheetRowErrorItem[] } | null>(null);
   const [, startTransition] = useTransition();
 
   function refetch() {
-    getAppointmentSheetConnectionsAction().then(setConnections);
+    getAdvisorSheetConnectionsAction().then(setConnections);
   }
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export function AppointmentSheetConnectionsManager({ canManage, accountConnected
 
   function handleSyncNow(id: string) {
     setSyncingId(id);
-    triggerManualAppointmentSheetSyncAction(id)
+    triggerManualAdvisorSheetSyncAction(id)
       .then((result) => {
         toast.success(`Sincronizado — ${result.created} nueva(s), ${result.updated} actualizada(s)${result.errors ? `, ${result.errors} con error` : ""}.`);
         refetch();
@@ -51,11 +53,11 @@ export function AppointmentSheetConnectionsManager({ canManage, accountConnected
       .finally(() => setSyncingId(null));
   }
 
-  function handleTogglePause(connection: AppointmentSheetConnectionRow) {
+  function handleTogglePause(connection: AdvisorSheetConnectionRow) {
     const nextStatus = connection.status === "active" ? "paused" : "active";
     startTransition(async () => {
       try {
-        await pauseAppointmentSheetConnectionAction(connection.id, nextStatus);
+        await pauseAdvisorSheetConnectionAction(connection.id, nextStatus);
         refetch();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo actualizar la conexión.");
@@ -63,11 +65,11 @@ export function AppointmentSheetConnectionsManager({ canManage, accountConnected
     });
   }
 
-  function handleDelete(connection: AppointmentSheetConnectionRow) {
-    if (!window.confirm(`¿Eliminar la conexión con "${connection.sheetName}"? Las citas ya creadas no se borran.`)) return;
+  function handleDelete(connection: AdvisorSheetConnectionRow) {
+    if (!window.confirm(`¿Eliminar la conexión con "${connection.advisorName}"? Los leads y citas ya creados no se borran.`)) return;
     startTransition(async () => {
       try {
-        await deleteAppointmentSheetConnectionAction(connection.id);
+        await deleteAdvisorSheetConnectionAction(connection.id);
         refetch();
         toast.success("Conexión eliminada.");
       } catch (err) {
@@ -77,7 +79,7 @@ export function AppointmentSheetConnectionsManager({ canManage, accountConnected
   }
 
   function handleViewErrors(connectionId: string) {
-    getAppointmentSheetRowErrorsAction(connectionId).then((rows) => setErrorsFor({ connectionId, rows }));
+    getAdvisorSheetRowErrorsAction(connectionId).then((rows) => setErrorsFor({ connectionId, rows }));
   }
 
   if (!accountConnected) return null;
@@ -85,7 +87,10 @@ export function AppointmentSheetConnectionsManager({ canManage, accountConnected
   return (
     <div className="mt-4 flex flex-col gap-2 border-t border-border-default pt-4">
       <div className="flex items-center justify-between">
-        <p className="text-[13px] font-medium text-foreground">Sincronización de agenda (setter → asesor)</p>
+        <div>
+          <p className="text-[13px] font-medium text-foreground">Conexiones activas</p>
+          <p className="text-[12px] text-neutral-500">Un asesor, una hoja — alimenta Leads, Agenda y sus KPIs a la vez.</p>
+        </div>
         <Button size="sm" variant="secondary" disabled={!canManage} onClick={() => setWizardOpen(true)}>
           <Plus size={14} aria-hidden="true" />
           Nueva conexión
@@ -95,7 +100,7 @@ export function AppointmentSheetConnectionsManager({ canManage, accountConnected
       {connections === null ? (
         <p className="text-[13px] text-neutral-500">Cargando…</p>
       ) : connections.length === 0 ? (
-        <p className="text-[13px] text-neutral-500">Todavía no conectaste la hoja donde tus setters cargan citas.</p>
+        <p className="text-[13px] text-neutral-500">Todavía no conectaste la hoja de ningún asesor.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {connections.map((c) => {
@@ -103,9 +108,9 @@ export function AppointmentSheetConnectionsManager({ canManage, accountConnected
             return (
               <li key={c.id} className="flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-foreground">{c.sheetName}</p>
-                  <p className="text-[12px] text-neutral-500">
-                    {c.lastSyncedAt ? `Última sync: ${formatRelativeTime(c.lastSyncedAt)}` : "Todavía no sincronizó"} · {c.rowCount} fila(s)
+                  <p className="truncate text-[13px] font-medium text-foreground">{c.advisorName}</p>
+                  <p className="truncate text-[12px] text-neutral-500" title={c.sheetName}>
+                    {c.sheetName} · {c.lastSyncedAt ? `Última sync: ${formatRelativeTime(c.lastSyncedAt)}` : "Todavía no sincronizó"} · {c.rowCount} fila(s)
                   </p>
                   {c.lastSyncStatus === "error" && c.lastSyncError && (
                     <p className="truncate text-[12px] text-error-strong" title={c.lastSyncError}>
@@ -180,7 +185,7 @@ export function AppointmentSheetConnectionsManager({ canManage, accountConnected
       )}
 
       {wizardOpen && (
-        <AppointmentSheetConnectionWizard
+        <AdvisorSheetConnectionWizard
           onClose={() => setWizardOpen(false)}
           onSaved={() => {
             setWizardOpen(false);

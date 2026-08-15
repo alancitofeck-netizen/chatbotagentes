@@ -1,18 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { toast } from "@/components/toast/toast";
-import { inspectAppointmentSpreadsheetAction, inspectAppointmentSheetColumnsAction, saveAppointmentSheetConnectionAction } from "@/lib/appointmentSync/actions";
-import { APPOINTMENT_SYNC_FIELD_DICTIONARY, type AppointmentSyncFieldKey } from "@/lib/appointmentSync/fieldDictionary";
+import {
+  getAdvisorOptionsAction,
+  inspectAdvisorSpreadsheetAction,
+  inspectAdvisorSheetColumnsAction,
+  saveAdvisorSheetConnectionAction,
+} from "@/lib/advisorSync/actions";
+import { ADVISOR_SYNC_FIELD_DICTIONARY, type AdvisorSyncFieldKey } from "@/lib/advisorSync/fieldDictionary";
+import type { AdvisorOption } from "@/lib/advisorSync/types";
 
-/** Calco de LeadSheetConnectionWizard.tsx sin los pasos de pipeline/etapa —
- * acá no se crea ninguna oportunidad, solo una cita (ver plan del Sistema
- * de Agendas). Un solo formulario progresivo: hoja → mapeo de columnas. */
-export function AppointmentSheetConnectionWizard({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+/** Un solo formulario progresivo: Asesor → hoja → mapeo de columnas. A
+ * diferencia de los wizards viejos (uno para Leads, otro para Agenda), acá
+ * el asesor se fija una sola vez al crear la conexión — no se resuelve fila
+ * por fila del texto de la hoja (ver runner.ts). */
+export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [advisors, setAdvisors] = useState<AdvisorOption[] | null>(null);
+  const [advisorClientId, setAdvisorClientId] = useState("");
+
   const [spreadsheetInput, setSpreadsheetInput] = useState("");
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
   const [tabs, setTabs] = useState<{ sheetId: number; title: string }[]>([]);
@@ -20,16 +30,20 @@ export function AppointmentSheetConnectionWizard({ onClose, onSaved }: { onClose
   const [loadingTabs, setLoadingTabs] = useState(false);
 
   const [headers, setHeaders] = useState<string[]>([]);
-  const [columnMap, setColumnMap] = useState<Record<string, AppointmentSyncFieldKey | "">>({});
+  const [columnMap, setColumnMap] = useState<Record<string, AdvisorSyncFieldKey | "">>({});
   const [loadingColumns, setLoadingColumns] = useState(false);
 
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getAdvisorOptionsAction().then(setAdvisors);
+  }, []);
 
   async function handleInspectSpreadsheet() {
     if (!spreadsheetInput.trim()) return;
     setLoadingTabs(true);
     try {
-      const result = await inspectAppointmentSpreadsheetAction(spreadsheetInput);
+      const result = await inspectAdvisorSpreadsheetAction(spreadsheetInput);
       setSpreadsheetId(result.spreadsheetId);
       setTabs(result.sheets);
       if (result.sheets.length === 1) setSheetName(result.sheets[0].title);
@@ -44,9 +58,9 @@ export function AppointmentSheetConnectionWizard({ onClose, onSaved }: { onClose
     if (!spreadsheetId || !sheetName) return;
     setLoadingColumns(true);
     try {
-      const result = await inspectAppointmentSheetColumnsAction(spreadsheetId, sheetName);
+      const result = await inspectAdvisorSheetColumnsAction(spreadsheetId, sheetName);
       setHeaders(result.headers);
-      const suggested: Record<string, AppointmentSyncFieldKey | ""> = {};
+      const suggested: Record<string, AdvisorSyncFieldKey | ""> = {};
       for (const s of result.suggestions) suggested[s.header] = s.fieldKey ?? "";
       setColumnMap(suggested);
     } catch (err) {
@@ -57,14 +71,19 @@ export function AppointmentSheetConnectionWizard({ onClose, onSaved }: { onClose
   }
 
   async function handleSave() {
+    if (!advisorClientId) {
+      toast.error("Elegí un asesor antes de guardar.");
+      return;
+    }
     if (!spreadsheetId || !sheetName) {
       toast.error("Elegí la hoja antes de guardar.");
       return;
     }
-    const finalMap = Object.fromEntries(Object.entries(columnMap).filter(([, v]) => v !== "")) as Record<string, AppointmentSyncFieldKey>;
+    const finalMap = Object.fromEntries(Object.entries(columnMap).filter(([, v]) => v !== "")) as Record<string, AdvisorSyncFieldKey>;
     setSaving(true);
     try {
-      await saveAppointmentSheetConnectionAction({
+      await saveAdvisorSheetConnectionAction({
+        advisorClientId,
         spreadsheetId,
         sheetGid: tabs.find((t) => t.title === sheetName)?.sheetId.toString() ?? null,
         sheetName,
@@ -80,10 +99,27 @@ export function AppointmentSheetConnectionWizard({ onClose, onSaved }: { onClose
   }
 
   return (
-    <Sheet open onClose={onClose} title="Conectar Google Sheets (Agenda)" className="max-w-lg">
+    <Sheet open onClose={onClose} title="Conectar Google Sheets" className="max-w-lg">
       <div className="flex flex-col gap-5 p-5">
         <section className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-foreground">1. Hoja</p>
+          <p className="text-sm font-medium text-foreground">1. Asesor</p>
+          {advisors === null ? (
+            <p className="text-[13px] text-neutral-500">Cargando asesores…</p>
+          ) : (
+            <Select label="" value={advisorClientId} onChange={(e) => setAdvisorClientId(e.target.value)}>
+              <option value="">Elegí un asesor</option>
+              {advisors.map((a) => (
+                <option key={a.clientId} value={a.clientId} disabled={a.hasConnection}>
+                  {a.name}
+                  {a.hasConnection ? " (ya tiene conexión)" : ""}
+                </option>
+              ))}
+            </Select>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-foreground">2. Hoja</p>
           <div className="flex gap-2">
             <Input
               label=""
@@ -111,7 +147,7 @@ export function AppointmentSheetConnectionWizard({ onClose, onSaved }: { onClose
         {sheetName && (
           <section className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">2. Mapeo de columnas</p>
+              <p className="text-sm font-medium text-foreground">3. Mapeo de columnas</p>
               {headers.length === 0 && (
                 <Button size="sm" variant="secondary" onClick={handleInspectColumns} loading={loadingColumns}>
                   Leer columnas
@@ -129,10 +165,10 @@ export function AppointmentSheetConnectionWizard({ onClose, onSaved }: { onClose
                       label=""
                       containerClassName="flex-1"
                       value={columnMap[header] ?? ""}
-                      onChange={(e) => setColumnMap((prev) => ({ ...prev, [header]: e.target.value as AppointmentSyncFieldKey | "" }))}
+                      onChange={(e) => setColumnMap((prev) => ({ ...prev, [header]: e.target.value as AdvisorSyncFieldKey | "" }))}
                     >
                       <option value="">— No usar —</option>
-                      {APPOINTMENT_SYNC_FIELD_DICTIONARY.map((f) => (
+                      {ADVISOR_SYNC_FIELD_DICTIONARY.map((f) => (
                         <option key={f.key} value={f.key}>
                           {f.label}
                           {f.required ? " *" : ""}
@@ -150,7 +186,7 @@ export function AppointmentSheetConnectionWizard({ onClose, onSaved }: { onClose
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} loading={saving} disabled={!spreadsheetId || !sheetName}>
+          <Button onClick={handleSave} loading={saving} disabled={!advisorClientId || !spreadsheetId || !sheetName}>
             Guardar conexión
           </Button>
         </div>
