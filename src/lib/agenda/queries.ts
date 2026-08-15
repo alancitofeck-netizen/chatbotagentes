@@ -123,7 +123,7 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
     const client = await createClient();
     const { data } = await client
       .from("agenda_appointments")
-      .select("id, workspace_id, contact_id, setter_id, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
+      .select("id, workspace_id, contact_id, setter_id, setter_name, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
       .eq("workspace_id", scope.workspaceId)
       .gte("start_time", range.start)
       .lt("start_time", range.end)
@@ -143,7 +143,7 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
   const supabase = createServiceRoleClient();
   let query = supabase
     .from("agenda_appointments")
-    .select("id, workspace_id, contact_id, setter_id, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
+    .select("id, workspace_id, contact_id, setter_id, setter_name, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
     .in("workspace_id", linkedWorkspaceIds)
     .gte("start_time", range.start)
     .lt("start_time", range.end)
@@ -172,6 +172,7 @@ function mapAppointmentRow(
     workspace_id: string;
     contact_id: string | null;
     setter_id: string | null;
+    setter_name: string | null;
     start_time: string;
     end_time: string;
     subject: string | null;
@@ -200,7 +201,10 @@ function mapAppointmentRow(
     advisorClientId,
     advisorName,
     setterId,
-    setterName: setterId ? (setterInfo?.name ?? "—") : null,
+    // Si no hay setter_id (muchos setters no tienen cuenta de Growth Link),
+    // se muestra igual el nombre crudo que vino de la hoja — ver
+    // 0147_agenda_appointments_setter_name.sql / advisorSync/runner.ts.
+    setterName: setterId ? (setterInfo?.name ?? "—") : (r.setter_name ?? null),
     setterAvatarUrl: setterInfo?.avatarUrl ?? null,
   };
 }

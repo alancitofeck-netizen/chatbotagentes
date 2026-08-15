@@ -47,33 +47,79 @@ async function markConnectionOk(supabase: SupabaseClient, connectionId: string, 
     .eq("id", connectionId);
 }
 
-/** Excel/Sheets serial date, o dd/mm/yyyy | yyyy-mm-dd — mismo parser que
- * tenían por separado leadSync/runner.ts y appointmentSync/runner.ts. Nunca
- * lanza — una fecha mala descarta la fila (sin fecha no hay cita). */
+/** El equipo opera en Argentina/Uruguay (UTC-3, sin horario de verano) —
+ * mismo criterio de offset fijo (sin librería de timezone) que
+ * src/lib/ai/businessHours.ts. Sin esto, la hora de la hoja se interpretaba
+ * como si ya fuera UTC: con `valueRenderOption=UNFORMATTED_VALUE` (ver
+ * googleSheets.ts) una celda de Hora le llega a este parser como fracción
+ * de día (ej. 0.875 = 21:00), y como nunca matcheaba el regex "HH:MM" la
+ * hora nunca se aplicaba — todas las citas terminaban mostrando la misma
+ * hora "fantasma" (medianoche UTC renderizada en horario local). */
+const SHEET_TIMEZONE_UTC_OFFSET_HOURS = 3;
+
+/** Excel/Sheets serial date (con o sin fracción de hora embebida), dd/mm/yyyy
+ * o yyyy-mm-dd para la fecha; "HH:MM" o fracción de día (0-1) para la hora.
+ * Nunca lanza — una fecha mala descarta la fila (sin fecha no hay cita). */
 function parseSheetDate(dateValue: string, timeValue: string | undefined): Date | null {
   const trimmed = dateValue.trim();
   if (!trimmed) return null;
 
-  let base: Date | null = null;
+  let year: number;
+  let month: number; // 0-based
+  let day: number;
+  let hour = 0;
+  let minute = 0;
+
   const serial = Number(trimmed);
   if (!Number.isNaN(serial) && serial > 20000 && serial < 80000) {
-    base = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+    const wholeDays = Math.floor(serial);
+    const fractionalDay = serial - wholeDays;
+    const epoch = new Date(Date.UTC(1899, 11, 30) + wholeDays * 86400000);
+    year = epoch.getUTCFullYear();
+    month = epoch.getUTCMonth();
+    day = epoch.getUTCDate();
+    if (fractionalDay > 0) {
+      const totalMinutes = Math.round(fractionalDay * 24 * 60);
+      hour = Math.floor(totalMinutes / 60);
+      minute = totalMinutes % 60;
+    }
   } else {
     const dmy = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
     const ymd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
     if (dmy) {
       const [, d, m, y] = dmy;
-      base = new Date(Number(y.length === 2 ? `20${y}` : y), Number(m) - 1, Number(d));
+      year = Number(y.length === 2 ? `20${y}` : y);
+      month = Number(m) - 1;
+      day = Number(d);
     } else if (ymd) {
       const [, y, m, d] = ymd;
-      base = new Date(Number(y), Number(m) - 1, Number(d));
+      year = Number(y);
+      month = Number(m) - 1;
+      day = Number(d);
+    } else {
+      return null;
     }
   }
-  if (!base || Number.isNaN(base.getTime())) return null;
 
-  const timeMatch = timeValue?.trim().match(/^(\d{1,2}):(\d{2})/);
-  if (timeMatch) base.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
-  return base;
+  const timeTrimmed = timeValue?.trim();
+  if (timeTrimmed) {
+    const timeMatch = timeTrimmed.match(/^(\d{1,2}):(\d{2})/);
+    if (timeMatch) {
+      hour = Number(timeMatch[1]);
+      minute = Number(timeMatch[2]);
+    } else {
+      const timeSerial = Number(timeTrimmed);
+      if (!Number.isNaN(timeSerial) && timeSerial >= 0 && timeSerial < 1) {
+        const totalMinutes = Math.round(timeSerial * 24 * 60);
+        hour = Math.floor(totalMinutes / 60);
+        minute = totalMinutes % 60;
+      }
+    }
+  }
+
+  const utcMs = Date.UTC(year, month, day, hour, minute, 0) + SHEET_TIMEZONE_UTC_OFFSET_HOURS * 60 * 60 * 1000;
+  const result = new Date(utcMs);
+  return Number.isNaN(result.getTime()) ? null : result;
 }
 
 /** Exacto→substring — una coincidencia de nombre equivocada asocia la fila
@@ -186,21 +232,26 @@ async function processRow(
   // fila — la cita/lead se crean igual, simplemente sin setter asignado.
   const setter = resolveByName(values.setterName, setters);
 
-  if (setter) {
-    // Deriva la relación setter↔asesor de la propia fila en vez de requerir
-    // configurarla aparte (reemplaza AdvisorSetterAssignmentsManager como
-    // paso manual — ver plan de unificación).
-    await supabase
-      .from("advisor_setter_assignments")
-      .upsert({ workspace_id: advisor.agencyWorkspaceId, client_id: advisor.clientId, setter_id: setter.memberId }, { onConflict: "client_id,setter_id", ignoreDuplicates: true });
-  }
+  // Deriva la relación setter↔asesor de la propia fila en vez de requerir
+  // configurarla aparte (reemplaza AdvisorSetterAssignmentsManager como
+  // paso manual). Se dispara en paralelo con la consulta de contacto de
+  // abajo (no depende de su resultado ni lo bloquea) — con hojas de 50-60+
+  // filas, cada round trip evitado por fila suma.
+  const assignmentPromise = setter
+    ? supabase
+        .from("advisor_setter_assignments")
+        .upsert({ workspace_id: advisor.agencyWorkspaceId, client_id: advisor.clientId, setter_id: setter.memberId }, { onConflict: "client_id,setter_id", ignoreDuplicates: true })
+    : null;
 
   const meetingAt = parseSheetDate(values.date, values.time);
   if (!meetingAt) throw new Error(`Fecha "${values.date}" no reconocida.`);
 
   const linkedWorkspaceId = advisor.linkedWorkspaceId;
 
-  const { data: existingContact } = await supabase.from("contacts").select("id").eq("workspace_id", linkedWorkspaceId).eq("phone", phone).maybeSingle();
+  const [{ data: existingContact }] = await Promise.all([
+    supabase.from("contacts").select("id").eq("workspace_id", linkedWorkspaceId).eq("phone", phone).maybeSingle(),
+    assignmentPromise,
+  ]);
   let contactId: string;
   if (existingContact) {
     contactId = existingContact.id as string;
@@ -227,6 +278,9 @@ async function processRow(
     contact_id: contactId,
     advisor_client_id: advisor.clientId,
     setter_id: setter?.memberId ?? null,
+    // Respaldo de visualización para cuando el setter no tiene cuenta real
+    // (setter_id null) — ver 0147_agenda_appointments_setter_name.sql.
+    setter_name: values.setterName ?? null,
     subject: values.appointmentType ? `${values.appointmentType}: ${values.leadName}` : `Cita: ${values.leadName}`,
     appointment_type: values.appointmentType ?? null,
     start_time: startTime,
