@@ -10,7 +10,16 @@ import { AgendaTimeline } from "./AgendaTimeline";
 import { AgendaAppointmentsTable } from "./AgendaAppointmentsTable";
 import { AgendaMiniCalendar } from "./AgendaMiniCalendar";
 import { AgendaUpcomingList } from "./AgendaUpcomingList";
-import { AgendaInsightsPanel } from "./AgendaInsightsPanel";
+import { AgendaKpiTiles } from "./AgendaKpiTiles";
+import { AgendaEstadoDonut } from "./AgendaEstadoDonut";
+import { AgendaTipoBars } from "./AgendaTipoBars";
+import { useAgendaPerformance } from "./useAgendaPerformance";
+
+const GRANULARITY_OPTIONS: { key: Granularity; label: string }[] = [
+  { key: "dia", label: "Día" },
+  { key: "semana", label: "Semana" },
+  { key: "mes", label: "Mes" },
+];
 
 type Granularity = "dia" | "semana" | "mes";
 
@@ -72,6 +81,8 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
   const [upcoming, setUpcoming] = useState<AgendaAppointment[] | null>(null);
   const [monthCitas, setMonthCitas] = useState<AgendaAppointment[]>([]);
   const [loading, startTransition] = useTransition();
+
+  const analytics = useAgendaPerformance();
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [setterFilter, setSetterFilter] = useState("");
@@ -211,17 +222,30 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h2 className="text-[17px] font-semibold text-foreground">{dateHeaderLabel(granularity, selectedDate)}</h2>
               {granularity === "dia" && <p className="text-[13px] text-neutral-500">{weekdayLabel(selectedDate)}</p>}
             </div>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setFiltersOpen((v) => !v)}
+            <div className="flex items-center gap-2">
+              <select
+                value={granularity}
+                onChange={(e) => setGranularity(e.target.value as Granularity)}
+                title="Agrupar la vista por día, semana o mes"
+                className="rounded-md border border-border-default bg-surface-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-2"
+              >
+                {GRANULARITY_OPTIONS.map((g) => (
+                  <option key={g.key} value={g.key}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen((v) => !v)}
                 className="flex items-center gap-1.5 rounded-md border border-border-default px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-2"
               >
                 <SlidersHorizontal size={14} aria-hidden="true" />
@@ -276,6 +300,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
 
@@ -294,7 +319,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
         </div>
 
         <div className="flex flex-col gap-4">
-          <AgendaInsightsPanel />
+          <AgendaKpiTiles data={analytics.data} preset={analytics.preset} onPresetChange={analytics.setPreset} loading={analytics.loading} />
           <AgendaMiniCalendar
             month={calendarMonth}
             onMonthChange={setCalendarMonth}
@@ -306,6 +331,8 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
             appointments={monthCitas}
           />
           <AgendaUpcomingList citas={upcoming ?? []} />
+          <AgendaEstadoDonut data={analytics.data} />
+          <AgendaTipoBars data={analytics.data} />
         </div>
       </div>
     </div>
