@@ -166,7 +166,7 @@ async function processRow(
     }
   });
 
-  if (!values.leadName || !values.phone || !values.setterName || !values.date) return "skipped";
+  if (!values.leadName || !values.phone || !values.date) return "skipped";
 
   const phone = normalizeE164(values.phone);
   const hash = sha256(JSON.stringify(values));
@@ -181,15 +181,19 @@ async function processRow(
 
   if (existingRow && existingRow.last_row_hash === hash) return "skipped";
 
+  // El Setter es opcional: muchos setters no tienen cuenta de Growth Link
+  // (no son workspace_members), así que no reconocerlo nunca bloquea la
+  // fila — la cita/lead se crean igual, simplemente sin setter asignado.
   const setter = resolveByName(values.setterName, setters);
-  if (!setter) throw new Error(`Setter "${values.setterName}" no reconocido.`);
 
-  // Deriva la relación setter↔asesor de la propia fila en vez de requerir
-  // configurarla aparte (reemplaza AdvisorSetterAssignmentsManager como
-  // paso manual — ver plan de unificación).
-  await supabase
-    .from("advisor_setter_assignments")
-    .upsert({ workspace_id: advisor.agencyWorkspaceId, client_id: advisor.clientId, setter_id: setter.memberId }, { onConflict: "client_id,setter_id", ignoreDuplicates: true });
+  if (setter) {
+    // Deriva la relación setter↔asesor de la propia fila en vez de requerir
+    // configurarla aparte (reemplaza AdvisorSetterAssignmentsManager como
+    // paso manual — ver plan de unificación).
+    await supabase
+      .from("advisor_setter_assignments")
+      .upsert({ workspace_id: advisor.agencyWorkspaceId, client_id: advisor.clientId, setter_id: setter.memberId }, { onConflict: "client_id,setter_id", ignoreDuplicates: true });
+  }
 
   const meetingAt = parseSheetDate(values.date, values.time);
   if (!meetingAt) throw new Error(`Fecha "${values.date}" no reconocida.`);
@@ -222,7 +226,7 @@ async function processRow(
   const appointmentPayload = {
     contact_id: contactId,
     advisor_client_id: advisor.clientId,
-    setter_id: setter.memberId,
+    setter_id: setter?.memberId ?? null,
     subject: values.appointmentType ? `${values.appointmentType}: ${values.leadName}` : `Cita: ${values.leadName}`,
     appointment_type: values.appointmentType ?? null,
     start_time: startTime,

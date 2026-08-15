@@ -7,7 +7,7 @@ import { requireAgencyManagerRole } from "@/lib/auth/roles";
 import { getValidGoogleSheetsAccessToken, fetchSpreadsheetMetadata, fetchSheetValues, parseSpreadsheetId } from "@/lib/integrations/googleSheets";
 import { detectAdvisorSyncColumnMapping } from "./fieldDictionary";
 import { runAdvisorSheetSync } from "./runner";
-import { getAdvisorSheetConnections, getAdvisorOptions, getAdvisorSheetRowErrors } from "./queries";
+import { getAdvisorSheetConnections, findAdvisorClientByName, getAdvisorSheetRowErrors } from "./queries";
 import type { AdvisorSyncFieldKey } from "./fieldDictionary";
 
 async function requireSheetsToken(workspaceId: string): Promise<string> {
@@ -16,18 +16,31 @@ async function requireSheetsToken(workspaceId: string): Promise<string> {
   return token;
 }
 
+/** Gateado a owner/admin de la agencia (no "agent") — a diferencia del
+ * resto de Integraciones, esta pantalla expone qué cuentas de asesores
+ * existen en el CRM, y el pedido explícito fue que otros agentes del
+ * workspace de la agencia no puedan verlo. */
 export async function getAdvisorSheetConnectionsAction() {
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role } = await requireActiveWorkspace();
+  await requireAgencyManagerRole(workspaceId, role);
   return getAdvisorSheetConnections(workspaceId);
 }
 
-export async function getAdvisorOptionsAction() {
-  const { workspaceId } = await requireActiveWorkspace();
-  return getAdvisorOptions(workspaceId);
+/** El asesor se busca por nombre escrito a mano (nunca un desplegable con
+ * el roster completo — mismo motivo que arriba). Devuelve un booleano
+ * genérico en vez de datos del asesor para no convertir esto en un oráculo
+ * de qué cuentas existen: la propia acción de guardar vuelve a validar. */
+export async function resolveAdvisorByNameAction(name: string): Promise<{ found: boolean; hasConnection: boolean; clientId: string | null }> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  await requireAgencyManagerRole(workspaceId, role);
+  const match = await findAdvisorClientByName(workspaceId, name);
+  if (!match) return { found: false, hasConnection: false, clientId: null };
+  return { found: true, hasConnection: match.hasConnection, clientId: match.clientId };
 }
 
 export async function getAdvisorSheetRowErrorsAction(connectionId: string) {
-  await requireActiveWorkspace();
+  const { workspaceId, role } = await requireActiveWorkspace();
+  await requireAgencyManagerRole(workspaceId, role);
   return getAdvisorSheetRowErrors(connectionId);
 }
 
@@ -40,24 +53,40 @@ export async function inspectAdvisorSpreadsheetAction(spreadsheetUrlOrId: string
   return { spreadsheetId, ...metadata };
 }
 
-/** `headerRow` (1-based, default 1 — igual que el número de fila que ve el
- * usuario en Sheets). Algunas hojas tienen una fila de título arriba de los
- * encabezados reales (ej. una celda "AGENDAS" sola en la fila 1, con
- * FECHA/HORA/... recién en la fila 2). El wizard deja cambiarla si la fila
- * 1 no trae las columnas esperadas — la API de Sheets no informa dónde
- * "empiezan" los datos, así que no hay forma de detectarlo sin mirar el
- * contenido. `preview` son las primeras filas crudas, para que el usuario
- * elija la fila correcta mirando el contenido real. */
-export async function inspectAdvisorSheetColumnsAction(spreadsheetId: string, sheetName: string, headerRow = 1) {
+/** Algunas hojas tienen una fila de título arriba de los encabezados reales
+ * (ej. una celda "AGENDAS" sola en la fila 1, con FECHA/HORA/... recién en
+ * la fila 2) — la API de Sheets no informa dónde "empiezan" los datos, así
+ * que la elegimos mirando el contenido: la fila con más celdas no vacías
+ * entre las primeras 10 es casi siempre la real (una fila de título angosta
+ * tiene 1-2 celdas; una fila de encabezados tiene tantas como columnas). */
+function detectHeaderRowIndex(rows: string[][]): number {
+  const scanLimit = Math.min(10, rows.length);
+  let bestIdx = 0;
+  let bestCount = -1;
+  for (let i = 0; i < scanLimit; i++) {
+    const count = (rows[i] ?? []).filter((cell) => cell && String(cell).trim() !== "").length;
+    if (count > bestCount) {
+      bestCount = count;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+/** `headerRow` (1-based, igual que el número de fila que ve el usuario en
+ * Sheets) — si se omite, se auto-detecta (ver detectHeaderRowIndex). El
+ * wizard lo pasa explícito solo cuando el usuario elige otra fila a mano
+ * desde el preview. `preview` son las primeras filas crudas para ese picker. */
+export async function inspectAdvisorSheetColumnsAction(spreadsheetId: string, sheetName: string, headerRow?: number) {
   const { workspaceId } = await requireActiveWorkspace();
   const token = await requireSheetsToken(workspaceId);
   const rows = await fetchSheetValues(token, spreadsheetId, sheetName);
-  const headerIdx = headerRow - 1;
+  const headerIdx = headerRow !== undefined ? headerRow - 1 : detectHeaderRowIndex(rows);
   const headers = rows[headerIdx] ?? [];
   const sampleRows = rows.slice(headerIdx + 1, headerIdx + 4);
   const suggestions = detectAdvisorSyncColumnMapping(headers);
   const preview = rows.slice(0, 6);
-  return { headers, sampleRows, suggestions, preview };
+  return { headers, sampleRows, suggestions, preview, headerRow: headerIdx + 1 };
 }
 
 export interface SaveAdvisorSheetConnectionInput {
@@ -75,9 +104,9 @@ export async function saveAdvisorSheetConnectionAction(input: SaveAdvisorSheetCo
   await requireAgencyManagerRole(workspaceId, role);
   if (!input.advisorClientId) throw new Error("Elegí un asesor antes de guardar.");
   const mapped = new Set(Object.values(input.columnMap));
-  const required: AdvisorSyncFieldKey[] = ["leadName", "phone", "setterName", "date"];
+  const required: AdvisorSyncFieldKey[] = ["leadName", "phone", "date"];
   const missing = required.filter((key) => !mapped.has(key));
-  if (missing.length > 0) throw new Error("Mapeá al menos Nombre del lead, Teléfono, Setter y Fecha antes de guardar.");
+  if (missing.length > 0) throw new Error("Mapeá al menos Nombre del lead, Teléfono y Fecha antes de guardar.");
 
   const supabase = await createClient();
   const payload = {

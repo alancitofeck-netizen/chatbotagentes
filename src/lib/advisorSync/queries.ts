@@ -1,8 +1,9 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getRealAdvisorWorkspaces } from "@/lib/clients/queries";
+import { normalizeForMatch } from "@/lib/advisors/import/fuzzyMatch";
 import type { AdvisorSyncFieldKey } from "./fieldDictionary";
-import type { AdvisorSheetConnectionRow, AdvisorOption } from "./types";
+import type { AdvisorSheetConnectionRow } from "./types";
 
 /** Conexiones activas del workspace de la agencia, una por asesor. El
  * nombre del asesor NO sale de clients.contact_id (esa columna nunca se
@@ -49,30 +50,49 @@ export async function getAdvisorSheetConnections(workspaceId: string): Promise<A
   });
 }
 
-/** Asesores elegibles para conectar una hoja — solo los que ya tienen una
- * cuenta real vinculada (linked_workspace_id). `hasConnection` deja que el
- * wizard avise sobre asesores que ya tienen su conexión (un asesor = una
- * conexión, ver unique(workspace_id, advisor_client_id)). */
-export async function getAdvisorOptions(workspaceId: string): Promise<AdvisorOption[]> {
+export interface AdvisorMatch {
+  clientId: string;
+  hasConnection: boolean;
+}
+
+/** Resuelve un asesor por nombre escrito a mano — nunca se lista el roster
+ * completo de asesores en la UI (pedido explícito: otros agentes del
+ * workspace de la agencia no tienen que poder ver qué cuentas existen en el
+ * CRM navegando un desplegable). Primero intenta `clients.sheet_alias`
+ * (texto exacto que el propio asesor definió para sí — ver 0138), después
+ * el nombre real (getRealAdvisorWorkspaces, mismo mecanismo que la lista de
+ * Asesores) exacto o por substring — nunca aproximado por puntaje, así
+ * nunca asocia la hoja al asesor equivocado. Devuelve null sin distinguir
+ * "no existe" de "no coincide" — mismo mensaje genérico en la acción que la
+ * llama, para no convertir esto en un oráculo de qué nombres son válidos. */
+export async function findAdvisorClientByName(workspaceId: string, nameInput: string): Promise<AdvisorMatch | null> {
+  const trimmed = nameInput.trim();
+  if (!trimmed) return null;
+  const normalized = normalizeForMatch(trimmed);
+
   const supabase = await createClient();
   const [{ data: clients }, { data: connections }, advisors] = await Promise.all([
-    supabase
-      .from("clients")
-      .select("id, linked_workspace_id")
-      .eq("workspace_id", workspaceId)
-      .not("linked_workspace_id", "is", null)
-      .order("created_at", { ascending: true }),
+    supabase.from("clients").select("id, linked_workspace_id, sheet_alias").eq("workspace_id", workspaceId).not("linked_workspace_id", "is", null),
     supabase.from("advisor_sheet_connections").select("advisor_client_id").eq("workspace_id", workspaceId),
     getRealAdvisorWorkspaces(),
   ]);
 
-  const nameByLinkedWorkspace = new Map(advisors.map((a) => [a.workspaceId, a.name]));
   const connectedIds = new Set((connections ?? []).map((c) => c.advisor_client_id as string));
-  return ((clients ?? []) as { id: string; linked_workspace_id: string | null }[]).map((c) => ({
-    clientId: c.id,
-    name: (c.linked_workspace_id && nameByLinkedWorkspace.get(c.linked_workspace_id)) ?? "—",
-    hasConnection: connectedIds.has(c.id),
-  }));
+  const nameByLinkedWorkspace = new Map(advisors.map((a) => [a.workspaceId, a.name]));
+  const rows = (clients ?? []) as { id: string; linked_workspace_id: string; sheet_alias: string | null }[];
+
+  const byAlias = rows.find((c) => c.sheet_alias && normalizeForMatch(c.sheet_alias) === normalized);
+  const match =
+    byAlias ??
+    rows.find((c) => {
+      const name = nameByLinkedWorkspace.get(c.linked_workspace_id);
+      if (!name) return false;
+      const normalizedName = normalizeForMatch(name);
+      return normalizedName === normalized || normalizedName.includes(normalized) || normalized.includes(normalizedName);
+    });
+
+  if (!match) return null;
+  return { clientId: match.id, hasConnection: connectedIds.has(match.id) };
 }
 
 export interface AdvisorSheetRowErrorItem {

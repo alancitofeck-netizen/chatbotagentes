@@ -69,6 +69,11 @@ export function IntegrationsSection({
   // so has_workspace_role still blocks the write server-side even though this
   // button renders enabled for them too.
   const canManage = currentRole === "owner" || currentRole === "admin" || currentRole === "agent";
+  // La sincronización por asesor expone qué cuentas existen en el CRM — a
+  // diferencia del resto de Integraciones, solo owner/admin la ven (nunca
+  // "agent"), pedido explícito para que otros agentes de la agencia no
+  // puedan descubrir el roster de asesores desde acá.
+  const isAgencyManager = currentRole === "owner" || currentRole === "admin";
   const isActive = whatsapp?.status === "active";
   const isOpenRouterActive = openRouter?.status === "active";
 
@@ -315,7 +320,9 @@ export function IntegrationsSection({
           )}
         </div>
 
-        <AdvisorSheetConnectionsManager key={`advisor-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
+        {isAgencyManager && (
+          <AdvisorSheetConnectionsManager key={`advisor-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
+        )}
         <KpiSettersManager key={String(googleSheets.connected)} canManage={canManage} accountConnected={googleSheets.connected} />
       </Card>
 

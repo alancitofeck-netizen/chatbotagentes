@@ -35,7 +35,13 @@ export const ADVISOR_SYNC_FIELD_DICTIONARY: AdvisorSyncFieldDescriptor[] = [
   { key: "email", label: "Email", required: false, hint: "Se guarda en el contacto y se usa además del teléfono para evitar duplicados.", synonyms: ["email", "correo", "mail", "correo electronico"] },
   { key: "date", label: "Fecha", required: true, hint: "Obligatorio — junto con Hora arma la fecha/hora de la cita.", synonyms: ["fecha", "date"] },
   { key: "time", label: "Hora", required: false, hint: "Junto con Fecha arma la fecha/hora de la cita.", synonyms: ["hora", "time", "horario"] },
-  { key: "setterName", label: "Setter", required: true, hint: "Obligatorio — quién consiguió la cita. Se resuelve por nombre entre los miembros del workspace.", synonyms: ["setter", "vendedor", "prospectador"] },
+  {
+    key: "setterName",
+    label: "Setter (opcional)",
+    required: false,
+    hint: "Quién consiguió la cita. Se intenta resolver por nombre entre los miembros del workspace, pero no es obligatorio ni bloquea la fila si el setter no tiene cuenta de Growth Link.",
+    synonyms: ["setter", "vendedor", "prospectador"],
+  },
   {
     key: "advisorName",
     label: "Asesor (opcional)",

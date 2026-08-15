@@ -22,9 +22,3 @@ export interface AdvisorSheetConnectionRow {
   lastSheetHash: string | null;
   createdAt: string;
 }
-
-export interface AdvisorOption {
-  clientId: string;
-  name: string;
-  hasConnection: boolean;
-}

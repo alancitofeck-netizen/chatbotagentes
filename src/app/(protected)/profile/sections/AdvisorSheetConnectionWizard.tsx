@@ -1,27 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Check, X } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { toast } from "@/components/toast/toast";
 import {
-  getAdvisorOptionsAction,
+  resolveAdvisorByNameAction,
   inspectAdvisorSpreadsheetAction,
   inspectAdvisorSheetColumnsAction,
   saveAdvisorSheetConnectionAction,
 } from "@/lib/advisorSync/actions";
 import { ADVISOR_SYNC_FIELD_DICTIONARY, type AdvisorSyncFieldKey } from "@/lib/advisorSync/fieldDictionary";
-import type { AdvisorOption } from "@/lib/advisorSync/types";
 
 /** Un solo formulario progresivo: Asesor → hoja → mapeo de columnas. A
  * diferencia de los wizards viejos (uno para Leads, otro para Agenda), acá
  * el asesor se fija una sola vez al crear la conexión — no se resuelve fila
- * por fila del texto de la hoja (ver runner.ts). */
+ * por fila del texto de la hoja (ver runner.ts). El Asesor se escribe a
+ * mano (nunca un desplegable con el roster completo) — pedido explícito:
+ * otros agentes del workspace de la agencia no tienen que poder ver qué
+ * cuentas existen en el CRM navegando una lista. */
 export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [advisors, setAdvisors] = useState<AdvisorOption[] | null>(null);
-  const [advisorClientId, setAdvisorClientId] = useState("");
+  const [advisorNameInput, setAdvisorNameInput] = useState("");
+  const [advisorClientId, setAdvisorClientId] = useState<string | null>(null);
+  const [checkingAdvisor, setCheckingAdvisor] = useState(false);
+  const [advisorError, setAdvisorError] = useState<string | null>(null);
 
   const [spreadsheetInput, setSpreadsheetInput] = useState("");
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
@@ -37,11 +42,33 @@ export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: ()
 
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    getAdvisorOptionsAction()
-      .then(setAdvisors)
-      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudieron cargar los asesores."));
-  }, []);
+  function handleAdvisorNameChange(value: string) {
+    setAdvisorNameInput(value);
+    setAdvisorClientId(null);
+    setAdvisorError(null);
+  }
+
+  async function handleVerifyAdvisor() {
+    if (!advisorNameInput.trim()) return;
+    setCheckingAdvisor(true);
+    setAdvisorError(null);
+    try {
+      const result = await resolveAdvisorByNameAction(advisorNameInput);
+      if (!result.found) {
+        setAdvisorClientId(null);
+        setAdvisorError("No encontramos ningún asesor con ese nombre. Verificá que esté escrito igual que en su cuenta.");
+      } else if (result.hasConnection) {
+        setAdvisorClientId(null);
+        setAdvisorError("Ese asesor ya tiene una conexión activa.");
+      } else {
+        setAdvisorClientId(result.clientId);
+      }
+    } catch (err) {
+      setAdvisorError(err instanceof Error ? err.message : "No se pudo verificar el asesor.");
+    } finally {
+      setCheckingAdvisor(false);
+    }
+  }
 
   async function handleInspectSpreadsheet() {
     if (!spreadsheetInput.trim()) return;
@@ -58,14 +85,17 @@ export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: ()
     }
   }
 
-  async function handleInspectColumns(row = headerRow) {
+  /** Sin `row` (primera lectura), el servidor auto-detecta la fila de
+   * encabezados. Con `row` (el usuario tocó una fila del preview), se
+   * respeta esa elección tal cual. */
+  async function handleInspectColumns(row?: number) {
     if (!spreadsheetId || !sheetName) return;
     setLoadingColumns(true);
     try {
       const result = await inspectAdvisorSheetColumnsAction(spreadsheetId, sheetName, row);
       setHeaders(result.headers);
       setPreview(result.preview);
-      setHeaderRow(row);
+      setHeaderRow(result.headerRow);
       const suggested: Record<string, AdvisorSyncFieldKey | ""> = {};
       for (const s of result.suggestions) suggested[s.header] = s.fieldKey ?? "";
       setColumnMap(suggested);
@@ -78,7 +108,7 @@ export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: ()
 
   async function handleSave() {
     if (!advisorClientId) {
-      toast.error("Elegí un asesor antes de guardar.");
+      toast.error("Verificá el asesor antes de guardar.");
       return;
     }
     if (!spreadsheetId || !sheetName) {
@@ -110,18 +140,29 @@ export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: ()
       <div className="flex flex-col gap-5 p-5">
         <section className="flex flex-col gap-2">
           <p className="text-sm font-medium text-foreground">1. Asesor</p>
-          {advisors === null ? (
-            <p className="text-[13px] text-neutral-500">Cargando asesores…</p>
-          ) : (
-            <Select label="" value={advisorClientId} onChange={(e) => setAdvisorClientId(e.target.value)}>
-              <option value="">Elegí un asesor</option>
-              {advisors.map((a) => (
-                <option key={a.clientId} value={a.clientId} disabled={a.hasConnection}>
-                  {a.name}
-                  {a.hasConnection ? " (ya tiene conexión)" : ""}
-                </option>
-              ))}
-            </Select>
+          <div className="flex gap-2">
+            <Input
+              label=""
+              containerClassName="flex-1"
+              placeholder="Nombre del asesor, igual que en su cuenta"
+              value={advisorNameInput}
+              onChange={(e) => handleAdvisorNameChange(e.target.value)}
+            />
+            <Button size="sm" variant="secondary" onClick={handleVerifyAdvisor} loading={checkingAdvisor} disabled={!advisorNameInput.trim()}>
+              Verificar
+            </Button>
+          </div>
+          {advisorClientId && (
+            <p className="flex items-center gap-1.5 text-[12.5px] text-success-strong">
+              <Check size={14} aria-hidden="true" />
+              Asesor encontrado.
+            </p>
+          )}
+          {advisorError && (
+            <p className="flex items-center gap-1.5 text-[12.5px] text-error-strong">
+              <X size={14} aria-hidden="true" />
+              {advisorError}
+            </p>
           )}
         </section>
 
