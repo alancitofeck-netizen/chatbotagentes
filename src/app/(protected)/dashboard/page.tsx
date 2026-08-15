@@ -11,6 +11,7 @@ import {
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions } from "@/lib/tasks/queries";
 import { getUpcomingEvents } from "@/lib/calendar/queries";
+import { getAgendaPerformance } from "@/lib/agenda/queries";
 import { getCrmBoard } from "@/lib/crm/queries";
 import { getAgentList } from "@/lib/agents/queries";
 import {
@@ -31,6 +32,7 @@ import { ActivityChart } from "./ActivityChart";
 import { RecentConversations } from "./RecentConversations";
 import { PendingTasks } from "./PendingTasks";
 import { UpcomingMeetings } from "./UpcomingMeetings";
+import { AgendaSummary } from "./AgendaSummary";
 import { LeadsBySourceChart } from "./LeadsBySourceChart";
 import { TopDeals } from "./TopDeals";
 import { ExecutiveSummary } from "./ExecutiveSummary";
@@ -42,6 +44,15 @@ import { AdvisorPerformance } from "./AdvisorPerformance";
 export const metadata: Metadata = {
   title: "Dashboard — Growth Link",
 };
+
+/** Mes calendario completo (no "hasta hoy") — Agenda mira hacia adelante,
+ * mismo criterio que useAgendaPerformance.ts (src/app/(protected)/agenda/). */
+function currentMonthRange(): { start: string; end: string } {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
 
 export default async function DashboardPage() {
   const { workspaceId, role } = await requireActiveWorkspace();
@@ -59,6 +70,7 @@ export default async function DashboardPage() {
     contactOptions,
     conversationOptions,
     upcomingEvents,
+    agendaPerformance,
     primaryUserName,
     crmBoard,
     unansweredConversations,
@@ -79,6 +91,7 @@ export default async function DashboardPage() {
     getContactOptions(workspaceId),
     getConversationOptions(workspaceId),
     getUpcomingEvents(workspaceId),
+    getAgendaPerformance(workspaceId, currentMonthRange()),
     // The workspace's own primary user — NOT the signed-in caller — so the
     // greeting reflects whose workspace this is. In Modo Supervisor those
     // differ: a platform admin viewing someone else's workspace must see
@@ -163,8 +176,9 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <UpcomingMeetings events={upcomingEvents} />
+        <AgendaSummary data={agendaPerformance} />
         <TopDeals deals={topDeals} />
       </div>
 

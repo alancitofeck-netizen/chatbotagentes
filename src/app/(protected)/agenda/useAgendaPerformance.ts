@@ -15,15 +15,26 @@ export const AGENDA_ANALYTICS_PRESETS: { key: AgendaAnalyticsPreset; label: stri
 /** Mismo cálculo que AgendaKpisSection.tsx (kpis/), reimplementado acá
  * porque ese archivo es un panel de análisis distinto (KPIs → Agendas,
  * ruta separada) — este hook alimenta los 3 paneles embebidos en /agenda
- * mismo (tiles, donut, barras), con una sola llamada compartida. */
+ * mismo (tiles, donut, barras), con una sola llamada compartida.
+ *
+ * El rango cubre el período COMPLETO (hasta el final de la semana/mes/año),
+ * no solo "hasta hoy" — Agenda mira hacia adelante (citas ya agendadas para
+ * más adelante en el período), así que cortar en "hoy" dejaba afuera la
+ * mayoría de las citas reales y mostraba KPIs artificialmente bajos. */
 function rangeForPreset(preset: AgendaAnalyticsPreset): { start: string; end: string } {
   const now = new Date();
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
   let start: Date;
-  if (preset === "week") start = getMonday(now);
-  else if (preset === "month") start = new Date(now.getFullYear(), now.getMonth(), 1);
-  else start = new Date(now.getFullYear(), 0, 1);
+  let end: Date;
+  if (preset === "week") {
+    start = getMonday(now);
+    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+  } else if (preset === "month") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  } else {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear() + 1, 0, 1);
+  }
   return { start: start.toISOString(), end: end.toISOString() };
 }
 

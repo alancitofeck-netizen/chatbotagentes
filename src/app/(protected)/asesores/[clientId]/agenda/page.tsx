@@ -3,6 +3,7 @@ import { CalendarDays, CalendarClock, CheckCircle2, XCircle, Ban, RotateCcw } fr
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getClientAppointments, getClientProfile } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
+import { getAdvisorAgendaAppointments } from "@/lib/agenda/queries";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatTile } from "../../StatTile";
 import { AppointmentsTable } from "../../AppointmentsTable";
@@ -10,6 +11,7 @@ import { FuenteDonutChart } from "../../FuenteDonutChart";
 import { WeekdayBarChart } from "../../WeekdayBarChart";
 import { bucketByDay, monthOverMonthDelta } from "@/lib/clients/statsHelpers";
 import { MiniCalendar } from "./MiniCalendar";
+import { SyncedAgendaCard } from "./SyncedAgendaCard";
 
 export const metadata: Metadata = { title: "Agenda — Cliente — Growth Link" };
 
@@ -20,9 +22,10 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ c
   if (!client) return null;
   // "Setter"/"Responsable" es gente del EQUIPO DEL ASESOR (su propio
   // workspace real), no el tuyo — ver plan "Agenda en vivo".
-  const [appointments, members] = await Promise.all([
+  const [appointments, members, syncedCitas] = await Promise.all([
     getClientAppointments(workspaceId, clientId),
     getWorkspaceMembers(client.linkedWorkspaceId ?? workspaceId),
+    getAdvisorAgendaAppointments(workspaceId, clientId),
   ]);
   const nameById = new Map(members.map((m) => [m.memberId, m.fullName]));
 
@@ -81,6 +84,8 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ c
         </div>
 
         <div className="flex flex-col gap-4">
+          <SyncedAgendaCard citas={syncedCitas} />
+
           <Card>
             <CardHeader title="Resumen de agenda" />
             <ul className="flex flex-col gap-2 text-sm">

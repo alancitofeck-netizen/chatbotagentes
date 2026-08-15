@@ -19,15 +19,23 @@ const PRESETS: { key: Preset; label: string }[] = [
 /** Mismo resultado que resolveDateRange (src/lib/crm/analyticsRange.ts,
  * "server-only") para los 3 presets que ofrece esta pantalla — reimplementado
  * localmente porque ese archivo no puede importarse desde un Client
- * Component. */
+ * Component. El rango cubre el período COMPLETO (hasta el final de la
+ * semana/mes/año), no solo "hasta hoy" — mismo fix y misma razón que
+ * useAgendaPerformance.ts (Agenda mira hacia adelante). */
 function rangeForPreset(preset: Preset): { start: string; end: string } {
   const now = new Date();
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
   let start: Date;
-  if (preset === "week") start = getMonday(now);
-  else if (preset === "month") start = new Date(now.getFullYear(), now.getMonth(), 1);
-  else start = new Date(now.getFullYear(), 0, 1);
+  let end: Date;
+  if (preset === "week") {
+    start = getMonday(now);
+    end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+  } else if (preset === "month") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  } else {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear() + 1, 0, 1);
+  }
   return { start: start.toISOString(), end: end.toISOString() };
 }
 

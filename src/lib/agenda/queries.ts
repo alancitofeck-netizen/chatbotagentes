@@ -209,6 +209,30 @@ function mapAppointmentRow(
   };
 }
 
+/** Citas sincronizadas (agenda_appointments) de UN asesor puntual — para
+ * mostrarlas, de solo lectura, dentro de su ficha en el módulo Asesores
+ * (pestaña Agenda), que hoy solo mostraba `bookings` (agenda personal/
+ * Google Calendar, un concepto distinto — ver 0142_agenda_appointments_rework.sql).
+ * No reemplaza esa vista, se suma: `advisor_client_id` ya identifica al
+ * asesor directamente, así que no hace falta resolver scope agencia/asesor
+ * como en getAgendaAppointments. Service-role porque el que mira la ficha
+ * (owner/admin de la agencia) no es miembro del workspace real del asesor,
+ * donde vive la fila. */
+export async function getAdvisorAgendaAppointments(agencyWorkspaceId: string, clientId: string, limit = 30): Promise<AgendaAppointment[]> {
+  const supabase = createServiceRoleClient();
+  const { data } = await supabase
+    .from("agenda_appointments")
+    .select("id, workspace_id, contact_id, setter_id, setter_name, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
+    .eq("advisor_client_id", clientId)
+    .order("start_time", { ascending: false })
+    .limit(limit);
+  if (!data || data.length === 0) return [];
+
+  const setterIds = [...new Set(data.map((r) => r.setter_id as string | null).filter((id): id is string => !!id))];
+  const setterInfoById = await resolveSetterNamesForWorkspace(agencyWorkspaceId, setterIds);
+  return data.map((r) => mapAppointmentRow(r, clientId, "", setterInfoById));
+}
+
 async function resolveSetterNamesForWorkspace(agencyWorkspaceId: string, setterIds: string[]): Promise<Map<string, SetterInfo>> {
   if (setterIds.length === 0) return new Map();
   const supabase = createServiceRoleClient();
