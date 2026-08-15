@@ -112,7 +112,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
               <p className="text-[13px] font-semibold tracking-wide text-neutral-500 uppercase">{day}</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {dayCitas.map((cita) => (
-                  <CitaCard key={cita.id} cita={cita} canEditEstado={isManager} />
+                  <CitaCard key={cita.id} cita={cita} canEditEstado />
                 ))}
               </div>
             </div>

@@ -14,8 +14,10 @@ function formatTime(iso: string) {
 }
 
 /** Tarjeta de cita — hora, cliente, tipo, asesor, setter, estado, fácil de
- * identificar de un vistazo. `canEditEstado` (owner/admin) muestra el
- * estado como un select en vez de solo un badge. */
+ * identificar de un vistazo. Los 3 roles pueden editar el estado (muestra
+ * un select en vez de solo un badge) — la autorización real de a qué citas
+ * puede tocar cada rol vive server-side en updateEstadoCita
+ * (agenda/queries.ts), no acá. */
 export function CitaCard({ cita, canEditEstado }: { cita: AgendaAppointment; canEditEstado: boolean }) {
   const [isPending, startTransition] = useTransition();
   const estado = cita.estadoCita;

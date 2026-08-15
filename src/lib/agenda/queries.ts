@@ -335,15 +335,36 @@ function applyEstado(entry: { citas: number; realizadas: number; noShow: number;
 }
 
 /** Actualiza estado_cita de una cita puntual — usado desde la card de
- * Agenda. Siempre vía service-role (la policy RLS de agenda_appointments
- * solo permite SELECT desde sesión, nunca UPDATE), previa validación de
- * que el workspace de la cita es uno de los gestionados por el caller
- * (scope "agency") o el propio workspace del caller (scope "advisor"). */
-export async function updateEstadoCita(workspaceId: string, appointmentId: string, appointmentWorkspaceId: string, estadoCita: EstadoCita): Promise<void> {
+ * Agenda, disponible para los 3 roles (owner/admin/agent — pedido explícito
+ * del usuario: "las agendas las tienen que poder usar todos los roles").
+ * Siempre vía service-role (la policy RLS de agenda_appointments solo
+ * permite SELECT desde sesión, nunca UPDATE), previa validación de que el
+ * workspace de la cita es uno de los gestionados por el caller (scope
+ * "agency") o el propio workspace del caller (scope "advisor"). Dentro de
+ * scope "agency", un 'agent' (setter) solo puede tocar sus propias citas —
+ * mismo filtro por setter_id que ya aplica getAgendaAppointments del lado
+ * de lectura, ahora espejado del lado de escritura. En scope "advisor" no
+ * hay ese filtro adicional: getAgendaAppointments tampoco filtra por rol
+ * ahí (un solo asesor, todos sus compañeros de workspace ven y pueden
+ * actualizar las mismas citas). */
+export async function updateEstadoCita(
+  workspaceId: string,
+  appointmentId: string,
+  appointmentWorkspaceId: string,
+  estadoCita: EstadoCita,
+  viewer: AgendaViewer,
+): Promise<void> {
   const scope = await resolveAgendaScope(workspaceId);
   const authorized = scope.kind === "advisor" ? appointmentWorkspaceId === scope.workspaceId : scope.advisors.some((a) => a.linkedWorkspaceId === appointmentWorkspaceId);
   if (!authorized) throw new Error("Esa cita no pertenece a un asesor gestionado por este workspace.");
 
   const supabase = createServiceRoleClient();
+
+  if (scope.kind === "agency" && viewer.role === "agent") {
+    if (!viewer.memberId) throw new Error("No se pudo identificar tu usuario.");
+    const { data: appointment } = await supabase.from("agenda_appointments").select("setter_id").eq("id", appointmentId).eq("workspace_id", appointmentWorkspaceId).maybeSingle();
+    if (!appointment || appointment.setter_id !== viewer.memberId) throw new Error("Solo podés actualizar el estado de tus propias citas.");
+  }
+
   await supabase.from("agenda_appointments").update({ estado_cita: estadoCita, updated_at: new Date().toISOString() }).eq("id", appointmentId).eq("workspace_id", appointmentWorkspaceId);
 }

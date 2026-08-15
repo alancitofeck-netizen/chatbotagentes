@@ -27,10 +27,12 @@ export async function getAgendaPerformanceAction(range: { start: string; end: st
   return getAgendaPerformance(workspaceId, range);
 }
 
+/** Disponible para los 3 roles — la autorización real (a qué citas puede
+ * tocar cada uno) vive en updateEstadoCita (agenda/queries.ts). */
 export async function updateEstadoCitaAction(appointmentId: string, appointmentWorkspaceId: string, estadoCita: EstadoCita) {
   const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
   await assertModuleEnabled(workspaceId, "agenda");
-  await updateEstadoCita(workspaceId, appointmentId, appointmentWorkspaceId, estadoCita);
+  const memberId = await getCurrentMemberId(workspaceId);
+  await updateEstadoCita(workspaceId, appointmentId, appointmentWorkspaceId, estadoCita, { memberId, role });
   revalidatePath("/agenda");
 }
