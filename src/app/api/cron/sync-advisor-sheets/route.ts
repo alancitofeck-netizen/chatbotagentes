@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     spreadsheet_id: string;
     sheet_name: string;
     column_map: Record<string, AdvisorSyncFieldKey>;
+    header_row: number;
     last_sheet_hash: string | null;
   }>;
 
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
         spreadsheet_id: c.spreadsheet_id,
         sheet_name: c.sheet_name,
         column_map: c.column_map,
+        header_row: c.header_row,
         last_sheet_hash: c.last_sheet_hash,
       } satisfies AdvisorSheetConnection),
     ),

@@ -13,6 +13,7 @@ export interface AdvisorSheetConnectionRow {
   sheetGid: string | null;
   sheetName: string;
   columnMap: Record<string, AdvisorSyncFieldKey>;
+  headerRow: number;
   status: "active" | "paused";
   lastSyncedAt: string | null;
   lastSyncStatus: "pending" | "ok" | "error";

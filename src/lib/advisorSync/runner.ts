@@ -14,6 +14,9 @@ export interface AdvisorSheetConnection {
   spreadsheet_id: string;
   sheet_name: string;
   column_map: Record<string, AdvisorSyncFieldKey>;
+  /** 1-based — algunas hojas tienen una fila de título arriba de los
+   * encabezados reales (ver inspectAdvisorSheetColumnsAction). */
+  header_row: number;
   last_sheet_hash: string | null;
 }
 
@@ -346,7 +349,8 @@ export async function runAdvisorSheetSync(connection: AdvisorSheetConnection, tr
     return { ok: false, processed: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
   }
 
-  if (rows.length < 2) {
+  const headerIdx = connection.header_row - 1;
+  if (rows.length <= headerIdx + 1) {
     await markConnectionOk(supabase, connection.id, 0, sha256(JSON.stringify(rows)));
     return { ok: true, processed: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
   }
@@ -360,7 +364,8 @@ export async function runAdvisorSheetSync(connection: AdvisorSheetConnection, tr
   }
 
   const runId = await startRun(supabase, connection.id, trigger);
-  const [headers, ...dataRows] = rows;
+  const headers = rows[headerIdx] ?? [];
+  const dataRows = rows.slice(headerIdx + 1);
 
   const { data: memberRows } = await supabase.rpc("workspace_member_names", { ws_id: connection.workspace_id });
   const setters: SetterCandidate[] = ((memberRows ?? []) as { member_id: string; full_name: string }[]).map((m) => ({ memberId: m.member_id, name: m.full_name }));
@@ -375,7 +380,7 @@ export async function runAdvisorSheetSync(connection: AdvisorSheetConnection, tr
   let errors = 0;
 
   for (let i = 0; i < dataRows.length; i++) {
-    const sheetRowNumber = i + 2;
+    const sheetRowNumber = i + connection.header_row + 1;
     try {
       const outcome = await processRow(supabase, connection, advisor, headers, dataRows[i], sheetRowNumber, setters, pipelineCache);
       if (outcome === "created") created++;

@@ -32,11 +32,15 @@ export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: ()
   const [headers, setHeaders] = useState<string[]>([]);
   const [columnMap, setColumnMap] = useState<Record<string, AdvisorSyncFieldKey | "">>({});
   const [loadingColumns, setLoadingColumns] = useState(false);
+  const [headerRow, setHeaderRow] = useState(1);
+  const [preview, setPreview] = useState<string[][]>([]);
 
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    getAdvisorOptionsAction().then(setAdvisors);
+    getAdvisorOptionsAction()
+      .then(setAdvisors)
+      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudieron cargar los asesores."));
   }, []);
 
   async function handleInspectSpreadsheet() {
@@ -54,12 +58,14 @@ export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: ()
     }
   }
 
-  async function handleInspectColumns() {
+  async function handleInspectColumns(row = headerRow) {
     if (!spreadsheetId || !sheetName) return;
     setLoadingColumns(true);
     try {
-      const result = await inspectAdvisorSheetColumnsAction(spreadsheetId, sheetName);
+      const result = await inspectAdvisorSheetColumnsAction(spreadsheetId, sheetName, row);
       setHeaders(result.headers);
+      setPreview(result.preview);
+      setHeaderRow(row);
       const suggested: Record<string, AdvisorSyncFieldKey | ""> = {};
       for (const s of result.suggestions) suggested[s.header] = s.fieldKey ?? "";
       setColumnMap(suggested);
@@ -88,6 +94,7 @@ export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: ()
         sheetGid: tabs.find((t) => t.title === sheetName)?.sheetId.toString() ?? null,
         sheetName,
         columnMap: finalMap,
+        headerRow,
       });
       toast.success("Conexión creada — el primer sync corre en los próximos minutos.");
       onSaved();
@@ -149,11 +156,39 @@ export function AdvisorSheetConnectionWizard({ onClose, onSaved }: { onClose: ()
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-foreground">3. Mapeo de columnas</p>
               {headers.length === 0 && (
-                <Button size="sm" variant="secondary" onClick={handleInspectColumns} loading={loadingColumns}>
+                <Button size="sm" variant="secondary" onClick={() => handleInspectColumns()} loading={loadingColumns}>
                   Leer columnas
                 </Button>
               )}
             </div>
+
+            {preview.length > 0 && (
+              <div className="flex flex-col gap-1.5 rounded-lg border border-border-default p-3">
+                <p className="text-[12px] text-neutral-500">
+                  Si la fila de encabezados no es la que esperabas (ej. hay un título arriba), elegí la fila correcta:
+                </p>
+                <div className="flex flex-col gap-1">
+                  {preview.map((row, idx) => {
+                    const rowNumber = idx + 1;
+                    return (
+                      <button
+                        key={rowNumber}
+                        type="button"
+                        onClick={() => handleInspectColumns(rowNumber)}
+                        disabled={loadingColumns}
+                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] ${
+                          rowNumber === headerRow ? "bg-accent-100 text-accent-700" : "text-neutral-600 hover:bg-surface-2"
+                        }`}
+                      >
+                        <span className="shrink-0 font-medium">Fila {rowNumber}</span>
+                        <span className="truncate">{row.filter(Boolean).join(" · ") || "(vacía)"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {headers.length > 0 && (
               <div className="flex flex-col gap-2 rounded-lg border border-border-default p-3">
                 {headers.map((header) => (

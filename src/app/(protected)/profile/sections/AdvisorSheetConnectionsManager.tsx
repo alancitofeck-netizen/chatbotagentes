@@ -35,7 +35,9 @@ export function AdvisorSheetConnectionsManager({ canManage, accountConnected }: 
   const [, startTransition] = useTransition();
 
   function refetch() {
-    getAdvisorSheetConnectionsAction().then(setConnections);
+    getAdvisorSheetConnectionsAction()
+      .then(setConnections)
+      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudieron cargar las conexiones."));
   }
 
   useEffect(() => {
@@ -79,7 +81,9 @@ export function AdvisorSheetConnectionsManager({ canManage, accountConnected }: 
   }
 
   function handleViewErrors(connectionId: string) {
-    getAdvisorSheetRowErrorsAction(connectionId).then((rows) => setErrorsFor({ connectionId, rows }));
+    getAdvisorSheetRowErrorsAction(connectionId)
+      .then((rows) => setErrorsFor({ connectionId, rows }))
+      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudieron cargar los errores."));
   }
 
   if (!accountConnected) return null;

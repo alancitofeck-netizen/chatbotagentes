@@ -40,14 +40,24 @@ export async function inspectAdvisorSpreadsheetAction(spreadsheetUrlOrId: string
   return { spreadsheetId, ...metadata };
 }
 
-export async function inspectAdvisorSheetColumnsAction(spreadsheetId: string, sheetName: string) {
+/** `headerRow` (1-based, default 1 — igual que el número de fila que ve el
+ * usuario en Sheets). Algunas hojas tienen una fila de título arriba de los
+ * encabezados reales (ej. una celda "AGENDAS" sola en la fila 1, con
+ * FECHA/HORA/... recién en la fila 2). El wizard deja cambiarla si la fila
+ * 1 no trae las columnas esperadas — la API de Sheets no informa dónde
+ * "empiezan" los datos, así que no hay forma de detectarlo sin mirar el
+ * contenido. `preview` son las primeras filas crudas, para que el usuario
+ * elija la fila correcta mirando el contenido real. */
+export async function inspectAdvisorSheetColumnsAction(spreadsheetId: string, sheetName: string, headerRow = 1) {
   const { workspaceId } = await requireActiveWorkspace();
   const token = await requireSheetsToken(workspaceId);
   const rows = await fetchSheetValues(token, spreadsheetId, sheetName);
-  const headers = rows[0] ?? [];
-  const sampleRows = rows.slice(1, 4);
+  const headerIdx = headerRow - 1;
+  const headers = rows[headerIdx] ?? [];
+  const sampleRows = rows.slice(headerIdx + 1, headerIdx + 4);
   const suggestions = detectAdvisorSyncColumnMapping(headers);
-  return { headers, sampleRows, suggestions };
+  const preview = rows.slice(0, 6);
+  return { headers, sampleRows, suggestions, preview };
 }
 
 export interface SaveAdvisorSheetConnectionInput {
@@ -57,6 +67,7 @@ export interface SaveAdvisorSheetConnectionInput {
   sheetGid: string | null;
   sheetName: string;
   columnMap: Record<string, AdvisorSyncFieldKey>;
+  headerRow: number;
 }
 
 export async function saveAdvisorSheetConnectionAction(input: SaveAdvisorSheetConnectionInput): Promise<{ id: string }> {
@@ -76,6 +87,7 @@ export async function saveAdvisorSheetConnectionAction(input: SaveAdvisorSheetCo
     sheet_gid: input.sheetGid,
     sheet_name: input.sheetName,
     column_map: input.columnMap,
+    header_row: input.headerRow,
     updated_at: new Date().toISOString(),
   };
 
@@ -120,6 +132,7 @@ export async function triggerManualAdvisorSheetSyncAction(connectionId: string) 
     spreadsheet_id: data.spreadsheet_id as string,
     sheet_name: data.sheet_name as string,
     column_map: (data.column_map as Record<string, AdvisorSyncFieldKey>) ?? {},
+    header_row: (data.header_row as number) ?? 1,
     last_sheet_hash: (data.last_sheet_hash as string | null) ?? null,
   }, "manual");
   revalidatePath("/profile");
