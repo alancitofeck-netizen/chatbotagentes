@@ -54,7 +54,7 @@ function DayTimeline({ citas, canEditEstado }: { citas: AgendaAppointment[]; can
               {hourCitas.length === 0 ? (
                 <div className="h-1" />
               ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="flex flex-col gap-2.5">
                   {hourCitas.map((cita) => (
                     <CitaCard key={cita.id} cita={cita} canEditEstado={canEditEstado} />
                   ))}
@@ -91,7 +91,7 @@ function GroupedByDay({ citas, canEditEstado }: { citas: AgendaAppointment[]; ca
       {grouped.map(([day, dayCitas]) => (
         <div key={day} className="flex flex-col gap-3">
           <p className="text-[13px] font-semibold tracking-wide text-neutral-500 uppercase">{day}</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="flex flex-col gap-2.5">
             {dayCitas.map((cita) => (
               <CitaCard key={cita.id} cita={cita} canEditEstado={canEditEstado} />
             ))}

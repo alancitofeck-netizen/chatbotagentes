@@ -1,24 +1,34 @@
 "use client";
 
 import { useTransition } from "react";
-import { UserRound, Phone } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
 import { Avatar } from "@/components/ui/Avatar";
 import { toast } from "@/components/toast/toast";
-import type { AgendaAppointment } from "@/lib/agenda/queries";
+import type { AgendaAppointment, EstadoCita } from "@/lib/agenda/queries";
 import { ESTADO_CITA_META, ESTADO_CITA_OPTIONS } from "@/lib/agenda/estadoMeta";
 import { updateEstadoCitaAction } from "@/lib/agenda/actions";
+
+const ESTADO_BORDER_COLOR: Record<EstadoCita, string> = {
+  agendada: "var(--color-warning)",
+  confirmada: "var(--color-info)",
+  realizada: "var(--color-success)",
+  no_show: "var(--color-error)",
+  cancelada: "var(--color-neutral-400)",
+  venta: "var(--color-accent-500)",
+};
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Tarjeta de cita — hora, cliente, tipo, asesor, setter, estado, fácil de
- * identificar de un vistazo. Los 3 roles pueden editar el estado (muestra
- * un select en vez de solo un badge) — la autorización real de a qué citas
- * puede tocar cada rol vive server-side en updateEstadoCita
- * (agenda/queries.ts), no acá. */
+/** Fila de cita — franja horizontal con borde izquierdo del color del
+ * estado (mismo código de color que el donut "Citas por Estado", identidad
+ * consistente en toda la pantalla), hora, cliente, setter, estado. Los 3
+ * roles pueden editar el estado (muestra un select en vez de solo un
+ * badge) — la autorización real de a qué citas puede tocar cada rol vive
+ * server-side en updateEstadoCita (agenda/queries.ts), no acá. */
 export function CitaCard({ cita, canEditEstado }: { cita: AgendaAppointment; canEditEstado: boolean }) {
   const [isPending, startTransition] = useTransition();
   const estado = cita.estadoCita;
@@ -35,9 +45,32 @@ export function CitaCard({ cita, canEditEstado }: { cita: AgendaAppointment; can
   }
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl border border-border-default bg-surface-1 p-4">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-[15px] font-semibold text-foreground">{formatTime(cita.startTime)}</span>
+    <div
+      className="flex flex-wrap items-center gap-3 rounded-r-xl rounded-l-sm border border-border-default bg-surface-1 py-3 pr-4 pl-3.5 sm:flex-nowrap"
+      style={{ borderLeft: `4px solid ${ESTADO_BORDER_COLOR[estado]}` }}
+    >
+      <span className="w-14 shrink-0 text-[14px] font-semibold text-foreground">{formatTime(cita.startTime)}</span>
+
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-500/10 text-accent-600">
+        <UserRound className="size-4" aria-hidden="true" />
+      </div>
+
+      <div className="min-w-0 flex-1 basis-40">
+        <p className="truncate text-[14px] font-medium text-foreground">{cita.contactName ?? "Sin nombre"}</p>
+        <p className="truncate text-[12px] text-neutral-500">{cita.subject}</p>
+      </div>
+
+      {cita.setterName && (
+        <div className="flex shrink-0 flex-col items-start gap-0.5">
+          <span className="text-[10.5px] text-neutral-400">Setter</span>
+          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+            <Avatar name={cita.setterName} src={cita.setterAvatarUrl} size={18} />
+            {cita.setterName}
+          </span>
+        </div>
+      )}
+
+      <div className="ml-auto shrink-0">
         {canEditEstado ? (
           <Select label="" value={estado} onChange={(e) => handleEstadoChange(e.target.value)} disabled={isPending} containerClassName="w-auto">
             {ESTADO_CITA_OPTIONS.map((o) => (
@@ -50,30 +83,6 @@ export function CitaCard({ cita, canEditEstado }: { cita: AgendaAppointment; can
           <Badge variant={meta.variant} dot>
             {meta.label}
           </Badge>
-        )}
-      </div>
-
-      <div>
-        <p className="text-[14px] font-medium text-foreground">{cita.contactName ?? "Sin nombre"}</p>
-        <p className="text-[12.5px] text-neutral-500">{cita.subject}</p>
-        {cita.contactPhone && (
-          <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-neutral-500">
-            <Phone className="size-3.5 shrink-0" aria-hidden="true" />
-            {cita.contactPhone}
-          </p>
-        )}
-      </div>
-
-      <div className="mt-1 flex items-center justify-between gap-2 border-t border-border-default pt-2.5 text-[12.5px] text-neutral-500">
-        <span className="flex items-center gap-1.5">
-          <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
-          Asesor: <span className="font-medium text-foreground">{cita.advisorName}</span>
-        </span>
-        {cita.setterName && (
-          <span className="flex items-center gap-1.5">
-            <Avatar name={cita.setterName} src={cita.setterAvatarUrl} size={18} />
-            <span className="font-medium text-foreground">{cita.setterName}</span>
-          </span>
         )}
       </div>
     </div>

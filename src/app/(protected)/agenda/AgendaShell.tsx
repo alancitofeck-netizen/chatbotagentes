@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition, useRef } from "react";
-import { CalendarDays, Users2, UserRound, Loader2, SlidersHorizontal, CalendarSearch, X } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, Users2, UserRound, Loader2, SlidersHorizontal, CalendarSearch, X, Plus, FileSpreadsheet } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getMonday, addDays } from "@/lib/calendar/week";
 import { getAgendaAppointmentsAction } from "@/lib/agenda/actions";
@@ -85,6 +86,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
   const analytics = useAgendaPerformance();
 
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [newCitaOpen, setNewCitaOpen] = useState(false);
   const [setterFilter, setSetterFilter] = useState("");
   const [advisorFilter, setAdvisorFilter] = useState("");
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -201,6 +203,36 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
         <div className="relative ml-auto">
           <button
             type="button"
+            onClick={() => setNewCitaOpen((v) => !v)}
+            className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-accent-600"
+          >
+            <Plus size={15} aria-hidden="true" />
+            Nueva cita
+          </button>
+          {newCitaOpen && (
+            <div className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-border-default bg-surface-1 p-3.5 shadow-[var(--elevation-md)]">
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
+                  <FileSpreadsheet size={14} className="text-accent-600" aria-hidden="true" />
+                  Las citas vienen de tu hoja
+                </p>
+                <button type="button" onClick={() => setNewCitaOpen(false)} className="text-neutral-400 hover:text-foreground">
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </div>
+              <p className="mb-3 text-[12.5px] text-neutral-500">
+                Para no duplicar la carga, Agenda no crea citas manualmente — cargá o actualizá la cita en tu hoja de Google Sheets conectada y se sincroniza sola en minutos.
+              </p>
+              <Link href="/profile?tab=integrations" className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
+                Gestionar mi hoja conectada →
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <button
+            type="button"
             onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
             title="Ir a una fecha"
             className="flex size-8 items-center justify-center rounded-md border border-border-default text-neutral-500 hover:bg-surface-2 hover:text-foreground"
@@ -225,9 +257,11 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">
-            <div>
+            <div className="flex items-center gap-2.5">
               <h2 className="text-[17px] font-semibold text-foreground">{dateHeaderLabel(granularity, selectedDate)}</h2>
-              {granularity === "dia" && <p className="text-[13px] text-neutral-500">{weekdayLabel(selectedDate)}</p>}
+              {granularity === "dia" && (
+                <span className="rounded-full bg-accent-500/10 px-2.5 py-0.5 text-[12px] font-medium text-accent-600">{weekdayLabel(selectedDate)}</span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <select
