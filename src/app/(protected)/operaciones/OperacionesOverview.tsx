@@ -99,11 +99,11 @@ export function OperacionesOverview() {
         accent="blue"
         number="02"
         icon={<Settings2 className="size-6" aria-hidden="true" />}
-        title="Herramienta 2"
-        description="Todavía no se cargó el contenido de esta herramienta."
+        title="Growth Link Map"
+        description="Pizarra estratégica: mapa visual de áreas, responsables y flujos de la empresa."
         href="/operaciones/herramienta-2"
         panelIcon={<Settings2 className="size-10 text-white/90" aria-hidden="true" />}
-        available={false}
+        available
       />
     </div>
   );
