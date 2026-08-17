@@ -19,6 +19,7 @@ import {
   Sparkles,
   Trophy,
   Users,
+  Workflow,
   Zap,
   ArrowLeftRight,
 } from "lucide-react";
@@ -153,6 +154,10 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   // cualquier otro módulo — el gate real de "quién puede verlo" vive en la
   // página (isPlatformAdmin), no acá.
   { id: "asesores", name: "Asesores", icon: Users, route: "/asesores", section: "Administración", moduleKey: "asesores", order: 0 },
+  // Solo owner/admin — mismo motivo que "Asesores": el gate real vive en
+  // src/app/(protected)/operaciones/layout.tsx (no acá, ver comentario de
+  // `permissions` arriba), moduleEnabled sigue siendo el mecanismo genérico.
+  { id: "operaciones", name: "Operaciones", icon: Workflow, route: "/operaciones", section: "Administración", moduleKey: "operaciones", order: 1 },
 
   {
     id: "data_transfer",

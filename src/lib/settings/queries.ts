@@ -19,6 +19,7 @@ const MODULE_KEYS = [
   "insurance_providers",
   "data_transfer",
   "agenda",
+  "operaciones",
 ] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
