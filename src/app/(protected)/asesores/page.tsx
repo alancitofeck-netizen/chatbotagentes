@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Users, ShieldAlert } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { isAgencyWorkspace } from "@/lib/auth/roles";
+import { getAgencyWorkspaceAccessForCurrentUser } from "@/lib/auth/roles";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getClientsList } from "@/lib/clients/queries";
@@ -17,19 +17,20 @@ export const metadata: Metadata = {
  * auth.users, ver getRealAdvisorWorkspaces en queries.ts) — nunca clientes
  * comerciales de un asesor, y nunca entra al workspace del asesor (eso es
  * "Administrar" en CRM → Agentes, un flujo aparte, sin tocar). Gate real:
- * isAgencyWorkspace — `role` de este workspace ya no alcanza por sí solo,
- * porque la lista es cross-tenant, pero exigir además "estar parado en el
- * workspace real de la agencia" (en vez de "ser el Owner global" a secas)
- * es lo que permite que cualquier owner/admin real de esa agencia use el
- * módulo, no solo esa única cuenta — ver auth/roles.ts. */
+ * getAgencyWorkspaceAccessForCurrentUser() — resuelve por USUARIO (owner/admin
+ * real de la agencia), no por workspace activo, así que funciona parado en
+ * cualquier workspace propio (ver 0152_agency_access_by_user.sql). Las
+ * queries de acá abajo usan el workspaceId de la AGENCIA que devuelve, nunca
+ * el activo. */
 export default async function AsesoresPage() {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  const isManager = (role === "owner" || role === "admin") && (await isAgencyWorkspace(workspaceId));
+  await requireActiveWorkspace();
+  const agencyWorkspaceId = await getAgencyWorkspaceAccessForCurrentUser();
+  const isManager = agencyWorkspaceId !== null;
 
-  const moduleStatus = await getWorkspaceModuleStatus(workspaceId);
+  const moduleStatus = isManager ? await getWorkspaceModuleStatus(agencyWorkspaceId) : [];
   const moduleEnabled = moduleStatus.some((m) => m.moduleKey === "asesores" && m.enabled);
 
-  const [clients, members] = isManager && moduleEnabled ? await Promise.all([getClientsList(workspaceId), getWorkspaceMembers(workspaceId)]) : [[], []];
+  const [clients, members] = isManager && moduleEnabled ? await Promise.all([getClientsList(agencyWorkspaceId), getWorkspaceMembers(agencyWorkspaceId)]) : [[], []];
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">

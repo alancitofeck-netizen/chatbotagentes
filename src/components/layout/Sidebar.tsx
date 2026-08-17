@@ -146,6 +146,7 @@ export function Sidebar({
   userEmail,
   userAvatarUrl = null,
   isPlatformAdmin = false,
+  hasMultipleWorkspaces = false,
 }: {
   enabledModules: string[];
   workspaceName: string;
@@ -154,6 +155,7 @@ export function Sidebar({
   userEmail: string;
   userAvatarUrl?: string | null;
   isPlatformAdmin?: boolean;
+  hasMultipleWorkspaces?: boolean;
 }) {
   const pathname = usePathname();
   const navItems = useMemo(() => getSidebarNavItems(new Set(enabledModules)), [enabledModules]);
@@ -297,7 +299,14 @@ export function Sidebar({
         </nav>
 
         <div className="flex shrink-0 items-center gap-2.5 px-2.5 py-3">
-          <UserMenu name={userName} email={userEmail} avatarUrl={userAvatarUrl} variant="sidebar" isPlatformAdmin={isPlatformAdmin} />
+          <UserMenu
+            name={userName}
+            email={userEmail}
+            avatarUrl={userAvatarUrl}
+            variant="sidebar"
+            isPlatformAdmin={isPlatformAdmin}
+            hasMultipleWorkspaces={hasMultipleWorkspaces}
+          />
           <div className={cn("flex min-w-0 flex-1 flex-col", fadeClassName(isExpanded))}>
             <span className="truncate text-xs font-medium text-white">{userName || "Tu cuenta"}</span>
             <span className="truncate text-[11px] text-neutral-400">{userEmail}</span>

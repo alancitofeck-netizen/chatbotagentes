@@ -43,37 +43,32 @@ export async function requirePlatformAdmin() {
   }
 }
 
-/** `ws_id` es "el workspace real de la agencia" — específicamente aquel
- * donde el platform admin MÁS ANTIGUO (alancitofeck@gmail.com, sembrado en
- * 0039, resuelto acá de forma data-driven vía `order by created_at asc`,
- * nunca hardcodeado) es miembro real. A propósito NO alcanza con "algún
- * platform admin cualquiera": un asesor al que también se le otorgó
- * platform_admin (ver 0144) sería trivialmente "miembro platform admin"
- * de SU PROPIO workspace, lo cual volvía a habilitar por accidente el
- * mismo bug que esto corrige — ver 0144_agency_workspace_fix_original_admin.sql
- * para el root cause completo. */
-export async function isAgencyWorkspace(workspaceId: string): Promise<boolean> {
+/** Gate real para "Asesores"/Operaciones (src/lib/clients/actions.ts,
+ * src/lib/advisorSync/actions.ts y las páginas de esos módulos) — resuelve
+ * acceso por USUARIO, no por workspace activo: un owner/admin real de la
+ * agencia (core.current_user_agency_role(), security definer + auth.uid(),
+ * ver 0152_agency_access_by_user.sql) puede usar estos módulos parado en
+ * CUALQUIER workspace propio, sin tener que cambiarse al de la agencia
+ * (pedido explícito — antes exigía estar PARADO ahí, ver el reemplazado
+ * isAgencyWorkspace/0144). Es seguro sin tocar RLS: `core.is_workspace_member`/
+ * `has_workspace_role` ya chequean la fila real de workspace_members para
+ * el workspace_id que se consulta, nunca el activo de la sesión — este gate
+ * solo cambia CUÁL workspace_id le pasa el código a esas queries.
+ * Devuelve `null` (no lanza) para gates de página, que necesitan su propio
+ * EmptyState en vez de un error genérico — ver requireAgencyWorkspaceAccess
+ * para el equivalente que lanza, usado en Server Actions. */
+export async function getAgencyWorkspaceAccessForCurrentUser(): Promise<string | null> {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("workspace_has_platform_admin_member", { ws_id: workspaceId });
-  return Boolean(data);
+  const [{ data: role }, { data: agencyWorkspaceId }] = await Promise.all([
+    supabase.rpc("current_user_agency_role"),
+    supabase.rpc("agency_workspace_id"),
+  ]);
+  if (role !== "owner" && role !== "admin") return null;
+  return (agencyWorkspaceId as string | null) ?? null;
 }
 
-/** Gate real para "Asesores" (src/lib/clients/actions.ts y las páginas del
- * módulo) — reemplaza el patrón anterior `requireManagerRole(role); await
- * requirePlatformAdmin();`. Ese patrón tenía dos problemas: (1) dejaba el
- * módulo utilizable solo por el Owner global exclusivamente, ni siquiera
- * otro owner/admin real de la MISMA agencia podía usarlo (el bug que pidió
- * corregir el usuario); y (2) al ser platform_admin un check "global" sin
- * atarse a NINGÚN workspace en particular, un platform admin que operaba
- * desde su PROPIO workspace individual (no el de la agencia) terminaba
- * auto-provisionando fichas de otros asesores ahí por error (
- * ensureAdvisorRecordsExist, clients/queries.ts) — la causa real del error
- * genérico que se reportó. Acá, en cambio, siempre exige estar realmente
- * parado en el workspace de la agencia (isAgencyWorkspace), sea cual sea
- * el rol/estatus del que llama. */
-export async function requireAgencyManagerRole(workspaceId: string, role: string): Promise<void> {
-  requireManagerRole(role);
-  if (!(await isAgencyWorkspace(workspaceId))) {
-    throw new Error("No tenés permiso para hacer esto.");
-  }
+export async function requireAgencyWorkspaceAccess(): Promise<string> {
+  const workspaceId = await getAgencyWorkspaceAccessForCurrentUser();
+  if (!workspaceId) throw new Error("No tenés permiso para hacer esto.");
+  return workspaceId;
 }

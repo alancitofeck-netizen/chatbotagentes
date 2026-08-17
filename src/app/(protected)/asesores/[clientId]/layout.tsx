@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Link2, CalendarCheck, MessageCircle, FileText, AlertTriangle, OctagonAlert } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { isAgencyWorkspace } from "@/lib/auth/roles";
+import { getAgencyWorkspaceAccessForCurrentUser } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
 import { getClientProfile } from "@/lib/clients/queries";
 import { getClientAlerts } from "@/lib/clients/alerts";
@@ -43,16 +43,19 @@ const TABS = [
 ];
 
 /** Acceso restringido a owner/admin reales del workspace de la agencia —
- * mismo criterio que asesores/page.tsx (isAgencyWorkspace, no solo el rol
- * dentro de este workspace: la ficha resuelve identidad de OTRO workspace
- * real vía service role, ver resolveAdvisorIdentity en queries.ts). Un
- * solo fetch de perfil acá; cada pestaña (children) trae solo lo que le
- * corresponde. */
+ * mismo criterio que asesores/page.tsx (getAgencyWorkspaceAccessForCurrentUser,
+ * resuelve por usuario, no por workspace activo — ver
+ * 0152_agency_access_by_user.sql). `workspaceId` de acá en más es siempre el
+ * de la AGENCIA, nunca el activo de la sesión: la ficha resuelve identidad
+ * de OTRO workspace real vía service role, ver resolveAdvisorIdentity en
+ * queries.ts. Un solo fetch de perfil acá; cada pestaña (children) trae solo
+ * lo que le corresponde. */
 export default async function ClientProfileLayout({ children, params }: { children: ReactNode; params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId, role } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await getAgencyWorkspaceAccessForCurrentUser();
 
-  if ((role !== "owner" && role !== "admin") || !(await isAgencyWorkspace(workspaceId))) {
+  if (!workspaceId) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
         <EmptyState icon={ShieldAlert} title="Acceso restringido" description="Este módulo es solo para owner/admin del workspace de la agencia." />

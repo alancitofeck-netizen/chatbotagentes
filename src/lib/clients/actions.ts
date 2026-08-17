@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
-import { requireManagerRole, requireAgencyManagerRole } from "@/lib/auth/roles";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getOrCreateDefaultGroup } from "@/lib/tasks/groups/actions";
 import { logActivity } from "@/lib/activity/log";
 import { resolveOpenRouterApiKey } from "@/lib/integrations/openrouter";
@@ -53,23 +53,21 @@ function revalidateClients(clientId?: string) {
  * nombre/email real vía el service-role client (auth.admin.getUserById),
  * que ignora RLS por diseño — a diferencia del resto de las acciones de este
  * archivo (ya protegidas de cruce entre tenants porque siempre filtran por
- * el workspace_id de QUIEN llama), acá `requireManagerRole` solo no alcanza:
- * cualquier admin/owner de CUALQUIER workspace pasaría ese check (ej. el
- * owner de un workspace propio de un asesor individual). El gate real es
- * `requireAgencyManagerRole`: owner/admin real, pero solo si además está
- * parado en el workspace real de la agencia (isAgencyWorkspace — ver
- * auth/roles.ts y 0144). Antes esto exigía ser el Owner global
- * exclusivamente (ni siquiera otro owner/admin de la misma agencia podía
- * usarlo) — corregido a pedido explícito del usuario. */
+ * el workspace_id de QUIEN llama), acá un chequeo de rol solo no alcanza:
+ * cualquier admin/owner de CUALQUIER workspace lo pasaría (ej. el owner de
+ * un workspace propio de un asesor individual). El gate real es
+ * `requireAgencyWorkspaceAccess` (auth/roles.ts): resuelve por USUARIO si
+ * es owner/admin real de la agencia, sin importar en qué workspace esté
+ * parado ahora — ver 0152_agency_access_by_user.sql. */
 export async function getClientsListAction(): Promise<ClientListItem[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientsList(workspaceId);
 }
 
 export async function getClientProfileAction(clientId: string): Promise<ClientProfile | null> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientProfile(workspaceId, clientId);
 }
 
@@ -77,8 +75,8 @@ export async function getClientProfileAction(clientId: string): Promise<ClientPr
  * no tienen ficha administrativa (`clients.linked_workspace_id`), para que
  * nunca se pueda elegir dos veces al mismo asesor. */
 export async function getAvailableAdvisorWorkspacesAction(): Promise<RealAdvisorWorkspace[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const advisors = await getRealAdvisorWorkspaces();
   const supabase = await createClient();
   const { data: existing } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).not("linked_workspace_id", "is", null);
@@ -87,35 +85,35 @@ export async function getAvailableAdvisorWorkspacesAction(): Promise<RealAdvisor
 }
 
 export async function getClientContractsAction(clientId: string): Promise<ClientContract[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientContracts(workspaceId, clientId);
 }
 
 /** Lee bookings del workspace REAL del asesor — mismo motivo que
- * getClientsListAction: requireAgencyManagerRole, porque ya no es un dato
- * scopeado a tu propio workspace. */
+ * getClientsListAction: requireAgencyWorkspaceAccess, porque ya no es un
+ * dato scopeado a tu propio workspace. */
 export async function getClientAppointmentsAction(clientId: string): Promise<ClientAppointment[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientAppointments(workspaceId, clientId);
 }
 
 export async function getClientPoliciesAction(clientId: string): Promise<ClientPolicy[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientPolicies(workspaceId, clientId);
 }
 
 export async function getClientTasksAction(clientId: string): Promise<ClientTask[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientTasks(workspaceId, clientId);
 }
 
 export async function getClientUpcomingPolicyPaymentsAction(clientId: string): Promise<ClientPolicyPayment[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientUpcomingPolicyPayments(workspaceId, clientId);
 }
 
@@ -143,8 +141,8 @@ export interface CreateClientInput {
  * nunca quede sin contrato asociado. `linked_workspace_id` es unique: si ese
  * asesor ya tiene ficha, el insert falla con un mensaje claro. */
 export async function createClientAction(input: CreateClientInput): Promise<{ id: string }> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
 
@@ -208,8 +206,8 @@ export interface UpdateClientInput {
 }
 
 export async function updateClientAction(clientId: string, input: UpdateClientInput): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   const { error } = await supabase
     .from("clients")
@@ -235,8 +233,8 @@ export async function updateClientAction(clientId: string, input: UpdateClientIn
 }
 
 async function setClientStatus(clientId: string, status: ClientStatus): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
   const { error } = await supabase
@@ -283,8 +281,8 @@ export interface CreateContractInput {
  * nunca acá (por eso se llama esta acción y no esa), pero evita terminar con
  * dos contratos 'activo' a la vez si de casualidad ya había uno. */
 export async function createContractAction(clientId: string, input: CreateContractInput): Promise<{ id: string }> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
 
@@ -362,8 +360,8 @@ export interface RenewContractInput {
  * exista un contrato 'activo' por cliente a la vez (MRR se calcula sumando
  * esas filas en vivo). */
 export async function renewContractAction(clientId: string, input: RenewContractInput): Promise<{ id: string }> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
 
@@ -415,8 +413,8 @@ export async function updateContractAction(
     notes?: string | null;
   },
 ): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
 
@@ -464,8 +462,8 @@ export interface CreateClientTaskInput {
  * esperamos del cliente" vs "qué le debemos nosotros") y related_area
  * (0128) para la clasificación libre que usa TareasTable.tsx. */
 export async function createClientTaskAction(clientId: string, input: CreateClientTaskInput): Promise<{ id: string }> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const memberId = await getCurrentMemberId(workspaceId);
   if (!memberId) throw new Error("No se pudo resolver tu usuario en este workspace.");
   const title = input.title.trim();
@@ -499,8 +497,8 @@ export async function createClientTaskAction(clientId: string, input: CreateClie
 }
 
 export async function updateClientTaskStatusAction(taskId: string, clientId: string, status: "pending" | "in_progress" | "completed"): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   const { error } = await supabase
     .from("tasks")
@@ -513,8 +511,8 @@ export async function updateClientTaskStatusAction(taskId: string, clientId: str
 }
 
 export async function deleteClientTaskAction(taskId: string, clientId: string): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   const { error } = await supabase.from("tasks").delete().eq("id", taskId).eq("workspace_id", workspaceId);
   if (error) throw new Error("No se pudo eliminar la tarea.");
@@ -529,8 +527,8 @@ export async function deleteClientTaskAction(taskId: string, clientId: string): 
 // ---------------------------------------------------------------------------
 
 export async function getClientAccessListAction(clientId: string): Promise<ClientAccess[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientAccess(workspaceId, clientId);
 }
 
@@ -543,8 +541,8 @@ export interface ClientAccessInput {
 }
 
 export async function createClientAccessAction(clientId: string, input: ClientAccessInput): Promise<{ id: string }> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const memberId = await getCurrentMemberId(workspaceId);
   if (!input.platform.trim()) throw new Error("La plataforma es obligatoria.");
   if (!input.accountLabel.trim()) throw new Error("El usuario/cuenta es obligatorio.");
@@ -569,8 +567,8 @@ export async function createClientAccessAction(clientId: string, input: ClientAc
 }
 
 export async function updateClientAccessAction(accessId: string, clientId: string, input: Partial<ClientAccessInput> & { status?: "active" | "inactive" }): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (input.platform !== undefined) patch.platform = input.platform.trim();
@@ -585,8 +583,8 @@ export async function updateClientAccessAction(accessId: string, clientId: strin
 }
 
 export async function deleteClientAccessAction(accessId: string, clientId: string): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   await supabase.from("client_access").delete().eq("id", accessId).eq("workspace_id", workspaceId);
   revalidateClients(clientId);
@@ -599,8 +597,8 @@ export async function deleteClientAccessAction(accessId: string, clientId: strin
 // ---------------------------------------------------------------------------
 
 export async function getClientContractPaymentsAction(contractId: string): Promise<ClientContractPayment[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientContractPayments(workspaceId, contractId);
 }
 
@@ -610,8 +608,8 @@ export async function getClientContractPaymentsAction(contractId: string): Promi
  * cálculo que buildPaymentScheduleRows (policies/queries.ts) pero sin la
  * variable de frecuencia. No agrega si ya hay cuotas cargadas. */
 export async function generateClientContractPaymentScheduleAction(contractId: string): Promise<ClientContractPayment[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
 
   const { data: contract } = await supabase
@@ -650,8 +648,8 @@ export async function generateClientContractPaymentScheduleAction(contractId: st
 }
 
 export async function addClientContractPaymentAction(contractId: string, clientId: string, input: { dueDate: string; amount: number; currency: string }): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   const { error } = await supabase
     .from("client_contract_payments")
@@ -661,8 +659,8 @@ export async function addClientContractPaymentAction(contractId: string, clientI
 }
 
 export async function updateClientContractPaymentStatusAction(paymentId: string, clientId: string, status: "pendiente" | "pagado"): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   const { error } = await supabase
     .from("client_contract_payments")
@@ -674,8 +672,8 @@ export async function updateClientContractPaymentStatusAction(paymentId: string,
 }
 
 export async function attachClientContractPaymentDocumentAction(paymentId: string, clientId: string, documentId: string): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   const { error } = await supabase
     .from("client_contract_payments")
@@ -687,8 +685,8 @@ export async function attachClientContractPaymentDocumentAction(paymentId: strin
 }
 
 export async function deleteClientContractPaymentAction(paymentId: string, clientId: string): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   await supabase.from("client_contract_payments").delete().eq("id", paymentId).eq("workspace_id", workspaceId);
   revalidateClients(clientId);
@@ -702,14 +700,14 @@ export async function deleteClientContractPaymentAction(paymentId: string, clien
 // ---------------------------------------------------------------------------
 
 export async function getClientNotesAction(clientId: string): Promise<ClientNote[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientNotes(workspaceId, clientId);
 }
 
 export async function addClientNoteAction(clientId: string, body: string): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   if (!body.trim()) return;
   const memberId = await getCurrentMemberId(workspaceId);
   const supabase = await createClient();
@@ -719,8 +717,8 @@ export async function addClientNoteAction(clientId: string, body: string): Promi
 }
 
 export async function updateClientNoteAction(noteId: string, clientId: string, body: string): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   if (!body.trim()) throw new Error("La nota no puede quedar vacía.");
   const supabase = await createClient();
   const { error } = await supabase.from("notes").update({ body: body.trim() }).eq("id", noteId).eq("workspace_id", workspaceId);
@@ -729,8 +727,8 @@ export async function updateClientNoteAction(noteId: string, clientId: string, b
 }
 
 export async function deleteClientNoteAction(noteId: string, clientId: string): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  requireManagerRole(role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   await supabase.from("notes").delete().eq("id", noteId).eq("workspace_id", workspaceId);
   revalidateClients(clientId);
@@ -743,20 +741,20 @@ export async function deleteClientNoteAction(noteId: string, clientId: string): 
 // ---------------------------------------------------------------------------
 
 export async function getClientAudienceFunnelAction(clientId: string): Promise<ClientAudienceFunnel> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientAudienceFunnel(workspaceId, clientId);
 }
 
 export async function getClientSetterPerformanceAction(clientId: string): Promise<ClientSetterPerformance[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientSetterPerformance(workspaceId, clientId);
 }
 
 export async function getClientRealTasksAction(clientId: string): Promise<ClientRealTask[]> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getClientRealTasks(workspaceId, clientId);
 }
 
@@ -771,11 +769,11 @@ export interface BookingAttributionInput {
  * de ese workspace (core.has_workspace_role, sin el carve-out de platform
  * admin que sí tiene el SELECT), así que el UPDATE en sí va con
  * createServiceRoleClient(), mismo patrón que toggleWorkspaceStatus
- * (src/lib/platform/actions.ts). requireAgencyManagerRole() es el único
+ * (src/lib/platform/actions.ts). requireAgencyWorkspaceAccess() es el único
  * gate real acá — el service role bypassea RLS por diseño. */
 export async function updateBookingAttributionAction(bookingId: string, clientId: string, input: BookingAttributionInput): Promise<void> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
 
   const supabase = await createClient();
   const { data: clientRow } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).eq("id", clientId).maybeSingle();

@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { HelpCircle, LogOut, Settings, ShieldCheck, UserCircle } from "lucide-react";
+import { HelpCircle, LogOut, Repeat, Settings, ShieldCheck, UserCircle } from "lucide-react";
 import { signOut } from "@/app/(protected)/actions";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils/cn";
@@ -23,9 +23,15 @@ interface UserMenuProps {
    * (protected)/layout.tsx via isPlatformAdmin(), not derivable from role
    * (that's per-workspace; this is a separate, orthogonal flag). */
   isPlatformAdmin?: boolean;
+  /** Sin esto, alguien con más de un workspace (ej. un admin real de la
+   * agencia que además tiene su propio workspace de asesor) no tenía forma
+   * de volver al selector una vez logueado — /select-workspace solo
+   * aparecía en el primer login, y quedaban "atrapados" en el workspace
+   * equivocado sin poder ver módulos gateados a la agencia (Asesores). */
+  hasMultipleWorkspaces?: boolean;
 }
 
-export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", isPlatformAdmin = false }: UserMenuProps) {
+export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", isPlatformAdmin = false, hasMultipleWorkspaces = false }: UserMenuProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const isSidebar = variant === "sidebar";
 
@@ -79,6 +85,20 @@ export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", is
           <HelpCircle className="size-4" aria-hidden="true" />
           Ayuda
         </button>
+
+        {hasMultipleWorkspaces && (
+          <>
+            <div className="my-1 h-px bg-border-default" />
+            <Link
+              href="/select-workspace"
+              onClick={closeMenu}
+              className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+            >
+              <Repeat className="size-4" aria-hidden="true" />
+              Cambiar de workspace
+            </Link>
+          </>
+        )}
 
         {isPlatformAdmin && (
           <>

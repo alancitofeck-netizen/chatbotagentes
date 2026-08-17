@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { requireAgencyManagerRole } from "@/lib/auth/roles";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getValidGoogleSheetsAccessToken, fetchSpreadsheetMetadata, fetchSheetValues, parseSpreadsheetId } from "@/lib/integrations/googleSheets";
 import { detectAdvisorSyncColumnMapping } from "./fieldDictionary";
 import { runAdvisorSheetSync } from "./runner";
@@ -21,8 +21,8 @@ async function requireSheetsToken(workspaceId: string): Promise<string> {
  * existen en el CRM, y el pedido explícito fue que otros agentes del
  * workspace de la agencia no puedan verlo. */
 export async function getAdvisorSheetConnectionsAction() {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   return getAdvisorSheetConnections(workspaceId);
 }
 
@@ -31,16 +31,16 @@ export async function getAdvisorSheetConnectionsAction() {
  * genérico en vez de datos del asesor para no convertir esto en un oráculo
  * de qué cuentas existen: la propia acción de guardar vuelve a validar. */
 export async function resolveAdvisorByNameAction(name: string): Promise<{ found: boolean; hasConnection: boolean; clientId: string | null }> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const match = await findAdvisorClientByName(workspaceId, name);
   if (!match) return { found: false, hasConnection: false, clientId: null };
   return { found: true, hasConnection: match.hasConnection, clientId: match.clientId };
 }
 
 export async function getAdvisorSheetRowErrorsAction(connectionId: string) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  await requireAgencyWorkspaceAccess();
   return getAdvisorSheetRowErrors(connectionId);
 }
 
@@ -100,8 +100,8 @@ export interface SaveAdvisorSheetConnectionInput {
 }
 
 export async function saveAdvisorSheetConnectionAction(input: SaveAdvisorSheetConnectionInput): Promise<{ id: string }> {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   if (!input.advisorClientId) throw new Error("Elegí un asesor antes de guardar.");
   const mapped = new Set(Object.values(input.columnMap));
   const required: AdvisorSyncFieldKey[] = ["leadName", "phone", "date"];
@@ -130,16 +130,16 @@ export async function saveAdvisorSheetConnectionAction(input: SaveAdvisorSheetCo
 }
 
 export async function pauseAdvisorSheetConnectionAction(connectionId: string, status: "active" | "paused") {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   await supabase.from("advisor_sheet_connections").update({ status }).eq("id", connectionId);
   revalidatePath("/profile");
 }
 
 export async function deleteAdvisorSheetConnectionAction(connectionId: string) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   await supabase.from("advisor_sheet_connections").delete().eq("id", connectionId);
   revalidatePath("/profile");
@@ -148,8 +148,8 @@ export async function deleteAdvisorSheetConnectionAction(connectionId: string) {
 /** "Sincronizar ahora" — misma runAdvisorSheetSync que usa el cron, para una
  * sola conexión en vez de un lote. */
 export async function triggerManualAdvisorSheetSyncAction(connectionId: string) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  await requireAgencyManagerRole(workspaceId, role);
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const supabase = await createClient();
   const { data } = await supabase.from("advisor_sheet_connections").select("*").eq("id", connectionId).eq("workspace_id", workspaceId).maybeSingle();
   if (!data) throw new Error("Conexión no encontrada.");

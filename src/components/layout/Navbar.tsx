@@ -21,6 +21,7 @@ interface NavbarProps {
   userEmail: string;
   userAvatarUrl: string | null;
   isPlatformAdmin: boolean;
+  hasMultipleWorkspaces: boolean;
 }
 
 /** Global search (GlobalSearch.tsx, backed by src/lib/search/) is real as of
@@ -30,7 +31,7 @@ interface NavbarProps {
  * (src/lib/notifications/). `ThemeToggle` moves into MobileNav's drawer
  * below `md` instead of disappearing — same function, different spot, so
  * nothing is actually lost on mobile. */
-export async function Navbar({ workspaceName, enabledModules, memberId, userName, userEmail, userAvatarUrl, isPlatformAdmin }: NavbarProps) {
+export async function Navbar({ workspaceName, enabledModules, memberId, userName, userEmail, userAvatarUrl, isPlatformAdmin, hasMultipleWorkspaces }: NavbarProps) {
   const [initialNotifications, initialUnreadCount, initialPreferences] = memberId
     ? await Promise.all([getNotifications(), getUnreadCount(), getNotificationPreferences()])
     : [[], 0, null];
@@ -62,7 +63,13 @@ export async function Navbar({ workspaceName, enabledModules, memberId, userName
           </button>
         )}
         <div className="md:hidden">
-          <UserMenu name={userName} email={userEmail} avatarUrl={userAvatarUrl} isPlatformAdmin={isPlatformAdmin} />
+          <UserMenu
+            name={userName}
+            email={userEmail}
+            avatarUrl={userAvatarUrl}
+            isPlatformAdmin={isPlatformAdmin}
+            hasMultipleWorkspaces={hasMultipleWorkspaces}
+          />
         </div>
         <ThemeToggle className="hidden md:flex" />
       </div>

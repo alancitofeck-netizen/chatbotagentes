@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { requireUser, getActiveWorkspaceForUser, getCurrentMemberId } from "@/lib/auth/session";
+import { requireUser, getActiveWorkspaceForUser, getCurrentMemberId, getUserWorkspaces } from "@/lib/auth/session";
 import { isPlatformAdmin as checkIsPlatformAdmin } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -26,6 +26,12 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   const userAvatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
   const memberId = activeWorkspace.isSupervising ? null : await getCurrentMemberId(activeWorkspace.workspaceId);
   const isPlatformAdmin = await checkIsPlatformAdmin();
+  // Sin esto, alguien con más de un workspace (ej. admin real de la agencia
+  // que también tiene su propio workspace de asesor) quedaba sin ninguna
+  // forma de volver a /select-workspace una vez que ya tenía una cookie
+  // activa — el picker solo se mostraba en el primer login. Ver UserMenu.tsx.
+  const userWorkspaces = await getUserWorkspaces(user.id);
+  const hasMultipleWorkspaces = userWorkspaces.length > 1;
 
   const supabase = await createClient();
   const { data: modules } = await supabase
@@ -45,6 +51,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
         userEmail={user.email ?? ""}
         userAvatarUrl={userAvatarUrl}
         isPlatformAdmin={isPlatformAdmin}
+        hasMultipleWorkspaces={hasMultipleWorkspaces}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         {activeWorkspace.isSupervising && <SupervisorModeBanner workspaceName={activeWorkspace.name} />}
@@ -56,6 +63,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
           userEmail={user.email ?? ""}
           userAvatarUrl={userAvatarUrl}
           isPlatformAdmin={isPlatformAdmin}
+          hasMultipleWorkspaces={hasMultipleWorkspaces}
         />
         <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
       </div>
