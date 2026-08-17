@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical, Trash2, Users2, UserRound, CalendarDays, Eye } from "lucide-react";
+import { MoreVertical, Trash2, Users2, UserRound, CalendarDays, Eye, Link2 } from "lucide-react";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { toast } from "@/components/toast/toast";
 import type { MiniAppListItem } from "@/lib/miniApps/queries";
@@ -32,6 +32,13 @@ export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDelete
   const visual = miniAppVisual(app);
   const Icon = visual.icon;
 
+  function handleCopyLink(e: React.MouseEvent) {
+    e.stopPropagation();
+    const publicUrl = `${window.location.origin}/apps/${app.slug}`;
+    navigator.clipboard.writeText(publicUrl);
+    toast.success("Link copiado.");
+  }
+
   function handleDelete() {
     if (!window.confirm(`¿Eliminar "${app.name}"? Esta acción no se puede deshacer.`)) return;
     startTransition(async () => {
@@ -53,7 +60,7 @@ export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDelete
         disabled={isPending}
         className="flex flex-1 flex-col gap-4 p-5 text-left disabled:opacity-60"
       >
-        <div className="flex items-start justify-between gap-2 pr-8">
+        <div className="flex items-start justify-between gap-2 pr-16">
           <div className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${visual.tintBg} ${visual.tintText}`}>
             <Icon className="size-6" aria-hidden="true" />
           </div>
@@ -89,7 +96,16 @@ export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDelete
         </div>
       </button>
 
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={handleCopyLink}
+          title="Copiar link público"
+          aria-label="Copiar link público"
+          className="flex size-7 items-center justify-center rounded-full text-neutral-400 hover:bg-surface-3 hover:text-foreground"
+        >
+          <Link2 size={15} aria-hidden="true" />
+        </button>
         <DropdownMenu
           trigger={<MoreVertical size={16} aria-hidden="true" />}
           triggerLabel="Más opciones"
