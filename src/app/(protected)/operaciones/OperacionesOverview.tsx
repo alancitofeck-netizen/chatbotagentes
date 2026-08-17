@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Wrench, Settings2, ArrowRight } from "lucide-react";
+import { LayoutGrid, Settings2, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 
 /** Mismo lenguaje visual que AsesoriaStageOverview.tsx (Asesorías) —
@@ -15,6 +15,7 @@ function ToolCard({
   description,
   href,
   panelIcon,
+  available,
 }: {
   accent: "violet" | "blue";
   number: string;
@@ -23,6 +24,7 @@ function ToolCard({
   description: string;
   href: string;
   panelIcon: React.ReactNode;
+  available: boolean;
 }) {
   const isViolet = accent === "violet";
   return (
@@ -42,10 +44,17 @@ function ToolCard({
             <h3 className="text-xl font-bold text-foreground">{title}</h3>
           </div>
         </div>
-        <span className="flex items-center gap-1.5 rounded-full bg-warning-bg px-2.5 py-1 text-xs font-medium text-warning-strong">
-          <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
-          Próximamente
-        </span>
+        {available ? (
+          <span className="flex items-center gap-1.5 rounded-full bg-success-bg px-2.5 py-1 text-xs font-medium text-success-strong">
+            <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+            Disponible
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 rounded-full bg-warning-bg px-2.5 py-1 text-xs font-medium text-warning-strong">
+            <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+            Próximamente
+          </span>
+        )}
       </div>
 
       <p className="max-w-xl text-sm text-neutral-600">{description}</p>
@@ -79,11 +88,12 @@ export function OperacionesOverview() {
       <ToolCard
         accent="violet"
         number="01"
-        icon={<Wrench className="size-6" aria-hidden="true" />}
-        title="Herramienta 1"
-        description="Todavía no se cargó el contenido de esta herramienta."
+        icon={<LayoutGrid className="size-6" aria-hidden="true" />}
+        title="Growth Link OS"
+        description="Centro de control interno: personas, tareas, procesos, prioridades y bloqueos del equipo."
         href="/operaciones/herramienta-1"
-        panelIcon={<Wrench className="size-10 text-white/90" aria-hidden="true" />}
+        panelIcon={<LayoutGrid className="size-10 text-white/90" aria-hidden="true" />}
+        available
       />
       <ToolCard
         accent="blue"
@@ -93,6 +103,7 @@ export function OperacionesOverview() {
         description="Todavía no se cargó el contenido de esta herramienta."
         href="/operaciones/herramienta-2"
         panelIcon={<Settings2 className="size-10 text-white/90" aria-hidden="true" />}
+        available={false}
       />
     </div>
   );
