@@ -212,10 +212,15 @@ async function processRow(
   sheetRowNumber: number,
   setters: SetterCandidate[],
   pipelineCache: Map<string, PipelineTarget>,
+  columnMapNormalized: Map<string, AdvisorSyncFieldKey>,
 ): Promise<RowOutcome> {
   const values: Partial<Record<AdvisorSyncFieldKey, string>> = {};
   headers.forEach((header, idx) => {
-    const fieldKey = connection.column_map[header];
+    // Normalizado (acentos/mayúsculas/espacios) en vez de exigir coincidencia
+    // exacta con el encabezado guardado al crear la conexión — una hoja
+    // editada a mano (ej. "Notas" pasa a "NOTAS ") rompía en silencio esa
+    // sola columna mientras el resto seguía funcionando.
+    const fieldKey = connection.column_map[header] ?? columnMapNormalized.get(normalizeForMatch(header));
     if (fieldKey) {
       const raw = row[idx];
       if (raw !== undefined && raw !== null && String(raw).trim() !== "") values[fieldKey] = String(raw).trim();
@@ -443,6 +448,7 @@ export async function runAdvisorSheetSync(connection: AdvisorSheetConnection, tr
   const externalIdHeader = Object.entries(connection.column_map).find(([, fieldKey]) => fieldKey === "externalId")?.[0];
   const externalIdColIdx = externalIdHeader ? headers.indexOf(externalIdHeader) : -1;
   const pipelineCache = new Map<string, PipelineTarget>();
+  const columnMapNormalized = new Map(Object.entries(connection.column_map).map(([header, key]) => [normalizeForMatch(header), key]));
 
   let created = 0;
   let updated = 0;
@@ -452,7 +458,7 @@ export async function runAdvisorSheetSync(connection: AdvisorSheetConnection, tr
   for (let i = 0; i < dataRows.length; i++) {
     const sheetRowNumber = i + connection.header_row + 1;
     try {
-      const outcome = await processRow(supabase, connection, advisor, headers, dataRows[i], sheetRowNumber, setters, pipelineCache);
+      const outcome = await processRow(supabase, connection, advisor, headers, dataRows[i], sheetRowNumber, setters, pipelineCache, columnMapNormalized);
       if (outcome === "created") created++;
       else if (outcome === "updated") updated++;
       else skipped++;
