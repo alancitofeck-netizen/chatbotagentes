@@ -368,7 +368,7 @@ async function resolveAdvisorIdentity(linkedWorkspaceId: string): Promise<{ name
  * te deja LEER cualquier workspace real como platform admin (core.
  * is_workspace_member tiene el carve-out is_platform_admin()) — nada
  * especial hace falta acá más que saber a cuál workspace mirar. */
-async function getLinkedWorkspaceId(workspaceId: string, clientId: string): Promise<string | null> {
+export async function getLinkedWorkspaceId(workspaceId: string, clientId: string): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("clients").select("linked_workspace_id").eq("workspace_id", workspaceId).eq("id", clientId).maybeSingle();
   return (data?.linked_workspace_id as string | null) ?? null;
