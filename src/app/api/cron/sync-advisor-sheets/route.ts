@@ -11,9 +11,11 @@ export const maxDuration = 60;
  * sync-appointment-sheets (ver supabase/migrations/0145_unify_advisor_sheet_sync.sql).
  * claim_pending_advisor_sheet_syncs devuelve hasta N conexiones activas
  * ordenadas por last_synced_at con FOR UPDATE SKIP LOCKED, así una corrida
- * solapada nunca procesa la misma hoja dos veces. Disparado cada 2 minutos
- * por pg_cron + pg_net (0145), no por Vercel Cron (Hobby plan solo permite
- * cron diario — ver CLAUDE.md).
+ * solapada nunca procesa la misma hoja dos veces. Disparado cada 15 minutos
+ * por pg_cron + pg_net (0145, bajado de cada 2 min en 0150 — cada corrida
+ * sigue pegando contra una función real de Vercel, pg_net no la exime de
+ * invocaciones/CPU, y el plan Hobby se quedó sin cupo), no por Vercel Cron
+ * (Hobby plan solo permite cron diario — ver CLAUDE.md).
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
