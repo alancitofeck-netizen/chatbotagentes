@@ -223,7 +223,7 @@ function mapAppointmentRow(
  * como en getAgendaAppointments. Service-role porque el que mira la ficha
  * (owner/admin de la agencia) no es miembro del workspace real del asesor,
  * donde vive la fila. */
-export async function getAdvisorAgendaAppointments(agencyWorkspaceId: string, clientId: string, limit = 30): Promise<AgendaAppointment[]> {
+export async function getAdvisorAgendaAppointments(agencyWorkspaceId: string, clientId: string, limit = 300): Promise<AgendaAppointment[]> {
   const supabase = createServiceRoleClient();
   const { data } = await supabase
     .from("agenda_appointments")

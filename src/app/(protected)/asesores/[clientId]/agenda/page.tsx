@@ -1,19 +1,37 @@
 import type { Metadata } from "next";
-import { CalendarDays, CalendarClock, CheckCircle2, XCircle, Ban, RotateCcw } from "lucide-react";
+import { CalendarDays, CalendarClock, CheckCircle2, XCircle, Ban, RotateCcw, BadgeCheck, DollarSign } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getClientAppointments, getClientProfile } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
-import { getAdvisorAgendaAppointments } from "@/lib/agenda/queries";
+import { getAdvisorAgendaAppointments, type EstadoCita } from "@/lib/agenda/queries";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { AgendaAppointmentsTable } from "@/components/agenda/AgendaAppointmentsTable";
 import { StatTile } from "../../StatTile";
 import { AppointmentsTable } from "../../AppointmentsTable";
 import { FuenteDonutChart } from "../../FuenteDonutChart";
 import { WeekdayBarChart } from "../../WeekdayBarChart";
 import { bucketByDay, monthOverMonthDelta } from "@/lib/clients/statsHelpers";
 import { MiniCalendar } from "./MiniCalendar";
-import { SyncedAgendaCard } from "./SyncedAgendaCard";
 
 export const metadata: Metadata = { title: "Agenda — Cliente — Growth Link" };
+
+const AGENDA_ESTADO_ICONS: Record<EstadoCita, typeof CalendarDays> = {
+  agendada: CalendarClock,
+  confirmada: BadgeCheck,
+  realizada: CheckCircle2,
+  no_show: XCircle,
+  cancelada: Ban,
+  venta: DollarSign,
+};
+
+const AGENDA_ESTADO_LABELS: Record<EstadoCita, string> = {
+  agendada: "Agendadas",
+  confirmada: "Confirmadas",
+  realizada: "Realizadas",
+  no_show: "No Show",
+  cancelada: "Canceladas",
+  venta: "Ventas",
+};
 
 export default async function ClientAgendaPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
@@ -43,8 +61,32 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ c
   const cancelledDates = cancelled.map((a) => a.startTime);
   const rescheduledDates = rescheduled.map((a) => a.startTime);
 
+  const agendaEstadoCounts: Record<EstadoCita, number> = { agendada: 0, confirmada: 0, realizada: 0, no_show: 0, cancelada: 0, venta: 0 };
+  for (const cita of syncedCitas) agendaEstadoCounts[cita.estadoCita] += 1;
+
   return (
     <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader title="Agenda (Google Sheets del asesor)" />
+        {syncedCitas.length === 0 ? (
+          <p className="text-sm text-neutral-500">Todavía no hay citas sincronizadas desde la hoja de este asesor.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <StatTile icon={CalendarDays} label="Total citas" value={String(syncedCitas.length)} />
+            {(Object.keys(AGENDA_ESTADO_LABELS) as EstadoCita[]).map((estado) => (
+              <StatTile key={estado} icon={AGENDA_ESTADO_ICONS[estado]} label={AGENDA_ESTADO_LABELS[estado]} value={String(agendaEstadoCounts[estado])} />
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {syncedCitas.length > 0 && <AgendaAppointmentsTable citas={syncedCitas} canEditEstado={false} />}
+
+      <div className="flex flex-col gap-1 pt-2">
+        <h2 className="text-sm font-semibold text-foreground">Citas de Google Calendar (CRM)</h2>
+        <p className="text-[13px] text-neutral-500">Otra fuente distinta — agenda personal sincronizada por Google Calendar, no la hoja del asesor.</p>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatTile icon={CalendarDays} label="Total citas" value={String(appointments.length)} sparklineData={bucketByDay(allDates, 14)} deltaPct={monthOverMonthDelta(allDates)} />
         <StatTile icon={CalendarClock} label="Este mes" value={String(thisMonth.length)} />
@@ -84,8 +126,6 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ c
         </div>
 
         <div className="flex flex-col gap-4">
-          <SyncedAgendaCard citas={syncedCitas} />
-
           <Card>
             <CardHeader title="Resumen de agenda" />
             <ul className="flex flex-col gap-2 text-sm">

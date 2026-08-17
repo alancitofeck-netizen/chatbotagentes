@@ -8,7 +8,7 @@ import { getMonday, addDays } from "@/lib/calendar/week";
 import { getAgendaAppointmentsAction } from "@/lib/agenda/actions";
 import type { AgendaAppointment } from "@/lib/agenda/queries";
 import { AgendaTimeline } from "./AgendaTimeline";
-import { AgendaAppointmentsTable } from "./AgendaAppointmentsTable";
+import { AgendaAppointmentsTable } from "@/components/agenda/AgendaAppointmentsTable";
 import { AgendaMiniCalendar } from "./AgendaMiniCalendar";
 import { AgendaKpiTiles } from "./AgendaKpiTiles";
 import { AgendaEstadoDonut } from "./AgendaEstadoDonut";

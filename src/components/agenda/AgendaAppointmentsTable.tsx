@@ -65,8 +65,12 @@ function EstadoCell({ cita, canEdit }: { cita: AgendaAppointment; canEdit: boole
 /** Tabla completa de citas del rango seleccionado arriba (mismos datos que
  * la línea de tiempo, otra forma de verlos) — tabs por estado, búsqueda por
  * cliente/setter y exportación a CSV, todo sobre datos reales ya cargados
- * (sin fetch aparte). */
-export function AgendaAppointmentsTable({ citas, canEditEstado, exportHref }: { citas: AgendaAppointment[]; canEditEstado: boolean; exportHref: string }) {
+ * (sin fetch aparte). Compartida con la ficha de Asesores → Agenda
+ * (asesores/[clientId]/agenda/page.tsx), que la usa de solo lectura
+ * (canEditEstado=false) y sin exportHref — por eso es opcional: el botón de
+ * descarga no tiene sentido ahí (el export CSV existente es por rango de
+ * fechas del workspace activo, no por un asesor puntual). */
+export function AgendaAppointmentsTable({ citas, canEditEstado, exportHref }: { citas: AgendaAppointment[]; canEditEstado: boolean; exportHref?: string }) {
   const [tab, setTab] = useState<EstadoCita | "todas">("todas");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -87,13 +91,15 @@ export function AgendaAppointmentsTable({ citas, canEditEstado, exportHref }: { 
       <CardHeader
         title="Todas las citas"
         action={
-          <a
-            href={exportHref}
-            title="Exportar a CSV"
-            className="flex size-8 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground"
-          >
-            <Download size={16} aria-hidden="true" />
-          </a>
+          exportHref ? (
+            <a
+              href={exportHref}
+              title="Exportar a CSV"
+              className="flex size-8 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+            >
+              <Download size={16} aria-hidden="true" />
+            </a>
+          ) : undefined
         }
       />
 
