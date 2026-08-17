@@ -21,6 +21,8 @@ export interface AgendaAppointment {
   contactId: string | null;
   contactName: string | null;
   contactPhone: string | null;
+  contactEmail: string | null;
+  notes: string | null;
   advisorClientId: string;
   advisorName: string;
   setterId: string | null;
@@ -123,7 +125,7 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
     const client = await createClient();
     const { data } = await client
       .from("agenda_appointments")
-      .select("id, workspace_id, contact_id, setter_id, setter_name, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
+      .select("id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone, email)")
       .eq("workspace_id", scope.workspaceId)
       .gte("start_time", range.start)
       .lt("start_time", range.end)
@@ -143,7 +145,7 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
   const supabase = createServiceRoleClient();
   let query = supabase
     .from("agenda_appointments")
-    .select("id, workspace_id, contact_id, setter_id, setter_name, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
+    .select("id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone, email)")
     .in("workspace_id", linkedWorkspaceIds)
     .gte("start_time", range.start)
     .lt("start_time", range.end)
@@ -173,12 +175,13 @@ function mapAppointmentRow(
     contact_id: string | null;
     setter_id: string | null;
     setter_name: string | null;
+    notes: string | null;
     start_time: string;
     end_time: string;
     subject: string | null;
     appointment_type: string | null;
     estado_cita: string;
-    contacts: { name: string; phone: string | null } | { name: string; phone: string | null }[] | null;
+    contacts: { name: string; phone: string | null; email: string | null } | { name: string; phone: string | null; email: string | null }[] | null;
   },
   advisorClientId: string,
   advisorName: string,
@@ -198,6 +201,8 @@ function mapAppointmentRow(
     contactId: r.contact_id,
     contactName: contact?.name ?? null,
     contactPhone: contact?.phone ?? null,
+    contactEmail: contact?.email ?? null,
+    notes: r.notes ?? null,
     advisorClientId,
     advisorName,
     setterId,
@@ -222,7 +227,7 @@ export async function getAdvisorAgendaAppointments(agencyWorkspaceId: string, cl
   const supabase = createServiceRoleClient();
   const { data } = await supabase
     .from("agenda_appointments")
-    .select("id, workspace_id, contact_id, setter_id, setter_name, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone)")
+    .select("id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone, email)")
     .eq("advisor_client_id", clientId)
     .order("start_time", { ascending: false })
     .limit(limit);

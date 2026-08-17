@@ -9,6 +9,7 @@ import { toast } from "@/components/toast/toast";
 import type { AgendaAppointment, EstadoCita } from "@/lib/agenda/queries";
 import { ESTADO_CITA_META, ESTADO_CITA_OPTIONS } from "@/lib/agenda/estadoMeta";
 import { updateEstadoCitaAction } from "@/lib/agenda/actions";
+import { CitaContactDetails } from "@/components/agenda/CitaContactDetails";
 
 const TABS: { key: EstadoCita | "todas"; label: string }[] = [
   { key: "todas", label: "Todas" },
@@ -144,7 +145,9 @@ export function AgendaAppointmentsTable({ citas, canEditEstado, exportHref }: { 
                   <tr key={cita.id} className="border-t border-border-default">
                     <td className="py-2.5 text-neutral-500">{formatDate(cita.startTime)}</td>
                     <td className="py-2.5 text-neutral-500">{formatTime(cita.startTime)}</td>
-                    <td className="py-2.5 font-medium text-foreground">{cita.contactName ?? "Sin nombre"}</td>
+                    <td className="py-2.5 font-medium text-foreground">
+                      <CitaContactDetails cita={cita}>{cita.contactName ?? "Sin nombre"}</CitaContactDetails>
+                    </td>
                     <td className="py-2.5 text-neutral-500">{cita.appointmentType ?? "—"}</td>
                     <td className="py-2.5 text-neutral-500">{cita.setterName ?? "—"}</td>
                     <td className="py-2.5">

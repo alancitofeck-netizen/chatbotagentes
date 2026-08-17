@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { AgendaAppointment } from "@/lib/agenda/queries";
 import { ESTADO_CITA_META } from "@/lib/agenda/estadoMeta";
+import { CitaContactDetails } from "@/components/agenda/CitaContactDetails";
 
 function formatWhen(iso: string) {
   const date = new Date(iso);
@@ -36,7 +37,9 @@ export function SyncedAgendaCard({ citas }: { citas: AgendaAppointment[] }) {
             return (
               <li key={cita.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-foreground">{cita.contactName ?? "Sin nombre"}</p>
+                  <CitaContactDetails cita={cita}>
+                    <p className="truncate text-[13px] font-medium text-foreground">{cita.contactName ?? "Sin nombre"}</p>
+                  </CitaContactDetails>
                   <p className="truncate text-[12px] text-neutral-500">
                     {formatWhen(cita.startTime)} · {cita.appointmentType ?? "Cita"}
                     {cita.setterName && ` · Setter: ${cita.setterName}`}

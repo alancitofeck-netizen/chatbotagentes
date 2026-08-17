@@ -291,6 +291,8 @@ async function processRow(
     // Respaldo de visualización para cuando el setter no tiene cuenta real
     // (setter_id null) — ver 0147_agenda_appointments_setter_name.sql.
     setter_name: values.setterName ?? null,
+    // Snapshot de la columna NOTAS de la hoja — ver 0149_agenda_appointments_notes.sql.
+    notes: values.notes ?? null,
     subject: values.appointmentType ? `${values.appointmentType}: ${values.leadName}` : `Cita: ${values.leadName}`,
     appointment_type: values.appointmentType ?? null,
     start_time: startTime,

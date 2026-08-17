@@ -9,6 +9,7 @@ import { toast } from "@/components/toast/toast";
 import type { AgendaAppointment, EstadoCita } from "@/lib/agenda/queries";
 import { ESTADO_CITA_META, ESTADO_CITA_OPTIONS } from "@/lib/agenda/estadoMeta";
 import { updateEstadoCitaAction } from "@/lib/agenda/actions";
+import { CitaContactDetails } from "@/components/agenda/CitaContactDetails";
 
 const ESTADO_BORDER_COLOR: Record<EstadoCita, string> = {
   agendada: "var(--color-warning)",
@@ -56,7 +57,9 @@ export function CitaCard({ cita, canEditEstado }: { cita: AgendaAppointment; can
       </div>
 
       <div className="min-w-0 flex-1 basis-40">
-        <p className="truncate text-[14px] font-medium text-foreground">{cita.contactName ?? "Sin nombre"}</p>
+        <CitaContactDetails cita={cita}>
+          <p className="truncate text-[14px] font-medium text-foreground">{cita.contactName ?? "Sin nombre"}</p>
+        </CitaContactDetails>
         <p className="truncate text-[12px] text-neutral-500">{cita.subject}</p>
       </div>
 
