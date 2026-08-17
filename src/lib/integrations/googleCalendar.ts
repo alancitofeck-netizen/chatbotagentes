@@ -271,7 +271,9 @@ export async function deleteEventFromGoogle(workspaceId: string, event: Pick<Cal
 /** Google→CRM import — manual ("Sincronizar ahora") + triggered when the
  * Calendar page loads, not a real-time push subscription (see module doc
  * comment above). Matches by external_id to avoid duplicating events this
- * same workspace already pushed the other direction. */
+ * same workspace already pushed the other direction. Solo importa eventos
+ * con invitados reales (ver hasRealAttendees más abajo) — filtra eventos
+ * personales que el asesor agenda en el mismo calendario "primary". */
 export async function importGoogleEvents(workspaceId: string): Promise<{ imported: number }> {
   const accessToken = await getValidAccessToken(workspaceId);
   if (!accessToken) return { imported: 0 };
@@ -293,7 +295,30 @@ export async function importGoogleEvents(workspaceId: string): Promise<{ importe
   let imported = 0;
   for (const item of data.items ?? []) {
     if (!item.start?.dateTime || !item.end?.dateTime) continue; // skip all-day events (date-only) for this pass
-    const { data: existing } = await supabase.from("bookings").select("id").eq("workspace_id", workspaceId).eq("external_id", item.id).maybeSingle();
+
+    const { data: existing } = await supabase
+      .from("bookings")
+      .select("id, created_by")
+      .eq("workspace_id", workspaceId)
+      .eq("external_id", item.id)
+      .maybeSingle();
+
+    // Eventos personales (GYM, sesiones propias, etc.) que el asesor agenda
+    // en el mismo calendario "primary" que usa para reuniones de trabajo —
+    // sin pedirle que reorganice su Google Calendar, la señal más confiable
+    // de "es una reunión real" es que tenga invitados además de él mismo
+    // (Google siempre incluye al organizador como attendee con self:true).
+    // `created_by` (solo lo setea src/lib/calendar/actions.ts al crear un
+    // evento DESDE el CRM) distingue esos eventos internos — a esos nunca
+    // los tocamos acá aunque no tengan invitados, para no borrar algo que
+    // el propio asesor creó en el CRM.
+    const hasRealAttendees = Array.isArray(item.attendees) && item.attendees.some((a: { self?: boolean }) => !a.self);
+    if (!hasRealAttendees) {
+      if (existing && !existing.created_by) {
+        await supabase.from("bookings").delete().eq("id", existing.id);
+      }
+      continue;
+    }
 
     const row = {
       workspace_id: workspaceId,
