@@ -72,3 +72,28 @@ export async function requireAgencyWorkspaceAccess(): Promise<string> {
   if (!workspaceId) throw new Error("No tenés permiso para hacer esto.");
   return workspaceId;
 }
+
+/** Variante de requireAgencyWorkspaceAccess que TAMBIÉN admite rol "agent"
+ * de la agencia — usada SOLO por src/lib/advisorSync/actions.ts (conectar/
+ * gestionar la hoja de Google Sheets de Agenda de un asesor), a pedido
+ * explícito del usuario: los agentes de la agencia sí tienen que poder
+ * conectar esa hoja, a diferencia del resto de la ficha de Asesores
+ * (contrato, pólizas, notas internas, en src/lib/clients/actions.ts), que
+ * sigue restringido a owner/admin — por eso esto NO reemplaza
+ * requireAgencyWorkspaceAccess, se agrega aparte para no ensanchar el gate
+ * de esos otros datos más sensibles. */
+export async function getAgencyWorkspaceAccessForAgent(): Promise<string | null> {
+  const supabase = await createClient();
+  const [{ data: role }, { data: agencyWorkspaceId }] = await Promise.all([
+    supabase.rpc("current_user_agency_role"),
+    supabase.rpc("agency_workspace_id"),
+  ]);
+  if (role !== "owner" && role !== "admin" && role !== "agent") return null;
+  return (agencyWorkspaceId as string | null) ?? null;
+}
+
+export async function requireAgencyWorkspaceAccessForAgent(): Promise<string> {
+  const workspaceId = await getAgencyWorkspaceAccessForAgent();
+  if (!workspaceId) throw new Error("No tenés permiso para hacer esto.");
+  return workspaceId;
+}
