@@ -11,8 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default async function KpisPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role } = await requireActiveWorkspace();
   const { tab } = await searchParams;
+  const isManager = role === "owner" || role === "admin";
 
   const [teams, hasConnection] = await Promise.all([
     getTeams(workspaceId),
@@ -30,7 +31,7 @@ export default async function KpisPage({ searchParams }: { searchParams: Promise
       <div className="px-4 sm:px-6 lg:px-8">
         <KpisTabStrip />
       </div>
-      {tab === "agendas" ? <AgendaKpisSection /> : <KpisSection hasConnection={hasConnection} teams={teams} />}
+      {tab === "agendas" ? <AgendaKpisSection isManager={isManager} /> : <KpisSection hasConnection={hasConnection} teams={teams} />}
     </div>
   );
 }

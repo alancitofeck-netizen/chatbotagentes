@@ -82,7 +82,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
   const [monthCitas, setMonthCitas] = useState<AgendaAppointment[]>([]);
   const [loading, startTransition] = useTransition();
 
-  const analytics = useAgendaPerformance();
+  const analytics = useAgendaPerformance(isManager);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [newCitaOpen, setNewCitaOpen] = useState(false);
@@ -339,15 +339,17 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
 
           <AgendaAppointmentsTable citas={filteredCitas} canEditEstado exportHref={exportHref} />
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <AgendaEstadoDonut data={analytics.data} />
-            <AgendaTipoBars data={analytics.data} />
-            <AgendaAttendanceRate data={analytics.data} />
-          </div>
+          {isManager && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <AgendaEstadoDonut data={analytics.data} />
+              <AgendaTipoBars data={analytics.data} />
+              <AgendaAttendanceRate data={analytics.data} />
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">
-          <AgendaKpiTiles data={analytics.data} preset={analytics.preset} onPresetChange={analytics.setPreset} loading={analytics.loading} />
+          {isManager && <AgendaKpiTiles data={analytics.data} preset={analytics.preset} onPresetChange={analytics.setPreset} loading={analytics.loading} />}
           <AgendaMiniCalendar
             month={calendarMonth}
             onMonthChange={setCalendarMonth}

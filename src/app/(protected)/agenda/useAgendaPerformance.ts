@@ -38,7 +38,13 @@ function rangeForPreset(preset: AgendaAnalyticsPreset): { start: string; end: st
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-export function useAgendaPerformance() {
+/** `enabled` = false para rol "agent": getAgendaPerformanceAction está
+ * gateada a owner/admin (requireManagerRole, agenda/actions.ts — "KPIs →
+ * Agendas es vista de equipo/asesor completo, siempre") y tira una
+ * excepción para cualquier otro rol. Antes este hook la llamaba sin
+ * importar el rol, así que un agente rompía la carga de /agenda entero al
+ * quedar un error sin manejar dentro de la transición. */
+export function useAgendaPerformance(enabled: boolean) {
   const [preset, setPreset] = useState<AgendaAnalyticsPreset>("month");
   const [data, setData] = useState<AgendaPerformance | null>(null);
   const [loading, startTransition] = useTransition();
@@ -46,6 +52,7 @@ export function useAgendaPerformance() {
   const range = useMemo(() => rangeForPreset(preset), [preset]);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     startTransition(async () => {
       const result = await getAgendaPerformanceAction(range);
@@ -55,7 +62,7 @@ export function useAgendaPerformance() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.start, range.end]);
+  }, [enabled, range.start, range.end]);
 
   return { preset, setPreset, data, loading };
 }

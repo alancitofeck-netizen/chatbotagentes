@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { CalendarCheck2, CheckCircle2, XCircle, Ban, TrendingUp, Loader2 } from "lucide-react";
+import { CalendarCheck2, CheckCircle2, XCircle, Ban, TrendingUp, Loader2, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -106,8 +106,11 @@ function PerformanceTable<T extends { citas: number; realizadas: number; noShow:
 /** KPIs → Agendas: analítico, agregado en vivo sobre agenda_appointments
  * (mismo criterio "sin rollups" que getClientSetterPerformance) — separado
  * de /agenda (operativo), pedido explícito del usuario de no mezclar ambas
- * funciones. */
-export function AgendaKpisSection() {
+ * funciones. Gateado a owner/admin: getAgendaPerformanceAction (agenda/actions.ts)
+ * tira una excepción para cualquier otro rol (requireManagerRole), así que
+ * `isManager` evita siquiera intentar el fetch para un agente — antes eso
+ * rompía la carga entera de la pestaña. */
+export function AgendaKpisSection({ isManager }: { isManager: boolean }) {
   const [preset, setPreset] = useState<Preset>("month");
   const [data, setData] = useState<{ scope: "agency" | "advisor"; bySetter: AgendaSetterPerformance[]; byAdvisor: AgendaAdvisorPerformance[]; totals: Record<string, number> } | null>(null);
   const [loading, startTransition] = useTransition();
@@ -115,6 +118,7 @@ export function AgendaKpisSection() {
   const range = useMemo(() => rangeForPreset(preset), [preset]);
 
   useEffect(() => {
+    if (!isManager) return;
     let cancelled = false;
     startTransition(async () => {
       const result = await getAgendaPerformanceAction(range);
@@ -123,7 +127,15 @@ export function AgendaKpisSection() {
     return () => {
       cancelled = true;
     };
-  }, [range]);
+  }, [isManager, range]);
+
+  if (!isManager) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <EmptyState icon={ShieldAlert} title="Acceso restringido" description="Este análisis es solo para owner/admin del workspace." />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
