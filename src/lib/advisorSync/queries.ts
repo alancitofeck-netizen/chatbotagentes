@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getRealAdvisorWorkspaces } from "@/lib/clients/queries";
 import { normalizeForMatch } from "@/lib/advisors/import/fuzzyMatch";
 import type { AdvisorSyncFieldKey } from "./fieldDictionary";
-import type { AdvisorSheetConnectionRow } from "./types";
+import type { AdvisorSheetConnectionRow, OwnAgendaSheetConnection } from "./types";
 
 /** Conexiones activas del workspace de la agencia, una por asesor. El
  * nombre del asesor NO sale de clients.contact_id (esa columna nunca se
@@ -20,6 +20,7 @@ export async function getAdvisorSheetConnections(workspaceId: string): Promise<A
         "id, advisor_client_id, spreadsheet_id, sheet_gid, sheet_name, column_map, header_row, status, last_synced_at, last_sync_status, last_sync_error, row_count, last_sheet_hash, created_at, clients!advisor_sheet_connections_advisor_client_id_fkey(linked_workspace_id)",
       )
       .eq("workspace_id", workspaceId)
+      .not("advisor_client_id", "is", null)
       .order("created_at", { ascending: false }),
     getRealAdvisorWorkspaces(),
   ]);
@@ -48,6 +49,36 @@ export async function getAdvisorSheetConnections(workspaceId: string): Promise<A
       createdAt: r.created_at as string,
     };
   });
+}
+
+/** La conexión propia (autoservicio) del workspace — advisor_client_id NULL,
+ * un solo resultado posible (unique index parcial, 0155). Cualquier
+ * workspace la puede tener, sea o no una agencia — ver
+ * OwnAgendaSheetManager.tsx. */
+export async function getOwnAdvisorSheetConnection(workspaceId: string): Promise<OwnAgendaSheetConnection | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("advisor_sheet_connections")
+    .select("id, spreadsheet_id, sheet_gid, sheet_name, column_map, header_row, status, last_synced_at, last_sync_status, last_sync_error, row_count, created_at")
+    .eq("workspace_id", workspaceId)
+    .is("advisor_client_id", null)
+    .maybeSingle();
+  if (!data) return null;
+
+  return {
+    id: data.id as string,
+    spreadsheetId: data.spreadsheet_id as string,
+    sheetGid: data.sheet_gid as string | null,
+    sheetName: data.sheet_name as string,
+    columnMap: (data.column_map as Record<string, AdvisorSyncFieldKey>) ?? {},
+    headerRow: (data.header_row as number) ?? 1,
+    status: data.status as "active" | "paused",
+    lastSyncedAt: data.last_synced_at as string | null,
+    lastSyncStatus: data.last_sync_status as "pending" | "ok" | "error",
+    lastSyncError: data.last_sync_error as string | null,
+    rowCount: data.row_count as number,
+    createdAt: data.created_at as string,
+  };
 }
 
 export interface AdvisorMatch {

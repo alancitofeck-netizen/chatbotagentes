@@ -22,3 +22,21 @@ export interface AdvisorSheetConnectionRow {
   lastSheetHash: string | null;
   createdAt: string;
 }
+
+/** Conexión propia (autoservicio) de un workspace — mismo shape que
+ * AdvisorSheetConnectionRow menos advisorClientId/advisorName (no hay
+ * asesor de agencia detrás, ver 0155_advisor_sheet_self_service.sql). */
+export interface OwnAgendaSheetConnection {
+  id: string;
+  spreadsheetId: string;
+  sheetGid: string | null;
+  sheetName: string;
+  columnMap: Record<string, AdvisorSyncFieldKey>;
+  headerRow: number;
+  status: "active" | "paused";
+  lastSyncedAt: string | null;
+  lastSyncStatus: "pending" | "ok" | "error";
+  lastSyncError: string | null;
+  rowCount: number;
+  createdAt: string;
+}

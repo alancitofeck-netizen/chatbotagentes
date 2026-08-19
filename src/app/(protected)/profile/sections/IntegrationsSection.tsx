@@ -26,6 +26,7 @@ import { WhatsAppIntegrationSheet } from "./WhatsAppIntegrationSheet";
 import { OpenRouterIntegrationSheet } from "./OpenRouterIntegrationSheet";
 import { KpiSettersManager } from "./KpiSettersManager";
 import { AdvisorSheetConnectionsManager } from "./AdvisorSheetConnectionsManager";
+import { OwnAgendaSheetManager } from "./OwnAgendaSheetManager";
 import { WhatsAppWebConnectionsCard } from "./WhatsAppWebConnectionsCard";
 
 /** Moved from the old standalone /settings/integrations page into the
@@ -328,6 +329,7 @@ export function IntegrationsSection({
           )}
         </div>
 
+        <OwnAgendaSheetManager key={`own-agenda-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
         {canManageAdvisorSheets && (
           <AdvisorSheetConnectionsManager key={`advisor-${String(googleSheets.connected)}`} canManage={canManageAdvisorSheets} accountConnected={googleSheets.connected} />
         )}

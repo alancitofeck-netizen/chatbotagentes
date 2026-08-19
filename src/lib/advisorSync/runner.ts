@@ -10,7 +10,10 @@ import { resolveEstadoCita, type AdvisorSyncFieldKey } from "./fieldDictionary";
 export interface AdvisorSheetConnection {
   id: string;
   workspace_id: string;
-  advisor_client_id: string;
+  /** null = conexión propia del workspace (autoservicio, ver
+   * 0155_advisor_sheet_self_service.sql) — el destino de los datos es el
+   * propio workspace_id, sin pasar por el roster de una agencia. */
+  advisor_client_id: string | null;
   spreadsheet_id: string;
   sheet_name: string;
   column_map: Record<string, AdvisorSyncFieldKey>;
@@ -198,7 +201,10 @@ async function ensureCrmPipelineTarget(supabase: SupabaseClient, workspaceId: st
 type RowOutcome = "created" | "updated" | "skipped";
 
 interface AdvisorContext {
-  clientId: string;
+  /** null en conexiones propias (autoservicio) — no hay fila de `clients`
+   * de agencia detrás, así que no hay con qué asociar advisor_setter_assignments
+   * ni agenda_appointments.advisor_client_id (ambos quedan null). */
+  clientId: string | null;
   linkedWorkspaceId: string;
   agencyWorkspaceId: string;
 }
@@ -252,11 +258,12 @@ async function processRow(
   // paso manual). Se dispara en paralelo con la consulta de contacto de
   // abajo (no depende de su resultado ni lo bloquea) — con hojas de 50-60+
   // filas, cada round trip evitado por fila suma.
-  const assignmentPromise = setter
-    ? supabase
-        .from("advisor_setter_assignments")
-        .upsert({ workspace_id: advisor.agencyWorkspaceId, client_id: advisor.clientId, setter_id: setter.memberId }, { onConflict: "client_id,setter_id", ignoreDuplicates: true })
-    : null;
+  const assignmentPromise =
+    setter && advisor.clientId
+      ? supabase
+          .from("advisor_setter_assignments")
+          .upsert({ workspace_id: advisor.agencyWorkspaceId, client_id: advisor.clientId, setter_id: setter.memberId }, { onConflict: "client_id,setter_id", ignoreDuplicates: true })
+      : null;
 
   const meetingAt = parseSheetDate(values.date, values.time);
   if (!meetingAt) throw new Error(`Fecha "${values.date}" no reconocida.`);
@@ -394,15 +401,22 @@ async function finishRun(
 export async function runAdvisorSheetSync(connection: AdvisorSheetConnection, trigger: "cron" | "manual" = "cron"): Promise<AdvisorSyncResult> {
   const supabase = createServiceRoleClient();
 
-  const { data: clientRow } = await supabase.from("clients").select("id, linked_workspace_id").eq("id", connection.advisor_client_id).maybeSingle();
-  if (!clientRow?.linked_workspace_id) {
-    const runId = await startRun(supabase, connection.id, trigger);
-    const message = "El asesor de esta conexión no tiene una cuenta real vinculada.";
-    await markConnectionError(supabase, connection.id, message);
-    await finishRun(supabase, runId, { status: "error", error_message: message, rows_read: 0, created_count: 0, updated_count: 0, skipped_count: 0, error_count: 0 });
-    return { ok: false, processed: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
+  let advisor: AdvisorContext;
+  if (connection.advisor_client_id) {
+    const { data: clientRow } = await supabase.from("clients").select("id, linked_workspace_id").eq("id", connection.advisor_client_id).maybeSingle();
+    if (!clientRow?.linked_workspace_id) {
+      const runId = await startRun(supabase, connection.id, trigger);
+      const message = "El asesor de esta conexión no tiene una cuenta real vinculada.";
+      await markConnectionError(supabase, connection.id, message);
+      await finishRun(supabase, runId, { status: "error", error_message: message, rows_read: 0, created_count: 0, updated_count: 0, skipped_count: 0, error_count: 0 });
+      return { ok: false, processed: 0, created: 0, updated: 0, skipped: 0, errors: 0 };
+    }
+    advisor = { clientId: connection.advisor_client_id, linkedWorkspaceId: clientRow.linked_workspace_id as string, agencyWorkspaceId: connection.workspace_id };
+  } else {
+    // Conexión propia (autoservicio) — el propio workspace_id es el destino,
+    // sin agencia/roster de clients de por medio.
+    advisor = { clientId: null, linkedWorkspaceId: connection.workspace_id, agencyWorkspaceId: connection.workspace_id };
   }
-  const advisor: AdvisorContext = { clientId: connection.advisor_client_id, linkedWorkspaceId: clientRow.linked_workspace_id as string, agencyWorkspaceId: connection.workspace_id };
 
   const accessToken = await getValidGoogleSheetsAccessToken(connection.workspace_id);
   if (!accessToken) {

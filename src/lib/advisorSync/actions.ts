@@ -7,7 +7,7 @@ import { requireAgencyWorkspaceAccessForAgent } from "@/lib/auth/roles";
 import { getValidGoogleSheetsAccessToken, fetchSpreadsheetMetadata, fetchSheetValues, parseSpreadsheetId } from "@/lib/integrations/googleSheets";
 import { detectAdvisorSyncColumnMapping } from "./fieldDictionary";
 import { runAdvisorSheetSync } from "./runner";
-import { getAdvisorSheetConnections, findAdvisorClientByName, getAdvisorSheetRowErrors } from "./queries";
+import { getAdvisorSheetConnections, findAdvisorClientByName, getAdvisorSheetRowErrors, getOwnAdvisorSheetConnection } from "./queries";
 import type { AdvisorSyncFieldKey } from "./fieldDictionary";
 
 async function requireSheetsToken(workspaceId: string): Promise<string> {
@@ -158,7 +158,7 @@ export async function triggerManualAdvisorSheetSyncAction(connectionId: string) 
   const result = await runAdvisorSheetSync({
     id: data.id as string,
     workspace_id: data.workspace_id as string,
-    advisor_client_id: data.advisor_client_id as string,
+    advisor_client_id: data.advisor_client_id as string | null,
     spreadsheet_id: data.spreadsheet_id as string,
     sheet_name: data.sheet_name as string,
     column_map: (data.column_map as Record<string, AdvisorSyncFieldKey>) ?? {},
@@ -168,5 +168,96 @@ export async function triggerManualAdvisorSheetSyncAction(connectionId: string) 
   revalidatePath("/profile");
   revalidatePath("/agenda");
   revalidatePath("/crm");
+  return result;
+}
+
+/** --- Conexión propia (autoservicio) — 0155_advisor_sheet_self_service.sql ---
+ * Mismas tablas/runner que arriba, pero SIN pasar por la agencia: cualquier
+ * workspace conecta SU PROPIA hoja de Agenda para sí mismo
+ * (advisor_client_id null), gateado solo por requireActiveWorkspace() — el
+ * mismo criterio que WhatsApp/Calendar/KpiSetters (owner/admin/agent del
+ * PROPIO workspace, RLS 0154). Pedido explícito: "cada workspace tiene que
+ * tener su propia agenda". */
+
+export async function getOwnAgendaSheetConnectionAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getOwnAdvisorSheetConnection(workspaceId);
+}
+
+export interface SaveOwnAgendaSheetConnectionInput {
+  connectionId?: string;
+  spreadsheetId: string;
+  sheetGid: string | null;
+  sheetName: string;
+  columnMap: Record<string, AdvisorSyncFieldKey>;
+  headerRow: number;
+}
+
+export async function saveOwnAgendaSheetConnectionAction(input: SaveOwnAgendaSheetConnectionInput): Promise<{ id: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const mapped = new Set(Object.values(input.columnMap));
+  const required: AdvisorSyncFieldKey[] = ["leadName", "phone", "date"];
+  const missing = required.filter((key) => !mapped.has(key));
+  if (missing.length > 0) throw new Error("Mapeá al menos Nombre del lead, Teléfono y Fecha antes de guardar.");
+
+  const supabase = await createClient();
+  const payload = {
+    workspace_id: workspaceId,
+    advisor_client_id: null,
+    spreadsheet_id: input.spreadsheetId,
+    sheet_gid: input.sheetGid,
+    sheet_name: input.sheetName,
+    column_map: input.columnMap,
+    header_row: input.headerRow,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = input.connectionId
+    ? await supabase.from("advisor_sheet_connections").update(payload).eq("id", input.connectionId).select("id").single()
+    : await supabase.from("advisor_sheet_connections").insert(payload).select("id").single();
+  if (error || !data) throw new Error(error?.message ?? "No se pudo guardar la conexión.");
+
+  revalidatePath("/profile");
+  revalidatePath("/agenda");
+  return { id: data.id as string };
+}
+
+export async function pauseOwnAgendaSheetConnectionAction(connectionId: string, status: "active" | "paused") {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+  await supabase.from("advisor_sheet_connections").update({ status }).eq("id", connectionId).eq("workspace_id", workspaceId).is("advisor_client_id", null);
+  revalidatePath("/profile");
+}
+
+export async function deleteOwnAgendaSheetConnectionAction(connectionId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+  await supabase.from("advisor_sheet_connections").delete().eq("id", connectionId).eq("workspace_id", workspaceId).is("advisor_client_id", null);
+  revalidatePath("/profile");
+}
+
+export async function getOwnAgendaSheetRowErrorsAction(connectionId: string) {
+  await requireActiveWorkspace();
+  return getAdvisorSheetRowErrors(connectionId);
+}
+
+export async function triggerManualOwnAgendaSheetSyncAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+  const { data } = await supabase.from("advisor_sheet_connections").select("*").eq("workspace_id", workspaceId).is("advisor_client_id", null).maybeSingle();
+  if (!data) throw new Error("Todavía no conectaste tu hoja de Agenda.");
+
+  const result = await runAdvisorSheetSync({
+    id: data.id as string,
+    workspace_id: data.workspace_id as string,
+    advisor_client_id: null,
+    spreadsheet_id: data.spreadsheet_id as string,
+    sheet_name: data.sheet_name as string,
+    column_map: (data.column_map as Record<string, AdvisorSyncFieldKey>) ?? {},
+    header_row: (data.header_row as number) ?? 1,
+    last_sheet_hash: (data.last_sheet_hash as string | null) ?? null,
+  }, "manual");
+  revalidatePath("/profile");
+  revalidatePath("/agenda");
   return result;
 }
