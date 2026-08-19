@@ -19,10 +19,12 @@ export function MiniAppsListShell({
   initialMiniApps,
   members,
   moduleEnabled,
+  canManage,
 }: {
   initialMiniApps: MiniAppListItem[];
   members: WorkspaceMemberOption[];
   moduleEnabled: boolean;
+  canManage: boolean;
 }) {
   const [miniApps, setMiniApps] = useState(initialMiniApps);
   const [showCreate, setShowCreate] = useState(false);
@@ -142,13 +144,13 @@ export function MiniAppsListShell({
           ) : layout === "grid" ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((app) => (
-                <MiniAppCard key={app.id} app={app} onDeleted={refetch} />
+                <MiniAppCard key={app.id} app={app} onDeleted={refetch} canManage={canManage} />
               ))}
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               {filtered.map((app) => (
-                <MiniAppListRow key={app.id} app={app} onDeleted={refetch} />
+                <MiniAppListRow key={app.id} app={app} onDeleted={refetch} canManage={canManage} />
               ))}
             </div>
           )}

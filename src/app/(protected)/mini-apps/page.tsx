@@ -11,7 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default async function MiniAppsPage() {
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role } = await requireActiveWorkspace();
+  const canManage = role === "owner" || role === "admin";
   const moduleStatus = await getWorkspaceModuleStatus(workspaceId);
   const enabled = moduleStatus.some((m) => m.moduleKey === "mini_apps" && m.enabled);
 
@@ -31,7 +32,7 @@ export default async function MiniAppsPage() {
         </div>
       </div>
       <div className="px-4 sm:px-6 lg:px-8">
-        <MiniAppsListShell initialMiniApps={miniApps} members={members} moduleEnabled={enabled} />
+        <MiniAppsListShell initialMiniApps={miniApps} members={members} moduleEnabled={enabled} canManage={canManage} />
       </div>
     </div>
   );

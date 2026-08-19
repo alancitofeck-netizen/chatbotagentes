@@ -26,7 +26,7 @@ function formatDate(iso: string) {
  * DocumentsGrid.tsx (el trigger de DropdownMenu ya hace stopPropagation,
  * así que anidarlo dentro del botón que abre la app no dispara los dos
  * handlers a la vez). */
-export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDeleted: () => void }) {
+export function MiniAppCard({ app, onDeleted, canManage }: { app: MiniAppListItem; onDeleted: () => void; canManage: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const visual = miniAppVisual(app);
@@ -113,7 +113,7 @@ export function MiniAppCard({ app, onDeleted }: { app: MiniAppListItem; onDelete
           items={[
             { label: "Abrir", icon: <Eye size={14} aria-hidden="true" />, onSelect: () => router.push(`/mini-apps/${app.id}`) },
             { label: "Ver leads", icon: <Users2 size={14} aria-hidden="true" />, onSelect: () => router.push(`/mini-apps/${app.id}?tab=leads`) },
-            { label: "Eliminar", icon: <Trash2 size={14} aria-hidden="true" />, destructive: true, onSelect: handleDelete },
+            ...(canManage ? [{ label: "Eliminar", icon: <Trash2 size={14} aria-hidden="true" />, destructive: true, onSelect: handleDelete }] : []),
           ]}
         />
       </div>
