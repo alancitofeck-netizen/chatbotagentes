@@ -120,7 +120,7 @@ export function LessonEditorSheet({
         </div>
 
         <Input
-          label="URL del video (YouTube, Vimeo, Bunny, Cloudflare, Mux o un .mp4 directo)"
+          label="URL del video (YouTube, Vimeo, Loom, Bunny, Cloudflare, Mux o un .mp4 directo)"
           value={videoUrl}
           onChange={(e) => setVideoUrl(e.target.value)}
           placeholder="https://..."

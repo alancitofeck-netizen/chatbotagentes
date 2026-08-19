@@ -9,6 +9,7 @@
 export type VideoEmbed =
   | { provider: "youtube"; embedUrl: string }
   | { provider: "vimeo"; embedUrl: string }
+  | { provider: "loom"; embedUrl: string }
   | { provider: "bunny"; embedUrl: string }
   | { provider: "cloudflare"; embedUrl: string }
   | { provider: "mux"; embedUrl: string }
@@ -48,6 +49,23 @@ function detectVimeo(raw: string, url: URL | null): VideoEmbed | null {
     return { provider: "vimeo", embedUrl: `https://player.vimeo.com/video/${id}?${params.toString()}` };
   }
   return null;
+}
+
+/** Loom share links (`/share/{id}`) and already-embed links (`/embed/{id}`)
+ * both resolve to the same canonical `/embed/{id}` — re-deriving it instead
+ * of passing `/embed/` URLs through verbatim is deliberate: it strips any
+ * stray query params from a copy-pasted share link (e.g. `?sid=...`) that
+ * aren't meaningful on the embed URL, same normalization YouTube/Vimeo
+ * already do above. If Loom's own privacy setting blocks embedding for a
+ * given video, Loom's embed page itself renders a "can't be embedded"
+ * fallback inside the iframe — no extra handling needed on this side. */
+function detectLoom(raw: string, url: URL | null): VideoEmbed | null {
+  if (!url || !url.hostname.endsWith("loom.com")) return null;
+  const parts = url.pathname.split("/").filter(Boolean);
+  if (parts.length < 2 || (parts[0] !== "share" && parts[0] !== "embed")) return null;
+  const id = parts[1];
+  if (!id) return null;
+  return { provider: "loom", embedUrl: `https://www.loom.com/embed/${id}` };
 }
 
 function detectBunny(raw: string, url: URL | null): VideoEmbed | null {
@@ -105,6 +123,7 @@ export function detectProvider(rawUrl: string): VideoEmbed {
   return (
     detectYoutube(raw, url) ??
     detectVimeo(raw, url) ??
+    detectLoom(raw, url) ??
     detectBunny(raw, url) ??
     detectCloudflare(raw, url) ??
     detectMux(raw, url) ??

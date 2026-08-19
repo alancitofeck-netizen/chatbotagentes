@@ -30,6 +30,26 @@ describe("detectProvider", () => {
     });
   });
 
+  it("Loom: share link", () => {
+    const result = detectProvider("https://www.loom.com/share/abc123def456ghi789jkl012mno345pq");
+    expect(result).toEqual({ provider: "loom", embedUrl: "https://www.loom.com/embed/abc123def456ghi789jkl012mno345pq" });
+  });
+
+  it("Loom: share link without www", () => {
+    const result = detectProvider("https://loom.com/share/abc123def456ghi789jkl012mno345pq");
+    expect(result).toEqual({ provider: "loom", embedUrl: "https://www.loom.com/embed/abc123def456ghi789jkl012mno345pq" });
+  });
+
+  it("Loom: share link with extra query params", () => {
+    const result = detectProvider("https://www.loom.com/share/abc123def456ghi789jkl012mno345pq?sid=xyz-789");
+    expect(result).toEqual({ provider: "loom", embedUrl: "https://www.loom.com/embed/abc123def456ghi789jkl012mno345pq" });
+  });
+
+  it("Loom: already an embed URL", () => {
+    const result = detectProvider("https://www.loom.com/embed/abc123def456ghi789jkl012mno345pq");
+    expect(result).toEqual({ provider: "loom", embedUrl: "https://www.loom.com/embed/abc123def456ghi789jkl012mno345pq" });
+  });
+
   it("Bunny Stream: already an embed URL passes through", () => {
     const result = detectProvider("https://iframe.mediadelivery.net/embed/12345/abcd-ef01");
     expect(result).toEqual({ provider: "bunny", embedUrl: "https://iframe.mediadelivery.net/embed/12345/abcd-ef01" });
