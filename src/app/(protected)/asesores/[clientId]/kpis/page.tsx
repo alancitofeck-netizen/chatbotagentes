@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CalendarDays, CalendarClock, CheckCircle2, XCircle, Ban, RotateCcw } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import {
   getClientAppointments,
   getClientAudienceFunnel,
@@ -71,7 +72,8 @@ function buildKpiRanking(entries: KpiEntryRow[]) {
 
 export default async function ClientKpisPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const client = await getClientProfile(workspaceId, clientId);
   if (!client) return null;
   const periodMonth = currentMonthIso();

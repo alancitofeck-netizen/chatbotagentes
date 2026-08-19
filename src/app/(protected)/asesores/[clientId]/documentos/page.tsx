@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getDocumentsByRelated } from "@/lib/documents/queries";
 import { getClientContracts } from "@/lib/clients/queries";
 import { contractExpiringSeverity } from "@/lib/clients/alerts";
@@ -9,7 +10,8 @@ export const metadata: Metadata = { title: "Documentos — Cliente — Growth Li
 
 export default async function ClientDocumentosPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const memberId = await getCurrentMemberId(workspaceId);
   const [documents, contracts] = await Promise.all([
     getDocumentsByRelated(workspaceId, memberId, "client", clientId),

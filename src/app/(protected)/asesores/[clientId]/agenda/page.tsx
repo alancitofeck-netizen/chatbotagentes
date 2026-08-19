@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CalendarDays, CalendarClock, CheckCircle2, XCircle, Ban, RotateCcw, BadgeCheck, DollarSign } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getClientAppointments, getClientProfile } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getAdvisorAgendaAppointments, type EstadoCita } from "@/lib/agenda/queries";
@@ -35,7 +36,8 @@ const AGENDA_ESTADO_LABELS: Record<EstadoCita, string> = {
 
 export default async function ClientAgendaPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const client = await getClientProfile(workspaceId, clientId);
   if (!client) return null;
   // "Setter"/"Responsable" es gente del EQUIPO DEL ASESOR (su propio

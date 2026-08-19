@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Ban, CheckCircle2, ListTodo, ListChecks, CalendarClock, RefreshCw } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getClientProfile, getClientRealTasks, getClientTasks } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -22,7 +23,8 @@ function formatDate(iso: string) {
 
 export default async function ClientTareasPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const client = await getClientProfile(workspaceId, clientId);
   if (!client) return null;
   // Tareas es doble: "tasks" es tu to-do interno (gente de TU equipo,

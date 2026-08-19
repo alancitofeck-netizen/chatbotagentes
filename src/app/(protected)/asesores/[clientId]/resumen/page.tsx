@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { FileText, Download, CalendarClock } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import {
   getClientProfile,
   getClientContracts,
@@ -49,7 +50,8 @@ const CONTRACT_STATUS_META: Record<string, { label: string; variant: "success" |
 
 export default async function ClientResumenPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
 
   const client = await getClientProfile(workspaceId, clientId);
   if (!client) return null;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getClientAppointments, getClientNotes, getClientProfile, getClientSetterPerformance } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import {
@@ -21,7 +22,8 @@ export const metadata: Metadata = { title: "Operación — Cliente — Growth Li
  * volver a pedirle nada al servidor salvo los drawers de detalle. */
 export default async function ClientOperacionPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const client = await getClientProfile(workspaceId, clientId);
   if (!client) return null;
 

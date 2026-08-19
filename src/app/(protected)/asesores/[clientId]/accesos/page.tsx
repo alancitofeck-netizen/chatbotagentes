@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getClientAccess, getClientProfile } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { ClientAccessPanel } from "./ClientAccessPanel";
@@ -8,7 +9,8 @@ export const metadata: Metadata = { title: "Accesos — Cliente — Growth Link"
 
 export default async function ClientAccesosPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const [client, access, members] = await Promise.all([
     getClientProfile(workspaceId, clientId),
     getClientAccess(workspaceId, clientId),

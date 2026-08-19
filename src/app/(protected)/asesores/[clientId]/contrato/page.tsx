@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getClientContracts, getClientContractPayments, getClientNotes, getClientTimeline } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { ContractPanel } from "./ContractPanel";
@@ -10,7 +11,8 @@ export const metadata: Metadata = { title: "Contrato — Cliente — Growth Link
 
 export default async function ClientContratoPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const [contracts, notes, timeline, members] = await Promise.all([
     getClientContracts(workspaceId, clientId),
     getClientNotes(workspaceId, clientId),

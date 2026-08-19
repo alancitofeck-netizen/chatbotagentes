@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getClientPolicies, getClientUpcomingPolicyPayments, getClientProfile } from "@/lib/clients/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { ClientPoliciesShell } from "./ClientPoliciesShell";
@@ -10,7 +11,8 @@ export const metadata: Metadata = { title: "Pólizas — Cliente — Growth Link
  * módulo Pólizas, nunca una copia. */
 export default async function ClientPolizasPage({ params }: { params: Promise<{ clientId: string }> }) {
   const { clientId } = await params;
-  const { workspaceId } = await requireActiveWorkspace();
+  await requireActiveWorkspace();
+  const workspaceId = await requireAgencyWorkspaceAccess();
   const [client, policies, upcomingPayments, members] = await Promise.all([
     getClientProfile(workspaceId, clientId),
     getClientPolicies(workspaceId, clientId),
