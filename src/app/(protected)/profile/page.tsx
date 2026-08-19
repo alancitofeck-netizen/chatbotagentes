@@ -7,6 +7,7 @@ import { getGoogleCalendarStatus } from "@/lib/integrations/googleCalendar";
 import { getGoogleSheetsAccountStatus } from "@/lib/integrations/googleSheets";
 import { getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
 import { getAutomationList } from "@/lib/automations/queries";
+import { getAgencyWorkspaceAccessForAgent } from "@/lib/auth/roles";
 import { ProfileShell } from "./ProfileShell";
 
 export const metadata: Metadata = {
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 export default async function ProfilePage() {
   const { workspaceId, role } = await requireActiveWorkspace();
 
-  const [profile, sessions, modules, members, whatsapp, googleCalendar, openRouter, automations, googleSheets, googleDrive, memberId] =
+  const [profile, sessions, modules, members, whatsapp, googleCalendar, openRouter, automations, googleSheets, googleDrive, memberId, agencyWorkspaceIdForAgent] =
     await Promise.all([
       getMyProfile(),
       getMySessions(),
@@ -29,6 +30,7 @@ export default async function ProfilePage() {
       getGoogleSheetsAccountStatus(workspaceId),
       getGoogleDriveStatus(workspaceId),
       getCurrentMemberId(workspaceId),
+      getAgencyWorkspaceAccessForAgent(),
     ]);
 
   return (
@@ -45,6 +47,7 @@ export default async function ProfilePage() {
       initialGoogleDrive={googleDrive}
       currentRole={role}
       currentMemberId={memberId}
+      canManageAdvisorSheets={agencyWorkspaceIdForAgent !== null}
     />
   );
 }

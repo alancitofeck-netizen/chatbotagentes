@@ -71,6 +71,7 @@ export function ProfileShell({
   initialGoogleDrive,
   currentRole,
   currentMemberId,
+  canManageAdvisorSheets,
 }: {
   initialProfile: MyProfile;
   initialSessions: MySession[];
@@ -84,6 +85,7 @@ export function ProfileShell({
   initialGoogleDrive: GoogleDriveStatus;
   currentRole: string;
   currentMemberId: string | null;
+  canManageAdvisorSheets: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -196,6 +198,7 @@ export function ProfileShell({
               initialGoogleDrive={initialGoogleDrive}
               currentRole={currentRole}
               currentMemberId={currentMemberId}
+              canManageAdvisorSheets={canManageAdvisorSheets}
             />
           )}
           {activeTab === "billing" && <BillingSection />}

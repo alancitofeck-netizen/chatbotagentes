@@ -38,6 +38,7 @@ export function IntegrationsSection({
   initialGoogleDrive,
   currentRole,
   currentMemberId,
+  canManageAdvisorSheets,
 }: {
   initialWhatsApp: WhatsAppIntegration | null;
   initialGoogleCalendar: GoogleCalendarStatus;
@@ -46,6 +47,7 @@ export function IntegrationsSection({
   initialGoogleDrive: GoogleDriveStatus;
   currentRole: string;
   currentMemberId: string | null;
+  canManageAdvisorSheets: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -69,13 +71,17 @@ export function IntegrationsSection({
   // so has_workspace_role still blocks the write server-side even though this
   // button renders enabled for them too.
   const canManage = currentRole === "owner" || currentRole === "admin" || currentRole === "agent";
-  // La sincronización por asesor (AdvisorSheetConnectionsManager) antes
-  // exigía owner/admin (nunca "agent") para que otros agentes de la agencia
-  // no descubrieran el roster de asesores desde acá — pedido explícito
-  // posterior lo revirtió: los agentes de la agencia sí tienen que poder
-  // conectar la hoja de Agenda de un asesor, así que ahora usa el mismo
-  // `canManage` que el resto de esta pantalla (ver requireAgencyWorkspaceAccessForAgent
-  // en src/lib/advisorSync/actions.ts, el gate real del lado del servidor).
+  // AdvisorSheetConnectionsManager (conectar la hoja de Agenda de un asesor)
+  // NO puede usar `canManage`: ese es el rol en el workspace ACTIVO, que para
+  // un asesor cualquiera (self-registered, agent en SU PROPIO workspace, sin
+  // ninguna relación con la agencia) también da true — mostrar el panel ahí
+  // hacía que getAdvisorSheetConnectionsAction() (gateada a
+  // requireAgencyWorkspaceAccessForAgent, resuelve por USUARIO contra la
+  // agencia real, no por workspace activo) fallara apenas cargaba la
+  // pantalla. `canManageAdvisorSheets` (profile/page.tsx, misma resolución
+  // por usuario) solo da true si esta cuenta realmente es owner/admin/agent
+  // de la agencia — pedido explícito de que agent SÍ pueda, pero solo para
+  // agentes reales de la agencia, no cualquier asesor suelto.
   const isActive = whatsapp?.status === "active";
   const isOpenRouterActive = openRouter?.status === "active";
 
@@ -322,8 +328,8 @@ export function IntegrationsSection({
           )}
         </div>
 
-        {canManage && (
-          <AdvisorSheetConnectionsManager key={`advisor-${String(googleSheets.connected)}`} canManage={canManage} accountConnected={googleSheets.connected} />
+        {canManageAdvisorSheets && (
+          <AdvisorSheetConnectionsManager key={`advisor-${String(googleSheets.connected)}`} canManage={canManageAdvisorSheets} accountConnected={googleSheets.connected} />
         )}
         <KpiSettersManager key={String(googleSheets.connected)} canManage={canManage} accountConnected={googleSheets.connected} />
       </Card>
