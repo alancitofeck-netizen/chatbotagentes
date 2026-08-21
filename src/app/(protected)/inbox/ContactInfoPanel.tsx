@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   Mail,
   Phone,
@@ -115,6 +115,23 @@ export function ContactInfoPanel({
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [creatingTask, setCreatingTask] = useState(false);
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [notePopoverOpen, setNotePopoverOpen] = useState(false);
+  const tagPopoverRef = useRef<HTMLDivElement>(null);
+  const notePopoverRef = useRef<HTMLDivElement>(null);
+
+  // "Agregar etiqueta"/"Agregar nota" quick actions — mismo criterio de
+  // click-outside-to-close que ya usa el popover de Respuestas rápidas del
+  // composer (ConversationThread.tsx).
+  useEffect(() => {
+    if (!tagPopoverOpen && !notePopoverOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (tagPopoverOpen && tagPopoverRef.current && !tagPopoverRef.current.contains(e.target as Node)) setTagPopoverOpen(false);
+      if (notePopoverOpen && notePopoverRef.current && !notePopoverRef.current.contains(e.target as Node)) setNotePopoverOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [tagPopoverOpen, notePopoverOpen]);
 
   useEffect(() => {
     if (!detail) {
@@ -285,17 +302,18 @@ export function ContactInfoPanel({
           )}
         </div>
 
-        {/* Acciones rápidas — Editar contacto / Ver CRM / Crear tarea /
-            Programar reunión / Fusionar contacto (pedido explícito). */}
+        {/* Acciones rápidas — Editar contacto / Abrir en CRM / Crear tarea /
+            Programar reunión / Agregar etiqueta / Agregar nota / Fusionar
+            (pedido explícito). "Abrir en CRM" ahora siempre visible: antes
+            solo aparecía si ya existía una oportunidad activa, escondiendo
+            la acción justo cuando más falta hace (crear una desde cero). */}
         <div className="flex flex-wrap items-center justify-center gap-1.5">
           <Link href="/inbox/contactos" className={inboxSecondaryButton}>
             <Users2 size={13} /> Editar contacto
           </Link>
-          {crm?.opportunity && (
-            <Link href="/crm" className={inboxSecondaryButton}>
-              <Kanban size={13} /> Ver CRM
-            </Link>
-          )}
+          <Link href="/crm" className={inboxSecondaryButton}>
+            <Kanban size={13} /> Abrir en CRM
+          </Link>
           <button type="button" onClick={() => setShowTaskForm((v) => !v)} className={inboxSecondaryButton}>
             <ListTodo size={13} /> Crear tarea
           </button>
@@ -311,6 +329,66 @@ export function ContactInfoPanel({
           >
             <ShieldCheck size={13} /> Nueva póliza
           </Link>
+          <div className="relative" ref={tagPopoverRef}>
+            <button type="button" onClick={() => setTagPopoverOpen((v) => !v)} className={inboxSecondaryButton} aria-expanded={tagPopoverOpen}>
+              <TagIcon size={13} /> Agregar etiqueta
+            </button>
+            {tagPopoverOpen && (
+              <div className="absolute left-1/2 top-full z-10 mt-1.5 w-56 -translate-x-1/2 rounded-md border border-border-default bg-surface-1 p-2.5 shadow-[var(--elevation-md)]">
+                {tags.length === 0 ? (
+                  <p className="text-xs text-neutral-500">No hay etiquetas en este workspace.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {tags.map((t) => {
+                      const active = detail.tags.some((dt) => dt.id === t.id);
+                      return (
+                        <button key={t.id} type="button" disabled={isPending} onClick={() => handleToggleTag(t.id, !active)} className="disabled:opacity-50">
+                          <Badge variant={active ? tagBadgeVariant(t.color) : "neutral"} className={active ? "" : "opacity-60"}>
+                            {t.name}
+                          </Badge>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={notePopoverRef}>
+            <button type="button" onClick={() => setNotePopoverOpen((v) => !v)} className={inboxSecondaryButton} aria-expanded={notePopoverOpen}>
+              <StickyNote size={13} /> Agregar nota
+            </button>
+            {notePopoverOpen && (
+              <div className="absolute left-1/2 top-full z-10 mt-1.5 w-64 -translate-x-1/2 rounded-md border border-border-default bg-surface-1 p-2.5 shadow-[var(--elevation-md)]">
+                <div className="flex gap-1.5">
+                  <input
+                    autoFocus
+                    value={noteBody}
+                    onChange={(e) => setNoteBody(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleAddNote();
+                        setNotePopoverOpen(false);
+                      }
+                    }}
+                    placeholder="Escribí una nota…"
+                    className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3 py-1.5 text-[13px] outline-none focus:border-blue-500 focus:bg-surface-1"
+                  />
+                  <button
+                    type="button"
+                    disabled={isPending || !noteBody.trim()}
+                    onClick={() => {
+                      handleAddNote();
+                      setNotePopoverOpen(false);
+                    }}
+                    className={`${INBOX_PRIMARY.bg} ${INBOX_PRIMARY.bgHover} shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium text-white disabled:opacity-40`}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <button type="button" onClick={() => setMergeOpen(true)} className={inboxSecondaryButton}>
             <Users2 size={13} /> Fusionar
           </button>

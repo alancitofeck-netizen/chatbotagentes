@@ -1,22 +1,35 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Search, Inbox as InboxIcon, Pencil } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils/cn";
-import type { ConversationListItem, WorkspaceMemberOption } from "@/lib/inbox/queries";
+import type { ConversationListItem, WorkspaceMemberOption, WorkspaceTag } from "@/lib/inbox/queries";
 import { tagBadgeVariant } from "./tagColor";
 
-export type InboxTab = "all" | "unread" | "assigned" | "closed";
+export type InboxTab = "all" | "unread" | "assigned" | "unassigned" | "closed";
 
 const TABS: { key: InboxTab; label: string }[] = [
   { key: "all", label: "Todas" },
   { key: "unread", label: "No leídas" },
-  { key: "assigned", label: "Asignadas" },
+  { key: "assigned", label: "Mis conversaciones" },
+  { key: "unassigned", label: "Sin asignar" },
   { key: "closed", label: "Cerradas" },
 ];
+
+/** Chips de categoría rápida — NO son una columna de prioridad nueva, son
+ * un atajo sobre el sistema de tags ya existente (`tags`/`contact_tags`).
+ * Un chip solo se muestra si el workspace ya tiene un tag con ese nombre
+ * exacto (case-insensitive) creado — nunca se inventa una categoría vacía
+ * ni se crea un tag nuevo automáticamente. */
+const QUICK_CATEGORIES = [
+  { tagName: "urgente", label: "🔴 Urgentes" },
+  { tagName: "nuevo lead", label: "🆕 Nuevos leads" },
+  { tagName: "seguimiento", label: "⏳ Seguimiento" },
+  { tagName: "cita", label: "📅 Citas" },
+] as const;
 
 const STATUS_DOT: Record<string, string> = {
   open: "bg-blue-500",
@@ -35,14 +48,16 @@ function formatRelative(iso: string | null) {
 }
 
 /** Tabs are filtered client-side over the already-fetched `conversations` —
- * "Todas" = todo lo no cerrado, "No leídas"/"Asignadas" are sub-filters of
- * that same active set, "Cerradas" is its own bucket. Only the text search
- * still round-trips to the server (InboxShell's existing debounced fetch). */
+ * "Todas" = todo lo no cerrado, "No leídas"/"Mis conversaciones"/"Sin
+ * asignar" are sub-filters of that same active set, "Cerradas" is its own
+ * bucket. Only the text search still round-trips to the server (InboxShell's
+ * existing debounced fetch). */
 function matchesTab(c: ConversationListItem, tab: InboxTab, currentMemberId: string | null): boolean {
   if (tab === "closed") return c.status === "closed";
   if (c.status === "closed") return false;
   if (tab === "unread") return c.unreadCount > 0;
   if (tab === "assigned") return Boolean(currentMemberId) && c.assignedMemberId === currentMemberId;
+  if (tab === "unassigned") return !c.assignedMemberId;
   return true;
 }
 
@@ -54,6 +69,7 @@ export function ConversationList({
   onTabChange,
   currentMemberId,
   members,
+  tags,
   search,
   onSearchChange,
   className,
@@ -65,14 +81,16 @@ export function ConversationList({
   onTabChange: (tab: InboxTab) => void;
   currentMemberId: string | null;
   members: WorkspaceMemberOption[];
+  tags: WorkspaceTag[];
   search: string;
   onSearchChange: (search: string) => void;
   className?: string;
 }) {
   const memberById = useMemo(() => new Map(members.map((m) => [m.memberId, m])), [members]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const counts = useMemo(() => {
-    const result: Record<InboxTab, number> = { all: 0, unread: 0, assigned: 0, closed: 0 };
+    const result: Record<InboxTab, number> = { all: 0, unread: 0, assigned: 0, unassigned: 0, closed: 0 };
     for (const c of conversations) {
       for (const tab of TABS) {
         if (matchesTab(c, tab.key, currentMemberId)) result[tab.key] += 1;
@@ -81,10 +99,16 @@ export function ConversationList({
     return result;
   }, [conversations, currentMemberId]);
 
-  const filtered = useMemo(
-    () => conversations.filter((c) => matchesTab(c, activeTab, currentMemberId)),
-    [conversations, activeTab, currentMemberId],
+  const availableCategories = useMemo(
+    () => QUICK_CATEGORIES.filter((cat) => tags.some((t) => t.name.trim().toLowerCase() === cat.tagName)),
+    [tags],
   );
+
+  const filtered = useMemo(() => {
+    const byTab = conversations.filter((c) => matchesTab(c, activeTab, currentMemberId));
+    if (!activeCategory) return byTab;
+    return byTab.filter((c) => c.tags.some((t) => t.name.trim().toLowerCase() === activeCategory));
+  }, [conversations, activeTab, currentMemberId, activeCategory]);
 
   return (
     <div className={cn("h-full flex-col bg-surface-1", className)}>
@@ -133,6 +157,26 @@ export function ConversationList({
             </button>
           ))}
         </div>
+        {availableCategories.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto">
+            {availableCategories.map((cat) => {
+              const isActive = activeCategory === cat.tagName;
+              return (
+                <button
+                  key={cat.tagName}
+                  type="button"
+                  onClick={() => setActiveCategory(isActive ? null : cat.tagName)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors",
+                    isActive ? "border-blue-500 bg-blue-50 text-blue-700" : "border-border-default text-neutral-600 hover:bg-surface-2",
+                  )}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (

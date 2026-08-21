@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Sheet } from "@/components/ui/Sheet";
 import type { ConversationDetail, ConversationListItem, WorkspaceMemberOption, WorkspaceTag } from "@/lib/inbox/queries";
+import type { WhatsAppTemplate } from "@/lib/templates/queries";
 import { getConversationDetailAction, getConversationListAction, markConversationRead } from "@/lib/inbox/actions";
 import { ConversationList, type InboxTab } from "./ConversationList";
 import { ConversationThread } from "./ConversationThread";
@@ -16,15 +17,17 @@ export function InboxShell({
   initialConversations,
   members,
   tags,
+  approvedTemplates,
 }: {
   workspaceId: string;
   currentMemberId: string | null;
   initialConversations: ConversationListItem[];
   members: WorkspaceMemberOption[];
   tags: WorkspaceTag[];
+  approvedTemplates: WhatsAppTemplate[];
 }) {
   const [conversations, setConversations] = useState(initialConversations);
-  // Tabs (Todas/No leídas/Asignadas/Cerradas) are filtered client-side over
+  // Tabs (Todas/No leídas/Mis conversaciones/Sin asignar/Cerradas) are filtered client-side over
   // the same fetched list — only the text search still round-trips to the
   // server (unchanged debounced pattern), since status is no longer the
   // server-side filter dimension.
@@ -132,6 +135,7 @@ export function InboxShell({
         onTabChange={setActiveTab}
         currentMemberId={currentMemberId}
         members={members}
+        tags={tags}
         search={search}
         onSearchChange={setSearch}
         className={selectedId ? "hidden w-full border-r lg:flex lg:w-[360px]" : "flex w-full border-r lg:w-[360px]"}
@@ -144,6 +148,7 @@ export function InboxShell({
           loading={detailLoading}
           onOpenInfo={() => setInfoSheetOpen(true)}
           onBack={() => setSelectedId(null)}
+          approvedTemplates={approvedTemplates}
         />
       </div>
 

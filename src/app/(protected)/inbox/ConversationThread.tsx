@@ -16,6 +16,11 @@ import {
   Clock,
   Info,
   ListTodo,
+  FileText,
+  Wand2,
+  BrainCircuit,
+  ClipboardList,
+  RefreshCw,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -25,6 +30,15 @@ import { toast } from "@/components/toast/toast";
 import type { ConversationDetail, MessageItem } from "@/lib/inbox/queries";
 import { approveDraftMessage, editDraftMessage, rejectDraftMessage } from "@/lib/inbox/actions";
 import { createTask } from "@/lib/tasks/actions";
+import type { WhatsAppTemplate } from "@/lib/templates/queries";
+import {
+  getConversationAiInsightAction,
+  generateReplyDraftAction,
+  analyzeLeadAction,
+  extractLeadInfoAction,
+  generateConversationSummaryAction,
+} from "@/lib/inbox/aiAssistant/actions";
+import type { ConversationAiInsight } from "@/lib/inbox/aiAssistant/queries";
 import { cn } from "@/lib/utils/cn";
 
 /** Optimistic-only state, never persisted as-is — `localStatus` is distinct
@@ -90,19 +104,27 @@ export function ConversationThread({
   loading,
   onOpenInfo,
   onBack,
+  approvedTemplates,
 }: {
   detail: ConversationDetail | null;
   loading: boolean;
   onOpenInfo: () => void;
   onBack: () => void;
+  approvedTemplates: WhatsAppTemplate[];
 }) {
   const [liveMessages, setLiveMessages] = useState<MessageItem[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
+  const [aiInsight, setAiInsight] = useState<ConversationAiInsight | null>(null);
+  const [aiActionPending, setAiActionPending] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const quickRepliesRef = useRef<HTMLDivElement>(null);
+  const templatesRef = useRef<HTMLDivElement>(null);
+  const aiPopoverRef = useRef<HTMLDivElement>(null);
   // A ref counter (not Date.now()/Math.random()) for temp-id generation —
   // those are impure calls the react-hooks/purity rule flags even inside an
   // event handler defined in the component body.
@@ -274,15 +296,70 @@ export function ConversationThread({
   }, [detail?.id]);
 
   useEffect(() => {
-    if (!quickRepliesOpen) return;
+    if (!quickRepliesOpen && !templatesOpen && !aiPopoverOpen) return;
     function handleClickOutside(e: MouseEvent) {
-      if (quickRepliesRef.current && !quickRepliesRef.current.contains(e.target as Node)) {
-        setQuickRepliesOpen(false);
-      }
+      const t = e.target as Node;
+      if (quickRepliesRef.current && !quickRepliesRef.current.contains(t)) setQuickRepliesOpen(false);
+      if (templatesRef.current && !templatesRef.current.contains(t)) setTemplatesOpen(false);
+      if (aiPopoverRef.current && !aiPopoverRef.current.contains(t)) setAiPopoverOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [quickRepliesOpen]);
+  }, [quickRepliesOpen, templatesOpen, aiPopoverOpen]);
+
+  // Card discreta "Resumen IA" — lee el caché (conversation_ai_insights),
+  // NUNCA dispara una llamada a OpenRouter por sí sola. Se regenera solo con
+  // el botón "Regenerar" del popover de IA (más abajo).
+  useEffect(() => {
+    if (!detail) {
+      Promise.resolve().then(() => setAiInsight(null));
+      return;
+    }
+    getConversationAiInsightAction(detail.id).then((result) => {
+      if (result.ok) setAiInsight(result.insight);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.id]);
+
+  /** Las 4 acciones del popover de IA comparten el mismo manejo de estado
+   * pending/toast/refresh — cada una ya devuelve { ok:false, error } en vez
+   * de tirar (mismo criterio que aiManager), así que acá solo se muestra el
+   * toast y se refresca el insight cacheado. */
+  async function runAiAction(key: string, action: () => Promise<{ ok: true } | { ok: false; error: string }>, successMessage: string) {
+    if (!detail) return;
+    setAiActionPending(key);
+    try {
+      const result = await action();
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(successMessage);
+      const fresh = await getConversationAiInsightAction(detail.id);
+      if (fresh.ok) setAiInsight(fresh.insight);
+    } finally {
+      setAiActionPending(null);
+    }
+  }
+
+  function handleGenerateReply() {
+    runAiAction("reply", () => generateReplyDraftAction(detail!.id), "Sugerencia generada — revisala en el historial.");
+    setAiPopoverOpen(false);
+  }
+  function handleAnalyzeLead() {
+    runAiAction("analyze", () => analyzeLeadAction(detail!.id), "Análisis del lead actualizado.");
+  }
+  function handleExtractInfo() {
+    runAiAction("extract", () => extractLeadInfoAction(detail!.id), "Información extraída.");
+  }
+  function handleSummarize() {
+    runAiAction("summary", () => generateConversationSummaryAction(detail!.id), "Resumen actualizado.");
+  }
+
+  function insertTemplate(bodyText: string) {
+    setMessageInput((prev) => (prev ? `${prev} ${bodyText}` : bodyText));
+    setTemplatesOpen(false);
+  }
 
   function withOverride(m: MessageItem): MessageItem {
     const override = messageOverrides[m.id];
@@ -457,6 +534,20 @@ export function ConversationThread({
           >
             Crear
           </button>
+        </div>
+      )}
+
+      {aiInsight?.summary && (
+        <div className="mx-5 mt-3 flex flex-col gap-1 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-700">
+            <Sparkles className="size-3" aria-hidden="true" /> Resumen IA
+          </p>
+          <p className="text-[13px] text-foreground">{aiInsight.summary}</p>
+          {aiInsight.nextStep && (
+            <p className="text-[12px] text-violet-700">
+              <span className="font-medium">Próximo paso:</span> {aiInsight.nextStep}
+            </p>
+          )}
         </div>
       )}
 
@@ -640,6 +731,133 @@ export function ConversationThread({
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+          </div>
+
+          {approvedTemplates.length > 0 && (
+            <div className="relative shrink-0" ref={templatesRef}>
+              <button
+                type="button"
+                onClick={() => setTemplatesOpen((v) => !v)}
+                aria-label="Plantillas"
+                aria-expanded={templatesOpen}
+                title="Plantillas"
+                className={cn(
+                  "flex size-9 items-center justify-center rounded-full transition-colors",
+                  templatesOpen ? "bg-blue-100 text-blue-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+                )}
+              >
+                <FileText size={17} />
+              </button>
+              {templatesOpen && (
+                <div className="absolute bottom-11 left-0 z-10 w-80 rounded-md border border-border-default bg-surface-1 py-1.5 shadow-[var(--elevation-md)]">
+                  <p className="px-3 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+                    Plantillas aprobadas
+                  </p>
+                  <ul className="flex max-h-64 flex-col overflow-y-auto">
+                    {approvedTemplates.map((t) => (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => insertTemplate(t.bodyText)}
+                          className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-surface-2"
+                        >
+                          <span className="text-[13px] font-medium text-foreground">{t.name}</span>
+                          <span className="line-clamp-1 text-[12px] text-neutral-500">{t.bodyText}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="relative shrink-0" ref={aiPopoverRef}>
+            <button
+              type="button"
+              onClick={() => setAiPopoverOpen((v) => !v)}
+              aria-label="Asistente IA"
+              aria-expanded={aiPopoverOpen}
+              className={cn(
+                "flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors",
+                aiPopoverOpen ? "bg-violet-100 text-violet-700" : "text-violet-600 hover:bg-violet-50",
+              )}
+            >
+              <Sparkles size={15} /> IA
+            </button>
+            {aiPopoverOpen && (
+              <div className="absolute bottom-11 right-0 z-10 w-72 rounded-md border border-border-default bg-surface-1 py-1.5 shadow-[var(--elevation-md)]">
+                <p className="px-3 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+                  Asistente IA
+                </p>
+                <button
+                  type="button"
+                  disabled={aiActionPending !== null}
+                  onClick={handleGenerateReply}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
+                >
+                  <Wand2 size={14} className="shrink-0 text-violet-600" />
+                  {aiActionPending === "reply" ? "Generando…" : "Generar respuesta"}
+                </button>
+                <button
+                  type="button"
+                  disabled={aiActionPending !== null}
+                  onClick={handleSummarize}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
+                >
+                  <FileText size={14} className="shrink-0 text-violet-600" />
+                  {aiActionPending === "summary" ? "Resumiendo…" : "Resumir conversación"}
+                </button>
+                <button
+                  type="button"
+                  disabled={aiActionPending !== null}
+                  onClick={handleAnalyzeLead}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
+                >
+                  <BrainCircuit size={14} className="shrink-0 text-violet-600" />
+                  {aiActionPending === "analyze" ? "Analizando…" : "Analizar lead"}
+                </button>
+                <button
+                  type="button"
+                  disabled={aiActionPending !== null}
+                  onClick={handleExtractInfo}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
+                >
+                  <ClipboardList size={14} className="shrink-0 text-violet-600" />
+                  {aiActionPending === "extract" ? "Extrayendo…" : "Extraer información"}
+                </button>
+                {aiInsight?.leadAnalysis && (
+                  <div className="mx-3 mt-1 flex flex-col gap-0.5 rounded-md bg-violet-50 px-2.5 py-2 text-[12px] text-violet-800">
+                    {aiInsight.leadAnalysis.interes && <p>Interés: {aiInsight.leadAnalysis.interes}</p>}
+                    {aiInsight.leadAnalysis.necesidad && <p>Necesidad: {aiInsight.leadAnalysis.necesidad}</p>}
+                    {aiInsight.leadAnalysis.probabilidad && <p>Probabilidad de avanzar: {aiInsight.leadAnalysis.probabilidad}</p>}
+                    {aiInsight.leadAnalysis.objeciones.length > 0 && <p>Objeciones: {aiInsight.leadAnalysis.objeciones.join(", ")}</p>}
+                  </div>
+                )}
+                {aiInsight?.extractedInfo && Object.values(aiInsight.extractedInfo).some(Boolean) && (
+                  <div className="mx-3 mt-1.5 flex flex-col gap-0.5 rounded-md bg-surface-2 px-2.5 py-2 text-[12px] text-foreground">
+                    {aiInsight.extractedInfo.empresa && <p>Empresa: {aiInsight.extractedInfo.empresa}</p>}
+                    {aiInsight.extractedInfo.cargo && <p>Cargo: {aiInsight.extractedInfo.cargo}</p>}
+                    {aiInsight.extractedInfo.ciudad && <p>Ciudad: {aiInsight.extractedInfo.ciudad}</p>}
+                    {aiInsight.extractedInfo.necesidad && <p>Necesidad: {aiInsight.extractedInfo.necesidad}</p>}
+                    {aiInsight.extractedInfo.presupuesto && <p>Presupuesto: {aiInsight.extractedInfo.presupuesto}</p>}
+                  </div>
+                )}
+                {aiInsight?.summary && (
+                  <>
+                    <div className="my-1 border-t border-border-default" />
+                    <button
+                      type="button"
+                      disabled={aiActionPending !== null}
+                      onClick={handleSummarize}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] text-neutral-500 hover:bg-surface-2 disabled:opacity-50"
+                    >
+                      <RefreshCw size={13} className="shrink-0" /> Regenerar análisis
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
