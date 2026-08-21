@@ -107,6 +107,16 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
       await events.onDisconnected(reason === "LOGOUT" ? { kind: "logged_out" } : { kind: "recoverable", reason });
     });
 
+    // WhatsApp escaneó el código pero rechazó el vínculo — distinto de un
+    // "disconnected" normal, este evento puede llegar SIN un "disconnected"
+    // posterior, así que la sesión se saca del mapa acá mismo (si no,
+    // isRunning() sigue devolviendo true y un reintento del usuario se
+    // ignora como "ya está corriendo").
+    client.on("auth_failure", async (message: string) => {
+      this.sessions.delete(sessionId);
+      await events.onAuthFailure(message || "WhatsApp rechazó el vínculo del dispositivo.");
+    });
+
     client.on("message", async (msg) => {
       if (msg.fromMe) return; // 'message' already excludes fromMe, but stay defensive
 

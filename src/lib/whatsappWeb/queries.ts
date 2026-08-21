@@ -7,13 +7,17 @@ export interface WhatsAppWebSession {
   fullName: string;
   avatarUrl: string | null;
   role: string;
-  status: "connecting" | "qr_pending" | "connected" | "disconnected" | "logged_out";
+  status: "connecting" | "qr_pending" | "connected" | "disconnected" | "logged_out" | "auth_failed";
   phoneE164: string | null;
   deviceName: string | null;
   qrData: string | null;
   qrExpiresAt: string | null;
   lastConnectedAt: string | null;
   lastDisconnectedAt: string | null;
+  /** Mensaje real de WhatsApp cuando status='auth_failed' (ver
+   * 0159_whatsapp_web_auth_failed_status.sql) — null en cualquier otro
+   * estado salvo que también se use como motivo genérico de desconexión. */
+  disconnectReason: string | null;
 }
 
 /** RLS on `whatsapp_web_sessions` (0050_whatsapp_web_sessions.sql) already
@@ -27,7 +31,7 @@ export async function getWhatsAppWebSessions(workspaceId: string): Promise<Whats
   const [{ data: sessions }, { data: names }, { data: members }] = await Promise.all([
     supabase
       .from("whatsapp_web_sessions")
-      .select("id, member_id, status, phone_e164, device_name, qr_data, qr_expires_at, last_connected_at, last_disconnected_at")
+      .select("id, member_id, status, phone_e164, device_name, qr_data, qr_expires_at, last_connected_at, last_disconnected_at, disconnect_reason")
       .eq("workspace_id", workspaceId),
     supabase.rpc("workspace_member_names", { ws_id: workspaceId }),
     supabase.from("workspace_members").select("id, role").eq("workspace_id", workspaceId),
@@ -54,5 +58,6 @@ export async function getWhatsAppWebSessions(workspaceId: string): Promise<Whats
     qrExpiresAt: s.qr_expires_at as string | null,
     lastConnectedAt: s.last_connected_at as string | null,
     lastDisconnectedAt: s.last_disconnected_at as string | null,
+    disconnectReason: s.disconnect_reason as string | null,
   }));
 }

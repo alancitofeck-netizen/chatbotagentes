@@ -28,6 +28,13 @@ export interface WhatsAppServiceEvents {
   onQr(qr: { dataUrl: string }): void | Promise<void>;
   onReady(info: { phoneE164: string | null; deviceName: string | null }): void | Promise<void>;
   onDisconnected(reason: DisconnectKind): void | Promise<void>;
+  /** WhatsApp escaneó el QR y RECHAZÓ el vínculo (ej. "No se pudo vincular
+   * el dispositivo" en el teléfono) — distinto de onDisconnected: nunca es
+   * recuperable con un simple reconnect, necesita una identidad
+   * criptográfica nueva (ver provision_whatsapp_web_session,
+   * 0159_whatsapp_web_auth_failed_status.sql). `message` es el texto que
+   * whatsapp-web.js reporta, si lo reporta. */
+  onAuthFailure(message: string): void | Promise<void>;
   onInboundMessage(msg: {
     /** The raw WhatsApp chat id (e.g. "5491122334455@c.us" or
      * "123456789@lid") — always present, always stable, the real identity

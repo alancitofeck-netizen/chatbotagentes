@@ -16,6 +16,7 @@ const STATUS_BADGE: Record<WhatsAppWebSession["status"], { label: string; varian
   connected: { label: "🟢 Conectado", variant: "success" },
   disconnected: { label: "🔴 Desconectado", variant: "neutral" },
   logged_out: { label: "🔴 Sesión cerrada", variant: "neutral" },
+  auth_failed: { label: "⚠️ No se pudo vincular", variant: "error" },
 };
 
 /** New "Integraciones" card for the WhatsApp Web (QR/Baileys) channel — a

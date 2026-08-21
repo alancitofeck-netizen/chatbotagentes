@@ -90,6 +90,21 @@ export async function startSession(sessionId: string, workspaceId: string, membe
         }
         scheduleReconnect(sessionId, workspaceId, memberId, reason.reason);
       },
+      onAuthFailure: async (message) => {
+        reconnectAttempts.delete(sessionId);
+        // Nunca se reintenta solo (mismo criterio que logged_out) — la
+        // sesión Storage/Vault vieja ya no es confiable, provision_whatsapp_web_session
+        // la reemplaza por completo la próxima vez que el usuario haga clic
+        // en "Reintentar" (ver 0159_whatsapp_web_auth_failed_status.sql).
+        await service.stop(sessionId).catch(() => {});
+        await updateSessionRow(sessionId, {
+          status: "auth_failed",
+          last_disconnected_at: new Date().toISOString(),
+          disconnect_reason: message,
+          qr_data: null,
+          qr_expires_at: null,
+        });
+      },
       onInboundMessage: async (msg) => {
         await forwardInboundMessage({ sessionId, workspaceId, memberId }, msg);
       },

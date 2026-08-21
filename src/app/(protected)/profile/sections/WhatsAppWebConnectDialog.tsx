@@ -8,7 +8,7 @@ import { toast } from "@/components/toast/toast";
 import { createClient } from "@/lib/supabase/client";
 import { startWhatsAppWebSessionAction, disconnectWhatsAppWebSessionAction } from "@/lib/whatsappWeb/actions";
 
-type SessionStatus = "connecting" | "qr_pending" | "connected" | "disconnected" | "logged_out";
+type SessionStatus = "connecting" | "qr_pending" | "connected" | "disconnected" | "logged_out" | "auth_failed";
 
 interface LiveSession {
   sessionId: string;
@@ -16,6 +16,7 @@ interface LiveSession {
   phoneE164: string | null;
   deviceName: string | null;
   qrData: string | null;
+  disconnectReason: string | null;
 }
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
@@ -24,6 +25,7 @@ const STATUS_LABEL: Record<SessionStatus, string> = {
   connected: "Conectado",
   disconnected: "Desconectado",
   logged_out: "Sesión cerrada",
+  auth_failed: "No se pudo vincular el dispositivo",
 };
 
 /** QR modal for one member's WhatsApp Web connection — conditionally
@@ -55,7 +57,7 @@ export function WhatsAppWebConnectDialog({
     const supabase = createClient();
     supabase
       .from("whatsapp_web_sessions")
-      .select("id, status, phone_e164, device_name, qr_data")
+      .select("id, status, phone_e164, device_name, qr_data, disconnect_reason")
       .eq("id", sessionId)
       .maybeSingle()
       .then(({ data }) => {
@@ -66,6 +68,7 @@ export function WhatsAppWebConnectDialog({
           phoneE164: data.phone_e164 as string | null,
           deviceName: data.device_name as string | null,
           qrData: data.qr_data as string | null,
+          disconnectReason: data.disconnect_reason as string | null,
         });
         onChanged();
       });
@@ -74,6 +77,9 @@ export function WhatsAppWebConnectDialog({
   useEffect(() => {
     if (session && session.status === "connected" && previousStatus.current !== "connected") {
       toast.success("WhatsApp conectado.");
+    }
+    if (session && session.status === "auth_failed" && previousStatus.current !== "auth_failed") {
+      toast.error("WhatsApp rechazó el vínculo del dispositivo.");
     }
     previousStatus.current = session?.status ?? null;
   }, [session]);
@@ -171,10 +177,20 @@ export function WhatsAppWebConnectDialog({
           <Badge variant="neutral">🔴 {STATUS_LABEL[session.status]}</Badge>
         )}
 
+        {session?.status === "auth_failed" && (
+          <>
+            <Badge variant="error">⚠️ {STATUS_LABEL[session.status]}</Badge>
+            <p className="max-w-xs text-sm text-neutral-500">
+              {session.disconnectReason || "WhatsApp rechazó el vínculo."} Revisá en tu teléfono → WhatsApp → Dispositivos
+              vinculados que no hayas llegado al máximo permitido, y probá de nuevo con un código QR nuevo.
+            </p>
+          </>
+        )}
+
         <div className="mt-2 flex gap-2">
-          {session && (session.status === "disconnected" || session.status === "logged_out") && (
+          {session && (session.status === "disconnected" || session.status === "logged_out" || session.status === "auth_failed") && (
             <Button size="sm" onClick={handleReconnect} loading={isPending}>
-              Reconectar
+              Reintentar
             </Button>
           )}
           {session?.status === "connected" && (
