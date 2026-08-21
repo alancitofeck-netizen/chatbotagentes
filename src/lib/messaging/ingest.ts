@@ -30,6 +30,16 @@ export interface IngestInboundMessageInput {
    * LID-addressed contact with no real number attached). Never a WhatsApp
    * internal identifier — that's what `chatId` is for. */
   fromPhone: string | null;
+  /** "whatsapp" (default) | "instagram" — opcional, default preserva el
+   * comportamiento exacto de siempre para los dos callers de WhatsApp que
+   * no lo mandan. Cuando es "instagram", `chatId` se reusa tal cual como
+   * el `channel_thread_id` genérico (0161_instagram_channel.sql) en vez de
+   * `whatsapp_web_chat_id`, y la resolución de contacto busca/crea por
+   * `instagram_user_id` en vez de `phone`. */
+  channel?: string;
+  /** Instagram-scoped ID (IGSID) del contacto — solo cuando channel='instagram'. */
+  instagramUserId?: string | null;
+  instagramUsername?: string | null;
   /** The business/connected number this message arrived on — stored as-is
    * into `conversations.whatsapp_phone_number_id`, the same column both
    * providers share (see `src/lib/messaging/resolveProvider.ts`). */
@@ -68,7 +78,27 @@ export interface IngestInboundMessageInput {
 export async function ingestInboundWhatsAppMessage(
   input: IngestInboundMessageInput,
 ): Promise<{ messageId: string; conversationId: string; contactId: string } | null> {
-  const { supabase, workspaceId, chatId, fromPhone, businessNumber, profileName, avatarUrl, messageBody, messageType, mediaPath, mimeType, fileName, quotedMessageId, externalId, wamid } = input;
+  const {
+    supabase,
+    workspaceId,
+    chatId,
+    fromPhone,
+    businessNumber,
+    profileName,
+    avatarUrl,
+    messageBody,
+    channel = "whatsapp",
+    instagramUserId,
+    instagramUsername,
+    messageType,
+    mediaPath,
+    mimeType,
+    fileName,
+    quotedMessageId,
+    externalId,
+    wamid,
+  } = input;
+  const isWhatsApp = channel === "whatsapp";
 
   // Idempotency: a retried webhook delivery shouldn't insert the same
   // message twice. Prefer wamid (WhatsApp's own globally-unique id, when
@@ -103,12 +133,15 @@ export async function ingestInboundWhatsAppMessage(
   let contactId: string | null = null;
   let assignedUserIdOfExisting: string | null = null;
 
-  // 0. WhatsApp Web only: a chat id is always known and always stable —
+  // 0. WhatsApp Web: a chat id is always known and always stable —
   // correlate by it FIRST, before ever touching phone. This is what makes a
   // LID (number-privacy) contact with no real phone number work at all: a
   // phone-only lookup would create a brand-new duplicate contact on every
   // single message from them, since there's no phone to match on.
-  if (chatId) {
+  // Instagram (o cualquier canal no-WhatsApp) reusa `chatId` como el
+  // `channel_thread_id` genérico, correlacionando por (channel, thread) en
+  // vez de la columna específica de WhatsApp Web.
+  if (chatId && isWhatsApp) {
     const { data: existingByChatId } = await supabase
       .from("conversations")
       .select("id, contact_id, assigned_user_id")
@@ -121,18 +154,45 @@ export async function ingestInboundWhatsAppMessage(
       assignedUserIdOfExisting = (existingByChatId.assigned_user_id as string | null) ?? null;
       await supabase.from("conversations").update({ last_message_at: nowIso }).eq("id", conversationId);
     }
+  } else if (chatId) {
+    const { data: existingByThread } = await supabase
+      .from("conversations")
+      .select("id, contact_id, assigned_user_id")
+      .eq("workspace_id", workspaceId)
+      .eq("channel", channel)
+      .eq("channel_thread_id", chatId)
+      .maybeSingle();
+    if (existingByThread) {
+      conversationId = existingByThread.id as string;
+      contactId = existingByThread.contact_id as string;
+      assignedUserIdOfExisting = (existingByThread.assigned_user_id as string | null) ?? null;
+      await supabase.from("conversations").update({ last_message_at: nowIso }).eq("id", conversationId);
+    }
   }
 
-  // 1. Contact: find by phone, create only if missing — never overwrite an
-  // existing contact's name/company/etc. on every incoming message. Skipped
-  // entirely if step 0 already resolved the contact via chat_id.
+  // 1. Contact: find by phone (WhatsApp) or instagram_user_id (Instagram),
+  // create only if missing — never overwrite an existing contact's
+  // name/company/etc. on every incoming message. Skipped entirely if step
+  // 0 already resolved the contact.
   if (!contactId) {
-    if (fromPhone) {
+    if (isWhatsApp && fromPhone) {
       const { data: existingContact, error: findContactError } = await supabase
         .from("contacts")
         .select("id")
         .eq("workspace_id", workspaceId)
         .eq("phone", fromPhone)
+        .maybeSingle();
+      if (findContactError) {
+        console.error("[ingest] failed to look up contact:", findContactError);
+        return null;
+      }
+      contactId = existingContact ? (existingContact.id as string) : null;
+    } else if (!isWhatsApp && instagramUserId) {
+      const { data: existingContact, error: findContactError } = await supabase
+        .from("contacts")
+        .select("id")
+        .eq("workspace_id", workspaceId)
+        .eq("instagram_user_id", instagramUserId)
         .maybeSingle();
       if (findContactError) {
         console.error("[ingest] failed to look up contact:", findContactError);
@@ -146,15 +206,18 @@ export async function ingestInboundWhatsAppMessage(
       // contact's name — a real name (pushName) or a plain, honest
       // placeholder, never something that looks like it could be a phone
       // number but isn't.
+      const defaultName = isWhatsApp ? "Contacto de WhatsApp" : "Contacto de Instagram";
       const { data: newContact, error: createContactError } = await supabase
         .from("contacts")
         .insert({
           workspace_id: workspaceId,
-          phone: fromPhone,
-          name: profileName?.trim() || "Contacto de WhatsApp",
+          phone: isWhatsApp ? fromPhone : null,
+          name: profileName?.trim() || instagramUsername?.trim() || defaultName,
           avatar_url: avatarUrl ?? null,
-          source: "whatsapp",
-          whatsapp_opt_status: "subscribed",
+          source: channel,
+          whatsapp_opt_status: isWhatsApp ? "subscribed" : "unknown",
+          instagram_user_id: isWhatsApp ? null : instagramUserId,
+          instagram_username: isWhatsApp ? null : instagramUsername,
         })
         .select("id")
         .single();
@@ -163,7 +226,7 @@ export async function ingestInboundWhatsAppMessage(
         return null;
       }
       contactId = newContact.id as string;
-      console.log(`[ingest] created contact ${contactId} for ${fromPhone ?? chatId ?? "(unknown identity)"}`);
+      console.log(`[ingest] created contact ${contactId} for ${fromPhone ?? instagramUserId ?? chatId ?? "(unknown identity)"}`);
     }
   }
 
@@ -201,7 +264,9 @@ export async function ingestInboundWhatsAppMessage(
       // First time we learn this contact's chat id (e.g. their first message
       // arrived via YCloud, this one via WhatsApp Web) — attach it so the
       // next message from this same chat correlates directly via step 0.
-      if (chatId && !existingConversation.whatsapp_web_chat_id) update.whatsapp_web_chat_id = chatId;
+      // Solo aplica a WhatsApp — para otros canales channel_thread_id ya
+      // se setea al CREAR la conversación (nunca cambia después).
+      if (isWhatsApp && chatId && !existingConversation.whatsapp_web_chat_id) update.whatsapp_web_chat_id = chatId;
       await supabase.from("conversations").update(update).eq("id", conversationId);
     } else {
       const { data: newConversation, error: createConversationError } = await supabase
@@ -209,8 +274,10 @@ export async function ingestInboundWhatsAppMessage(
         .insert({
           workspace_id: workspaceId,
           contact_id: contactId,
-          whatsapp_phone_number_id: businessNumber,
-          whatsapp_web_chat_id: chatId ?? null,
+          channel,
+          whatsapp_phone_number_id: isWhatsApp ? businessNumber : null,
+          whatsapp_web_chat_id: isWhatsApp ? (chatId ?? null) : null,
+          channel_thread_id: isWhatsApp ? null : (chatId ?? null),
           status: "open",
           // Default to "ai" (not "human") so the Agent Runtime engages new
           // contacts automatically — decisionEngine.ts only skips the model
@@ -250,6 +317,7 @@ export async function ingestInboundWhatsAppMessage(
       direction: "inbound",
       sender_type: "contact",
       sender_id: null,
+      channel,
       type: messageType ?? "text",
       content,
       external_id: externalId ?? null,
@@ -288,7 +356,7 @@ export async function ingestInboundWhatsAppMessage(
       memberId: assignedUserIdOfExisting,
       eventType: "message_received",
       title: "Nuevo mensaje",
-      message: `${profileName?.trim() || fromPhone || "Un contacto"}: ${messageBody.slice(0, 120)}`,
+      message: `${profileName?.trim() || fromPhone || instagramUsername || "Un contacto"}: ${messageBody.slice(0, 120)}`,
       actionUrl: "/inbox",
     });
   }

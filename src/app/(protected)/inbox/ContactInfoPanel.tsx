@@ -71,6 +71,7 @@ const TABS = [
 
 const SOURCE_LABELS: Record<string, string> = {
   whatsapp: "WhatsApp",
+  instagram: "Instagram",
   manual: "Alta manual",
 };
 
@@ -464,7 +465,20 @@ export function ContactInfoPanel({
                     <span className="text-foreground">{detail.contact.jobTitle}</span>
                   </div>
                 )}
-                {!detail.contact.email && !detail.contact.phone && !detail.contact.company && !detail.contact.jobTitle && (
+                {detail.contact.instagramUsername && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <span className="shrink-0 text-fuchsia-600">🟣</span>
+                    <a
+                      href={`https://instagram.com/${detail.contact.instagramUsername}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-foreground hover:text-blue-600 hover:underline"
+                    >
+                      @{detail.contact.instagramUsername}
+                    </a>
+                  </div>
+                )}
+                {!detail.contact.email && !detail.contact.phone && !detail.contact.company && !detail.contact.jobTitle && !detail.contact.instagramUsername && (
                   <p className="text-[13px] text-neutral-500">Sin datos de contacto adicionales.</p>
                 )}
               </section>

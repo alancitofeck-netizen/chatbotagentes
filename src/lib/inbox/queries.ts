@@ -20,6 +20,10 @@ export interface ConversationListItem {
   status: string;
   assignedMemberId: string | null;
   tags: ConversationTag[];
+  /** "whatsapp" | "instagram" (0161_instagram_channel.sql) — default
+   * 'whatsapp' para toda conversación preexistente. */
+  channel: string;
+  instagramUsername: string | null;
   /** Count of inbound messages after this agent's own last_read_at
    * (conversation_reads, supabase/migrations/0014_conversation_reads.sql) —
    * or every inbound message if this agent never opened the conversation.
@@ -46,7 +50,7 @@ function previewBody(type: string, body: string | undefined): string {
  * without it. */
 export async function getConversationList(
   workspaceId: string,
-  filters: { status?: string; search?: string } = {},
+  filters: { status?: string; search?: string; channel?: string } = {},
   currentMemberId?: string | null,
 ): Promise<ConversationListItem[]> {
   const supabase = await createClient();
@@ -66,12 +70,13 @@ export async function getConversationList(
   let query = supabase
     .from("conversations")
     .select(
-      "id, status, last_message_at, assigned_user_id, contact_id, contacts(id, name, phone, company, avatar_url), messages(direction, content, created_at, type)",
+      "id, status, channel, last_message_at, assigned_user_id, contact_id, contacts(id, name, phone, company, avatar_url, instagram_username), messages(direction, content, created_at, type)",
     )
     .eq("workspace_id", workspaceId)
     .order("last_message_at", { ascending: false, nullsFirst: false });
 
   if (filters.status) query = query.eq("status", filters.status);
+  if (filters.channel) query = query.eq("channel", filters.channel);
   if (contactIdFilter) query = query.in("contact_id", contactIdFilter);
 
   const { data } = await query;
@@ -130,6 +135,8 @@ export async function getConversationList(
       assignedMemberId: row.assigned_user_id as string | null,
       tags: tagsByContact.get(row.contact_id as string) ?? [],
       unreadCount,
+      channel: row.channel as string,
+      instagramUsername: (contact?.instagram_username as string | undefined) ?? null,
     };
   });
 }
@@ -158,6 +165,9 @@ export interface MessageItem {
   /** Reacción del contacto a ESTE mensaje (nunca reacciones nuestras, ver
    * ingestWhatsAppReaction) — null si no tiene. */
   reaction: string | null;
+  /** "whatsapp" | "instagram" — cada mensaje lo hereda de su conversación
+   * al insertarse (ver ingest.ts/send.ts/sendInstagram.ts). */
+  channel: string;
 }
 
 export interface ConversationDetail {
@@ -167,6 +177,8 @@ export interface ConversationDetail {
    * decide si el Buffer Inteligente invoca al Agent Runtime al hacer flush. */
   mode: string;
   assignedMemberId: string | null;
+  /** "whatsapp" | "instagram" (0161_instagram_channel.sql). */
+  channel: string;
   contact: {
     id: string;
     name: string;
@@ -174,11 +186,12 @@ export interface ConversationDetail {
     email: string | null;
     company: string | null;
     avatarUrl: string | null;
-    /** contacts.source (e.g. "whatsapp", "manual") — "de dónde vino el lead". */
+    /** contacts.source (e.g. "whatsapp", "instagram", "manual") — "de dónde vino el lead". */
     source: string | null;
     /** contacts.custom_fields.job_title — same field/pattern CRM's lead form
      * already reads (src/lib/crm/queries.ts), no schema change needed. */
     jobTitle: string | null;
+    instagramUsername: string | null;
   };
   messages: MessageItem[];
   notes: { id: string; body: string; createdAt: string }[];
@@ -190,6 +203,7 @@ interface MessageRow {
   direction: string;
   sender_type: string;
   type: string;
+  channel: string;
   content: { body?: string; error?: { message?: string }; mediaPath?: string; mimeType?: string; fileName?: string; quotedMessageId?: string; reaction?: string | null } | null;
   status: string | null;
   created_at: string;
@@ -239,6 +253,7 @@ async function resolveMessageItems(rows: MessageRow[]): Promise<MessageItem[]> {
       fileName: content?.fileName ?? null,
       quotedMessage: content?.quotedMessageId ? (quotedById.get(content.quotedMessageId) ?? null) : null,
       reaction: content?.reaction ?? null,
+      channel: m.channel,
     };
   });
 }
@@ -252,7 +267,7 @@ export async function getConversationDetail(
   const { data: conv } = await supabase
     .from("conversations")
     .select(
-      "id, status, mode, assigned_user_id, contact_id, contacts(id, name, phone, email, company, avatar_url, source, custom_fields)",
+      "id, status, mode, channel, assigned_user_id, contact_id, contacts(id, name, phone, email, company, avatar_url, source, custom_fields, instagram_username)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", conversationId)
@@ -265,7 +280,7 @@ export async function getConversationDetail(
   const [{ data: messages }, { data: notes }, { data: tagRows }] = await Promise.all([
     supabase
       .from("messages")
-      .select("id, direction, sender_type, type, content, status, created_at")
+      .select("id, direction, sender_type, type, channel, content, status, created_at")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true }),
     supabase
@@ -283,6 +298,7 @@ export async function getConversationDetail(
     status: conv.status as string,
     mode: conv.mode as string,
     assignedMemberId: conv.assigned_user_id as string | null,
+    channel: conv.channel as string,
     contact: {
       id: contact.id as string,
       name: contact.name as string,
@@ -292,6 +308,7 @@ export async function getConversationDetail(
       avatarUrl: contact.avatar_url as string | null,
       source: contact.source as string | null,
       jobTitle: ((contact.custom_fields as { job_title?: string } | null)?.job_title as string | undefined) ?? null,
+      instagramUsername: (contact.instagram_username as string | undefined) ?? null,
     },
     messages: await resolveMessageItems((messages ?? []) as MessageRow[]),
     notes: (notes ?? []).map((n) => ({

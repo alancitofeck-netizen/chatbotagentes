@@ -28,6 +28,7 @@ import { KpiSettersManager } from "./KpiSettersManager";
 import { AdvisorSheetConnectionsManager } from "./AdvisorSheetConnectionsManager";
 import { OwnAgendaSheetManager } from "./OwnAgendaSheetManager";
 import { WhatsAppWebConnectionsCard } from "./WhatsAppWebConnectionsCard";
+import { InstagramConnectionCard } from "./InstagramConnectionCard";
 
 /** Moved from the old standalone /settings/integrations page into the
  * Perfil > Integraciones tab — same components/actions, no logic changes. */
@@ -254,6 +255,8 @@ export function IntegrationsSection({
       </Card>
 
       <WhatsAppWebConnectionsCard currentRole={currentRole} currentMemberId={currentMemberId} />
+
+      <InstagramConnectionCard canManage={canManage} />
 
       <Card>
         <div className="mb-4 flex items-center justify-between gap-3">

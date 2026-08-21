@@ -19,6 +19,14 @@ const TABS: { key: InboxTab; label: string }[] = [
   { key: "closed", label: "Cerradas" },
 ];
 
+type ChannelFilter = "all" | "whatsapp" | "instagram";
+
+const CHANNEL_TABS: { key: ChannelFilter; label: string }[] = [
+  { key: "all", label: "Todos" },
+  { key: "whatsapp", label: "WhatsApp" },
+  { key: "instagram", label: "🟣 Instagram" },
+];
+
 /** Chips de categoría rápida — NO son una columna de prioridad nueva, son
  * un atajo sobre el sistema de tags ya existente (`tags`/`contact_tags`).
  * Un chip solo se muestra si el workspace ya tiene un tag con ese nombre
@@ -88,6 +96,16 @@ export function ConversationList({
 }) {
   const memberById = useMemo(() => new Map(members.map((m) => [m.memberId, m])), [members]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
+
+  const channelCounts = useMemo(() => {
+    const result: Record<ChannelFilter, number> = { all: conversations.length, whatsapp: 0, instagram: 0 };
+    for (const c of conversations) {
+      if (c.channel === "instagram") result.instagram += 1;
+      else result.whatsapp += 1;
+    }
+    return result;
+  }, [conversations]);
 
   const counts = useMemo(() => {
     const result: Record<InboxTab, number> = { all: 0, unread: 0, assigned: 0, unassigned: 0, closed: 0 };
@@ -105,10 +123,11 @@ export function ConversationList({
   );
 
   const filtered = useMemo(() => {
-    const byTab = conversations.filter((c) => matchesTab(c, activeTab, currentMemberId));
-    if (!activeCategory) return byTab;
-    return byTab.filter((c) => c.tags.some((t) => t.name.trim().toLowerCase() === activeCategory));
-  }, [conversations, activeTab, currentMemberId, activeCategory]);
+    let list = conversations.filter((c) => matchesTab(c, activeTab, currentMemberId));
+    if (channelFilter !== "all") list = list.filter((c) => c.channel === channelFilter);
+    if (activeCategory) list = list.filter((c) => c.tags.some((t) => t.name.trim().toLowerCase() === activeCategory));
+    return list;
+  }, [conversations, activeTab, currentMemberId, activeCategory, channelFilter]);
 
   return (
     <div className={cn("h-full flex-col bg-surface-1", className)}>
@@ -131,6 +150,31 @@ export function ConversationList({
             placeholder="Buscar contacto, empresa…"
             className="w-full rounded-full border border-border-strong bg-surface-2 py-2 pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-blue-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-blue-100"
           />
+        </div>
+        <div className="flex gap-1 overflow-x-auto">
+          {CHANNEL_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setChannelFilter(t.key)}
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
+                channelFilter === t.key ? "bg-foreground text-surface-1" : "text-neutral-600 hover:bg-surface-2",
+              )}
+            >
+              {t.label}
+              {channelCounts[t.key] > 0 && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+                    channelFilter === t.key ? "bg-white/25" : "bg-surface-3 text-neutral-500",
+                  )}
+                >
+                  {channelCounts[t.key]}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
         <div className="flex gap-1 overflow-x-auto">
           {TABS.map((t) => (
@@ -209,13 +253,23 @@ export function ConversationList({
                     />
                     <span className="relative shrink-0">
                       <Avatar name={c.contactName} src={c.avatarUrl} size={40} />
-                      <span
-                        className={cn(
-                          "absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-surface-1",
-                          STATUS_DOT[c.status] ?? STATUS_DOT.open,
-                        )}
-                        aria-hidden="true"
-                      />
+                      {c.channel === "instagram" ? (
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full border-2 border-surface-1 bg-fuchsia-600 text-[8px]"
+                          aria-hidden="true"
+                          title="Instagram"
+                        >
+                          📷
+                        </span>
+                      ) : (
+                        <span
+                          className={cn(
+                            "absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-surface-1",
+                            STATUS_DOT[c.status] ?? STATUS_DOT.open,
+                          )}
+                          aria-hidden="true"
+                        />
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
@@ -224,6 +278,9 @@ export function ConversationList({
                         </span>
                         <span className="shrink-0 text-[11px] text-neutral-500">{formatRelative(c.lastMessageAt)}</span>
                       </div>
+                      {c.channel === "instagram" && c.instagramUsername && (
+                        <p className="truncate text-[11.5px] text-fuchsia-600">@{c.instagramUsername}</p>
+                      )}
                       <div className="mt-0.5 flex items-center justify-between gap-2">
                         <p className={cn("truncate text-[13px]", unread ? "font-medium text-foreground" : "text-neutral-500")}>
                           {c.lastMessagePreview}

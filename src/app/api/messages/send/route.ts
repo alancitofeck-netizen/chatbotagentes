@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, getActiveWorkspaceForUser } from "@/lib/auth/session";
 import { sendOutboundWhatsAppMessage, type OutboundMediaInput } from "@/lib/messaging/send";
+import { sendOutboundInstagramMessageNotifying } from "@/lib/messaging/sendInstagram";
 
 /**
  * Outbound WhatsApp send, from the Inbox composer through YCloud. Thin
@@ -52,26 +53,28 @@ export async function POST(request: NextRequest) {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const result = await sendOutboundWhatsAppMessage({
-    supabase,
-    workspaceId: active.workspaceId,
-    conversationId,
-    content,
-    media: body.media,
-    senderType: "agent",
-    senderId: member?.id ?? null,
-  });
+  // El composer siempre le pega a esta misma ruta, sin importar el canal —
+  // se resuelve el canal de la conversación ACÁ para despachar a la función
+  // de envío correcta, en vez de que el frontend tenga que saberlo.
+  const { data: conversationChannel } = await supabase.from("conversations").select("channel").eq("id", conversationId).eq("workspace_id", active.workspaceId).maybeSingle();
+  if (!conversationChannel) return NextResponse.json({ error: "conversation_not_found" }, { status: 404 });
+
+  const result =
+    conversationChannel.channel === "instagram"
+      ? await sendOutboundInstagramMessageNotifying({ supabase, workspaceId: active.workspaceId, conversationId, content, senderType: "agent", senderId: member?.id ?? null })
+      : await sendOutboundWhatsAppMessage({ supabase, workspaceId: active.workspaceId, conversationId, content, media: body.media, senderType: "agent", senderId: member?.id ?? null });
 
   if (!result.ok) {
     const status =
       result.error === "conversation_not_found"
         ? 404
-        : result.error === "ycloud_not_configured"
+        : result.error === "ycloud_not_configured" || result.error === "instagram_not_configured"
           ? 500
           : result.error === "ycloud_send_failed" ||
               result.error === "ycloud_network_error" ||
               result.error === "whatsapp_web_send_failed" ||
-              result.error === "whatsapp_web_worker_unreachable"
+              result.error === "whatsapp_web_worker_unreachable" ||
+              result.error === "instagram_send_failed"
             ? 502
             : result.error === "persist_failed"
               ? 500

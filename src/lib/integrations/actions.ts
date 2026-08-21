@@ -9,6 +9,7 @@ import { getOpenRouterIntegration, getWhatsAppIntegration } from "@/lib/integrat
 import { disconnectGoogleCalendar, getGoogleCalendarStatus, importGoogleEvents } from "@/lib/integrations/googleCalendar";
 import { disconnectGoogleDrive, getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
 import { disconnectGoogleSheets } from "@/lib/integrations/googleSheets";
+import { disconnectInstagram, getInstagramStatus } from "@/lib/integrations/instagram";
 
 export async function getWhatsAppIntegrationAction() {
   const { workspaceId } = await requireActiveWorkspace();
@@ -170,4 +171,17 @@ export async function disconnectGoogleSheetsAction() {
   await disconnectGoogleSheets(workspaceId);
   revalidatePath("/profile");
   revalidatePath("/crm");
+}
+
+export async function getInstagramStatusAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getInstagramStatus(workspaceId);
+}
+
+export async function disconnectInstagramAction() {
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
+  await disconnectInstagram(workspaceId);
+  revalidatePath("/profile");
+  revalidatePath("/inbox");
 }

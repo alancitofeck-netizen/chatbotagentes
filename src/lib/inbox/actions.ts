@@ -16,7 +16,7 @@ import {
 import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
 import { moveOpportunityCard } from "@/lib/crm/actions";
 
-export async function getConversationListAction(filters: { status?: string; search?: string }) {
+export async function getConversationListAction(filters: { status?: string; search?: string; channel?: string }) {
   const { workspaceId } = await requireActiveWorkspace();
   const memberId = await getCurrentMemberId(workspaceId);
   return getConversationList(workspaceId, filters, memberId);

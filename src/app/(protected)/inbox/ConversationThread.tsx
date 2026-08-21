@@ -68,7 +68,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   unauthorized: "Tu sesión expiró. Volvé a iniciar sesión.",
   draft_not_found: "Esta sugerencia ya no existe.",
   outside_24h_window: "Pasaron más de 24h desde el último mensaje del contacto — no se puede enviar sin una plantilla aprobada.",
-  persist_failed: "El mensaje se envió pero no se pudo guardar — revisá el historial de WhatsApp.",
+  persist_failed: "El mensaje se envió pero no se pudo guardar — revisá el historial.",
+  missing_fields: "Escribí un mensaje antes de enviar.",
+  instagram_not_configured: "Este workspace no tiene conectada una integración de Instagram (Configuración → Integraciones).",
+  instagram_send_failed: "Instagram rechazó el envío del mensaje.",
+  instagram_recipient_unknown: "No se pudo identificar al destinatario de Instagram.",
 };
 
 function errorMessageFor(code: string | undefined): string {
@@ -263,6 +267,7 @@ export function ConversationThread({
       direction: string;
       sender_type: string;
       type: string;
+      channel: string;
       content: { body?: string; error?: { message?: string }; mediaPath?: string; quotedMessageId?: string; reaction?: string | null } | null;
       status: string | null;
       created_at: string;
@@ -314,6 +319,7 @@ export function ConversationThread({
                       fileName: null,
                       quotedMessage: null,
                       reaction: null,
+                      channel: row.channel,
                     },
                   ],
             );
@@ -464,6 +470,7 @@ export function ConversationThread({
         fileName: media?.fileName ?? null,
         quotedMessage: null,
         reaction: null,
+        channel: detail.channel,
         localStatus: "sending",
       },
     ]);
@@ -553,6 +560,11 @@ export function ConversationThread({
     );
   }
 
+  // Adjuntos salientes y plantillas de WhatsApp quedan fuera de alcance
+  // para Instagram en esta pasada (ver plan "Integración nativa de
+  // Instagram") — se ocultan en vez de mostrar algo que fallaría al usarse.
+  const isInstagram = detail.channel === "instagram";
+
   return (
     <div className="flex h-full flex-1 flex-col bg-surface-2">
       <div className="flex items-center justify-between gap-3 border-b border-border-default bg-surface-1 px-5 py-3.5">
@@ -569,7 +581,11 @@ export function ConversationThread({
           <div>
             <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
               {detail.contact.name}
-              <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">WhatsApp</span>
+              {detail.channel === "instagram" ? (
+                <span className="rounded-full bg-fuchsia-50 px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-700">🟣 Instagram</span>
+              ) : (
+                <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">WhatsApp</span>
+              )}
             </p>
             <p className="flex items-center gap-1.5 text-xs text-neutral-500">
               {detail.contact.company && (
@@ -582,6 +598,9 @@ export function ConversationThread({
                 <span className="flex items-center gap-1">
                   <Phone size={12} /> {detail.contact.phone}
                 </span>
+              )}
+              {detail.channel === "instagram" && detail.contact.instagramUsername && (
+                <span className="flex items-center gap-1">@{detail.contact.instagramUsername}</span>
               )}
             </p>
           </div>
@@ -801,17 +820,21 @@ export function ConversationThread({
           </div>
         )}
         <div className="flex items-end gap-2">
-          <input ref={fileInputRef} type="file" onChange={handleFileSelected} className="hidden" />
-          <button
-            type="button"
-            disabled={uploadingAttachment}
-            onClick={() => fileInputRef.current?.click()}
-            title="Adjuntar archivo"
-            aria-label="Adjuntar archivo"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
-          >
-            <Paperclip size={17} />
-          </button>
+          {!isInstagram && (
+            <>
+              <input ref={fileInputRef} type="file" onChange={handleFileSelected} className="hidden" />
+              <button
+                type="button"
+                disabled={uploadingAttachment}
+                onClick={() => fileInputRef.current?.click()}
+                title="Adjuntar archivo"
+                aria-label="Adjuntar archivo"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
+              >
+                <Paperclip size={17} />
+              </button>
+            </>
+          )}
 
           <div className="relative shrink-0" ref={quickRepliesRef}>
             <button
@@ -848,7 +871,7 @@ export function ConversationThread({
             )}
           </div>
 
-          {approvedTemplates.length > 0 && (
+          {!isInstagram && approvedTemplates.length > 0 && (
             <div className="relative shrink-0" ref={templatesRef}>
               <button
                 type="button"
