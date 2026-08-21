@@ -1,6 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { EMPTY_KPI_TOTALS, sumKpiTotals, type KpiTotals } from "@/lib/kpis/formulas";
+import { type KpiTotals } from "@/lib/kpis/formulas";
+
+export { totalsFromEntries } from "@/lib/kpis/formulas";
 
 export interface KpiSetterOption {
   id: string;
@@ -144,10 +146,6 @@ export async function getKpiEntries(workspaceId: string, filters: KpiEntryFilter
       void _teamId;
       return rest;
     });
-}
-
-export function totalsFromEntries(entries: KpiTotals[]): KpiTotals {
-  return entries.length === 0 ? EMPTY_KPI_TOTALS : sumKpiTotals(entries);
 }
 
 export interface KpiRankingRow {
