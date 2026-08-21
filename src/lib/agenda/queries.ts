@@ -276,6 +276,7 @@ export interface AgendaSetterPerformance {
   setterId: string;
   setterName: string;
   citas: number;
+  confirmadas: number;
   realizadas: number;
   noShow: number;
   canceladas: number;
@@ -286,6 +287,7 @@ export interface AgendaAdvisorPerformance {
   clientId: string;
   advisorName: string;
   citas: number;
+  confirmadas: number;
   realizadas: number;
   noShow: number;
   canceladas: number;
@@ -390,7 +392,7 @@ export async function getAgendaPerformance(workspaceId: string, range: { start: 
       totals[r.estado_cita] += 1;
       applyType(byTypeMap, r.appointment_type);
       if (!r.setter_id) continue;
-      const entry = bySetterMap.get(r.setter_id) ?? { setterId: r.setter_id, setterName: setterInfoById.get(r.setter_id)?.name ?? "—", citas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
+      const entry = bySetterMap.get(r.setter_id) ?? { setterId: r.setter_id, setterName: setterInfoById.get(r.setter_id)?.name ?? "—", citas: 0, confirmadas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
       applyEstado(entry, r.estado_cita);
       bySetterMap.set(r.setter_id, entry);
     }
@@ -425,14 +427,14 @@ export async function getAgendaPerformance(workspaceId: string, range: { start: 
     applyType(byTypeMap, r.appointment_type);
 
     if (r.setter_id) {
-      const entry = bySetterMap.get(r.setter_id) ?? { setterId: r.setter_id, setterName: setterInfoById.get(r.setter_id)?.name ?? "—", citas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
+      const entry = bySetterMap.get(r.setter_id) ?? { setterId: r.setter_id, setterName: setterInfoById.get(r.setter_id)?.name ?? "—", citas: 0, confirmadas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
       applyEstado(entry, r.estado_cita);
       bySetterMap.set(r.setter_id, entry);
     }
 
     const advisor = advisorByWorkspace.get(r.workspace_id);
     if (advisor) {
-      const entry = byAdvisorMap.get(advisor.clientId) ?? { clientId: advisor.clientId, advisorName: advisor.advisorName, citas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
+      const entry = byAdvisorMap.get(advisor.clientId) ?? { clientId: advisor.clientId, advisorName: advisor.advisorName, citas: 0, confirmadas: 0, realizadas: 0, noShow: 0, canceladas: 0, ventas: 0 };
       applyEstado(entry, r.estado_cita);
       byAdvisorMap.set(advisor.clientId, entry);
     }
@@ -448,8 +450,9 @@ export async function getAgendaPerformance(workspaceId: string, range: { start: 
   };
 }
 
-function applyEstado(entry: { citas: number; realizadas: number; noShow: number; canceladas: number; ventas: number }, estado: EstadoCita) {
+function applyEstado(entry: { citas: number; confirmadas: number; realizadas: number; noShow: number; canceladas: number; ventas: number }, estado: EstadoCita) {
   entry.citas += 1;
+  if (estado === "confirmada") entry.confirmadas += 1;
   if (estado === "realizada") entry.realizadas += 1;
   if (estado === "no_show") entry.noShow += 1;
   if (estado === "cancelada") entry.canceladas += 1;

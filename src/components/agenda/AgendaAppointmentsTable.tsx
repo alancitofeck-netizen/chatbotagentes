@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Search, Download } from "lucide-react";
+import { Search, Download, ArrowUp, ArrowDown } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
@@ -62,6 +62,30 @@ function EstadoCell({ cita, canEdit }: { cita: AgendaAppointment; canEdit: boole
   );
 }
 
+type SortKey = "fecha" | "asesor" | "setter" | "estado";
+
+function compareBy(key: SortKey, a: AgendaAppointment, b: AgendaAppointment): number {
+  switch (key) {
+    case "fecha":
+      return a.startTime.localeCompare(b.startTime);
+    case "asesor":
+      return a.advisorName.localeCompare(b.advisorName);
+    case "setter":
+      return (a.setterName ?? "").localeCompare(b.setterName ?? "");
+    case "estado":
+      return a.estadoCita.localeCompare(b.estadoCita);
+  }
+}
+
+function SortableHeader({ label, sortKey, active, dir, onSort }: { label: string; sortKey: SortKey; active: boolean; dir: "asc" | "desc"; onSort: (key: SortKey) => void }) {
+  return (
+    <button type="button" onClick={() => onSort(sortKey)} className="flex items-center gap-1 font-medium text-neutral-500 hover:text-foreground">
+      {label}
+      {active && (dir === "asc" ? <ArrowUp className="size-3" aria-hidden="true" /> : <ArrowDown className="size-3" aria-hidden="true" />)}
+    </button>
+  );
+}
+
 /** Tabla completa de citas del rango seleccionado arriba (mismos datos que
  * la línea de tiempo, otra forma de verlos) — tabs por estado, búsqueda por
  * cliente/setter y exportación a CSV, todo sobre datos reales ya cargados
@@ -69,11 +93,40 @@ function EstadoCell({ cita, canEdit }: { cita: AgendaAppointment; canEdit: boole
  * (asesores/[clientId]/agenda/page.tsx), que la usa de solo lectura
  * (canEditEstado=false) y sin exportHref — por eso es opcional: el botón de
  * descarga no tiene sentido ahí (el export CSV existente es por rango de
- * fechas del workspace activo, no por un asesor puntual). */
-export function AgendaAppointmentsTable({ citas, canEditEstado, exportHref }: { citas: AgendaAppointment[]; canEditEstado: boolean; exportHref?: string }) {
+ * fechas del workspace activo, no por un asesor puntual).
+ *
+ * `showAdvisorColumn`/`sortable`/`onRowClick` son opcionales (default
+ * false/undefined) — solo Asesores → Agendas (vista cross-asesor) los usa;
+ * /agenda y la ficha del asesor siguen exactamente igual que antes. */
+export function AgendaAppointmentsTable({
+  citas,
+  canEditEstado,
+  exportHref,
+  showAdvisorColumn = false,
+  sortable = false,
+  onRowClick,
+}: {
+  citas: AgendaAppointment[];
+  canEditEstado: boolean;
+  exportHref?: string;
+  showAdvisorColumn?: boolean;
+  sortable?: boolean;
+  onRowClick?: (cita: AgendaAppointment) => void;
+}) {
   const [tab, setTab] = useState<EstadoCita | "todas">("todas");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("fecha");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   const filtered = useMemo(() => {
     let rows = tab === "todas" ? citas : citas.filter((c) => c.estadoCita === tab);
@@ -81,8 +134,11 @@ export function AgendaAppointmentsTable({ citas, canEditEstado, exportHref }: { 
     if (q) {
       rows = rows.filter((c) => (c.contactName ?? "").toLowerCase().includes(q) || (c.setterName ?? "").toLowerCase().includes(q) || c.advisorName.toLowerCase().includes(q));
     }
+    if (sortable) {
+      rows = [...rows].sort((a, b) => (sortDir === "asc" ? compareBy(sortKey, a, b) : -compareBy(sortKey, a, b)));
+    }
     return rows;
-  }, [citas, tab, search]);
+  }, [citas, tab, search, sortable, sortKey, sortDir]);
 
   const visible = expanded ? filtered : filtered.slice(0, PAGE_SIZE);
 
@@ -138,25 +194,33 @@ export function AgendaAppointmentsTable({ citas, canEditEstado, exportHref }: { 
             <table className="w-full text-left text-[13px]">
               <thead>
                 <tr className="text-xs text-neutral-500">
-                  <th className="pb-2 font-medium">Fecha</th>
+                  <th className="pb-2 font-medium">{sortable ? <SortableHeader label="Fecha" sortKey="fecha" active={sortKey === "fecha"} dir={sortDir} onSort={handleSort} /> : "Fecha"}</th>
                   <th className="pb-2 font-medium">Hora</th>
                   <th className="pb-2 font-medium">Cliente / Lead</th>
+                  {showAdvisorColumn && (
+                    <th className="pb-2 font-medium">{sortable ? <SortableHeader label="Asesor" sortKey="asesor" active={sortKey === "asesor"} dir={sortDir} onSort={handleSort} /> : "Asesor"}</th>
+                  )}
                   <th className="pb-2 font-medium">Tipo de cita</th>
-                  <th className="pb-2 font-medium">Setter</th>
-                  <th className="pb-2 font-medium">Estado</th>
+                  <th className="pb-2 font-medium">{sortable ? <SortableHeader label="Setter" sortKey="setter" active={sortKey === "setter"} dir={sortDir} onSort={handleSort} /> : "Setter"}</th>
+                  <th className="pb-2 font-medium">{sortable ? <SortableHeader label="Estado" sortKey="estado" active={sortKey === "estado"} dir={sortDir} onSort={handleSort} /> : "Estado"}</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((cita) => (
-                  <tr key={cita.id} className="border-t border-border-default">
+                  <tr
+                    key={cita.id}
+                    onClick={onRowClick ? () => onRowClick(cita) : undefined}
+                    className={`border-t border-border-default ${onRowClick ? "cursor-pointer hover:bg-surface-2" : ""}`}
+                  >
                     <td className="py-2.5 text-neutral-500">{formatDate(cita.startTime)}</td>
                     <td className="py-2.5 text-neutral-500">{formatTime(cita.startTime)}</td>
-                    <td className="py-2.5 font-medium text-foreground">
+                    <td className="py-2.5 font-medium text-foreground" onClick={(e) => e.stopPropagation()}>
                       <CitaContactDetails cita={cita}>{cita.contactName ?? "Sin nombre"}</CitaContactDetails>
                     </td>
+                    {showAdvisorColumn && <td className="py-2.5 text-neutral-500">{cita.advisorName}</td>}
                     <td className="py-2.5 text-neutral-500">{cita.appointmentType ?? "—"}</td>
                     <td className="py-2.5 text-neutral-500">{cita.setterName ?? "—"}</td>
-                    <td className="py-2.5">
+                    <td className="py-2.5" onClick={(e) => e.stopPropagation()}>
                       <EstadoCell cita={cita} canEdit={canEditEstado} />
                     </td>
                   </tr>

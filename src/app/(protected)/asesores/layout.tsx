@@ -51,6 +51,7 @@ export default async function AsesoresLayout({ children }: { children: ReactNode
               Resumen
             </TabLink>
             <TabLink href="/asesores/performance">Performance</TabLink>
+            <TabLink href="/asesores/agendas">Agendas</TabLink>
           </div>
         </div>
       )}

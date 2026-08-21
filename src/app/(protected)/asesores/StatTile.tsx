@@ -12,6 +12,7 @@ export function StatTile({
   value,
   sparklineData,
   deltaPct,
+  deltaSuffix,
   color = "var(--color-accent-500)",
 }: {
   icon: LucideIcon;
@@ -19,6 +20,7 @@ export function StatTile({
   value: string;
   sparklineData?: number[];
   deltaPct?: number | null;
+  deltaSuffix?: string;
   color?: string;
 }) {
   const hasSparkline = sparklineData && sparklineData.some((v) => v > 0);
@@ -36,7 +38,7 @@ export function StatTile({
         </div>
         {hasSparkline && <Sparkline data={sparklineData} color={color} />}
       </div>
-      {deltaPct !== undefined && <DeltaLabel pct={deltaPct} />}
+      {deltaPct !== undefined && <DeltaLabel pct={deltaPct} suffix={deltaSuffix} />}
     </Card>
   );
 }
