@@ -97,6 +97,37 @@ function MessageStatusIcon({ status, sending }: { status: string | null; sending
   return null;
 }
 
+/** Contenido multimedia dentro de una burbuja — `mediaUrl` ya viene
+ * resuelto a signed URL server-side (getConversationDetail), nunca se
+ * resuelve acá. Mensajes optimistas/en vivo sin `mediaUrl` todavía
+ * (ver sendMessage/Realtime INSERT) muestran un placeholder honesto en vez
+ * de romper. */
+function MessageMediaContent({ message }: { message: MessageItem }) {
+  if (message.type === "image") {
+    if (!message.mediaUrl) return <p className="text-xs italic opacity-70">Imagen…</p>;
+    return (
+      <a href={message.mediaUrl} target="_blank" rel="noreferrer" className="mb-1 block overflow-hidden rounded-lg">
+        {/* eslint-disable-next-line @next/next/no-img-element -- signed URL dinámica de Storage, dimensiones variables */}
+        <img src={message.mediaUrl} alt={message.fileName ?? "Imagen"} className="max-h-64 w-full object-cover" />
+      </a>
+    );
+  }
+  if (message.type === "audio") {
+    if (!message.mediaUrl) return <p className="text-xs italic opacity-70">Audio…</p>;
+    return <audio controls src={message.mediaUrl} className="mb-1 w-56 max-w-full" />;
+  }
+  if (message.type === "document") {
+    if (!message.mediaUrl) return <p className="text-xs italic opacity-70">Documento…</p>;
+    return (
+      <a href={message.mediaUrl} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 rounded-md bg-black/5 px-2.5 py-2 hover:bg-black/10">
+        <FileText size={16} className="shrink-0" aria-hidden="true" />
+        <span className="truncate text-[13px] font-medium">{message.fileName ?? "Documento"}</span>
+      </a>
+    );
+  }
+  return null;
+}
+
 /** Live-appends new inbound/outbound rows via Realtime (supabase/migrations/0003_inbox.sql
  * adds `messages` to the supabase_realtime publication) — first Realtime usage in the project. */
 export function ConversationThread({
@@ -105,12 +136,17 @@ export function ConversationThread({
   onOpenInfo,
   onBack,
   approvedTemplates,
+  onDetailChanged,
 }: {
   detail: ConversationDetail | null;
   loading: boolean;
   onOpenInfo: () => void;
   onBack: () => void;
   approvedTemplates: WhatsAppTemplate[];
+  /** Pide un refetch completo de `detail` — usado cuando llega por Realtime
+   * un mensaje de media/cita que necesita resolución server-side (signed
+   * URL / mensaje citado) que el cliente no puede hacer solo. */
+  onDetailChanged?: () => void;
 }) {
   const [liveMessages, setLiveMessages] = useState<MessageItem[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
@@ -121,16 +157,19 @@ export function ConversationThread({
   const [aiPopoverOpen, setAiPopoverOpen] = useState(false);
   const [aiInsight, setAiInsight] = useState<ConversationAiInsight | null>(null);
   const [aiActionPending, setAiActionPending] = useState<string | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<{ storagePath: string; mimeType: string; fileName: string; mediaType: "image" | "audio" | "document" } | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const quickRepliesRef = useRef<HTMLDivElement>(null);
   const templatesRef = useRef<HTMLDivElement>(null);
   const aiPopoverRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // A ref counter (not Date.now()/Math.random()) for temp-id generation —
   // those are impure calls the react-hooks/purity rule flags even inside an
   // event handler defined in the component body.
   const tempIdCounter = useRef(0);
 
-  const [messageOverrides, setMessageOverrides] = useState<Record<string, { status: string | null; errorReason: string | null }>>(
+  const [messageOverrides, setMessageOverrides] = useState<Record<string, { status: string | null; errorReason: string | null; reaction?: string | null }>>(
     {},
   );
 
@@ -224,7 +263,7 @@ export function ConversationThread({
       direction: string;
       sender_type: string;
       type: string;
-      content: { body?: string; error?: { message?: string } } | null;
+      content: { body?: string; error?: { message?: string }; mediaPath?: string; quotedMessageId?: string; reaction?: string | null } | null;
       status: string | null;
       created_at: string;
     };
@@ -247,6 +286,15 @@ export function ConversationThread({
           { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${detail.id}` },
           (payload) => {
             const row = payload.new as MessageRow;
+            // Un mensaje de media/cita llega con `mediaPath`/`quotedMessageId`
+            // crudos — resolverlos a signed URL/objeto citado necesita
+            // service-role, no se puede hacer del lado del cliente. Se pide
+            // un refetch completo (mismo mecanismo que ya usa onChanged para
+            // notas/tags) en vez de empujar una fila sin resolver.
+            if (row.type !== "text" || row.content?.quotedMessageId) {
+              onDetailChanged?.();
+              return;
+            }
             setLiveMessages((prev) =>
               prev.some((m) => m.id === row.id)
                 ? prev
@@ -261,24 +309,30 @@ export function ConversationThread({
                       status: row.status,
                       createdAt: row.created_at,
                       errorReason: row.content?.error?.message ?? null,
+                      mediaUrl: null,
+                      mimeType: null,
+                      fileName: null,
+                      quotedMessage: null,
+                      reaction: null,
                     },
                   ],
             );
           },
         )
         .on(
-          // Status transitions for a message THIS app already sent (sent →
-          // delivered/read/failed), pushed by processMessageStatusUpdate in
-          // src/app/api/webhooks/ycloud/route.ts. Stored as an overlay (not
-          // merged into liveMessages) since the row being updated usually
-          // already lives in `detail.messages` (fetched on open), not here.
+          // Status transitions (sent → delivered/read/failed) para un
+          // mensaje que esta app ya mandó, y reacciones del contacto a un
+          // mensaje existente (ingestWhatsAppReaction) — ambos llegan como
+          // UPDATE. Se guarda como overlay (no se mergea en liveMessages)
+          // ya que la fila actualizada normalmente ya vive en
+          // `detail.messages` (cargada al abrir), no acá.
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${detail.id}` },
           (payload) => {
             const row = payload.new as MessageRow;
             setMessageOverrides((prev) => ({
               ...prev,
-              [row.id]: { status: row.status, errorReason: row.content?.error?.message ?? null },
+              [row.id]: { status: row.status, errorReason: row.content?.error?.message ?? null, reaction: row.content?.reaction ?? null },
             }));
           },
         )
@@ -363,7 +417,8 @@ export function ConversationThread({
 
   function withOverride(m: MessageItem): MessageItem {
     const override = messageOverrides[m.id];
-    return override ? { ...m, status: override.status, errorReason: override.errorReason } : m;
+    if (!override) return m;
+    return { ...m, status: override.status, errorReason: override.errorReason, reaction: override.reaction !== undefined ? override.reaction : m.reaction };
   }
 
   const allMessages: (MessageItem & { localStatus?: "sending" | "error" })[] = detail
@@ -389,8 +444,8 @@ export function ConversationThread({
    * message rather than mutating the old one in place — the old failed
    * bubble/row stays visible as history (same as WhatsApp's own "tap to
    * resend" UX), and this app never rewrites a real message's own content. */
-  async function sendMessage(body: string) {
-    if (!detail || !body.trim()) return;
+  async function sendMessage(body: string, media?: { storagePath: string; type: "image" | "audio" | "document"; mimeType: string; fileName: string }) {
+    if (!detail || (!body.trim() && !media)) return;
     const tempId = `temp-${tempIdCounter.current++}`;
 
     setPendingMessages((prev) => [
@@ -400,10 +455,15 @@ export function ConversationThread({
         direction: "outbound",
         senderType: "agent",
         body,
-        type: "text",
+        type: media?.type ?? "text",
         status: null,
         createdAt: new Date().toISOString(),
         errorReason: null,
+        mediaUrl: null,
+        mimeType: media?.mimeType ?? null,
+        fileName: media?.fileName ?? null,
+        quotedMessage: null,
+        reaction: null,
         localStatus: "sending",
       },
     ]);
@@ -413,12 +473,13 @@ export function ConversationThread({
       const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation_id: detail.id, content: body }),
+        body: JSON.stringify({ conversation_id: detail.id, content: body, media }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(errorMessageFor(data.error));
 
-      // Success: drop the optimistic bubble — Realtime delivers the real row.
+      // Success: drop the optimistic bubble — Realtime delivers the real row
+      // (o, si es media, onDetailChanged() vía el handler de INSERT arriba).
       setPendingMessages((prev) => prev.filter((m) => m.id !== tempId));
     } catch (err) {
       setPendingMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, localStatus: "error" } : m)));
@@ -430,14 +491,44 @@ export function ConversationThread({
 
   function handleSubmit() {
     const body = messageInput.trim();
-    if (!body) return;
+    if (!body && !pendingAttachment) return;
     setMessageInput("");
-    sendMessage(body);
+    const attachment = pendingAttachment;
+    setPendingAttachment(null);
+    sendMessage(body, attachment ? { storagePath: attachment.storagePath, type: attachment.mediaType, mimeType: attachment.mimeType, fileName: attachment.fileName } : undefined);
   }
 
   function insertQuickReply(text: string) {
     setMessageInput((prev) => (prev ? `${prev} ${text}` : text));
     setQuickRepliesOpen(false);
+  }
+
+  const ATTACHMENT_MIME_TYPES: { type: "image" | "audio" | "document"; test: (mime: string) => boolean }[] = [
+    { type: "image", test: (m) => m.startsWith("image/") },
+    { type: "audio", test: (m) => m.startsWith("audio/") },
+    { type: "document", test: () => true },
+  ];
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const mediaType = ATTACHMENT_MIME_TYPES.find((t) => t.test(file.type))?.type ?? "document";
+
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("mediaType", mediaType);
+      const res = await fetch("/api/messages/upload-media", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error === "file_too_large" ? "El archivo supera el tamaño máximo permitido." : "No se pudo subir el archivo.");
+      setPendingAttachment({ storagePath: data.storagePath, mimeType: data.mimeType, fileName: data.fileName, mediaType });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo subir el archivo.");
+    } finally {
+      setUploadingAttachment(false);
+    }
   }
 
   if (loading) {
@@ -650,7 +741,13 @@ export function ConversationThread({
                           failed && "bg-red-50 text-red-600",
                         )}
                       >
-                        <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                        {m.quotedMessage && (
+                          <div className={cn("mb-1.5 rounded-md border-l-2 px-2 py-1 text-[12px]", outbound ? "border-white/40 bg-white/10 text-white/85" : "border-blue-400 bg-surface-2 text-neutral-600")}>
+                            <p className="truncate">{m.quotedMessage.body || "Mensaje"}</p>
+                          </div>
+                        )}
+                        <MessageMediaContent message={m} />
+                        {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
                         <p
                           className={cn(
                             "mt-1 flex items-center justify-end gap-1 text-[10px]",
@@ -663,6 +760,11 @@ export function ConversationThread({
                           )}
                         </p>
                       </div>
+                      {m.reaction && (
+                        <span className="-mt-2 flex size-6 items-center justify-center rounded-full border border-border-default bg-surface-1 text-[13px] shadow-[var(--elevation-xs)]">
+                          {m.reaction}
+                        </span>
+                      )}
                       {failed && (
                         <div className="flex flex-col items-end gap-0.5">
                           {m.errorReason && <p className="max-w-[220px] text-right text-[11px] text-red-600">{m.errorReason}</p>}
@@ -689,13 +791,24 @@ export function ConversationThread({
       </div>
 
       <div className="border-t border-border-default bg-surface-1 p-3">
+        {pendingAttachment && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-border-default bg-surface-2 px-3 py-2 text-[13px]">
+            <FileText size={15} className="shrink-0 text-neutral-500" />
+            <span className="flex-1 truncate text-foreground">{pendingAttachment.fileName}</span>
+            <button type="button" onClick={() => setPendingAttachment(null)} className="shrink-0 text-neutral-500 hover:text-foreground">
+              Quitar
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-2">
+          <input ref={fileInputRef} type="file" onChange={handleFileSelected} className="hidden" />
           <button
             type="button"
-            disabled
-            title="Próximamente — requiere Supabase Storage"
-            aria-label="Adjuntar archivo (próximamente)"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 disabled:cursor-not-allowed"
+            disabled={uploadingAttachment}
+            onClick={() => fileInputRef.current?.click()}
+            title="Adjuntar archivo"
+            aria-label="Adjuntar archivo"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
           >
             <Paperclip size={17} />
           </button>
@@ -878,7 +991,7 @@ export function ConversationThread({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!messageInput.trim() || isSending}
+            disabled={(!messageInput.trim() && !pendingAttachment) || isSending}
             aria-label="Enviar mensaje"
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
           >

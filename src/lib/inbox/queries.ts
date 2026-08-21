@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export interface ConversationTag {
   id: string;
@@ -24,6 +25,17 @@ export interface ConversationListItem {
    * or every inbound message if this agent never opened the conversation.
    * Per-agent, not a global unread flag: each agent has their own count. */
   unreadCount: number;
+}
+
+const MEDIA_PREVIEW_LABELS: Record<string, string> = { image: "📷 Imagen", audio: "🎤 Audio", document: "📄 Documento" };
+
+/** El body de un mensaje de media sin caption es "" (nunca null/undefined),
+ * así que el `??` de antes no alcanzaba para mostrar algo útil en la
+ * bandeja — se resuelve acá con un label por tipo. */
+function previewBody(type: string, body: string | undefined): string {
+  const trimmed = body?.trim();
+  if (trimmed) return trimmed;
+  return MEDIA_PREVIEW_LABELS[type] ?? `[${type}]`;
 }
 
 /** Same last-message-preview pattern as getRecentConversations (src/lib/dashboard/queries.ts),
@@ -112,7 +124,7 @@ export async function getConversationList(
       contactPhone: contact?.phone ?? null,
       company: contact?.company ?? null,
       avatarUrl: contact?.avatar_url ?? null,
-      lastMessagePreview: last?.content?.body ?? (last ? `[${last.type}]` : "Sin mensajes"),
+      lastMessagePreview: last ? previewBody(last.type, last.content?.body) : "Sin mensajes",
       lastMessageAt: row.last_message_at as string | null,
       status: row.status as string,
       assignedMemberId: row.assigned_user_id as string | null,
@@ -134,6 +146,18 @@ export interface MessageItem {
    * failure via `whatsapp.message.updated` (src/app/api/webhooks/ycloud/route.ts's
    * processMessageStatusUpdate) — null for every message that never failed. */
   errorReason: string | null;
+  /** Signed URL (60s) ya resuelta server-side — nunca el `storagePath`
+   * crudo, mismo criterio que getDownloadUrl de Documentos. Null para
+   * mensajes de texto o si la resolución falló. */
+  mediaUrl: string | null;
+  mimeType: string | null;
+  fileName: string | null;
+  /** Mensaje citado, ya resuelto a partir de content.quotedMessageId — null
+   * si no es una respuesta a nada, o si el mensaje citado no se encontró. */
+  quotedMessage: { id: string; body: string; senderType: string } | null;
+  /** Reacción del contacto a ESTE mensaje (nunca reacciones nuestras, ver
+   * ingestWhatsAppReaction) — null si no tiene. */
+  reaction: string | null;
 }
 
 export interface ConversationDetail {
@@ -159,6 +183,64 @@ export interface ConversationDetail {
   messages: MessageItem[];
   notes: { id: string; body: string; createdAt: string }[];
   tags: ConversationTag[];
+}
+
+interface MessageRow {
+  id: string;
+  direction: string;
+  sender_type: string;
+  type: string;
+  content: { body?: string; error?: { message?: string }; mediaPath?: string; mimeType?: string; fileName?: string; quotedMessageId?: string; reaction?: string | null } | null;
+  status: string | null;
+  created_at: string;
+}
+
+/** Arma MessageItem[] con signed URLs y mensajes citados YA resueltos —
+ * server-side, un solo batch cada uno (no una consulta por mensaje). Usa
+ * service-role para las signed URLs, mismo criterio que getDownloadUrl de
+ * Documentos (src/lib/documents/actions.ts) — el Storage de este proyecto
+ * no valida bien RLS por auth.uid() directo. */
+async function resolveMessageItems(rows: MessageRow[]): Promise<MessageItem[]> {
+  const mediaPaths = [...new Set(rows.map((r) => r.content?.mediaPath).filter((p): p is string => !!p))];
+  const quotedIds = [...new Set(rows.map((r) => r.content?.quotedMessageId).filter((id): id is string => !!id))];
+
+  const urlByPath = new Map<string, string>();
+  if (mediaPaths.length > 0) {
+    const service = createServiceRoleClient();
+    const { data: signedUrls } = await service.storage.from("whatsapp-media").createSignedUrls(mediaPaths, 60);
+    for (const row of signedUrls ?? []) {
+      if (row.path && row.signedUrl) urlByPath.set(row.path, row.signedUrl);
+    }
+  }
+
+  const quotedById = new Map<string, { id: string; body: string; senderType: string }>();
+  if (quotedIds.length > 0) {
+    const service = createServiceRoleClient();
+    const { data: quotedRows } = await service.from("messages").select("id, content, sender_type").in("id", quotedIds);
+    for (const q of quotedRows ?? []) {
+      const qContent = q.content as { body?: string } | null;
+      quotedById.set(q.id as string, { id: q.id as string, body: qContent?.body ?? "", senderType: q.sender_type as string });
+    }
+  }
+
+  return rows.map((m) => {
+    const content = m.content;
+    return {
+      id: m.id,
+      direction: m.direction as "inbound" | "outbound",
+      senderType: m.sender_type,
+      body: content?.body ?? "",
+      type: m.type,
+      status: m.status,
+      createdAt: m.created_at,
+      errorReason: content?.error?.message ?? null,
+      mediaUrl: content?.mediaPath ? (urlByPath.get(content.mediaPath) ?? null) : null,
+      mimeType: content?.mimeType ?? null,
+      fileName: content?.fileName ?? null,
+      quotedMessage: content?.quotedMessageId ? (quotedById.get(content.quotedMessageId) ?? null) : null,
+      reaction: content?.reaction ?? null,
+    };
+  });
 }
 
 export async function getConversationDetail(
@@ -211,19 +293,7 @@ export async function getConversationDetail(
       source: contact.source as string | null,
       jobTitle: ((contact.custom_fields as { job_title?: string } | null)?.job_title as string | undefined) ?? null,
     },
-    messages: (messages ?? []).map((m) => {
-      const content = m.content as { body?: string; error?: { message?: string } } | null;
-      return {
-        id: m.id as string,
-        direction: m.direction as "inbound" | "outbound",
-        senderType: m.sender_type as string,
-        body: content?.body ?? `[${m.type as string}]`,
-        type: m.type as string,
-        status: m.status as string | null,
-        createdAt: m.created_at as string,
-        errorReason: content?.error?.message ?? null,
-      };
-    }),
+    messages: await resolveMessageItems((messages ?? []) as MessageRow[]),
     notes: (notes ?? []).map((n) => ({
       id: n.id as string,
       body: n.body as string,

@@ -149,6 +149,7 @@ export function InboxShell({
           onOpenInfo={() => setInfoSheetOpen(true)}
           onBack={() => setSelectedId(null)}
           approvedTemplates={approvedTemplates}
+          onDetailChanged={refetchDetail}
         />
       </div>
 

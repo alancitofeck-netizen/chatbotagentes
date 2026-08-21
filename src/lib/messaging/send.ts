@@ -1,12 +1,22 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { getYCloudCredentials, normalizeE164 } from "@/lib/integrations/ycloud";
+import { getYCloudCredentials, normalizeE164, uploadYCloudMedia } from "@/lib/integrations/ycloud";
 import { resolveMessagingProviderForConversation } from "@/lib/messaging/resolveProvider";
 import { sendViaWorker } from "@/lib/whatsappWeb/workerClient";
 import { notify } from "@/lib/notifications/service";
 
 export type SendSenderType = "agent" | "ai" | "system";
+
+export interface OutboundMediaInput {
+  /** Path dentro del bucket `whatsapp-media`, ya subido (ver
+   * src/app/api/messages/upload-media/route.ts) — este módulo lo baja de
+   * ahí para reenviarlo a YCloud, nunca recibe los bytes directamente. */
+  storagePath: string;
+  type: "image" | "audio" | "document";
+  mimeType: string;
+  fileName?: string;
+}
 
 export interface SendOutboundMessageInput {
   /** Request-scoped client for a human sender, service-role client for
@@ -14,7 +24,13 @@ export interface SendOutboundMessageInput {
   supabase: SupabaseClient;
   workspaceId: string;
   conversationId: string;
+  /** Texto del mensaje — o el caption cuando `media` viene presente (audio
+   * no soporta caption en WhatsApp, se ignora si se manda). Puede ser
+   * string vacío solo cuando `media` está presente. */
   content: string;
+  /** Adjunto opcional — solo soportado hoy para el proveedor YCloud
+   * (WhatsApp Web/Baileys queda fuera de esta pasada, ver plan de Fase 2). */
+  media?: OutboundMediaInput;
   senderType: SendSenderType;
   /** workspace_members.id, or null for system-originated sends. */
   senderId: string | null;
@@ -67,8 +83,11 @@ async function getConversationAssignedUserId(supabase: SupabaseClient, conversat
 }
 
 async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput): Promise<SendOutboundMessageResult> {
-  const { supabase, workspaceId, conversationId, content, senderType, senderId } = input;
+  const { supabase, workspaceId, conversationId, content, media, senderType, senderId } = input;
 
+  if (!media && !content.trim()) {
+    return { ok: false, error: "missing_fields" };
+  }
   if (content.length > 4096) {
     // YCloud's documented limit for `text.body` (docs/blueprint/08-integrations.md).
     return { ok: false, error: "content_too_long" };
@@ -161,12 +180,41 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
     const fromNumber = normalizeE164(conversation.whatsapp_phone_number_id as string);
     const toNumber = normalizeE164(contactPhone);
 
+    // Con adjunto: bajar de nuestro Storage y subir a YCloud primero (su
+    // propia recomendación — "usar el id devuelto en vez de link, por
+    // estabilidad", ver ycloud.ts) para obtener el id que va en el body de
+    // abajo. Sin adjunto: exactamente el mismo body de texto de siempre.
+    let mediaId: string | null = null;
+    if (media) {
+      const { data: fileBlob, error: downloadError } = await serviceClient.storage.from("whatsapp-media").download(media.storagePath);
+      if (downloadError || !fileBlob) {
+        console.error("[send] failed to read media from Storage:", downloadError);
+        return { ok: false, error: "media_read_failed" };
+      }
+      const uploaded = await uploadYCloudMedia(credentials, fromNumber, await fileBlob.arrayBuffer(), media.fileName ?? "archivo", media.mimeType);
+      if (!uploaded) return { ok: false, error: "ycloud_media_upload_failed" };
+      mediaId = uploaded.id;
+    }
+
+    const requestBody: Record<string, unknown> = media
+      ? {
+          from: fromNumber,
+          to: toNumber,
+          type: media.type,
+          [media.type]: {
+            id: mediaId,
+            ...(media.type !== "audio" && content.trim() ? { caption: content.trim() } : {}),
+            ...(media.type === "document" ? { filename: media.fileName ?? "archivo" } : {}),
+          },
+        }
+      : { from: fromNumber, to: toNumber, type: "text", text: { body: content } };
+
     let ycloudMessage: { id?: string; wamid?: string; status?: string };
     try {
       const res = await fetch("https://api.ycloud.com/v2/whatsapp/messages", {
         method: "POST",
         headers: { "X-API-Key": credentials.apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: fromNumber, to: toNumber, type: "text", text: { body: content } }),
+        body: JSON.stringify(requestBody),
       });
       const data = await res.json();
       console.log(`[send] YCloud response (HTTP ${res.status}):`, JSON.stringify(data, null, 2));
@@ -186,6 +234,10 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
     }
 
     sentMessage = { externalId: ycloudMessage.id ?? null, wamid: ycloudMessage.wamid ?? null, status: ycloudMessage.status ?? "sent" };
+  } else if (media) {
+    // WhatsApp Web (Baileys) queda fuera de esta pasada — sin soporte de
+    // media saliente, mismo alcance que hoy (no es una regresión).
+    return { ok: false, error: "media_not_supported_on_whatsapp_web" };
   } else {
     // Prefer the exact chat id this conversation already has (learned from
     // an inbound message, see ingest.ts) — no phone-to-JID resolution
@@ -210,7 +262,16 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
 
   // Provider accepted the send — persist. If this fails, the message is
   // truly sent (irreversible) but invisible in the Inbox; log loudly,
-  // matching the resilience rule in 08-integrations.md.
+  // matching the resilience rule in 08-integrations.md. `content` queda
+  // EXACTAMENTE `{ body: content }` sin adjunto (comportamiento sin
+  // cambios) — mismo shape que ingest.ts arma del lado entrante.
+  const outboundContent: Record<string, unknown> = { body: content };
+  if (media) {
+    outboundContent.mediaPath = media.storagePath;
+    outboundContent.mimeType = media.mimeType;
+    outboundContent.fileName = media.fileName ?? null;
+  }
+
   const { data: newMessage, error: insertError } = await supabase
     .from("messages")
     .insert({
@@ -219,8 +280,8 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
       direction: "outbound",
       sender_type: senderType,
       sender_id: senderId,
-      type: "text",
-      content: { body: content },
+      type: media ? media.type : "text",
+      content: outboundContent,
       external_id: sentMessage.externalId,
       wamid: sentMessage.wamid,
       status: sentMessage.status,

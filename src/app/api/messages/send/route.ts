@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, getActiveWorkspaceForUser } from "@/lib/auth/session";
-import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
+import { sendOutboundWhatsAppMessage, type OutboundMediaInput } from "@/lib/messaging/send";
 
 /**
  * Outbound WhatsApp send, from the Inbox composer through YCloud. Thin
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "no_active_workspace" }, { status: 403 });
   }
 
-  let body: { conversation_id?: string; content?: string };
+  let body: { conversation_id?: string; content?: string; media?: OutboundMediaInput };
   try {
     body = await request.json();
   } catch {
@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
   }
 
   const conversationId = body.conversation_id;
-  const content = body.content?.trim();
-  if (!conversationId || !content) {
+  const content = body.content?.trim() ?? "";
+  if (!conversationId || (!content && !body.media)) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
     workspaceId: active.workspaceId,
     conversationId,
     content,
+    media: body.media,
     senderType: "agent",
     senderId: member?.id ?? null,
   });

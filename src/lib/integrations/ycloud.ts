@@ -140,3 +140,61 @@ export async function deleteYCloudTemplate(credentials: YCloudCredentials, yclou
     throw new Error((data?.message as string | undefined) ?? "YCloud rechazó la eliminación de la plantilla.");
   }
 }
+
+/**
+ * Descarga un archivo multimedia entrante desde la `link` que YCloud manda
+ * en `whatsappInboundMessage.image|document|audio` — shape confirmado
+ * contra la documentación pública de YCloud (docs.ycloud.com), NO contra un
+ * payload real capturado en este proyecto (no hay ninguna conversación con
+ * media real todavía). Se manda el mismo header `X-API-Key` que el resto de
+ * los llamados a YCloud por las dudas el link esté detrás de su propia
+ * autenticación — si en producción resulta ser una URL pública sin auth, el
+ * header de más no rompe nada. Nunca lanza — un fallo acá simplemente
+ * descarta el mensaje multimedia (se loguea, no se guarda basura). */
+export async function downloadYCloudMedia(credentials: YCloudCredentials, url: string): Promise<{ bytes: ArrayBuffer; contentType: string | null } | null> {
+  try {
+    const res = await fetch(url, { headers: { "X-API-Key": credentials.apiKey } });
+    if (!res.ok) {
+      console.error(`[ycloud] failed to download inbound media (HTTP ${res.status}) from ${url}`);
+      return null;
+    }
+    return { bytes: await res.arrayBuffer(), contentType: res.headers.get("content-type") };
+  } catch (err) {
+    console.error("[ycloud] network error downloading inbound media:", err);
+    return null;
+  }
+}
+
+/**
+ * POST /v2/whatsapp/media/{phoneNumber}/upload — sube un archivo a YCloud
+ * ANTES de enviarlo, devuelve un `id` para usar en el send (`{type,
+ * [type]:{id}}`) en vez de `link` — YCloud recomienda esto explícitamente
+ * por estabilidad ("Upload media", docs.ycloud.com). Shape confirmado
+ * contra la documentación pública, no contra una llamada real (sin crédito/
+ * cuenta de YCloud disponible en este ambiente de desarrollo). */
+export async function uploadYCloudMedia(
+  credentials: YCloudCredentials,
+  phoneNumber: string,
+  bytes: ArrayBuffer,
+  filename: string,
+  mimeType: string,
+): Promise<{ id: string } | null> {
+  try {
+    const form = new FormData();
+    form.append("file", new Blob([bytes], { type: mimeType }), filename);
+    const res = await fetch(`https://api.ycloud.com/v2/whatsapp/media/${encodeURIComponent(phoneNumber)}/upload`, {
+      method: "POST",
+      headers: { "X-API-Key": credentials.apiKey },
+      body: form,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.id) {
+      console.error("[ycloud] media upload rejected:", res.status, data);
+      return null;
+    }
+    return { id: data.id as string };
+  } catch (err) {
+    console.error("[ycloud] network error uploading media:", err);
+    return null;
+  }
+}

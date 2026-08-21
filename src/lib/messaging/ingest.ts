@@ -39,6 +39,23 @@ export interface IngestInboundMessageInput {
    * overwritten on later messages (same rule as name/company below). */
   avatarUrl?: string | null;
   messageBody: string;
+  /** "text" (default) | "image" | "document" | "audio" — todos opcionales
+   * y con default "text" a propósito: el webhook de WhatsApp Web (Baileys)
+   * no manda ninguno de estos campos todavía (fuera de alcance esta pasada,
+   * ver plan de Fase 2), así que su comportamiento queda IDÉNTICO al de
+   * antes sin tocar ese caller. */
+  messageType?: string;
+  /** Path dentro del bucket `whatsapp-media` (ya subido por el caller —
+   * src/app/api/webhooks/ycloud/route.ts descarga de YCloud y sube acá
+   * ANTES de llamar a este ingest) — null/undefined para texto plano. */
+  mediaPath?: string | null;
+  mimeType?: string | null;
+  fileName?: string | null;
+  /** `messages.id` propio (no el wamid) de un mensaje citado, ya resuelto
+   * por el caller buscando por `context.id` — null si no es una respuesta a
+   * nada, o si el mensaje citado no se encontró (nunca falla el ingest por
+   * esto, se guarda sin la cita). */
+  quotedMessageId?: string | null;
   /** Provider's own message id — YCloud's `whatsappInboundMessage.id`, or
    * WhatsApp Web's own message id. Used for idempotency when `wamid` isn't
    * available. */
@@ -51,7 +68,7 @@ export interface IngestInboundMessageInput {
 export async function ingestInboundWhatsAppMessage(
   input: IngestInboundMessageInput,
 ): Promise<{ messageId: string; conversationId: string; contactId: string } | null> {
-  const { supabase, workspaceId, chatId, fromPhone, businessNumber, profileName, avatarUrl, messageBody, externalId, wamid } = input;
+  const { supabase, workspaceId, chatId, fromPhone, businessNumber, profileName, avatarUrl, messageBody, messageType, mediaPath, mimeType, fileName, quotedMessageId, externalId, wamid } = input;
 
   // Idempotency: a retried webhook delivery shouldn't insert the same
   // message twice. Prefer wamid (WhatsApp's own globally-unique id, when
@@ -214,7 +231,17 @@ export async function ingestInboundWhatsAppMessage(
     }
   }
 
-  // 3. Message.
+  // 3. Message. `content` queda EXACTAMENTE `{ body: messageBody }` para
+  // texto plano (comportamiento sin cambios) — mediaPath/quotedMessageId
+  // solo se agregan cuando el caller los manda.
+  const content: Record<string, unknown> = { body: messageBody };
+  if (mediaPath) {
+    content.mediaPath = mediaPath;
+    content.mimeType = mimeType ?? null;
+    content.fileName = fileName ?? null;
+  }
+  if (quotedMessageId) content.quotedMessageId = quotedMessageId;
+
   const { data: newMessage, error: createMessageError } = await supabase
     .from("messages")
     .insert({
@@ -223,8 +250,8 @@ export async function ingestInboundWhatsAppMessage(
       direction: "inbound",
       sender_type: "contact",
       sender_id: null,
-      type: "text",
-      content: { body: messageBody },
+      type: messageType ?? "text",
+      content,
       external_id: externalId ?? null,
       wamid: wamid ?? null,
       status: "received",
@@ -334,4 +361,39 @@ export async function ingestWhatsAppStatusUpdate(input: IngestStatusUpdateInput)
   await supabase.from("messages").update(update).eq("id", existing.data.id);
 
   console.log(`[ingest] updated message ${existing.data.id} → status="${status}"` + (errorMessage ? ` (${errorMessage})` : ""));
+}
+
+export interface IngestReactionInput {
+  supabase: SupabaseClient;
+  workspaceId: string;
+  /** wamid del mensaje reaccionado (`reaction.message_id` en el payload de
+   * YCloud) — WhatsApp Web queda fuera de esta pasada, así que hoy este
+   * único caller siempre tiene wamid. */
+  wamid: string;
+  /** null = el contacto sacó su reacción (mismo criterio que YCloud: emoji
+   * ausente significa remover). */
+  emoji: string | null;
+}
+
+/** Una reacción NUNCA es una fila nueva de `messages` — es un UPDATE sobre
+ * el mensaje existente. WhatsApp solo permite una reacción activa por
+ * persona por mensaje (una reacción nueva reemplaza la anterior), así que
+ * `content.reaction` es un string simple, no un array — no hace falta
+ * modelar múltiples reacciones de un mismo contacto. */
+export async function ingestWhatsAppReaction(input: IngestReactionInput): Promise<void> {
+  const { supabase, workspaceId, wamid, emoji } = input;
+
+  const { data: existing } = await supabase.from("messages").select("id, content").eq("workspace_id", workspaceId).eq("wamid", wamid).maybeSingle();
+  if (!existing) {
+    console.error(`[ingest] no message found for wamid='${wamid}' — reaction dropped.`);
+    return;
+  }
+
+  const currentContent = (existing.content as Record<string, unknown> | null) ?? {};
+  await supabase
+    .from("messages")
+    .update({ content: { ...currentContent, reaction: emoji } })
+    .eq("id", existing.id);
+
+  console.log(`[ingest] updated message ${existing.id} reaction → ${emoji ?? "(removed)"}`);
 }
