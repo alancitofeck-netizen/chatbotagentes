@@ -141,6 +141,18 @@ export async function POST(request: NextRequest) {
           "portal_sync",
         );
 
+        // Se chequea ANTES del upsert (no hay forma de saber "creó o
+        // actualizó" desde la respuesta de un upsert) — seguro sin lock
+        // porque el worker manda estos eventos de a uno, en secuencia,
+        // nunca en paralelo dentro de un mismo job (ver jobManager.ts).
+        const { data: existingPolicy } = await supabase
+          .from("policies")
+          .select("id")
+          .eq("insurance_connection_id", payload.connectionId)
+          .eq("external_id", p.externalId)
+          .maybeSingle();
+        const isNewPolicy = !existingPolicy;
+
         const { error: upsertError } = await supabase
           .from("policies")
           .upsert(
@@ -166,6 +178,14 @@ export async function POST(request: NextRequest) {
           );
         if (upsertError) {
           console.error(`[portfolio-agent-webhook] failed to upsert policy ${p.externalId}:`, upsertError);
+        } else {
+          const counterColumn = isNewPolicy ? "created_count" : "updated_count";
+          const { data: jobRow } = await supabase.from("insurance_sync_jobs").select(counterColumn).eq("id", payload.jobId).maybeSingle<Record<string, number | null>>();
+          const current = jobRow?.[counterColumn] ?? 0;
+          await supabase
+            .from("insurance_sync_jobs")
+            .update({ [counterColumn]: current + 1 })
+            .eq("id", payload.jobId);
         }
       }
       break;

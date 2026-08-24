@@ -121,6 +121,8 @@ export interface InsuranceSyncJobEntry {
   currentStep: string | null;
   processedCount: number | null;
   totalCount: number | null;
+  createdCount: number | null;
+  updatedCount: number | null;
   cancelRequested: boolean;
   policiesSyncedCount: number;
   clientsSyncedCount: number;
@@ -138,7 +140,7 @@ export async function getInsuranceSyncJobs(workspaceId: string, connectionId: st
   const { data } = await supabase
     .from("insurance_sync_jobs")
     .select(
-      "id, status, source_file_name, current_step, processed_count, total_count, cancel_requested, policies_synced_count, clients_synced_count, error, started_at, completed_at, triggered_by",
+      "id, status, source_file_name, current_step, processed_count, total_count, created_count, updated_count, cancel_requested, policies_synced_count, clients_synced_count, error, started_at, completed_at, triggered_by",
     )
     .eq("workspace_id", workspaceId)
     .eq("connection_id", connectionId)
@@ -158,6 +160,8 @@ export async function getInsuranceSyncJobs(workspaceId: string, connectionId: st
     currentStep: r.current_step as string | null,
     processedCount: r.processed_count as number | null,
     totalCount: r.total_count as number | null,
+    createdCount: r.created_count as number | null,
+    updatedCount: r.updated_count as number | null,
     cancelRequested: Boolean(r.cancel_requested),
     policiesSyncedCount: r.policies_synced_count as number,
     clientsSyncedCount: r.clients_synced_count as number,
