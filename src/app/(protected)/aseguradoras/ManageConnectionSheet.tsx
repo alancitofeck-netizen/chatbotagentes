@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { toast } from "@/components/toast/toast";
-import { History, RefreshCw, Unplug, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { History, RefreshCw, Unplug, CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils/format";
 import { getInsuranceConnectionDetailAction, disconnectInsuranceProviderAction, type InsuranceConnectionDetail } from "@/lib/insuranceProviders/actions";
+import { PORTAL_SYNC_STEP_LABEL, portalSyncJobGroup } from "@/lib/insuranceProviders/constants";
 import type { InsuranceProviderCard } from "@/lib/insuranceProviders/queries";
 
-const JOB_STATUS_ICON = { completed: CheckCircle2, failed: XCircle, processing: Loader2 } as const;
-const JOB_STATUS_COLOR = { completed: "text-success-strong", failed: "text-error-strong", processing: "text-info-strong" } as const;
+const JOB_GROUP_ICON = { success: CheckCircle2, error: XCircle, warning: AlertTriangle, progress: Loader2 } as const;
+const JOB_GROUP_COLOR = { success: "text-success-strong", error: "text-error-strong", warning: "text-warning-strong", progress: "text-info-strong" } as const;
 
 export function ManageConnectionSheet({
   provider,
@@ -106,13 +107,14 @@ export function ManageConnectionSheet({
           ) : (
             <ul className="flex flex-col divide-y divide-border-default">
               {detail.jobs.map((job) => {
-                const Icon = JOB_STATUS_ICON[job.status];
+                const group = portalSyncJobGroup(job.status);
+                const Icon = JOB_GROUP_ICON[group];
                 return (
                   <li key={job.id} className="flex items-center justify-between gap-3 py-2.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <Icon className={`size-4 shrink-0 ${JOB_STATUS_COLOR[job.status]} ${job.status === "processing" ? "animate-spin" : ""}`} aria-hidden="true" />
+                      <Icon className={`size-4 shrink-0 ${JOB_GROUP_COLOR[group]} ${group === "progress" ? "animate-spin" : ""}`} aria-hidden="true" />
                       <div className="min-w-0">
-                        <p className="truncate text-sm text-foreground">{job.sourceFileName ?? "Sincronización"}</p>
+                        <p className="truncate text-sm text-foreground">{job.sourceFileName ?? PORTAL_SYNC_STEP_LABEL[job.status]}</p>
                         <p className="text-xs text-neutral-500">
                           {job.policiesSyncedCount} póliza(s) · {job.triggeredByName ?? "—"}
                         </p>

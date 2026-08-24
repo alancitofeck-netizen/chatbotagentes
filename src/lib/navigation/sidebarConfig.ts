@@ -124,6 +124,19 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     order: 2,
   },
   {
+    // Mismo moduleKey que "Aseguradoras" a propósito — es una vista nueva
+    // (dashboard) sobre los mismos datos/conexiones, no un módulo aparte
+    // que necesite su propio toggle en Configuración → Módulos.
+    id: "portfolio_agent",
+    name: "Analizador de Cartera",
+    icon: Bot,
+    route: "/analizador-cartera",
+    section: "Inteligencia",
+    moduleKey: "insurance_providers",
+    badge: "IA",
+    order: 3,
+  },
+  {
     // Sin badge "IA" a propósito — combina reglas/recordatorios/flujos que
     // no dependen de un modelo, no sería honesto marcarla como IA.
     id: "automations",
@@ -131,7 +144,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     icon: Zap,
     route: "/automatizaciones",
     section: "Inteligencia",
-    order: 3,
+    order: 4,
   },
   {
     id: "presentations",
@@ -141,7 +154,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     section: "Inteligencia",
     moduleKey: "presentations",
     badge: "IA",
-    order: 4,
+    order: 5,
   },
 
   { id: "classroom", name: "Classroom", icon: GraduationCap, route: "/classroom", section: "Aprendizaje", order: 0 },

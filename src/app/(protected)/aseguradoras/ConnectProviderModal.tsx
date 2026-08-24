@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -10,6 +10,7 @@ import { Upload, FileSpreadsheet, ArrowRight, CheckCircle2, AlertTriangle, Loade
 import { POLICY_FIELD_DICTIONARY } from "@/lib/policies/constants";
 import { parsePolicyImportFileAction, parsePolicyImportSheetAction, type PolicyImportPreview } from "@/lib/policies/actions";
 import { confirmInsuranceManualSyncAction, type InsuranceManualSyncResult } from "@/lib/insuranceProviders/actions";
+import { savePortalCredentialsAction, startPortalSyncAction } from "@/lib/portfolioAgent/actions";
 import { SYNC_PROGRESS_MESSAGES, CONNECTION_METHODS, CONNECTION_METHOD_LABEL, type ConnectionMethod } from "@/lib/insuranceProviders/constants";
 import type { InsuranceProviderCard } from "@/lib/insuranceProviders/queries";
 
@@ -30,6 +31,95 @@ function ComingSoonPanel({ method }: { method: "portal" | "api" }) {
       <p className="text-sm font-medium text-foreground">Próximamente</p>
       <p className="max-w-sm text-[13px] text-neutral-500">{copy}</p>
     </div>
+  );
+}
+
+/** Form real de "Conectar por portal" — solo se muestra cuando
+ * `insurance_providers.portal_domain` está seteado para esa aseguradora
+ * (0162_portfolio_agent.sql). Guarda usuario/contraseña vía Vault
+ * (savePortalCredentialsAction) y dispara la primera sincronización; el
+ * progreso en vivo se ve en Analizador de Cartera, no acá (evita duplicar
+ * la lógica de polling en dos lugares). */
+function PortalConnectForm({ provider, onConnected }: { provider: InsuranceProviderCard; onConnected: () => void }) {
+  const [portalUrl, setPortalUrl] = useState(provider.portalDomain ? `https://${provider.portalDomain}` : "");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  const [started, setStarted] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setIsBusy(true);
+    try {
+      const saved = await savePortalCredentialsAction(provider.id, portalUrl, username, password);
+      if (!saved.ok) {
+        toast.error(saved.error);
+        return;
+      }
+      const syncResult = await startPortalSyncAction(saved.connectionId);
+      if (!syncResult.ok) {
+        toast.error(syncResult.error);
+        return;
+      }
+      setStarted(true);
+      onConnected();
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  if (started) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8 text-center">
+        <CheckCircle2 className="size-8 text-success-strong" aria-hidden="true" />
+        <p className="text-sm font-medium text-foreground">Sincronización iniciada.</p>
+        <p className="max-w-sm text-[13px] text-neutral-500">
+          El progreso en vivo lo podés seguir en <span className="font-medium text-foreground">Analizador de Cartera</span>, en el sidebar.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-foreground">URL del portal</span>
+        <input
+          type="url"
+          required
+          value={portalUrl}
+          onChange={(e) => setPortalUrl(e.target.value)}
+          placeholder={provider.portalDomain ? `https://${provider.portalDomain}/...` : "https://..."}
+          className="rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+        />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-foreground">Usuario</span>
+        <input
+          type="text"
+          required
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          autoComplete="off"
+          className="rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+        />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-foreground">Contraseña</span>
+        <input
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
+          className="rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+        />
+      </label>
+      <p className="text-xs text-neutral-500">Tu contraseña se guarda cifrada — nadie en Growth Link (ni la IA) puede volver a verla en texto plano.</p>
+      <Button type="submit" loading={isBusy}>
+        Conectar y sincronizar
+      </Button>
+    </form>
   );
 }
 
@@ -148,7 +238,7 @@ export function ConnectProviderModal({
             {CONNECTION_METHODS.map((m) => {
               const Icon = METHOD_ICON[m];
               return (
-                <TabsTrigger key={m} value={m} disabled={m !== "manual"}>
+                <TabsTrigger key={m} value={m} disabled={m === "api"}>
                   <Icon className="size-3.5" aria-hidden="true" />
                   {CONNECTION_METHOD_LABEL[m]}
                 </TabsTrigger>
@@ -158,7 +248,7 @@ export function ConnectProviderModal({
 
           <TabsContent value="portal">
             <div className="pt-4">
-              <ComingSoonPanel method="portal" />
+              {provider.portalDomain ? <PortalConnectForm provider={provider} onConnected={onSynced} /> : <ComingSoonPanel method="portal" />}
             </div>
           </TabsContent>
           <TabsContent value="api">

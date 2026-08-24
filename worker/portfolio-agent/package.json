@@ -1,0 +1,21 @@
+{
+  "name": "portfolio-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone, host-agnostic Node service running Playwright browser automation to sync an advisor's insurance-portal policy portfolio into Growth Link — independent of the Next.js/Vercel deployment, which cannot host long-lived browser processes. See supabase/migrations/0162_portfolio_agent.sql and this folder's README.md.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
+    "express": "^4.21.2",
+    "playwright": "^1.48.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}
