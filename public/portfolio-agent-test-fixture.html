@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Portal de Prueba — Agente IA de Cartera</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 14px; }
+  th { background: #f3f3f3; }
+  label { display: block; margin-top: 12px; font-weight: 600; font-size: 14px; }
+  input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; font-size: 14px; }
+  button { margin-top: 16px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+  #loginError { color: #b91c1c; margin-top: 8px; display: none; }
+  #pagination { margin-top: 12px; }
+  code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+  <h1>Portal de Prueba</h1>
+  <p>Fixture estático para probar el pipeline del Agente IA de Cartera (worker Playwright → webhook → Growth Link) sin depender de un portal real de ninguna aseguradora.</p>
+  <p>Credenciales: usuario <code>demo</code>, contraseña <code>demo123</code>.</p>
+
+  <form id="loginForm">
+    <label for="username">Usuario</label>
+    <input id="username" name="username" type="text" autocomplete="off" />
+    <label for="password">Contraseña</label>
+    <input id="password" name="password" type="password" autocomplete="off" />
+    <div id="loginError">Usuario o contraseña incorrectos.</div>
+    <button type="submit">Iniciar sesión</button>
+  </form>
+
+  <div id="policiesView" style="display: none;">
+    <p>Sesión iniciada. <a href="#" id="logoutLink">Cerrar sesión</a></p>
+    <table>
+      <thead>
+        <tr><th>N° Póliza</th><th>Cliente</th><th>DNI</th><th>Producto</th><th>Estado</th></tr>
+      </thead>
+      <tbody id="policiesBody"></tbody>
+    </table>
+    <div id="pagination"></div>
+  </div>
+
+  <script>
+    var PAGES = [
+      [
+        ["POL-0001", "Juan Pérez", "30123456", "Auto", "Activa"],
+        ["POL-0002", "María López", "27987654", "Vida", "Activa"],
+        ["POL-0003", "Carlos Gómez", "32555888", "Hogar", "Activa"],
+      ],
+      [
+        ["POL-0004", "Ana Fernández", "34444999", "Salud", "Activa"],
+        ["POL-0005", "Roberto Díaz", "31333222", "Auto", "Cancelada"],
+      ],
+    ];
+    var page = 0;
+
+    function renderPage() {
+      var body = document.getElementById("policiesBody");
+      body.innerHTML = "";
+      PAGES[page].forEach(function (row) {
+        var tr = document.createElement("tr");
+        tr.innerHTML = row.map(function (c) { return "<td>" + c + "</td>"; }).join("");
+        body.appendChild(tr);
+      });
+
+      var pagination = document.getElementById("pagination");
+      pagination.innerHTML = "";
+      if (page < PAGES.length - 1) {
+        var link = document.createElement("a");
+        link.href = "#";
+        link.id = "nextLink";
+        link.textContent = "Siguiente";
+        link.addEventListener("click", function (e) {
+          e.preventDefault();
+          if (page < PAGES.length - 1) {
+            page += 1;
+            renderPage();
+          }
+        });
+        pagination.appendChild(link);
+      }
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var u = document.getElementById("username").value;
+      var p = document.getElementById("password").value;
+      if (u === "demo" && p === "demo123") {
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("policiesView").style.display = "block";
+        page = 0;
+        renderPage();
+      } else {
+        document.getElementById("loginError").style.display = "block";
+      }
+    });
+
+    document.getElementById("logoutLink").addEventListener("click", function (e) {
+      e.preventDefault();
+      document.getElementById("policiesView").style.display = "none";
+      document.getElementById("loginForm").style.display = "block";
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      document.getElementById("loginError").style.display = "none";
+    });
+  </script>
+</body>
+</html>
