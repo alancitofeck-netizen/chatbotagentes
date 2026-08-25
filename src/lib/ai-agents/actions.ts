@@ -15,6 +15,7 @@ import {
   getAgentMetrics,
   type BusinessHoursConfig,
   type ResponseMode,
+  type AgentPersonality,
 } from "@/lib/ai-agents/queries";
 import { getDocuments } from "@/lib/documents/queries";
 import { ingestKnowledgeDocument } from "@/lib/ai-agents/knowledgeBase";
@@ -131,6 +132,24 @@ export async function updateAiAgentGeneral(
   revalidatePath(AI_AGENTS_PATH);
 }
 
+/** Fase 5 — personalidad + reglas, guardado directo (a diferencia del
+ * prompt, no versiona: no tiene el mismo riesgo de "romper una conversación
+ * en curso con un cambio a medio editar" que un system_prompt gigante). */
+export async function updateAiAgentPersonality(agentId: string, input: { personality: AgentPersonality; rules: string[] }) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const target = await getOwnAgent(workspaceId, agentId);
+  if (!target) throw new Error("Agente no encontrado en este workspace.");
+
+  const supabase = await createClient();
+  await supabase
+    .from("ai_agents")
+    .update({ personality: input.personality, rules: input.rules, updated_at: new Date().toISOString() })
+    .eq("id", agentId);
+
+  revalidatePath(AI_AGENTS_PATH);
+}
+
 export async function toggleAiAgentStatus(agentId: string, status: "active" | "inactive") {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
@@ -178,6 +197,8 @@ export async function duplicateAiAgent(agentId: string) {
       business_hours: source.business_hours,
       response_mode: source.response_mode,
       advisor_id: source.advisor_id,
+      personality: source.personality,
+      rules: source.rules,
     })
     .select("id")
     .single();

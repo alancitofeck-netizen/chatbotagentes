@@ -15,6 +15,7 @@ import type {
 } from "@/lib/ai-agents/queries";
 import { GeneralTab } from "./tabs/GeneralTab";
 import { PromptTab } from "./tabs/PromptTab";
+import { PersonalityTab } from "./tabs/PersonalityTab";
 import { ToolsTab } from "./tabs/ToolsTab";
 import { KnowledgeBaseTab } from "./tabs/KnowledgeBaseTab";
 import { ChannelsTab } from "./tabs/ChannelsTab";
@@ -22,8 +23,8 @@ import { TestTab } from "./tabs/TestTab";
 import { HistoryTab } from "./tabs/HistoryTab";
 import { MetricsTab } from "./tabs/MetricsTab";
 
-type Tab = "general" | "prompt" | "herramientas" | "conocimiento" | "canales" | "pruebas" | "historial" | "metricas";
-const VALID_TABS: Tab[] = ["general", "prompt", "herramientas", "conocimiento", "canales", "pruebas", "historial", "metricas"];
+type Tab = "general" | "prompt" | "personalidad" | "herramientas" | "conocimiento" | "canales" | "pruebas" | "historial" | "metricas";
+const VALID_TABS: Tab[] = ["general", "prompt", "personalidad", "herramientas", "conocimiento", "canales", "pruebas", "historial", "metricas"];
 
 export function AiAgentDetailView({
   agent,
@@ -72,6 +73,7 @@ export function AiAgentDetailView({
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="prompt">Prompt</TabsTrigger>
+          <TabsTrigger value="personalidad">Personalidad</TabsTrigger>
           <TabsTrigger value="herramientas">Herramientas</TabsTrigger>
           <TabsTrigger value="conocimiento">Base de conocimiento</TabsTrigger>
           <TabsTrigger value="canales">Canales</TabsTrigger>
@@ -86,6 +88,9 @@ export function AiAgentDetailView({
           </TabsContent>
           <TabsContent value="prompt">
             <PromptTab agentId={agent.id} initialPrompts={initialPrompts} />
+          </TabsContent>
+          <TabsContent value="personalidad">
+            <PersonalityTab agent={agent} />
           </TabsContent>
           <TabsContent value="herramientas">
             <ToolsTab agentId={agent.id} tools={tools} initialToolIds={initialToolIds} />

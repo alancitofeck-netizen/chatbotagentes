@@ -12,6 +12,28 @@ export interface BusinessHoursConfig {
   end: string;
 }
 
+/** Fase 5 — mismo patrón que BusinessHoursConfig: jsonb con shape fijo,
+ * validado en la app, no en la DB. */
+export interface AgentPersonality {
+  formality: "baja" | "media" | "alta";
+  warmth: "baja" | "media" | "alta";
+  directness: "directo" | "equilibrado" | "indirecto";
+  emojiUsage: "ninguno" | "bajo" | "medio" | "alto";
+  messageLength: "cortos" | "medios" | "largos";
+  questioningStyle: "poco" | "moderado" | "frecuente";
+  persuasiveness: "baja" | "media" | "alta";
+}
+
+export const DEFAULT_AGENT_PERSONALITY: AgentPersonality = {
+  formality: "media",
+  warmth: "alta",
+  directness: "equilibrado",
+  emojiUsage: "bajo",
+  messageLength: "cortos",
+  questioningStyle: "frecuente",
+  persuasiveness: "media",
+};
+
 export interface AiAgentListItem {
   id: string;
   name: string;
@@ -32,6 +54,8 @@ export interface AiAgentDetail extends AiAgentListItem {
   /** Solo tiene sentido para moduleKey==='referrals' (Fase 4) — null = el
    * agente atiende todos los referidos del workspace. */
   advisorId: string | null;
+  personality: AgentPersonality;
+  rules: string[];
 }
 
 function mapAgentRow(row: Record<string, unknown>): AiAgentDetail {
@@ -50,11 +74,13 @@ function mapAgentRow(row: Record<string, unknown>): AiAgentDetail {
     workspaceId: row.workspace_id as string,
     createdAt: row.created_at as string,
     advisorId: (row.advisor_id as string | null) ?? null,
+    personality: (row.personality as AgentPersonality) ?? DEFAULT_AGENT_PERSONALITY,
+    rules: (row.rules as string[]) ?? [],
   };
 }
 
 const AGENT_COLUMNS =
-  "id, name, description, status, module_key, channels, model, response_mode, temperature, max_tokens, business_hours, workspace_id, created_at, advisor_id";
+  "id, name, description, status, module_key, channels, model, response_mode, temperature, max_tokens, business_hours, workspace_id, created_at, advisor_id, personality, rules";
 
 export async function getAiAgentList(workspaceId: string): Promise<AiAgentListItem[]> {
   const supabase = await createClient();
