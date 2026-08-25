@@ -1,14 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { MessageCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
-import { getWhatsAppWebSessionsAction } from "@/lib/whatsappWeb/actions";
+import { toast } from "@/components/toast/toast";
+import { getWhatsAppWebSessionsAction, disconnectWhatsAppWebSessionAction } from "@/lib/whatsappWeb/actions";
 import type { WhatsAppWebSession } from "@/lib/whatsappWeb/queries";
 import { WhatsAppWebConnectDialog } from "./WhatsAppWebConnectDialog";
+
+/** Estados con algo "vivo" para tirar abajo — una sesión trabada en
+ * qr_pending/connecting (ej. el worker se reinició y perdió el estado en
+ * memoria, dejando un QR viejo que ya no sirve) necesita poder
+ * desconectarse SIN tener que abrir el diálogo, que antes solo ofrecía
+ * "Desconectar" para status==='connected' (bug reportado: la tarjeta
+ * mostraba "Esperando QR" con nada real del otro lado para escanear, y no
+ * había forma de resetear la fila sin ir a la base a mano). */
+const DISCONNECTABLE_STATUSES: WhatsAppWebSession["status"][] = ["connecting", "qr_pending", "connected"];
 
 const STATUS_BADGE: Record<WhatsAppWebSession["status"], { label: string; variant: BadgeVariant }> = {
   connecting: { label: "Conectando…", variant: "warning" },
@@ -36,9 +46,27 @@ export function WhatsAppWebConnectionsCard({
 }) {
   const [sessions, setSessions] = useState<WhatsAppWebSession[] | null>(null);
   const [dialogMember, setDialogMember] = useState<{ id: string; name: string } | null>(null);
+  const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   function refetch() {
     getWhatsAppWebSessionsAction().then(setSessions);
+  }
+
+  function handleDisconnect(session: WhatsAppWebSession) {
+    if (!window.confirm("¿Desconectar esta sesión de WhatsApp Web? Vas a tener que escanear un nuevo código QR para volver a conectarla.")) return;
+    setDisconnectingId(session.sessionId);
+    startTransition(async () => {
+      try {
+        await disconnectWhatsAppWebSessionAction(session.sessionId, session.memberId);
+        toast.success("Sesión desconectada.");
+        refetch();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo desconectar.");
+      } finally {
+        setDisconnectingId(null);
+      }
+    });
   }
 
   useEffect(() => {
@@ -93,13 +121,25 @@ export function WhatsAppWebConnectionsCard({
                   <div className="flex items-center gap-2">
                     <Badge variant={STATUS_BADGE[s.status].variant}>{STATUS_BADGE[s.status].label}</Badge>
                     {canManage(s) && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setDialogMember({ id: s.memberId, name: s.fullName })}
-                      >
-                        {s.status === "connected" ? "Ver" : "Mostrar QR"}
-                      </Button>
+                      <>
+                        {DISCONNECTABLE_STATUSES.includes(s.status) && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            loading={isPending && disconnectingId === s.sessionId}
+                            onClick={() => handleDisconnect(s)}
+                          >
+                            Desconectar
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setDialogMember({ id: s.memberId, name: s.fullName })}
+                        >
+                          {s.status === "connected" ? "Ver" : "Mostrar QR"}
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
