@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { normalizeE164, resolveWorkspaceIdForYCloudAccount, getYCloudCredentials, downloadYCloudMedia } from "@/lib/integrations/ycloud";
 import { ingestInboundWhatsAppMessage, ingestWhatsAppStatusUpdate, ingestWhatsAppReaction } from "@/lib/messaging/ingest";
+import { isReferralsOnlyModeEnabled, isPhoneAuthorizedReferral } from "@/lib/messaging/referralAuthorization";
 
 /**
  * YCloud (WhatsApp Business API) webhook receiver.
@@ -186,6 +187,18 @@ async function processInboundMessage(
   }
 
   const phone = normalizeE164(msg.from);
+
+  // "Solo Referidos CRM" — descartar ANTES de tocar la base si el número no
+  // es un referido autorizado (nunca "guardar primero y filtrar después").
+  // Ver src/lib/messaging/referralAuthorization.ts.
+  if (await isReferralsOnlyModeEnabled(supabase, workspaceId)) {
+    const authorized = await isPhoneAuthorizedReferral(supabase, workspaceId, phone);
+    if (!authorized) {
+      console.log(`[ycloud-webhook] "Solo Referidos CRM" activo — ${phone} no es un referido autorizado en workspace ${workspaceId}, descartando.`);
+      return;
+    }
+  }
+
   const profileName = msg.fromName?.trim() || msg.profile?.name?.trim() || msg.contact?.name?.trim();
 
   let messageType = "text";

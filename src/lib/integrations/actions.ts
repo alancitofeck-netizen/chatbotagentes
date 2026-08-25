@@ -10,6 +10,7 @@ import { disconnectGoogleCalendar, getGoogleCalendarStatus, importGoogleEvents }
 import { disconnectGoogleDrive, getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
 import { disconnectGoogleSheets } from "@/lib/integrations/googleSheets";
 import { disconnectInstagram, getInstagramStatus } from "@/lib/integrations/instagram";
+import { getWhatsAppReferralsOnlyMode, updateWhatsAppReferralsOnlyMode } from "@/lib/messaging/referralAuthorization";
 
 export async function getWhatsAppIntegrationAction() {
   const { workspaceId } = await requireActiveWorkspace();
@@ -184,4 +185,20 @@ export async function disconnectInstagramAction() {
   await disconnectInstagram(workspaceId);
   revalidatePath("/profile");
   revalidatePath("/inbox");
+}
+
+/** "Solo Referidos CRM" — mismo criterio que Google Calendar/Sheets/Drive:
+ * cada Agent administra el modo de WhatsApp de SU PROPIO workspace, no
+ * gateado a owner/admin. requireNotSupervising sigue bloqueando la sesión
+ * "modo supervisor" de un platform admin (no es un miembro real). */
+export async function getWhatsAppReferralsOnlyModeAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getWhatsAppReferralsOnlyMode(workspaceId);
+}
+
+export async function updateWhatsAppReferralsOnlyModeAction(enabled: boolean) {
+  const { workspaceId, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
+  await updateWhatsAppReferralsOnlyMode(workspaceId, enabled);
+  revalidatePath("/profile");
 }

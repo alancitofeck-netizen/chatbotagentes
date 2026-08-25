@@ -1,0 +1,11 @@
+-- "Solo Referidos CRM" — toggle por workspace, pedido explícito del
+-- usuario ("Agentes IA + WhatsApp para Referidos"). Cuando está en true
+-- (default, decisión explícita del usuario pese a la advertencia de que
+-- esto corta de entrada los mensajes normales de WhatsApp de cualquier
+-- workspace que hoy dependa de ese comportamiento), los webhooks de
+-- WhatsApp (YCloud + WhatsApp Web) descartan cualquier mensaje entrante
+-- cuyo teléfono no esté en asesoria_referrals de ese workspace, ANTES de
+-- crear contacto/conversación/mensaje. Cada workspace puede desactivarlo
+-- para volver al comportamiento actual (cualquier número se procesa).
+-- Aditiva, reversible (drop column si hiciera falta).
+alter table public.workspaces add column if not exists whatsapp_referrals_only boolean not null default true;

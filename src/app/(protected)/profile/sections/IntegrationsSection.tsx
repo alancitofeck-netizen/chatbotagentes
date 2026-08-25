@@ -28,6 +28,7 @@ import { KpiSettersManager } from "./KpiSettersManager";
 import { AdvisorSheetConnectionsManager } from "./AdvisorSheetConnectionsManager";
 import { OwnAgendaSheetManager } from "./OwnAgendaSheetManager";
 import { WhatsAppWebConnectionsCard } from "./WhatsAppWebConnectionsCard";
+import { WhatsAppReferralsOnlyModeCard } from "./WhatsAppReferralsOnlyModeCard";
 import { InstagramConnectionCard } from "./InstagramConnectionCard";
 
 /** Moved from the old standalone /settings/integrations page into the
@@ -253,6 +254,8 @@ export function IntegrationsSection({
           )}
         </div>
       </Card>
+
+      <WhatsAppReferralsOnlyModeCard canManage={canManage} />
 
       <WhatsAppWebConnectionsCard currentRole={currentRole} currentMemberId={currentMemberId} />
 
