@@ -119,6 +119,31 @@ function rulesLines(rules: string[] | null | undefined): string[] {
   return ["Reglas del agente (nunca las incumplas):", ...rules.map((r) => `- ${r}`)];
 }
 
+/** Fase 9 (Análisis del asesor) — perfil aprendido de conversaciones reales
+ * (advisor_profiles). Es INFORMACIÓN a imitar, nunca una regla: se coloca
+ * después de "Reglas del agente" (Fase 5) y antes del contexto de la
+ * conversación — jerarquía pedida explícitamente por el usuario (reglas de
+ * seguridad > reglas del sistema > reglas del agente > perfil del asesor >
+ * contexto), así que el perfil aprendido nunca puede sobreescribir nada de
+ * lo anterior. */
+function advisorProfileLines(profile: Record<string, unknown> | null): string[] {
+  if (!profile) return [];
+  const lines: string[] = [];
+  if (profile.communication_style) lines.push(`- Estilo de comunicación: ${profile.communication_style}`);
+  if (profile.tone) lines.push(`- Tono: ${profile.tone}`);
+  if (profile.message_length) lines.push(`- Longitud de mensajes: ${profile.message_length}`);
+  if (profile.emoji_usage) lines.push(`- Emojis: ${profile.emoji_usage}`);
+  if (profile.questioning_style) lines.push(`- Preguntas: ${profile.questioning_style}`);
+  const salesProcess = profile.sales_process as string[] | undefined;
+  if (salesProcess?.length) lines.push(`- Proceso de venta habitual: ${salesProcess.join(" → ")}`);
+  if (profile.objection_handling) lines.push(`- Manejo de objeciones: ${profile.objection_handling}`);
+  if (profile.follow_up_style) lines.push(`- Estilo de seguimiento: ${profile.follow_up_style}`);
+  if (profile.appointment_style) lines.push(`- Cómo propone la cita: ${profile.appointment_style}`);
+  return lines.length
+    ? ["Perfil del asesor (aprendido de sus conversaciones reales — un estilo a imitar, nunca una regla que relaje lo anterior):", ...lines]
+    : [];
+}
+
 function interpolate(template: string, variables: Record<string, string>): string {
   let result = template;
   for (const [key, value] of Object.entries(variables)) {
@@ -149,8 +174,14 @@ async function buildContext(
     .maybeSingle();
   if (!prompt) throw new Error("prompt_not_found");
 
-  const { data: agent } = await supabase.from("ai_agents").select("model, temperature, max_tokens, personality, rules").eq("id", agentId).maybeSingle();
+  const { data: agent } = await supabase.from("ai_agents").select("model, temperature, max_tokens, personality, rules, advisor_id").eq("id", agentId).maybeSingle();
   if (!agent) throw new Error("agent_not_found");
+
+  // Fase 9 — perfil aprendido del asesor (advisor_profiles), si ya se
+  // analizó alguna vez. null es el caso normal antes de correr "Analizar
+  // asesor" — no es un error, simplemente no hay bloque que agregar.
+  const advisorProfileQuery = supabase.from("advisor_profiles").select("*").eq("workspace_id", workspaceId);
+  const { data: advisorProfile } = await (agent.advisor_id ? advisorProfileQuery.eq("advisor_id", agent.advisor_id) : advisorProfileQuery.is("advisor_id", null)).maybeSingle();
 
   const { data: conversation } = await supabase.from("conversations").select("contact_id").eq("id", conversationId).maybeSingle();
   const contactId = (conversation?.contact_id as string | null) ?? null;
@@ -256,6 +287,7 @@ async function buildContext(
 
   const agentPersonality = personalityLines(agent.personality as Record<string, unknown> | null);
   const agentRules = rulesLines(agent.rules as string[] | null);
+  const advisorProfileBlock = advisorProfileLines(advisorProfile);
 
   const systemMessage: OpenRouterMessage = {
     role: "system",
@@ -263,6 +295,7 @@ async function buildContext(
       systemPromptText,
       ...(agentPersonality.length ? ["---", ...agentPersonality] : []),
       ...(agentRules.length ? ["---", ...agentRules] : []),
+      ...(advisorProfileBlock.length ? ["---", ...advisorProfileBlock] : []),
       "---",
       "Contexto (dato del sistema):",
       ...contextLines,
@@ -591,8 +624,14 @@ async function runSandboxTurnInner(input: {
   if (!prompt) throw new Error("prompt_not_found");
 
   const agentId = prompt.agent_id as string;
-  const { data: agent } = await supabase.from("ai_agents").select("model, temperature, max_tokens, personality, rules").eq("id", agentId).maybeSingle();
+  const { data: agent } = await supabase.from("ai_agents").select("model, temperature, max_tokens, personality, rules, advisor_id").eq("id", agentId).maybeSingle();
   if (!agent) throw new Error("agent_not_found");
+
+  const sandboxProfileQuery = supabase.from("advisor_profiles").select("*").eq("workspace_id", input.workspaceId);
+  const { data: sandboxAdvisorProfile } = await (agent.advisor_id
+    ? sandboxProfileQuery.eq("advisor_id", agent.advisor_id)
+    : sandboxProfileQuery.is("advisor_id", null)
+  ).maybeSingle();
 
   const contact = input.testContactId
     ? (
@@ -624,6 +663,7 @@ async function runSandboxTurnInner(input: {
 
   const sandboxPersonality = personalityLines(agent.personality as Record<string, unknown> | null);
   const sandboxRules = rulesLines(agent.rules as string[] | null);
+  const sandboxAdvisorProfileBlock = advisorProfileLines(sandboxAdvisorProfile);
 
   const messages: OpenRouterMessage[] = [
     {
@@ -632,6 +672,7 @@ async function runSandboxTurnInner(input: {
         systemPromptText,
         ...(sandboxPersonality.length ? ["---", ...sandboxPersonality] : []),
         ...(sandboxRules.length ? ["---", ...sandboxRules] : []),
+        ...(sandboxAdvisorProfileBlock.length ? ["---", ...sandboxAdvisorProfileBlock] : []),
         "---",
         "Modo sandbox (Prompt Builder) — esta respuesta NO se envía a ningún contacto real.",
         contextLine,

@@ -21,12 +21,13 @@ import { getDocuments } from "@/lib/documents/queries";
 import { ingestKnowledgeDocument } from "@/lib/ai-agents/knowledgeBase";
 import { runSandboxTurn } from "@/lib/ai/agentRuntime";
 import { notifyManagers } from "@/lib/notifications/service";
+import { getAdvisorProfile, analyzeAdvisor } from "@/lib/ai-agents/advisorProfile";
 
 const AI_AGENTS_PATH = "/crm";
 
 async function getOwnAgent(workspaceId: string, agentId: string) {
   const supabase = await createClient();
-  const { data } = await supabase.from("ai_agents").select("id, module_key, name").eq("id", agentId).eq("workspace_id", workspaceId).maybeSingle();
+  const { data } = await supabase.from("ai_agents").select("id, module_key, name, advisor_id").eq("id", agentId).eq("workspace_id", workspaceId).maybeSingle();
   return data;
 }
 
@@ -473,4 +474,31 @@ export async function getAgentTestRunsAction(agentId: string) {
 export async function getAgentMetricsAction(agentId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getAgentMetrics(workspaceId, agentId);
+}
+
+// ---------------------------------------------------------------------------
+// Perfil del asesor (Fase 9)
+// ---------------------------------------------------------------------------
+
+export async function getAdvisorProfileAction(agentId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const agent = await getOwnAgent(workspaceId, agentId);
+  if (!agent) throw new Error("Agente no encontrado en este workspace.");
+  return getAdvisorProfile(workspaceId, (agent.advisor_id as string | null) ?? null);
+}
+
+/** "Analizar asesor" — mismo gate que el resto de la configuración del
+ * agente (owner/admin). Nunca autoentrena el prompt/reglas del agente solo:
+ * el perfil queda guardado como dato aparte, agentRuntime.ts lo suma al
+ * contexto pero no puede sobreescribir reglas de seguridad ni las reglas
+ * propias del agente (Fase 5) — mismo criterio pedido para el resto del
+ * sistema. */
+export async function analyzeAdvisorAction(agentId: string) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const agent = await getOwnAgent(workspaceId, agentId);
+  if (!agent) throw new Error("Agente no encontrado en este workspace.");
+  const profile = await analyzeAdvisor(workspaceId, (agent.advisor_id as string | null) ?? null);
+  revalidatePath(AI_AGENTS_PATH);
+  return profile;
 }
