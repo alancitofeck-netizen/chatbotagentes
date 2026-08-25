@@ -334,6 +334,18 @@ export async function ingestInboundWhatsAppMessage(
   const messageId = newMessage.id as string;
   console.log(`[ingest] stored message ${messageId} in conversation ${conversationId}`);
 
+  // Fase 4 (Agentes IA de Referidos): si el prospecto respondió, cualquier
+  // seguimiento programado para ESTA conversación queda sin sentido —
+  // cancelar acá es un no-op silencioso para toda conversación que no sea
+  // de referidos (nunca va a tener filas en referral_followups). No hace
+  // falta un `if` por canal/módulo: el `.eq("conversation_id", ...)` ya
+  // acota esto solo a filas que realmente existen.
+  await supabase
+    .from("referral_followups")
+    .update({ status: "cancelled", cancelled_reason: "replied" })
+    .eq("conversation_id", conversationId)
+    .eq("status", "pending");
+
   // Buffer Inteligente (docs/blueprint/04-inbox.md, Motor de IA Fase 2): push
   // into conversation_buffers instead of dispatching to the AI engine
   // directly — a scheduled flush groups consecutive messages into one turn.

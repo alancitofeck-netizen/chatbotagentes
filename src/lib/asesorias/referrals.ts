@@ -12,6 +12,10 @@ export interface ReferralRow {
    * tipeado), nunca guardado como columna propia. */
   asesoriaName: string;
   advisorName: string | null;
+  /** Fase 4 (Agentes IA de Referidos) — el `workspace_members.id` real, no
+   * solo el nombre ya resuelto: hace falta para resolver qué agente de
+   * referidos (ai_agents.advisor_id) atiende a este referido. */
+  advisorId: string | null;
   referredContactId: string | null;
   name: string;
   phone: string;
@@ -55,6 +59,7 @@ export async function getWorkspaceReferrals(workspaceId: string): Promise<Referr
       asesoriaId: r.asesoria_id as string,
       asesoriaName: asesoria?.contactName ?? asesoria?.name ?? "Prospecto",
       advisorName: asesoria?.advisorName ?? null,
+      advisorId: (r.advisor_id as string | null) ?? null,
       referredContactId,
       name: r.name as string,
       phone: r.phone as string,

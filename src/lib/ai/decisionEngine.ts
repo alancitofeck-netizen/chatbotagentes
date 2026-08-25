@@ -40,7 +40,12 @@ export async function decide(input: DecisionInput): Promise<DecisionOutcome> {
     .maybeSingle();
 
   if (!conversation) return { type: "wait" };
-  if (conversation.mode === "human") return { type: "human_respond" };
+  // 'paused' (Agentes IA de Referidos, Fase 4) se trata igual que 'human':
+  // el agente nunca se invoca. Es semánticamente distinto ("nadie está
+  // atendiendo activamente, seguimientos cancelados" vs. "el asesor está
+  // atendiendo ahora") pero el motor no necesita diferenciarlos — mismo
+  // outcome, mismo "sin acción" en bufferDispatch.ts.
+  if (conversation.mode === "human" || conversation.mode === "paused") return { type: "human_respond" };
   if (conversation.status === "closed") return { type: "wait" };
 
   const contact = Array.isArray(conversation.contacts) ? conversation.contacts[0] : conversation.contacts;
@@ -52,13 +57,27 @@ export async function decide(input: DecisionInput): Promise<DecisionOutcome> {
   // el contacto ya es candidato (postuló a una vacante), usar el prompt de
   // ATS; si no, el de CRM. Reutiliza `candidates` (extensión 1:1 de
   // contacts), no inventa una columna nueva en `conversations`.
+  //
+  // "Referidos" (Fase 4, Agentes IA de Referidos) tiene prioridad sobre
+  // ambas: si este contacto es un referido autorizado (asesoria_referrals,
+  // la MISMA whitelist que ya usan los webhooks — nunca se toca esa lógica
+  // acá, solo se lee), el motor debe usar el agente de referidos, aunque
+  // ese mismo contacto también tenga una oportunidad de CRM abierta — un
+  // referido en gestión activa es más específico que "cualquier lead CRM".
+  const { data: referral } = await supabase
+    .from("asesoria_referrals")
+    .select("id, advisor_id")
+    .eq("workspace_id", workspaceId)
+    .eq("referred_contact_id", conversation.contact_id)
+    .maybeSingle();
+
   const { data: candidate } = await supabase
     .from("candidates")
     .select("id")
     .eq("workspace_id", workspaceId)
     .eq("contact_id", conversation.contact_id)
     .maybeSingle();
-  const moduleKey = candidate ? "ats" : "crm";
+  const moduleKey = referral ? "referrals" : candidate ? "ats" : "crm";
 
   const { data: moduleRow } = await supabase
     .from("workspace_modules")
@@ -79,15 +98,28 @@ export async function decide(input: DecisionInput): Promise<DecisionOutcome> {
 
   // Resolución de agente (Fase "Agentes IA"): un workspace puede tener
   // varios agentes nombrados por módulo — nunca se adivina cuál responde.
-  const { data: activeAgents } = await supabase
+  const { data: activeAgentsRaw } = await supabase
     .from("ai_agents")
-    .select("id, business_hours, response_mode")
+    .select("id, business_hours, response_mode, advisor_id")
     .eq("workspace_id", workspaceId)
     .eq("module_key", moduleKey)
     .eq("status", "active")
     .contains("channels", ["whatsapp"]); // único canal real hoy
+  let activeAgents = activeAgentsRaw ?? [];
 
-  if (!activeAgents || activeAgents.length === 0) {
+  // Referidos: si hay más de un agente activo, no es necesariamente
+  // ambiguo — puede haber un agente por asesor (ai_agents.advisor_id) más
+  // uno "para todo el workspace" (advisor_id null). Se prefiere el agente
+  // cuyo advisor_id coincide con el del referido; si ninguno coincide, cae
+  // al agente sin advisor_id (workspace-wide); si sigue habiendo más de
+  // uno tras ese filtro, ahí sí es genuinamente ambiguo. crm/ats no pasan
+  // por esta rama — moduleKey solo es 'referrals' cuando `referral` existe.
+  if (moduleKey === "referrals" && activeAgents.length > 1 && referral) {
+    const matchingAdvisor = activeAgents.filter((a) => a.advisor_id === referral.advisor_id);
+    activeAgents = matchingAdvisor.length > 0 ? matchingAdvisor : activeAgents.filter((a) => a.advisor_id === null);
+  }
+
+  if (activeAgents.length === 0) {
     return { type: "escalate", reason: "no_active_agent" };
   }
   if (activeAgents.length > 1) {

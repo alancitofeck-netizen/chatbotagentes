@@ -60,6 +60,11 @@ const MODE_OPTIONS = [
   { value: "human", label: "Humano" },
   { value: "ai", label: "IA" },
   { value: "hybrid", label: "Híbrido (sugerido, no enviado)" },
+  // Fase 4 (Agentes IA de Referidos): "nadie está atendiendo activamente,
+  // seguimientos cancelados" — decisionEngine.ts lo trata igual que
+  // 'human' (el agente nunca se invoca), pero es semánticamente distinto
+  // de que el asesor esté atendiendo ahora.
+  { value: "paused", label: "Pausado" },
 ];
 
 const COMING_SOON_TABS = ["archivos"];

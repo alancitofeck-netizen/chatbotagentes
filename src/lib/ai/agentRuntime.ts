@@ -176,6 +176,21 @@ async function buildContext(
         .maybeSingle();
       moduleContext = application;
     }
+  } else if (contactId && moduleKey === "referrals") {
+    // Fase 4 (Agentes IA de Referidos): mismo patrón que crm/ats — el
+    // contexto es la propia fila de asesoria_referrals de este contacto
+    // (la whitelist de referralAuthorization.ts, nunca tocada acá, ya
+    // garantizó que este contacto es un referido autorizado antes de que
+    // el mensaje llegara a este pipeline). El perfil/estilo del asesor
+    // (Fase 9/10, todavía no implementada) se sumaría acá mismo, sin
+    // cambiar el resto de esta función.
+    const { data: referral } = await supabase
+      .from("asesoria_referrals")
+      .select("name, phone, status, asesoria_id")
+      .eq("workspace_id", workspaceId)
+      .eq("referred_contact_id", contactId)
+      .maybeSingle();
+    moduleContext = referral;
   }
 
   const { data: recentMessages } = await supabase
@@ -448,6 +463,48 @@ export async function runAgentTurn(input: {
   await recordUsage(supabase, { workspaceId: input.workspaceId, agentId: input.agentId, conversationId: input.conversationId, model: lastModel, tokensIn: totalTokensIn, tokensOut: totalTokensOut, costUsd: totalCostUsd, latencyMs: Date.now() - turnStartedAt, isSandbox: false });
   await applyEscalation(supabase, { workspaceId: input.workspaceId, conversationId: input.conversationId, reason: "max_tool_iterations", agentId: input.agentId });
   return { outcome: "pending_human" };
+}
+
+const REFERRAL_OPENER_INSTRUCTION =
+  "Generá el primer mensaje de WhatsApp para iniciar contacto con este referido. Presentate brevemente, mencioná de forma " +
+  "natural el contexto que tengas (quién lo recomendó, si está en el contexto), y abrí la conversación sin sonar a " +
+  "plantilla. Respondé ÚNICAMENTE con el texto del mensaje a enviar, nada más — sin comillas, sin explicaciones.";
+
+/** Fase 4 (Agentes IA de Referidos) — "generar el mensaje inicial" (punto 4
+ * del pedido): a diferencia de runAgentTurn, no hay ningún mensaje entrante
+ * que responder todavía (el agente inicia, no reacciona). Reusa
+ * buildContext tal cual (misma jerarquía de contexto que ya usa crm/ats/
+ * referrals para conversaciones reactivas) contra una conversación recién
+ * creada/vacía — sin loop de tools: generar un texto de apertura no
+ * necesita ejecutar acciones, solo redactar. El caller (startReferralConversationAction)
+ * es responsable de crear esa conversación ANTES de llamar acá, y de que
+ * quede en mode:'human' hasta que el asesor confirme el envío. */
+export async function generateReferralOpener(input: {
+  workspaceId: string;
+  conversationId: string;
+  promptId: string;
+  agentId: string;
+}): Promise<{ text: string } | { error: string }> {
+  const supabase = createServiceRoleClient();
+  const credentials = await getOpenRouterCredentials(supabase, input.workspaceId);
+  if (!credentials) return { error: friendlyOpenRouterError(new Error("openrouter_not_configured")) };
+
+  try {
+    const ctxData = await buildContext(supabase, input.workspaceId, input.conversationId, input.promptId, input.agentId, "referrals", credentials.apiKey, "");
+    const result = await complete({
+      apiKey: credentials.apiKey,
+      messages: [ctxData.systemMessage, { role: "user", content: REFERRAL_OPENER_INSTRUCTION }],
+      tools: [],
+      models: ctxData.models,
+      temperature: ctxData.temperature,
+      maxTokens: ctxData.maxTokens,
+    });
+    const text = result.message?.content?.trim();
+    if (!text) return { error: "El modelo no generó ningún mensaje." };
+    return { text };
+  } catch (err) {
+    return { error: friendlyOpenRouterError(err) };
+  }
 }
 
 /**

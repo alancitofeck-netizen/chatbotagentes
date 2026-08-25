@@ -40,8 +40,12 @@ export async function getAiAgentDetailAction(agentId: string) {
 }
 
 /** Crea el agente + un primer prompt en borrador — un agente sin ningún
- * prompt no tendría nada que activar nunca, así que se crea junto. */
-export async function createAiAgent(input: { name: string; description: string; moduleKey: "crm" | "ats" }) {
+ * prompt no tendría nada que activar nunca, así que se crea junto.
+ * `advisorId` solo tiene sentido para `moduleKey==='referrals'` (Fase 4,
+ * Agentes IA de Referidos) — null/undefined = el agente atiende TODOS los
+ * referidos del workspace, no solo los de un asesor puntual
+ * (decisionEngine.ts desambigua por esto si hay más de un agente activo). */
+export async function createAiAgent(input: { name: string; description: string; moduleKey: "crm" | "ats" | "referrals"; advisorId?: string | null }) {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
   if (!input.name.trim()) throw new Error("El nombre es obligatorio.");
@@ -49,7 +53,13 @@ export async function createAiAgent(input: { name: string; description: string; 
   const supabase = await createClient();
   const { data: agent, error } = await supabase
     .from("ai_agents")
-    .insert({ workspace_id: workspaceId, module_key: input.moduleKey, name: input.name.trim(), description: input.description.trim() })
+    .insert({
+      workspace_id: workspaceId,
+      module_key: input.moduleKey,
+      name: input.name.trim(),
+      description: input.description.trim(),
+      advisor_id: input.moduleKey === "referrals" ? (input.advisorId ?? null) : null,
+    })
     .select("id")
     .single();
   if (error || !agent) throw new Error("No se pudo crear el agente.");
@@ -90,6 +100,10 @@ export async function updateAiAgentGeneral(
     maxTokens: number;
     businessHours: BusinessHoursConfig;
     responseMode: ResponseMode;
+    /** Solo aplica si el agente es module_key==='referrals' — el caller
+     * (GeneralTab.tsx) solo manda esto cuando corresponde; para crm/ats se
+     * ignora el valor recibido y siempre se guarda null. */
+    advisorId?: string | null;
   },
 ) {
   const { workspaceId, role } = await requireActiveWorkspace();
@@ -109,6 +123,7 @@ export async function updateAiAgentGeneral(
       max_tokens: input.maxTokens,
       business_hours: input.businessHours,
       response_mode: input.responseMode,
+      advisor_id: target.module_key === "referrals" ? (input.advisorId ?? null) : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", agentId);
@@ -162,6 +177,7 @@ export async function duplicateAiAgent(agentId: string) {
       max_tokens: source.max_tokens,
       business_hours: source.business_hours,
       response_mode: source.response_mode,
+      advisor_id: source.advisor_id,
     })
     .select("id")
     .single();

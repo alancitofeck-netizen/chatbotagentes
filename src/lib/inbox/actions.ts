@@ -123,6 +123,18 @@ export async function updateConversationMode(conversationId: string, mode: strin
     .eq("id", conversationId)
     .eq("workspace_id", workspaceId);
 
+  // Fase 4 (Agentes IA de Referidos, punto 7): "cancelación cuando el
+  // asesor toma la conversación" / "cuando el bot es pausado" — no-op
+  // silencioso para cualquier conversación que no tenga seguimientos
+  // programados (la inmensa mayoría, no son de referidos).
+  if (mode === "human" || mode === "paused") {
+    await supabase
+      .from("referral_followups")
+      .update({ status: "cancelled", cancelled_reason: mode === "human" ? "human_takeover" : "paused" })
+      .eq("conversation_id", conversationId)
+      .eq("status", "pending");
+  }
+
   revalidatePath("/inbox");
 }
 

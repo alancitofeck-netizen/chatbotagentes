@@ -8,6 +8,10 @@ import { getAsesoriaList, getContactAsesorias, getAsesoriaById, getWorkspaceRefe
 import { buildAsesoriaSeed } from "@/lib/asesorias/seed";
 import { getAsesoriaMasterTemplate } from "@/lib/asesorias/masterTemplate";
 import { getWorkspaceReferrals, updateReferralStatus, type ReferralRow, type ReferralStatus } from "@/lib/asesorias/referrals";
+import { getDefaultOutboundBusinessNumber, getOrCreateOpenConversationForContact } from "@/lib/messaging/conversations";
+import { generateReferralOpener } from "@/lib/ai/agentRuntime";
+import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
+import { logActivity } from "@/lib/activity/log";
 
 const ASESORIA_CONTACT_SOURCE = "asesoria";
 
@@ -35,6 +39,106 @@ export async function updateReferralStatusAction(referralId: string, status: Ref
   const { workspaceId } = await requireActiveWorkspace();
   await updateReferralStatus(referralId, workspaceId, status);
   revalidatePath("/asesorias/referidos");
+}
+
+/** "🚀 Iniciar conversación" (Fase 4, Agentes IA de Referidos, punto 4) —
+ * valida referido autorizado + workspace + teléfono + WhatsApp habilitado,
+ * resuelve el agente de referidos (misma desambiguación por advisor_id que
+ * decisionEngine.ts) y genera el mensaje inicial. NO envía nada todavía —
+ * crea/obtiene la conversación en mode:'human' y devuelve el borrador para
+ * que el asesor lo edite; sendReferralConversationMessageAction hace el
+ * envío real recién cuando el asesor confirma. */
+export async function startReferralConversationAction(
+  referralId: string,
+): Promise<{ ok: true; conversationId: string; draftMessage: string } | { ok: false; error: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+
+  const { data: referral } = await supabase
+    .from("asesoria_referrals")
+    .select("id, phone, referred_contact_id, advisor_id")
+    .eq("id", referralId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (!referral) return { ok: false, error: "Referido no encontrado en este workspace." };
+  if (!referral.referred_contact_id) {
+    return { ok: false, error: "Este referido todavía no tiene un contacto vinculado — esperá al próximo autoguardado de la asesoría." };
+  }
+  if (!referral.phone) return { ok: false, error: "Este referido no tiene teléfono cargado." };
+
+  const businessNumber = await getDefaultOutboundBusinessNumber(supabase, workspaceId);
+  if (!businessNumber) return { ok: false, error: "Este workspace todavía no tiene WhatsApp conectado (YCloud o WhatsApp Web)." };
+
+  // Mismo criterio de desambiguación que decisionEngine.ts: preferir el
+  // agente cuyo advisor_id coincide con el del referido, si no el agente
+  // "para todo el workspace" (advisor_id null).
+  const { data: agentsRaw } = await supabase
+    .from("ai_agents")
+    .select("id, advisor_id")
+    .eq("workspace_id", workspaceId)
+    .eq("module_key", "referrals")
+    .eq("status", "active")
+    .contains("channels", ["whatsapp"]);
+  let agents = agentsRaw ?? [];
+  if (agents.length > 1) {
+    const matching = agents.filter((a) => a.advisor_id === referral.advisor_id);
+    agents = matching.length > 0 ? matching : agents.filter((a) => a.advisor_id === null);
+  }
+  if (agents.length === 0) return { ok: false, error: "No hay ningún Agente IA de Referidos activo en este workspace." };
+  if (agents.length > 1) return { ok: false, error: "Hay más de un Agente IA de Referidos activo — dejá uno solo para este asesor." };
+  const agent = agents[0];
+
+  const { data: prompt } = await supabase.from("ai_prompts").select("id").eq("agent_id", agent.id).eq("status", "active").maybeSingle();
+  if (!prompt) return { ok: false, error: "El Agente IA de Referidos todavía no tiene ningún prompt activo." };
+
+  const conversationId = await getOrCreateOpenConversationForContact(
+    supabase,
+    workspaceId,
+    referral.referred_contact_id as string,
+    businessNumber,
+    memberId,
+  );
+
+  const generated = await generateReferralOpener({ workspaceId, conversationId, promptId: prompt.id as string, agentId: agent.id as string });
+  if ("error" in generated) return { ok: false, error: generated.error };
+
+  return { ok: true, conversationId, draftMessage: generated.text };
+}
+
+/** Confirma y envía el mensaje inicial (editado o no) — recién acá la
+ * conversación pasa a mode:'ai', para que el Agente IA de Referidos
+ * atienda las respuestas siguientes (mismo criterio que el flujo de
+ * "aprobar borrador" ya existente en el Inbox: senderType:'agent' porque un
+ * humano es quien efectivamente aprieta enviar, aunque el texto lo haya
+ * redactado la IA). */
+export async function sendReferralConversationMessageAction(
+  conversationId: string,
+  message: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+
+  const trimmed = message.trim();
+  if (!trimmed) return { ok: false, error: "El mensaje no puede estar vacío." };
+
+  const result = await sendOutboundWhatsAppMessage({
+    supabase,
+    workspaceId,
+    conversationId,
+    content: trimmed,
+    senderType: "agent",
+    senderId: memberId,
+  });
+  if (!result.ok) return { ok: false, error: result.error };
+
+  await supabase.from("conversations").update({ mode: "ai" }).eq("id", conversationId).eq("workspace_id", workspaceId);
+  await logActivity(supabase, workspaceId, memberId, "conversation", conversationId, "referral_conversation_started", {});
+
+  revalidatePath("/asesorias/referidos");
+  revalidatePath("/inbox");
+  return { ok: true };
 }
 
 export interface CreateAsesoriaInput {

@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, Calendar, UserRound, Presentation, ArrowUpRight } from "lucide-react";
+import { Phone, Calendar, UserRound, Presentation, ArrowUpRight, Rocket } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
 import { LinkButton } from "@/components/ui/LinkButton";
+import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import type { ReferralRow, ReferralStatus } from "@/lib/asesorias/referrals";
 import { updateReferralStatusAction } from "@/lib/asesorias/actions";
 import { REFERRAL_STATUS_LABEL, REFERRAL_STATUS_VARIANT, REFERRAL_STATUS_OPTIONS } from "./referralStatus";
+import { StartReferralConversationDialog } from "./StartReferralConversationDialog";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
@@ -37,6 +39,7 @@ export function ReferralDetailSheet({
   onStatusUpdated: (referralId: string, status: ReferralStatus) => void;
 }) {
   const [isPending, setIsPending] = useState(false);
+  const [startConversationOpen, setStartConversationOpen] = useState(false);
 
   async function handleStatusChange(status: ReferralStatus) {
     setIsPending(true);
@@ -77,6 +80,13 @@ export function ReferralDetailSheet({
           ))}
         </Select>
 
+        {referral.referredContactId && (
+          <Button onClick={() => setStartConversationOpen(true)} fullWidth>
+            <Rocket className="size-4" aria-hidden="true" />
+            Iniciar conversación
+          </Button>
+        )}
+
         <div className="flex flex-col gap-2 border-t border-border-default pt-4">
           <LinkButton href={`/asesorias/${referral.asesoriaId}/resumen`} variant="secondary" fullWidth>
             Ver asesoría
@@ -90,6 +100,10 @@ export function ReferralDetailSheet({
           )}
         </div>
       </div>
+
+      {startConversationOpen && (
+        <StartReferralConversationDialog referral={referral} onClose={() => setStartConversationOpen(false)} onSent={() => handleStatusChange("contactado")} />
+      )}
     </Sheet>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import type { AiAgentDetail, BusinessHoursConfig } from "@/lib/ai-agents/queries";
 import { updateAiAgentGeneral } from "@/lib/ai-agents/actions";
+import { getWorkspaceMembersListAction } from "@/lib/settings/actions";
+import type { WorkspaceMember } from "@/lib/settings/queries";
 
 const MODELS = [
   "openai/gpt-4o-mini",
@@ -28,7 +30,14 @@ export function GeneralTab({ agent }: { agent: AiAgentDetail }) {
   const [maxTokens, setMaxTokens] = useState(agent.maxTokens);
   const [responseMode, setResponseMode] = useState(agent.responseMode);
   const [businessHours, setBusinessHours] = useState<BusinessHoursConfig>(agent.businessHours);
+  const [advisorId, setAdvisorId] = useState(agent.advisorId ?? "");
+  const [members, setMembers] = useState<WorkspaceMember[] | null>(null);
   const [isPending, startTransition] = useTransition();
+  const isReferralsAgent = agent.moduleKey === "referrals";
+
+  useEffect(() => {
+    if (isReferralsAgent) getWorkspaceMembersListAction().then(setMembers);
+  }, [isReferralsAgent]);
 
   function toggleDay(day: number) {
     setBusinessHours((prev) => ({
@@ -44,7 +53,16 @@ export function GeneralTab({ agent }: { agent: AiAgentDetail }) {
     }
     startTransition(async () => {
       try {
-        await updateAiAgentGeneral(agent.id, { name, description, model, temperature, maxTokens, businessHours, responseMode });
+        await updateAiAgentGeneral(agent.id, {
+          name,
+          description,
+          model,
+          temperature,
+          maxTokens,
+          businessHours,
+          responseMode,
+          advisorId: isReferralsAgent ? advisorId || null : null,
+        });
         toast.success("Cambios guardados.");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo guardar.");
@@ -69,6 +87,33 @@ export function GeneralTab({ agent }: { agent: AiAgentDetail }) {
           </div>
         </div>
       </Card>
+
+      {isReferralsAgent && (
+        <Card>
+          <CardHeader title="Referidos" />
+          <div className="mb-3 flex flex-wrap gap-4 text-sm text-neutral-500">
+            <span>
+              Módulo: <span className="font-medium text-foreground">Referidos</span>
+            </span>
+            <span>
+              Fuente: <span className="font-medium text-foreground">asesoria_referrals</span>
+            </span>
+          </div>
+          <Select label="Asesor asignado (opcional)" value={advisorId} onChange={(e) => setAdvisorId(e.target.value)}>
+            <option value="">Todos los referidos del workspace</option>
+            {(members ?? []).map((m) => (
+              <option key={m.memberId} value={m.memberId}>
+                {m.fullName}
+              </option>
+            ))}
+          </Select>
+          <p className="mt-1.5 text-xs text-neutral-500">
+            Este agente solo puede operar sobre contactos autorizados por la lista de referidos — nunca puede iniciar
+            conversación con cualquier otro contacto del CRM. Si se deja vacío, atiende los referidos de todo el
+            workspace; si se elige un asesor, solo los suyos.
+          </p>
+        </Card>
+      )}
 
       <Card>
         <CardHeader title="Modelo" />
