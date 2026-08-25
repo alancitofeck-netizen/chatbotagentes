@@ -6,7 +6,8 @@ import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TabLink } from "@/components/ui/Tabs";
 
-/** Header + tabs de nivel LISTADO (Resumen | Performance) — mismo patrón que
+/** Header + tabs de nivel LISTADO (Resumen | Performance | Agendas |
+ * Operaciones) — mismo patrón que
  * asesores/[clientId]/layout.tsx para la ficha (gate + header/tabs acá,
  * cada page.tsx re-resuelve su propio workspaceId, mismo criterio ya
  * establecido en toda la sesión). "Resumen" es exactamente el contenido que
@@ -52,6 +53,7 @@ export default async function AsesoresLayout({ children }: { children: ReactNode
             </TabLink>
             <TabLink href="/asesores/performance">Performance</TabLink>
             <TabLink href="/asesores/agendas">Agendas</TabLink>
+            <TabLink href="/asesores/operaciones">Operaciones</TabLink>
           </div>
         </div>
       )}
