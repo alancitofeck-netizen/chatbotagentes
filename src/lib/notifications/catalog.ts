@@ -65,6 +65,7 @@ export const EVENT_CATALOG = {
   ai_execution_error: { category: "ia", priority: "error", icon: AlertTriangle },
   ai_usage_high: { category: "ia", priority: "warning", icon: Gauge },
   ai_quota_exceeded: { category: "ia", priority: "error", icon: Gauge },
+  referral_followup_task_created: { category: "ia", priority: "info", icon: CheckSquare },
 
   // Sistema
   integration_disconnected: { category: "sistema", priority: "warning", icon: PlugZap },

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, Star, Trash2, MessageCircle } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { LinkButton } from "@/components/ui/LinkButton";
 import { tabItemClassName } from "@/components/ui/Tabs";
 import { toast } from "@/components/toast/toast";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
@@ -26,6 +27,20 @@ import { ResumenTab } from "./tabs/ResumenTab";
 import { ComentariosTab } from "./tabs/ComentariosTab";
 import { ArchivosTab } from "./tabs/ArchivosTab";
 import { ActividadTab } from "./tabs/ActividadTab";
+
+/** Detecta un link wa.me ya armado dentro de la descripción de la tarea —
+ * mismo patrón que ya usa el cron de renovación de pólizas (texto plano con
+ * el link embebido, ver policy-automations/route.ts) y ahora también el
+ * cron de seguimientos de referidos (referral-followups/route.ts). Genérico
+ * a propósito: cualquier tarea futura que embeba un link así en su
+ * descripción obtiene el botón real gratis, sin acoplar esto a un
+ * `related_type` puntual. */
+const WA_LINK_PATTERN = /https:\/\/wa\.me\/\S+/;
+
+function extractWaLink(description: string | null): string | null {
+  if (!description) return null;
+  return description.match(WA_LINK_PATTERN)?.[0] ?? null;
+}
 
 type TabKey = "resumen" | "comentarios" | "archivos" | "actividad";
 const TABS: { key: TabKey; label: string }[] = [
@@ -186,6 +201,13 @@ export function TaskDetailShell({
         className="w-full border-none bg-transparent text-[24px] font-semibold tracking-[-0.02em] text-foreground outline-none focus:ring-0"
         aria-label="Título de la tarea"
       />
+
+      {extractWaLink(task.description) && (
+        <LinkButton href={extractWaLink(task.description)!} target="_blank" rel="noopener noreferrer" variant="secondary" className="w-fit bg-success-strong text-white hover:opacity-90">
+          <MessageCircle className="size-4" aria-hidden="true" />
+          Abrir WhatsApp
+        </LinkButton>
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <Select
