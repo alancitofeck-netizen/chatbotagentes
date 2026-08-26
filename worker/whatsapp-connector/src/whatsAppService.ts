@@ -70,7 +70,13 @@ export interface WhatsAppService {
   /** Total number of sessions currently running in this process — used to
    * enforce `WHATSAPP_WEB_MAX_SESSIONS` before starting a new one. */
   runningCount(): number;
-  sendText(sessionId: string, to: string, body: string): Promise<{ externalId?: string }>;
+  /** `resolvedChatId` is the real WhatsApp identity the send actually went
+   * to — only meaningful when `to` was a bare phone number (an
+   * outbound-first send with no chat id yet): the recipient's WhatsApp
+   * privacy settings decide whether that resolves to a normal `@c.us` id or
+   * an anonymous `@lid` one, and the caller needs to know which so it can be
+   * persisted for future inbound replies to match against. */
+  sendText(sessionId: string, to: string, body: string): Promise<{ externalId?: string; resolvedChatId?: string }>;
   /** Graceful process-shutdown hook (SIGTERM/SIGINT) — stop() every running
    * session so no orphaned Chromium processes survive the container. */
   shutdownAll(): Promise<void>;

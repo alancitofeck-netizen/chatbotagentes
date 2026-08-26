@@ -51,3 +51,24 @@ export async function isPhoneAuthorizedReferral(supabase: SupabaseClient, worksp
   const { data } = await supabase.from("asesoria_referrals").select("id").eq("workspace_id", workspaceId).eq("phone", digits).limit(1).maybeSingle();
   return data !== null;
 }
+
+/** Segunda vía de autorización, además del teléfono — necesaria porque
+ * WhatsApp Web puede entregar un mensaje entrante sin teléfono real en
+ * absoluto (modo "LID" de privacidad de número del contacto, cada vez más
+ * común). Si este chat id ya es la conversación de un referido (fue creada
+ * por el flujo de referidos y quedó registrada en
+ * `conversations.whatsapp_web_chat_id` al mandarle el primer mensaje — ver
+ * send.ts), la existencia misma de esa conversación YA es la prueba de
+ * autorización: no hace falta re-verificar el teléfono en cada respuesta.
+ * El filtro por teléfono sigue aplicando tal cual para cualquier chat
+ * genuinamente nuevo/desconocido. */
+export async function isKnownReferralConversationChatId(supabase: SupabaseClient, workspaceId: string, chatId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("whatsapp_web_chat_id", chatId)
+    .limit(1)
+    .maybeSingle();
+  return data !== null;
+}

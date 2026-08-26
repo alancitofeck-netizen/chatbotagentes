@@ -13,6 +13,7 @@ import {
   getAgentKnowledgeBase,
   getAgentTestRuns,
   getAgentMetrics,
+  getReferralAgentsAutoStartSummary,
   type BusinessHoursConfig,
   type ResponseMode,
   type AgentPersonality,
@@ -238,6 +239,36 @@ export async function updateAiAgentGeneral(
     })
     .eq("id", agentId);
 
+  revalidatePath(AI_AGENTS_PATH);
+}
+
+const REFERIDOS_PATH = "/asesorias/referidos";
+
+export async function getReferralAgentsAutoStartSummaryAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getReferralAgentsAutoStartSummary(workspaceId);
+}
+
+/** Switch automático/manual, duplicado en Asesorías → Referidos (además del
+ * que ya existía en la ficha completa del agente, GeneralTab.tsx) para que
+ * el asesor no tenga que navegar a Agentes IA solo para esto — pedido
+ * explícito. Guarda solo esta columna, a diferencia de updateAiAgentGeneral
+ * que reescribe la ficha entera. */
+export async function updateReferralAgentAutoStartAction(agentId: string, enabled: boolean): Promise<void> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const target = await getOwnAgent(workspaceId, agentId);
+  if (!target) throw new Error("Agente no encontrado en este workspace.");
+  if (target.module_key !== "referrals") throw new Error("Este agente no es un agente de referidos.");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("ai_agents")
+    .update({ auto_start_conversations: enabled, updated_at: new Date().toISOString() })
+    .eq("id", agentId);
+  if (error) throw new Error("No se pudo actualizar el modo del agente.");
+
+  revalidatePath(REFERIDOS_PATH);
   revalidatePath(AI_AGENTS_PATH);
 }
 

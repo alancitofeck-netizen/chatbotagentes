@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { assertModuleEnabled } from "@/lib/settings/queries";
 import { getAsesoriaReferralsAction } from "@/lib/asesorias/actions";
+import { getReferralAgentsAutoStartSummaryAction } from "@/lib/ai-agents/actions";
 import { ReferidosShell } from "./ReferidosShell";
 import { RealtimeRefresh } from "../RealtimeRefresh";
 
@@ -15,7 +16,7 @@ export default async function ReferidosPage() {
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "asesorias");
 
-  const referrals = await getAsesoriaReferralsAction();
+  const [referrals, referralAgents] = await Promise.all([getAsesoriaReferralsAction(), getReferralAgentsAutoStartSummaryAction()]);
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
@@ -29,7 +30,7 @@ export default async function ReferidosPage() {
         <p className="text-sm text-neutral-500">Personas referidas por los prospectos durante las asesorías.</p>
       </div>
       <div className="px-4 sm:px-6 lg:px-8">
-        <ReferidosShell initialReferrals={referrals} />
+        <ReferidosShell initialReferrals={referrals} initialReferralAgents={referralAgents} />
       </div>
     </div>
   );

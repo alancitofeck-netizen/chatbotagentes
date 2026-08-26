@@ -262,6 +262,22 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
         return { ok: false, error: "whatsapp_web_send_failed" };
       }
       sentMessage = { externalId: result.externalId ?? null, wamid: null, status: "sent" };
+
+      // Primer mensaje a un contacto sin chat id conocido todavía (ver
+      // comentario de `target` arriba) — el worker acaba de resolver a qué
+      // identidad de WhatsApp le mandó realmente (puede ser un @lid si el
+      // destinatario tiene la privacidad de número activada). Guardarlo acá
+      // es lo que permite que una respuesta futura de ese contacto se
+      // reconozca como esta misma conversación en vez de perderse (ver
+      // referralAuthorization.ts).
+      if (!chatId && result.resolvedChatId) {
+        const { error: chatIdError } = await serviceClient
+          .from("conversations")
+          .update({ whatsapp_web_chat_id: result.resolvedChatId })
+          .eq("id", conversationId)
+          .is("whatsapp_web_chat_id", null);
+        if (chatIdError) console.error("[send] failed to persist resolved whatsapp_web_chat_id:", chatIdError);
+      }
     } catch (err) {
       console.error("[send] error calling the WhatsApp Web worker:", err);
       return { ok: false, error: "whatsapp_web_worker_unreachable" };

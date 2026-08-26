@@ -108,6 +108,44 @@ export async function getAiAgentDetail(workspaceId: string, agentId: string): Pr
   return data ? mapAgentRow(data) : null;
 }
 
+export interface ReferralAgentAutoStartSummary {
+  id: string;
+  name: string;
+  advisorName: string | null;
+  autoStartConversations: boolean;
+}
+
+/** Resumen liviano para el switch automático/manual en Asesorías → Referidos
+ * — evita traer la ficha completa del agente (prompt, personalidad, etc.)
+ * solo para mostrar un toggle. Puede haber más de un agente de referidos
+ * activo (uno por asesor, mismo criterio de desambiguación que
+ * decisionEngine.ts/autoStartConversation.ts) — se listan todos. */
+export async function getReferralAgentsAutoStartSummary(workspaceId: string): Promise<ReferralAgentAutoStartSummary[]> {
+  const supabase = await createClient();
+  const [{ data }, { data: memberNames }] = await Promise.all([
+    supabase
+      .from("ai_agents")
+      .select("id, name, auto_start_conversations, advisor_id")
+      .eq("workspace_id", workspaceId)
+      .eq("module_key", "referrals")
+      .eq("status", "active")
+      .order("created_at", { ascending: false }),
+    // Mismo patrón que getAgentAdvisorInfo (más arriba en este archivo): no
+    // hay un nombre resuelto como columna directa en workspace_members, se
+    // resuelve vía esta RPC.
+    supabase.rpc("workspace_member_names", { ws_id: workspaceId }),
+  ]);
+  const rows = data ?? [];
+  const names = (memberNames ?? []) as { member_id: string; full_name: string }[];
+
+  return rows.map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    advisorName: row.advisor_id ? (names.find((m) => m.member_id === row.advisor_id)?.full_name ?? null) : null,
+    autoStartConversations: (row.auto_start_conversations as boolean | null) ?? false,
+  }));
+}
+
 export interface AiPromptVersion {
   id: string;
   name: string;

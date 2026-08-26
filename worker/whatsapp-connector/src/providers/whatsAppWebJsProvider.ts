@@ -242,7 +242,7 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
    * an already-known chat id needs no phone-to-JID resolution AT ALL, which
    * is what makes this reliable for replies — getNumberId() is only ever
    * reached for the outbound-first case. */
-  async sendText(sessionId: string, to: string, body: string): Promise<{ externalId?: string }> {
+  async sendText(sessionId: string, to: string, body: string): Promise<{ externalId?: string; resolvedChatId?: string }> {
     const managed = this.sessions.get(sessionId);
     if (!managed) throw new Error(`session ${sessionId} has no active client in this process`);
 
@@ -254,7 +254,7 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
     if (chatId) {
       console.log(`[whatsAppWebJsProvider] sending directly to known chatId="${chatId}"`);
       const result = await managed.client.sendMessage(chatId, body);
-      return { externalId: result?.id?._serialized };
+      return { externalId: result?.id?._serialized, resolvedChatId: chatId };
     }
 
     const digits = to.replace(/[^0-9]/g, "");
@@ -262,7 +262,7 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
     console.log(`[whatsAppWebJsProvider] no chatId known — phoneNumber="${to}" digits="${digits}" jid="${jid}"`);
     try {
       const result = await managed.client.sendMessage(jid, body);
-      return { externalId: result?.id?._serialized };
+      return { externalId: result?.id?._serialized, resolvedChatId: jid };
     } catch (directErr) {
       console.log(`[whatsAppWebJsProvider] direct send to jid="${jid}" failed, falling back to getNumberId(digits="${digits}")`);
       const numberId = await managed.client.getNumberId(digits).catch((err) => {
@@ -271,8 +271,13 @@ export class WhatsAppWebJsProvider implements WhatsAppService {
       });
       console.log("[whatsAppWebJsProvider] getNumberId result:", numberId);
       if (!numberId) throw directErr;
+      // El recipiente puede tener la privacidad de número activada en
+      // WhatsApp — acá es donde eso se manifiesta: numberId._serialized
+      // puede ser un "@lid" en vez de un "@c.us" normal. Se lo devolvemos tal
+      // cual al caller para que lo persista, así una respuesta futura de
+      // este mismo contacto se pueda reconocer sin depender de su teléfono.
       const result = await managed.client.sendMessage(numberId._serialized, body);
-      return { externalId: result?.id?._serialized };
+      return { externalId: result?.id?._serialized, resolvedChatId: numberId._serialized };
     }
   }
 

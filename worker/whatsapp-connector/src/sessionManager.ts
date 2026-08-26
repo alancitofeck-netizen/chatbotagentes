@@ -161,9 +161,9 @@ export async function logoutSession(sessionId: string): Promise<void> {
   });
 }
 
-export async function sendTextMessage(sessionId: string, to: string, body: string): Promise<{ ok: boolean; externalId?: string }> {
+export async function sendTextMessage(sessionId: string, to: string, body: string): Promise<{ ok: boolean; externalId?: string; resolvedChatId?: string }> {
   const result = await service.sendText(sessionId, to, body);
-  return { ok: true, externalId: result.externalId };
+  return { ok: true, externalId: result.externalId, resolvedChatId: result.resolvedChatId };
 }
 
 /** Called once at boot — a worker redeploy/restart must not force every

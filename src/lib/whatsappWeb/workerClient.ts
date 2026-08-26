@@ -57,6 +57,12 @@ export async function logoutWorkerSession(sessionId: string): Promise<void> {
 export interface WorkerSendResult {
   ok: boolean;
   externalId?: string;
+  /** The real WhatsApp identity the send resolved to when `to` was a bare
+   * phone number (no chat id known yet) — a normal `@c.us` id, or an
+   * anonymous `@lid` one if the recipient has WhatsApp's number-privacy
+   * setting on. Only meaningful in that case; absent for a reply sent
+   * straight to an already-known chat id. */
+  resolvedChatId?: string;
 }
 
 export async function sendViaWorker(sessionId: string, to: string, body: string): Promise<WorkerSendResult> {

@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Search, Copy, MessageCircle, Eye, ArrowUpRight, AlertTriangle, Users, UserCheck, PhoneCall, Handshake } from "lucide-react";
+import { Search, Copy, MessageCircle, Eye, ArrowUpRight, AlertTriangle, Users, UserCheck, PhoneCall, Handshake, Bot } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Switch } from "@/components/ui/Switch";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "@/components/toast/toast";
 import type { ReferralRow, ReferralStatus } from "@/lib/asesorias/referrals";
+import type { ReferralAgentAutoStartSummary } from "@/lib/ai-agents/queries";
+import { updateReferralAgentAutoStartAction } from "@/lib/ai-agents/actions";
 import { REFERRAL_STATUS_LABEL, REFERRAL_STATUS_VARIANT } from "./referralStatus";
 import { ReferralDetailSheet } from "./ReferralDetailSheet";
 
@@ -38,7 +41,71 @@ function KpiTile({ icon, value, label }: { icon: React.ReactNode; value: number;
   );
 }
 
-export function ReferidosShell({ initialReferrals }: { initialReferrals: ReferralRow[] }) {
+function ReferralAgentModeCard({ agents }: { agents: ReferralAgentAutoStartSummary[] }) {
+  const [state, setState] = useState(agents);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  if (state.length === 0) return null;
+
+  function handleToggle(agentId: string, enabled: boolean) {
+    setPendingId(agentId);
+    startTransition(async () => {
+      try {
+        await updateReferralAgentAutoStartAction(agentId, enabled);
+        setState((prev) => prev.map((a) => (a.id === agentId ? { ...a, autoStartConversations: enabled } : a)));
+        toast.success(enabled ? "Modo automático activado." : "Modo manual activado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo cambiar el modo.");
+      } finally {
+        setPendingId(null);
+      }
+    });
+  }
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span className="flex size-8 items-center justify-center rounded-full bg-accent-100 text-accent-700">
+          <Bot className="size-[18px]" aria-hidden="true" />
+        </span>
+        <div>
+          <p className="text-sm font-medium text-foreground">Conversaciones con referidos</p>
+          <p className="text-xs text-neutral-500">Automático: la IA le escribe sola a cada referido nuevo. Manual: hay que apretar &quot;Iniciar conversación&quot; en cada uno.</p>
+        </div>
+      </div>
+      <div className="flex flex-col divide-y divide-border-default">
+        {state.map((agent) => (
+          <div key={agent.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+            <div>
+              <p className="text-sm font-medium text-foreground">{agent.name}</p>
+              {agent.advisorName && <p className="text-xs text-neutral-500">Asesor: {agent.advisorName}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-medium ${agent.autoStartConversations ? "text-success-strong" : "text-neutral-500"}`}>
+                {agent.autoStartConversations ? "Automático" : "Manual"}
+              </span>
+              <Switch
+                checked={agent.autoStartConversations}
+                onChange={(checked) => handleToggle(agent.id, checked)}
+                disabled={isPending && pendingId === agent.id}
+                label={`Modo de conversación para ${agent.name}`}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+export function ReferidosShell({
+  initialReferrals,
+  initialReferralAgents,
+}: {
+  initialReferrals: ReferralRow[];
+  initialReferralAgents: ReferralAgentAutoStartSummary[];
+}) {
   const [referrals, setReferrals] = useState(initialReferrals);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReferralStatus | "all">("all");
@@ -98,6 +165,8 @@ export function ReferidosShell({ initialReferrals }: { initialReferrals: Referra
 
   return (
     <div className="flex flex-col gap-4">
+      <ReferralAgentModeCard agents={initialReferralAgents} />
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiTile icon={<Users className="size-[18px]" aria-hidden="true" />} value={total} label="Total referidos" />
         <KpiTile icon={<UserCheck className="size-[18px]" aria-hidden="true" />} value={nuevos} label="Referidos nuevos" />

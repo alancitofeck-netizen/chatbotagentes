@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { ingestInboundWhatsAppMessage, ingestWhatsAppStatusUpdate } from "@/lib/messaging/ingest";
-import { isReferralsOnlyModeEnabled, isPhoneAuthorizedReferral } from "@/lib/messaging/referralAuthorization";
+import { isReferralsOnlyModeEnabled, isPhoneAuthorizedReferral, isKnownReferralConversationChatId } from "@/lib/messaging/referralAuthorization";
 
 /**
  * Receives events from the standalone WhatsApp Web worker
@@ -112,14 +112,17 @@ export async function POST(request: NextRequest) {
   if (payload.type === "message" && payload.message) {
     // "Solo Referidos CRM" — mismo gate que ycloud/route.ts, ver
     // src/lib/messaging/referralAuthorization.ts. Un chat en modo LID
-    // (fromPhone null — WhatsApp oculta el número real) nunca se puede
-    // verificar contra asesoria_referrals, así que con el modo activo se
-    // descarta por no poder confirmarse, en vez de asumir que está
-    // autorizado.
+    // (fromPhone null — WhatsApp oculta el número real) no se puede
+    // verificar contra asesoria_referrals por teléfono — pero si su chat id
+    // ya corresponde a una conversación existente (el referido nos
+    // respondió una vez que YA le escribimos primero, ver el guardado en
+    // send.ts), esa conversación en sí ya es la prueba de autorización. Sin
+    // esto, cualquier referido con la privacidad de número activada en
+    // WhatsApp jamás podría contestar — su respuesta se descartaría siempre.
     if (await isReferralsOnlyModeEnabled(supabase, payload.workspaceId)) {
-      const authorized = payload.message.fromPhone
-        ? await isPhoneAuthorizedReferral(supabase, payload.workspaceId, payload.message.fromPhone)
-        : false;
+      const authorized =
+        (await isKnownReferralConversationChatId(supabase, payload.workspaceId, payload.message.chatId)) ||
+        (payload.message.fromPhone ? await isPhoneAuthorizedReferral(supabase, payload.workspaceId, payload.message.fromPhone) : false);
       if (!authorized) {
         console.log(
           `[whatsapp-web-webhook] "Solo Referidos CRM" activo — ${payload.message.fromPhone ?? "(LID, sin número)"} no es un referido autorizado en workspace ${payload.workspaceId}, descartando.`,
