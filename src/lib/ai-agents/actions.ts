@@ -22,6 +22,7 @@ import { ingestKnowledgeDocument } from "@/lib/ai-agents/knowledgeBase";
 import { runSandboxTurn } from "@/lib/ai/agentRuntime";
 import { notifyManagers } from "@/lib/notifications/service";
 import { getAdvisorProfile, analyzeAdvisor } from "@/lib/ai-agents/advisorProfile";
+import { getCachedAgentSuggestions, generateAgentSuggestions, getSuggestionForReview, markSuggestionReviewed } from "@/lib/ai-agents/suggestions";
 
 const AI_AGENTS_PATH = "/crm";
 
@@ -501,4 +502,71 @@ export async function analyzeAdvisorAction(agentId: string) {
   const profile = await analyzeAdvisor(workspaceId, (agent.advisor_id as string | null) ?? null);
   revalidatePath(AI_AGENTS_PATH);
   return profile;
+}
+
+// ---------------------------------------------------------------------------
+// Análisis IA / sugerencias (Fase 11)
+// ---------------------------------------------------------------------------
+
+/** Solo lectura del último batch — nunca dispara OpenRouter. */
+export async function getAgentSuggestionsAction(agentId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const agent = await getOwnAgent(workspaceId, agentId);
+  if (!agent) throw new Error("Agente no encontrado en este workspace.");
+  return getCachedAgentSuggestions(workspaceId, agentId);
+}
+
+/** "Generar sugerencias" — mismo gate que el resto de la configuración del
+ * agente (owner/admin). Único punto que llama OpenRouter; nada se aplica
+ * solo, cada sugerencia queda 'pending' hasta que un humano la revisa
+ * (reviewAgentSuggestionAction). */
+export async function generateAgentSuggestionsAction(agentId: string) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const agent = await getOwnAgent(workspaceId, agentId);
+  if (!agent) throw new Error("Agente no encontrado en este workspace.");
+  const suggestions = await generateAgentSuggestions(workspaceId, agentId);
+  revalidatePath(AI_AGENTS_PATH);
+  return suggestions;
+}
+
+/** Aceptar/Rechazar/Editar — en "accept" aplica el cambio EXCLUSIVAMENTE a
+ * través de las Server Actions ya existentes de este mismo archivo
+ * (updateAiAgentPersonality/toggleAgentTool/createAgentPromptVersion),
+ * nunca con un update crudo a ai_agents/ai_prompts. `editedValue` reemplaza
+ * el texto propuesto por la IA cuando el usuario lo edita antes de aceptar
+ * (una regla nueva, o el prompt reescrito completo). Un prompt aceptado
+ * siempre queda en borrador — activar es un paso aparte que el usuario hace
+ * él mismo en la pestaña Prompt, mismo flujo de 2 pasos ya existente. */
+export async function reviewAgentSuggestionAction(suggestionId: string, decision: "accept" | "reject", editedValue?: string) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const memberId = await getCurrentMemberId(workspaceId);
+
+  const suggestion = await getSuggestionForReview(workspaceId, suggestionId);
+  if (!suggestion) throw new Error("Sugerencia no encontrada o ya revisada.");
+
+  if (decision === "accept") {
+    const target = await getOwnAgent(workspaceId, suggestion.agentId);
+    if (!target) throw new Error("Agente no encontrado en este workspace.");
+
+    if (suggestion.field === "rules") {
+      const newRule = (editedValue ?? (suggestion.proposedValue?.newRule as string | undefined))?.trim();
+      if (!newRule) throw new Error("No hay una regla propuesta para aplicar.");
+      const agent = await getAiAgentDetail(workspaceId, suggestion.agentId);
+      if (!agent) throw new Error("Agente no encontrado en este workspace.");
+      await updateAiAgentPersonality(suggestion.agentId, { personality: agent.personality, rules: [...agent.rules, newRule] });
+    } else if (suggestion.field === "tools") {
+      const toolId = suggestion.proposedValue?.toolId as string | undefined;
+      if (!toolId) throw new Error("No hay una herramienta asociada a esta sugerencia.");
+      await toggleAgentTool(suggestion.agentId, toolId, false);
+    } else if (suggestion.field === "prompt") {
+      const systemPrompt = (editedValue ?? (suggestion.proposedValue?.systemPrompt as string | undefined))?.trim();
+      if (!systemPrompt) throw new Error("No hay un prompt propuesto para aplicar.");
+      await createAgentPromptVersion(suggestion.agentId, systemPrompt, {});
+    }
+  }
+
+  await markSuggestionReviewed(suggestionId, decision, memberId);
+  revalidatePath(AI_AGENTS_PATH);
 }

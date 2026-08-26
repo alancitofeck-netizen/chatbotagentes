@@ -17,6 +17,7 @@ import { GeneralTab } from "./tabs/GeneralTab";
 import { PromptTab } from "./tabs/PromptTab";
 import { PersonalityTab } from "./tabs/PersonalityTab";
 import { AdvisorProfileTab } from "./tabs/AdvisorProfileTab";
+import { SuggestionsTab } from "./tabs/SuggestionsTab";
 import { ToolsTab } from "./tabs/ToolsTab";
 import { KnowledgeBaseTab } from "./tabs/KnowledgeBaseTab";
 import { ChannelsTab } from "./tabs/ChannelsTab";
@@ -24,8 +25,20 @@ import { TestTab } from "./tabs/TestTab";
 import { HistoryTab } from "./tabs/HistoryTab";
 import { MetricsTab } from "./tabs/MetricsTab";
 
-type Tab = "general" | "prompt" | "personalidad" | "perfil-asesor" | "herramientas" | "conocimiento" | "canales" | "pruebas" | "historial" | "metricas";
-const VALID_TABS: Tab[] = ["general", "prompt", "personalidad", "perfil-asesor", "herramientas", "conocimiento", "canales", "pruebas", "historial", "metricas"];
+type Tab = "general" | "prompt" | "personalidad" | "perfil-asesor" | "herramientas" | "conocimiento" | "canales" | "pruebas" | "historial" | "metricas" | "analisis-ia";
+const VALID_TABS: Tab[] = [
+  "general",
+  "prompt",
+  "personalidad",
+  "perfil-asesor",
+  "herramientas",
+  "conocimiento",
+  "canales",
+  "pruebas",
+  "historial",
+  "metricas",
+  "analisis-ia",
+];
 
 export function AiAgentDetailView({
   agent,
@@ -82,6 +95,7 @@ export function AiAgentDetailView({
           <TabsTrigger value="pruebas">Pruebas</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="metricas">Métricas</TabsTrigger>
+          <TabsTrigger value="analisis-ia">Análisis IA</TabsTrigger>
         </TabsList>
 
         <div className="pt-4">
@@ -116,6 +130,9 @@ export function AiAgentDetailView({
           </TabsContent>
           <TabsContent value="metricas">
             <MetricsTab metrics={metrics} />
+          </TabsContent>
+          <TabsContent value="analisis-ia">
+            <SuggestionsTab agentId={agent.id} />
           </TabsContent>
         </div>
       </Tabs>
