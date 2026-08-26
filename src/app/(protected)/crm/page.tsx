@@ -8,7 +8,6 @@ import { getAgentList, getTeams } from "@/lib/agents/queries";
 import { getAllWorkspacesForSupervision } from "@/lib/platform/queries";
 import { getWorkspaceMembers, getWorkspaceTags } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
-import { getAiAgentList } from "@/lib/ai-agents/queries";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { CrmPageShell } from "./CrmPageShell";
 
@@ -33,10 +32,14 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   // Workspace module (/tasks, same promotion CrmAtsTabStrip.tsx already
   // documents for KPIs) — this keeps old ?tab=tasks bookmarks/links alive.
   if (tab === "tasks") redirect("/tasks");
+  // Same promotion, now for "Agentes IA" — moved to its own top-level
+  // module (/agentes-ia) so it's not just a CRM sub-tab, since it also
+  // configures agents for module_key='ats'/'referrals', not only CRM.
+  if (tab === "agentes-ia") redirect("/agentes-ia");
 
   const isPlatformAdmin = await checkIsPlatformAdmin();
 
-  const [initialBoard, initialPipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, aiAgents, moduleStatus, platformWorkspaces] =
+  const [initialBoard, initialPipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, moduleStatus, platformWorkspaces] =
     await Promise.all([
       getCrmBoard(workspaceId),
       getCrmPipelines(workspaceId),
@@ -48,7 +51,6 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
       getContactOptions(workspaceId),
       getConversationOptions(workspaceId),
       getCurrentMemberId(workspaceId),
-      getAiAgentList(workspaceId),
       getWorkspaceModuleStatus(workspaceId),
       isPlatformAdmin ? getAllWorkspacesForSupervision() : Promise.resolve([]),
     ]);
@@ -88,7 +90,6 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         conversationOptions={conversationOptions}
         canAssignOthers={role === "owner" || role === "admin"}
         ownMemberId={ownMemberId}
-        aiAgents={aiAgents}
         atsEnabled={atsEnabled}
         isAgent={isRealAgent}
         isOwner={role === "owner"}

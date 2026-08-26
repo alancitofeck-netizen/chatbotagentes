@@ -126,7 +126,7 @@ export function WorkspaceSection({
             </div>
           </div>
           <Link
-            href="/crm?tab=agentes-ia"
+            href="/agentes-ia"
             className="flex items-center gap-1 text-sm font-medium text-accent-600 hover:underline"
           >
             Abrir <ArrowRight className="size-3.5" aria-hidden="true" />

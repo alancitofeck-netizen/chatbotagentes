@@ -31,16 +31,16 @@ export interface ReferralRow {
  * 0120_asesoria_referrals.sql), con el nombre del prospecto/asesor
  * resueltos reutilizando getAsesoriaList (mismo dato que ya arma el
  * listado principal) en vez de duplicar el join/RPC acá. */
-export async function getWorkspaceReferrals(workspaceId: string): Promise<ReferralRow[]> {
+export async function getWorkspaceReferrals(workspaceId: string, advisorId?: string): Promise<ReferralRow[]> {
   const supabase = await createClient();
-  const [{ data: referrals }, asesorias] = await Promise.all([
-    supabase
-      .from("asesoria_referrals")
-      .select("id, asesoria_id, advisor_id, referred_contact_id, name, phone, status, created_at, updated_at")
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false }),
-    getAsesoriaList(workspaceId),
-  ]);
+  let referralsQuery = supabase
+    .from("asesoria_referrals")
+    .select("id, asesoria_id, advisor_id, referred_contact_id, name, phone, status, created_at, updated_at")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false });
+  if (advisorId) referralsQuery = referralsQuery.eq("advisor_id", advisorId);
+
+  const [{ data: referrals }, asesorias] = await Promise.all([referralsQuery, getAsesoriaList(workspaceId)]);
 
   const asesoriaById = new Map(asesorias.map((a) => [a.id, a]));
 

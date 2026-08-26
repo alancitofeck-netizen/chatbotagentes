@@ -26,7 +26,7 @@ export function ToolsTab({ agentId, tools, initialToolIds }: { agentId: string; 
     <Card>
       <CardHeader title="Funciones del CRM disponibles" />
       <p className="mb-3 text-sm text-neutral-500">Elegí qué puede hacer este agente además de conversar.</p>
-      <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {tools.map((t) => {
           const active = toolIds.includes(t.id);
           return (

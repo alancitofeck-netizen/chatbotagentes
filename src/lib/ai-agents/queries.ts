@@ -282,3 +282,147 @@ export async function getAgentMetrics(workspaceId: string, agentId: string): Pro
     daily: Array.from(dayBuckets.values()),
   };
 }
+
+export interface AgentAdvisorInfo {
+  fullName: string;
+  avatarUrl: string | null;
+  email: string;
+  role: string;
+}
+
+/** Mismo patrón que getAsesoriaList (asesorias/queries.ts): un round-trip a
+ * la RPC workspace_member_names para resolver nombre/avatar/email — no hay
+ * teléfono unido a workspace_members en ningún lado del esquema, así que no
+ * se pide/muestra acá. */
+export async function getAgentAdvisorInfo(workspaceId: string, advisorId: string | null): Promise<AgentAdvisorInfo | null> {
+  if (!advisorId) return null;
+  const supabase = await createClient();
+  const [{ data: memberNames }, { data: memberRow }] = await Promise.all([
+    supabase.rpc("workspace_member_names", { ws_id: workspaceId }),
+    supabase.from("workspace_members").select("role").eq("id", advisorId).maybeSingle(),
+  ]);
+  const match = (memberNames ?? []).find((m: { member_id: string }) => m.member_id === advisorId) as
+    | { member_id: string; full_name: string; email: string; avatar_url: string | null }
+    | undefined;
+  if (!match) return null;
+  return { fullName: match.full_name, avatarUrl: match.avatar_url ?? null, email: match.email, role: (memberRow?.role as string) ?? "member" };
+}
+
+export interface AgentReferralActivityStats {
+  conversacionesActivas: number;
+  mensajesEnviados: number;
+  respuestasRecibidas: number;
+  tasaRespuestaPct: number | null;
+  citasGeneradas: number;
+  conversionACitaPct: number | null;
+  seguimientosRealizados: number;
+}
+
+const ACTIVITY_WINDOW_DAYS = 14; // mismo período que getAgentMetrics, para que ambos paneles muestren números consistentes entre sí
+
+/** "Mensajes enviados"/"Respuestas recibidas" son una aproximación real (no
+ * inventada): `messages` no tiene agent_id (ver comentario en
+ * getAgentMetrics), así que se cuentan los mensajes dentro de las
+ * conversation_id que usage_events ya vincula a este agente — el mismo join
+ * que ya usa conversationsHandled. "Citas generadas" viene de `bookings`
+ * (creada por el tool create_appointment) para los contactos de los
+ * referidos de este asesor. "Seguimientos realizados" cuenta
+ * referral_followups en status='sent' para esos mismos referidos. */
+export async function getAgentReferralActivityStats(workspaceId: string, agent: AiAgentDetail): Promise<AgentReferralActivityStats | null> {
+  if (agent.moduleKey !== "referrals" || !agent.advisorId) return null;
+  const supabase = await createClient();
+  const since = new Date(Date.now() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  const [{ data: usageRows }, { data: referralRows }] = await Promise.all([
+    supabase
+      .from("usage_events")
+      .select("conversation_id")
+      .eq("workspace_id", workspaceId)
+      .eq("agent_id", agent.id)
+      .eq("is_sandbox", false)
+      .gte("created_at", since),
+    supabase.from("asesoria_referrals").select("id, referred_contact_id").eq("workspace_id", workspaceId).eq("advisor_id", agent.advisorId),
+  ]);
+
+  const conversationIds = [...new Set((usageRows ?? []).map((r) => r.conversation_id as string).filter(Boolean))];
+  const referralIds = (referralRows ?? []).map((r) => r.id as string);
+  const contactIds = [...new Set((referralRows ?? []).map((r) => r.referred_contact_id as string | null).filter((id): id is string => Boolean(id)))];
+
+  let conversacionesActivas = 0;
+  let mensajesEnviados = 0;
+  let respuestasRecibidas = 0;
+  if (conversationIds.length) {
+    const [{ data: convRows }, { count: outboundCount }, { count: inboundCount }] = await Promise.all([
+      supabase.from("conversations").select("id, status").in("id", conversationIds),
+      supabase.from("messages").select("id", { count: "exact", head: true }).in("conversation_id", conversationIds).eq("direction", "outbound"),
+      supabase.from("messages").select("id", { count: "exact", head: true }).in("conversation_id", conversationIds).eq("direction", "inbound"),
+    ]);
+    conversacionesActivas = (convRows ?? []).filter((c) => c.status !== "closed").length;
+    mensajesEnviados = outboundCount ?? 0;
+    respuestasRecibidas = inboundCount ?? 0;
+  }
+
+  let citasGeneradas = 0;
+  if (contactIds.length) {
+    const { count } = await supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .in("contact_id", contactIds)
+      .gte("created_at", since);
+    citasGeneradas = count ?? 0;
+  }
+
+  let seguimientosRealizados = 0;
+  if (referralIds.length) {
+    const { count } = await supabase.from("referral_followups").select("id", { count: "exact", head: true }).in("referral_id", referralIds).eq("status", "sent");
+    seguimientosRealizados = count ?? 0;
+  }
+
+  return {
+    conversacionesActivas,
+    mensajesEnviados,
+    respuestasRecibidas,
+    tasaRespuestaPct: mensajesEnviados > 0 ? Math.round((respuestasRecibidas / mensajesEnviados) * 100) : null,
+    citasGeneradas,
+    conversionACitaPct: referralIds.length > 0 ? Math.round((citasGeneradas / referralIds.length) * 100) : null,
+    seguimientosRealizados,
+  };
+}
+
+export interface AgentFollowupRow {
+  id: string;
+  referralName: string;
+  referralPhone: string;
+  attemptNumber: number;
+  scheduledAt: string;
+  status: "pending" | "sent" | "cancelled";
+  cancelledReason: string | null;
+}
+
+/** Sin UI propia hoy (confirmado — ninguna pantalla lista referral_followups
+ * todavía). Solo lectura: el cron (api/cron/referral-followups) es el único
+ * que las despacha, acá no se agrega ninguna acción de escritura. */
+export async function getAgentFollowups(workspaceId: string, advisorId: string | null): Promise<AgentFollowupRow[]> {
+  if (!advisorId) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("referral_followups")
+    .select("id, attempt_number, scheduled_at, status, cancelled_reason, asesoria_referrals!inner(name, phone, advisor_id)")
+    .eq("workspace_id", workspaceId)
+    .eq("asesoria_referrals.advisor_id", advisorId)
+    .order("scheduled_at", { ascending: false });
+
+  return (data ?? []).map((r) => {
+    const referral = r.asesoria_referrals as unknown as { name: string; phone: string };
+    return {
+      id: r.id as string,
+      referralName: referral.name,
+      referralPhone: referral.phone,
+      attemptNumber: r.attempt_number as number,
+      scheduledAt: r.scheduled_at as string,
+      status: r.status as AgentFollowupRow["status"],
+      cancelledReason: (r.cancelled_reason as string | null) ?? null,
+    };
+  });
+}

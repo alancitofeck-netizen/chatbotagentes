@@ -101,7 +101,10 @@ async function getAgentToolCallStats(workspaceId: string, agentId: string): Prom
   return [...byTool.values()];
 }
 
-async function getAgentReferralStats(workspaceId: string, advisorId: string | null): Promise<ReferralStats | null> {
+/** Exportada además para el panel de estadísticas del detalle del agente
+ * (AgentStatsPanel.tsx) — mismo criterio: sin advisor_id puntual no hay un
+ * conjunto de referidos propio que medir. */
+export async function getAgentReferralStats(workspaceId: string, advisorId: string | null): Promise<ReferralStats | null> {
   if (!advisorId) return null; // agente sin advisor_id (no es de módulo referrals, o atiende a todos) — sin un asesor puntual no hay un conjunto de referidos propio que medir
   const supabase = createServiceRoleClient();
   const { data } = await supabase.from("asesoria_referrals").select("status").eq("workspace_id", workspaceId).eq("advisor_id", advisorId);

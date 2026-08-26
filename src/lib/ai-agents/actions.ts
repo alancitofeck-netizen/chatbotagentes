@@ -24,7 +24,7 @@ import { notifyManagers } from "@/lib/notifications/service";
 import { getAdvisorProfile, analyzeAdvisor } from "@/lib/ai-agents/advisorProfile";
 import { getCachedAgentSuggestions, generateAgentSuggestions, getSuggestionForReview, markSuggestionReviewed } from "@/lib/ai-agents/suggestions";
 
-const AI_AGENTS_PATH = "/crm";
+const AI_AGENTS_PATH = "/agentes-ia";
 
 async function getOwnAgent(workspaceId: string, agentId: string) {
   const supabase = await createClient();

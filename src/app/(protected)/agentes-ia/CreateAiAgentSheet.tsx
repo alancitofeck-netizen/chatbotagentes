@@ -37,7 +37,7 @@ export function CreateAiAgentSheet({ onClose }: { onClose: () => void }) {
       try {
         const { id } = await createAiAgent({ name, description, moduleKey, advisorId: moduleKey === "referrals" ? advisorId || null : null });
         toast.success("Agente creado.");
-        router.push(`/crm/ai-agents/${id}`);
+        router.push(`/agentes-ia/${id}`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo crear el agente.");
       }

@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trophy,
+  UserCog,
   Users,
   Workflow,
   Zap,
@@ -155,6 +156,20 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     moduleKey: "presentations",
     badge: "IA",
     order: 5,
+  },
+  // Promovido fuera de /crm (era la pestaña "Agentes IA", ?tab=agentes-ia)
+  // a módulo propio — un agente puede ser de module_key='crm'/'ats'/
+  // 'referrals', no era realmente una sub-sección exclusiva del CRM. Sin
+  // moduleKey a propósito (como Automatizaciones): no hay un toggle de
+  // workspace_modules para esto, siempre es un link real.
+  {
+    id: "ai_agents",
+    name: "Agentes IA",
+    icon: UserCog,
+    route: "/agentes-ia",
+    section: "Inteligencia",
+    badge: "IA",
+    order: 6,
   },
 
   { id: "classroom", name: "Classroom", icon: GraduationCap, route: "/classroom", section: "Aprendizaje", order: 0 },

@@ -10,7 +10,7 @@ import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { toast } from "@/components/toast/toast";
 import type { AiAgentListItem } from "@/lib/ai-agents/queries";
 import { duplicateAiAgent, toggleAiAgentStatus, deleteAiAgent } from "@/lib/ai-agents/actions";
-import { CreateAiAgentSheet } from "./ai-agents/CreateAiAgentSheet";
+import { CreateAiAgentSheet } from "./CreateAiAgentSheet";
 
 const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: "WhatsApp",
@@ -65,11 +65,7 @@ export function AiAgentsSection({ initialAgents }: { initialAgents: AiAgentListI
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-[17px] font-semibold text-foreground">Agentes IA</h2>
-          <p className="text-sm text-neutral-500">Asistentes de IA especializados que responden conversaciones de WhatsApp.</p>
-        </div>
+      <div className="flex items-center justify-end gap-3">
         <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Sparkles size={15} aria-hidden="true" />
           Nuevo agente
@@ -96,7 +92,7 @@ export function AiAgentsSection({ initialAgents }: { initialAgents: AiAgentListI
               {agents.map((a) => (
                 <tr key={a.id} className="border-b border-border-default last:border-b-0 hover:bg-surface-2">
                   <td className="px-4 py-3">
-                    <Link href={`/crm/ai-agents/${a.id}`} className="block min-w-0">
+                    <Link href={`/agentes-ia/${a.id}`} className="block min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">{a.name}</p>
                       {a.description && <p className="truncate text-xs text-neutral-500">{a.description}</p>}
                     </Link>
@@ -127,16 +123,16 @@ export function AiAgentsSection({ initialAgents }: { initialAgents: AiAgentListI
                       trigger={<MoreVertical size={16} aria-hidden="true" />}
                       triggerLabel="Más opciones"
                       items={[
-                        { label: "Ver detalle", icon: <Eye size={14} />, onSelect: () => (window.location.href = `/crm/ai-agents/${a.id}`) },
+                        { label: "Ver detalle", icon: <Eye size={14} />, onSelect: () => (window.location.href = `/agentes-ia/${a.id}`) },
                         {
                           label: "Probar",
                           icon: <FlaskConical size={14} />,
-                          onSelect: () => (window.location.href = `/crm/ai-agents/${a.id}?tab=pruebas`),
+                          onSelect: () => (window.location.href = `/agentes-ia/${a.id}?tab=pruebas`),
                         },
                         {
                           label: "Ver estadísticas",
                           icon: <BarChart3 size={14} />,
-                          onSelect: () => (window.location.href = `/crm/ai-agents/${a.id}?tab=metricas`),
+                          onSelect: () => (window.location.href = `/agentes-ia/${a.id}?tab=metricas`),
                         },
                         { label: "Duplicar", icon: <Copy size={14} />, onSelect: () => handleDuplicate(a), disabled: isPending },
                         {

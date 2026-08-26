@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { X, Plus } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Select } from "@/components/ui/Select";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import type { AiAgentDetail, AgentPersonality } from "@/lib/ai-agents/queries";
@@ -124,18 +124,13 @@ export function PersonalityTab({ agent }: { agent: AiAgentDetail }) {
         <p className="mb-4 text-sm text-neutral-500">Define cómo habla el agente — se suma al prompt en cada respuesta.</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PERSONALITY_FIELDS.map((field) => (
-            <Select
+            <SegmentedControl
               key={field.key}
               label={field.label}
               value={personality[field.key]}
-              onChange={(e) => updateDial(field.key, e.target.value as never)}
-            >
-              {field.options.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
+              onChange={(value) => updateDial(field.key, value as never)}
+              options={field.options}
+            />
           ))}
         </div>
       </Card>

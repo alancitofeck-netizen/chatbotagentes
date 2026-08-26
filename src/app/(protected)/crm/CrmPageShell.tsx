@@ -10,7 +10,6 @@ import type { CrmBoard, CrmPipelineOption, OpportunityTag } from "@/lib/crm/quer
 import type { AgentListItem, Team } from "@/lib/agents/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import type { TaskItem, TaskOption } from "@/lib/tasks/queries";
-import type { AiAgentListItem } from "@/lib/ai-agents/queries";
 import type { PlatformWorkspaceSummary } from "@/lib/platform/queries";
 import { ensureCrmPipelineAction } from "@/lib/crm/actions";
 import { CrmBoardShell } from "./CrmBoardShell";
@@ -18,11 +17,10 @@ import { CrmAnalytics } from "./CrmAnalytics";
 import { AgentsList } from "./AgentsList";
 import { PlatformWorkspacesTable } from "./PlatformWorkspacesTable";
 import { TasksSection } from "./TasksSection";
-import { AiAgentsSection } from "./AiAgentsSection";
 import { CrmAtsTabStrip } from "./CrmAtsTabStrip";
 
-type View = "board" | "analytics" | "agents" | "agentes-ia" | "tasks";
-const VALID_VIEWS: View[] = ["board", "analytics", "agents", "agentes-ia", "tasks"];
+type View = "board" | "analytics" | "agents" | "tasks";
+const VALID_VIEWS: View[] = ["board", "analytics", "agents", "tasks"];
 
 export function CrmPageShell({
   workspaceId,
@@ -37,7 +35,6 @@ export function CrmPageShell({
   conversationOptions,
   canAssignOthers,
   ownMemberId,
-  aiAgents,
   atsEnabled,
   isAgent,
   isOwner,
@@ -56,7 +53,6 @@ export function CrmPageShell({
   conversationOptions: TaskOption[];
   canAssignOthers: boolean;
   ownMemberId: string | null;
-  aiAgents: AiAgentListItem[];
   atsEnabled: boolean;
   isAgent: boolean;
   /** Gates "Cambiar rol" in the Agentes tab (AgentsList) — only the Owner
@@ -134,12 +130,6 @@ export function CrmPageShell({
           ) : (
             <AgentsList initialAgents={agents} initialTeams={teams} workspaceId={workspaceId} isOwner={isOwner} />
           )}
-        </div>
-      )}
-
-      {view === "agentes-ia" && (
-        <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8">
-          <AiAgentsSection initialAgents={aiAgents} />
         </div>
       )}
 
