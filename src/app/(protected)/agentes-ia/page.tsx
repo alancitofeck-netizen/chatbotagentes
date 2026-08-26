@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getAiAgentList } from "@/lib/ai-agents/queries";
+import { getAiAgentList, getAiAgentListStats, type AgentListStats } from "@/lib/ai-agents/queries";
 import { AiAgentsSection } from "./AiAgentsSection";
 
 export const metadata: Metadata = {
@@ -16,14 +16,19 @@ export const metadata: Metadata = {
 export default async function AgentesIaPage() {
   const { workspaceId } = await requireActiveWorkspace();
   const aiAgents = await getAiAgentList(workspaceId);
+  const statsMap = await getAiAgentListStats(
+    workspaceId,
+    aiAgents.map((a) => ({ id: a.id, advisorId: a.advisorId })),
+  );
+  const stats: Record<string, AgentListStats> = Object.fromEntries(statsMap);
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
       <div>
         <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Agentes IA</h1>
-        <p className="text-sm text-neutral-500">Asistentes de IA especializados que responden conversaciones de WhatsApp.</p>
+        <p className="text-sm text-neutral-500">Creá, configurá y supervisá agentes inteligentes que trabajan dentro de Growth Link.</p>
       </div>
-      <AiAgentsSection initialAgents={aiAgents} />
+      <AiAgentsSection initialAgents={aiAgents} stats={stats} />
     </div>
   );
 }

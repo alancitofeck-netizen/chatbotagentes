@@ -34,6 +34,8 @@ export const DEFAULT_AGENT_PERSONALITY: AgentPersonality = {
   persuasiveness: "media",
 };
 
+export type AiAgentType = "referrals" | "citas" | "seguimiento";
+
 export interface AiAgentListItem {
   id: string;
   name: string;
@@ -43,6 +45,14 @@ export interface AiAgentListItem {
   channels: string[];
   model: string;
   responseMode: ResponseMode;
+  /** Solo tiene sentido para moduleKey==='referrals' (Fase 4) — null = el
+   * agente atiende todos los referidos del workspace. */
+  advisorId: string | null;
+  /** "Tipo" elegido en el wizard (/agentes-ia/nuevo) — solo para display
+   * (ícono/badge), nunca cambia el motor. null = agente creado antes de
+   * este campo, o vía el modal simple (ATS) — se muestra el módulo real
+   * en su lugar, nunca un tipo inventado. */
+  agentType: AiAgentType | null;
 }
 
 export interface AiAgentDetail extends AiAgentListItem {
@@ -51,9 +61,6 @@ export interface AiAgentDetail extends AiAgentListItem {
   businessHours: BusinessHoursConfig;
   workspaceId: string;
   createdAt: string;
-  /** Solo tiene sentido para moduleKey==='referrals' (Fase 4) — null = el
-   * agente atiende todos los referidos del workspace. */
-  advisorId: string | null;
   personality: AgentPersonality;
   rules: string[];
 }
@@ -68,19 +75,20 @@ function mapAgentRow(row: Record<string, unknown>): AiAgentDetail {
     channels: (row.channels as string[]) ?? [],
     model: row.model as string,
     responseMode: row.response_mode as ResponseMode,
+    advisorId: (row.advisor_id as string | null) ?? null,
+    agentType: (row.agent_type as AiAgentType | null) ?? null,
     temperature: Number(row.temperature ?? 0.7),
     maxTokens: Number(row.max_tokens ?? 1024),
     businessHours: row.business_hours as BusinessHoursConfig,
     workspaceId: row.workspace_id as string,
     createdAt: row.created_at as string,
-    advisorId: (row.advisor_id as string | null) ?? null,
     personality: (row.personality as AgentPersonality) ?? DEFAULT_AGENT_PERSONALITY,
     rules: (row.rules as string[]) ?? [],
   };
 }
 
 const AGENT_COLUMNS =
-  "id, name, description, status, module_key, channels, model, response_mode, temperature, max_tokens, business_hours, workspace_id, created_at, advisor_id, personality, rules";
+  "id, name, description, status, module_key, channels, model, response_mode, temperature, max_tokens, business_hours, workspace_id, created_at, advisor_id, agent_type, personality, rules";
 
 export async function getAiAgentList(workspaceId: string): Promise<AiAgentListItem[]> {
   const supabase = await createClient();
@@ -425,4 +433,140 @@ export async function getAgentFollowups(workspaceId: string, advisorId: string |
       cancelledReason: (r.cancelled_reason as string | null) ?? null,
     };
   });
+}
+
+export interface AgentListStats {
+  conversationsHandled: number;
+  citasGeneradas: number;
+  citasProgramadas: number;
+  /** null = agente sin advisor_id (no tiene un conjunto de referidos propio
+   * que medir — mismo criterio que getAgentReferralStats, suggestions.ts). */
+  referidosGestionados: number | null;
+  seguimientosPendientes: number | null;
+  lastActivityAt: string | null;
+}
+
+const LIST_STATS_WINDOW_DAYS = 7;
+
+/** Versión en LOTE (no N+1) de las estadísticas por agente para la grilla
+ * de /agentes-ia — a diferencia de getAgentReferralActivityStats (detalle
+ * de un agente puntual, gateada a moduleKey==='referrals'), esta corre para
+ * TODOS los agentes de la lista en un puñado fijo de queries, y calcula
+ * conversaciones/citas para CUALQUIER módulo (no solo referidos) uniendo
+ * usage_events → conversations → contact_id → bookings. */
+export async function getAiAgentListStats(
+  workspaceId: string,
+  agents: { id: string; advisorId: string | null }[],
+): Promise<Map<string, AgentListStats>> {
+  const stats = new Map<string, AgentListStats>();
+  for (const a of agents) {
+    stats.set(a.id, { conversationsHandled: 0, citasGeneradas: 0, citasProgramadas: 0, referidosGestionados: null, seguimientosPendientes: null, lastActivityAt: null });
+  }
+  if (agents.length === 0) return stats;
+
+  const supabase = await createClient();
+  const agentIds = agents.map((a) => a.id);
+  const since = new Date(Date.now() - LIST_STATS_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: usageRows } = await supabase
+    .from("usage_events")
+    .select("agent_id, conversation_id, created_at")
+    .eq("workspace_id", workspaceId)
+    .in("agent_id", agentIds)
+    .eq("is_sandbox", false)
+    .gte("created_at", since);
+
+  const conversationIdsByAgent = new Map<string, Set<string>>();
+  const allConversationIds = new Set<string>();
+  for (const row of usageRows ?? []) {
+    const agentId = row.agent_id as string;
+    const conversationId = row.conversation_id as string;
+    const createdAt = row.created_at as string;
+    const entry = stats.get(agentId);
+    if (!entry) continue;
+    if (!entry.lastActivityAt || createdAt > entry.lastActivityAt) entry.lastActivityAt = createdAt;
+    if (!conversationIdsByAgent.has(agentId)) conversationIdsByAgent.set(agentId, new Set());
+    conversationIdsByAgent.get(agentId)!.add(conversationId);
+    allConversationIds.add(conversationId);
+  }
+  for (const [agentId, convSet] of conversationIdsByAgent) {
+    stats.get(agentId)!.conversationsHandled = convSet.size;
+  }
+
+  let contactIdByConversation = new Map<string, string>();
+  if (allConversationIds.size > 0) {
+    const { data: convRows } = await supabase.from("conversations").select("id, contact_id").in("id", [...allConversationIds]);
+    contactIdByConversation = new Map((convRows ?? []).map((r) => [r.id as string, r.contact_id as string]));
+  }
+
+  const agentIdsByContact = new Map<string, Set<string>>();
+  for (const [agentId, convSet] of conversationIdsByAgent) {
+    for (const convId of convSet) {
+      const contactId = contactIdByConversation.get(convId);
+      if (!contactId) continue;
+      if (!agentIdsByContact.has(contactId)) agentIdsByContact.set(contactId, new Set());
+      agentIdsByContact.get(contactId)!.add(agentId);
+    }
+  }
+  const allContactIds = [...agentIdsByContact.keys()];
+
+  if (allContactIds.length > 0) {
+    const { data: bookingRows } = await supabase
+      .from("bookings")
+      .select("contact_id, status, created_at")
+      .eq("workspace_id", workspaceId)
+      .in("contact_id", allContactIds);
+    for (const b of bookingRows ?? []) {
+      const contactId = b.contact_id as string;
+      const owningAgents = agentIdsByContact.get(contactId);
+      if (!owningAgents) continue;
+      for (const agentId of owningAgents) {
+        const entry = stats.get(agentId);
+        if (!entry) continue;
+        if ((b.created_at as string) >= since) entry.citasGeneradas += 1;
+        if (b.status === "scheduled") entry.citasProgramadas += 1;
+      }
+    }
+  }
+
+  const advisorAgents = agents.filter((a): a is { id: string; advisorId: string } => Boolean(a.advisorId));
+  if (advisorAgents.length > 0) {
+    const advisorIds = [...new Set(advisorAgents.map((a) => a.advisorId))];
+    const { data: referralRows } = await supabase
+      .from("asesoria_referrals")
+      .select("id, advisor_id")
+      .eq("workspace_id", workspaceId)
+      .in("advisor_id", advisorIds);
+
+    const referralIdsByAdvisor = new Map<string, string[]>();
+    const countByAdvisor = new Map<string, number>();
+    for (const r of referralRows ?? []) {
+      const advisorId = r.advisor_id as string;
+      countByAdvisor.set(advisorId, (countByAdvisor.get(advisorId) ?? 0) + 1);
+      if (!referralIdsByAdvisor.has(advisorId)) referralIdsByAdvisor.set(advisorId, []);
+      referralIdsByAdvisor.get(advisorId)!.push(r.id as string);
+    }
+    for (const a of advisorAgents) {
+      stats.get(a.id)!.referidosGestionados = countByAdvisor.get(a.advisorId) ?? 0;
+    }
+
+    const allReferralIds = [...referralIdsByAdvisor.values()].flat();
+    const referralToAdvisor = new Map<string, string>();
+    for (const [advisorId, ids] of referralIdsByAdvisor) for (const id of ids) referralToAdvisor.set(id, advisorId);
+
+    const pendingByAdvisor = new Map<string, number>();
+    if (allReferralIds.length > 0) {
+      const { data: followupRows } = await supabase.from("referral_followups").select("referral_id").in("referral_id", allReferralIds).eq("status", "pending");
+      for (const f of followupRows ?? []) {
+        const advisorId = referralToAdvisor.get(f.referral_id as string);
+        if (!advisorId) continue;
+        pendingByAdvisor.set(advisorId, (pendingByAdvisor.get(advisorId) ?? 0) + 1);
+      }
+    }
+    for (const a of advisorAgents) {
+      stats.get(a.id)!.seguimientosPendientes = pendingByAdvisor.get(a.advisorId) ?? 0;
+    }
+  }
+
+  return stats;
 }

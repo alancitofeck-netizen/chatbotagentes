@@ -103,6 +103,7 @@ export function AgentWizardShell({ workspaceName, tools, referralCount }: { work
           name: state.name.trim(),
           description: state.description.trim(),
           moduleKey: state.moduleKey,
+          agentType: state.agentType,
           personality: state.personality,
           rules,
           toolIds: state.toolIds,
