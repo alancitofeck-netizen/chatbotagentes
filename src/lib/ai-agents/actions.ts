@@ -210,6 +210,9 @@ export async function updateAiAgentGeneral(
      * (GeneralTab.tsx) solo manda esto cuando corresponde; para crm/ats se
      * ignora el valor recibido y siempre se guarda null. */
     advisorId?: string | null;
+    /** "Iniciar conversación automáticamente ni bien se carga un referido"
+     * — pedido explícito, default false. Solo aplica a moduleKey==='referrals'. */
+    autoStartConversations?: boolean;
   },
 ) {
   const { workspaceId, role } = await requireActiveWorkspace();
@@ -230,6 +233,7 @@ export async function updateAiAgentGeneral(
       business_hours: input.businessHours,
       response_mode: input.responseMode,
       advisor_id: target.module_key === "referrals" ? (input.advisorId ?? null) : null,
+      auto_start_conversations: target.module_key === "referrals" ? (input.autoStartConversations ?? false) : false,
       updated_at: new Date().toISOString(),
     })
     .eq("id", agentId);
@@ -304,6 +308,7 @@ export async function duplicateAiAgent(agentId: string) {
       advisor_id: source.advisor_id,
       personality: source.personality,
       rules: source.rules,
+      auto_start_conversations: source.auto_start_conversations,
     })
     .select("id")
     .single();

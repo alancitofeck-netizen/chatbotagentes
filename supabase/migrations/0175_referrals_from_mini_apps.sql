@@ -1,0 +1,14 @@
+-- Cierre de la decisión pendiente: un lead de Mini Apps que llega con
+-- ?ref= (data.referidoPor) cuenta como referido autorizado del asesor
+-- dueño de esa Mini App — decisión confirmada explícitamente por el
+-- usuario (no "todo lead" ni el widget client-side de "invitá 3 amigos").
+--
+-- asesoria_referrals ya es, de hecho, la whitelist general de "referido
+-- autorizado" (no solo de Asesorías) — en vez de crear una segunda tabla
+-- para referidos de Mini Apps, se vuelve nullable la única columna que lo
+-- impedía. Los referidos de Mini Apps quedan con asesoria_id=null; el
+-- unique(asesoria_id, phone) existente no sirve para dedupe en ese caso
+-- (Postgres trata cada NULL como distinto), así que el dedupe de
+-- referidos de Mini Apps se hace en la app (ver
+-- src/lib/miniApps/referralFromLead.ts), no en un constraint.
+alter table public.asesoria_referrals alter column asesoria_id drop not null;

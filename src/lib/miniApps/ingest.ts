@@ -40,6 +40,7 @@ import {
   type QualificationOption,
 } from "@/lib/miniApps/qualificationOptions";
 import { extractInsuranceProspectFields } from "@/lib/insuranceProspects/fieldDictionary";
+import { createReferralFromMiniAppLeadIfEligible } from "@/lib/miniApps/referralFromLead";
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "fecha",
@@ -86,6 +87,7 @@ interface MiniAppRow {
   name: string;
   template_key: string;
   config: Record<string, unknown>;
+  assigned_agent_id: string | null;
 }
 
 /** Resolves the mini app by slug — always via createServiceRoleClient()
@@ -96,7 +98,7 @@ async function resolveMiniAppBySlug(slug: string): Promise<{ ok: true; app: Mini
   const supabase = createServiceRoleClient();
   const { data: app } = await supabase
     .from("mini_apps")
-    .select("id, workspace_id, api_key_hash, allowed_origins, status, name, template_key, config")
+    .select("id, workspace_id, api_key_hash, allowed_origins, status, name, template_key, config, assigned_agent_id")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -638,6 +640,14 @@ async function processLeadSubmission(
     if (contactId) {
       await syncInsuranceProspect(supabase, app.workspace_id, contactId, app.id, app.name, leadId, data);
     }
+    await createReferralFromMiniAppLeadIfEligible(supabase, {
+      workspaceId: app.workspace_id,
+      assignedAgentId: app.assigned_agent_id,
+      referidoPor: data.referidoPor,
+      nombre,
+      whatsapp,
+      contactId,
+    });
   }
 
   return { ok: true, duplicate: insertError?.code === "23505", allowedOrigins, leadId: insertedLead?.id as string | undefined };

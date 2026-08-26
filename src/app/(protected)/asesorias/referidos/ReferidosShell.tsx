@@ -11,6 +11,10 @@ import type { ReferralRow, ReferralStatus } from "@/lib/asesorias/referrals";
 import { REFERRAL_STATUS_LABEL, REFERRAL_STATUS_VARIANT } from "./referralStatus";
 import { ReferralDetailSheet } from "./ReferralDetailSheet";
 
+/** Clave de agrupación/filtro para referidos sin asesoria_id (Mini Apps,
+ * ver referralFromLead.ts) — nunca choca con un uuid real de `asesorias`. */
+const MINI_APP_GROUP_KEY = "mini-app";
+
 type DateRangeFilter = "all" | "7" | "30";
 const DATE_RANGE_LABEL: Record<DateRangeFilter, string> = { all: "Todo el tiempo", "7": "Últimos 7 días", "30": "Últimos 30 días" };
 
@@ -47,7 +51,7 @@ export function ReferidosShell({ initialReferrals }: { initialReferrals: Referra
   const advisors = useMemo(() => [...new Set(referrals.map((r) => r.advisorName).filter((n): n is string => Boolean(n)))].sort(), [referrals]);
   const asesorias = useMemo(() => {
     const map = new Map<string, string>();
-    for (const r of referrals) map.set(r.asesoriaId, r.asesoriaName);
+    for (const r of referrals) map.set(r.asesoriaId ?? MINI_APP_GROUP_KEY, r.asesoriaName);
     return [...map.entries()];
   }, [referrals]);
 
@@ -56,7 +60,7 @@ export function ReferidosShell({ initialReferrals }: { initialReferrals: Referra
     return referrals.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (advisorFilter !== "all" && r.advisorName !== advisorFilter) return false;
-      if (asesoriaFilter !== "all" && r.asesoriaId !== asesoriaFilter) return false;
+      if (asesoriaFilter !== "all" && (r.asesoriaId ?? MINI_APP_GROUP_KEY) !== asesoriaFilter) return false;
       if (dateRange !== "all") {
         const cutoff = now - Number(dateRange) * 24 * 60 * 60 * 1000;
         if (new Date(r.createdAt).getTime() < cutoff) return false;
@@ -69,9 +73,10 @@ export function ReferidosShell({ initialReferrals }: { initialReferrals: Referra
   const groups = useMemo(() => {
     const map = new Map<string, ReferralRow[]>();
     for (const r of filtered) {
-      const list = map.get(r.asesoriaId) ?? [];
+      const key = r.asesoriaId ?? MINI_APP_GROUP_KEY;
+      const list = map.get(key) ?? [];
       list.push(r);
-      map.set(r.asesoriaId, list);
+      map.set(key, list);
     }
     return [...map.entries()];
   }, [filtered]);
@@ -222,14 +227,16 @@ export function ReferidosShell({ initialReferrals }: { initialReferrals: Referra
                             >
                               <MessageCircle size={14} aria-hidden="true" />
                             </a>
-                            <Link
-                              href={`/asesorias/${r.asesoriaId}/resumen`}
-                              className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-3 hover:text-foreground"
-                              aria-label="Ver asesoría"
-                              title="Ver asesoría"
-                            >
-                              <ArrowUpRight size={14} aria-hidden="true" />
-                            </Link>
+                            {r.asesoriaId && (
+                              <Link
+                                href={`/asesorias/${r.asesoriaId}/resumen`}
+                                className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-3 hover:text-foreground"
+                                aria-label="Ver asesoría"
+                                title="Ver asesoría"
+                              >
+                                <ArrowUpRight size={14} aria-hidden="true" />
+                              </Link>
+                            )}
                           </div>
                         </td>
                       </tr>

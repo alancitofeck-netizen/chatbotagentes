@@ -5,6 +5,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { Switch } from "@/components/ui/Switch";
 import { toast } from "@/components/toast/toast";
 import type { AiAgentDetail, BusinessHoursConfig } from "@/lib/ai-agents/queries";
 import { updateAiAgentGeneral } from "@/lib/ai-agents/actions";
@@ -31,6 +32,7 @@ export function GeneralTab({ agent }: { agent: AiAgentDetail }) {
   const [responseMode, setResponseMode] = useState(agent.responseMode);
   const [businessHours, setBusinessHours] = useState<BusinessHoursConfig>(agent.businessHours);
   const [advisorId, setAdvisorId] = useState(agent.advisorId ?? "");
+  const [autoStartConversations, setAutoStartConversations] = useState(agent.autoStartConversations);
   const [members, setMembers] = useState<WorkspaceMember[] | null>(null);
   const [isPending, startTransition] = useTransition();
   const isReferralsAgent = agent.moduleKey === "referrals";
@@ -62,6 +64,7 @@ export function GeneralTab({ agent }: { agent: AiAgentDetail }) {
           businessHours,
           responseMode,
           advisorId: isReferralsAgent ? advisorId || null : null,
+          autoStartConversations: isReferralsAgent ? autoStartConversations : false,
         });
         toast.success("Cambios guardados.");
       } catch (err) {
@@ -112,6 +115,17 @@ export function GeneralTab({ agent }: { agent: AiAgentDetail }) {
             conversación con cualquier otro contacto del CRM. Si se deja vacío, atiende los referidos de todo el
             workspace; si se elige un asesor, solo los suyos.
           </p>
+
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-border-default p-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Iniciar conversación automáticamente</p>
+              <p className="text-xs text-neutral-500">
+                Apenas se carga un referido nuevo (Asesorías o Mini Apps), el agente le escribe solo — sin que nadie
+                revise el mensaje antes. Si está apagado, hay que apretar &quot;Iniciar conversación&quot; a mano en cada referido.
+              </p>
+            </div>
+            <Switch checked={autoStartConversations} onChange={setAutoStartConversations} label="Iniciar conversación automáticamente" />
+          </div>
         </Card>
       )}
 

@@ -6,10 +6,14 @@ export type ReferralStatus = "nuevo" | "contactado" | "interesado" | "no_interes
 
 export interface ReferralRow {
   id: string;
-  asesoriaId: string;
+  /** null para referidos de Mini Apps (?ref=, ver referralFromLead.ts) —
+   * esos no vienen de ninguna Asesoría real, así que no hay a qué
+   * "Ver asesoría" enlazar. */
+  asesoriaId: string | null;
   /** Nombre del prospecto que lo refirió — resuelto por join contra
    * `asesorias` (contactName si tiene contacto vinculado, si no el nombre
-   * tipeado), nunca guardado como columna propia. */
+   * tipeado), nunca guardado como columna propia. "Mini App" para
+   * referidos sin asesoria_id. */
   asesoriaName: string;
   advisorName: string | null;
   /** Fase 4 (Agentes IA de Referidos) — el `workspace_members.id` real, no
@@ -52,12 +56,13 @@ export async function getWorkspaceReferrals(workspaceId: string, advisorId?: str
   }
 
   return (referrals ?? []).map((r) => {
-    const asesoria = asesoriaById.get(r.asesoria_id as string);
+    const asesoriaId = r.asesoria_id as string | null;
+    const asesoria = asesoriaId ? asesoriaById.get(asesoriaId) : undefined;
     const referredContactId = r.referred_contact_id as string | null;
     return {
       id: r.id as string,
-      asesoriaId: r.asesoria_id as string,
-      asesoriaName: asesoria?.contactName ?? asesoria?.name ?? "Prospecto",
+      asesoriaId,
+      asesoriaName: asesoriaId ? (asesoria?.contactName ?? asesoria?.name ?? "Prospecto") : "Mini App",
       advisorName: asesoria?.advisorName ?? null,
       advisorId: (r.advisor_id as string | null) ?? null,
       referredContactId,

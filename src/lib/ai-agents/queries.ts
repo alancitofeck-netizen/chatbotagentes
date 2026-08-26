@@ -63,6 +63,11 @@ export interface AiAgentDetail extends AiAgentListItem {
   createdAt: string;
   personality: AgentPersonality;
   rules: string[];
+  /** Pedido explícito: "iniciar conversación automáticamente ni bien se
+   * cargan los referidos" — default false (mismo criterio seguro que
+   * whatsapp_referrals_only/referral_followup_mode: el usuario lo prende
+   * a propósito). Solo aplica a moduleKey==='referrals'. */
+  autoStartConversations: boolean;
 }
 
 function mapAgentRow(row: Record<string, unknown>): AiAgentDetail {
@@ -84,11 +89,12 @@ function mapAgentRow(row: Record<string, unknown>): AiAgentDetail {
     createdAt: row.created_at as string,
     personality: (row.personality as AgentPersonality) ?? DEFAULT_AGENT_PERSONALITY,
     rules: (row.rules as string[]) ?? [],
+    autoStartConversations: (row.auto_start_conversations as boolean | null) ?? false,
   };
 }
 
 const AGENT_COLUMNS =
-  "id, name, description, status, module_key, channels, model, response_mode, temperature, max_tokens, business_hours, workspace_id, created_at, advisor_id, agent_type, personality, rules";
+  "id, name, description, status, module_key, channels, model, response_mode, temperature, max_tokens, business_hours, workspace_id, created_at, advisor_id, agent_type, personality, rules, auto_start_conversations";
 
 export async function getAiAgentList(workspaceId: string): Promise<AiAgentListItem[]> {
   const supabase = await createClient();

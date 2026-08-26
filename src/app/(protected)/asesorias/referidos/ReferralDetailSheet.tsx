@@ -88,10 +88,12 @@ export function ReferralDetailSheet({
         )}
 
         <div className="flex flex-col gap-2 border-t border-border-default pt-4">
-          <LinkButton href={`/asesorias/${referral.asesoriaId}/resumen`} variant="secondary" fullWidth>
-            Ver asesoría
-            <ArrowUpRight className="size-4" aria-hidden="true" />
-          </LinkButton>
+          {referral.asesoriaId && (
+            <LinkButton href={`/asesorias/${referral.asesoriaId}/resumen`} variant="secondary" fullWidth>
+              Ver asesoría
+              <ArrowUpRight className="size-4" aria-hidden="true" />
+            </LinkButton>
+          )}
           {referral.referredContactId && (
             <LinkButton href={`/inbox/contactos?contact=${referral.referredContactId}`} variant="secondary" fullWidth>
               Ver prospecto

@@ -8,6 +8,7 @@ import { createTask } from "@/lib/tasks/actions";
 import { createOpportunity } from "@/lib/crm/actions";
 import { logActivity } from "@/lib/activity/log";
 import { extractAsesoriaResponses } from "@/lib/asesorias/responseExtraction";
+import { autoStartReferralConversationIfEligible } from "@/lib/asesorias/autoStartConversation";
 
 type AsesoriaStatus = "no_iniciada" | "en_progreso" | "finalizada";
 
@@ -180,9 +181,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           };
         }),
       );
-      await supabase.from("asesoria_referrals").upsert(resolvedRows, { onConflict: "asesoria_id,phone" });
+      const { data: upsertedReferrals } = await supabase
+        .from("asesoria_referrals")
+        .upsert(resolvedRows, { onConflict: "asesoria_id,phone" })
+        .select("id");
       const keptPhones = referralRows.map((r) => r.phone);
       await supabase.from("asesoria_referrals").delete().eq("asesoria_id", asesoriaId).not("phone", "in", `(${keptPhones.map((p) => `"${p}"`).join(",")})`);
+
+      // "Iniciar conversación automáticamente" (pedido explícito) — best-effort,
+      // idempotente vía conversation_started_at (ver autoStartConversation.ts):
+      // este bloque se ejecuta en CADA autoguardado del Meeting OS, así que
+      // para un referido ya arrancado esto es un no-op inmediato.
+      for (const row of upsertedReferrals ?? []) {
+        await autoStartReferralConversationIfEligible(supabase, active.workspaceId, row.id as string);
+      }
     } else {
       await supabase.from("asesoria_referrals").delete().eq("asesoria_id", asesoriaId);
     }
