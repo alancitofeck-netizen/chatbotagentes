@@ -32,41 +32,62 @@ export async function getWhatsAppWebSessionsAction() {
   return getWhatsAppWebSessions(workspaceId);
 }
 
-/** Starts a brand-new connection or resumes/reconnects an existing one — the
- * RPC decides which (fresh_login) based on the session's current status. */
-export async function startWhatsAppWebSessionAction(targetMemberId?: string) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  const supabase = await createClient();
-  const ownMemberId = await getCurrentMemberId(workspaceId);
-  const memberId = targetMemberId ?? ownMemberId;
-  if (!memberId) throw new Error("No se pudo resolver tu membresía en este workspace.");
+export type StartWhatsAppWebSessionResult = { ok: true; sessionId: string } | { ok: false; error: string };
 
-  await assertCanManage(workspaceId, role, ownMemberId, memberId);
+/** Starts a brand-new connection or resumes/reconnects an existing one — la
+ * RPC decide cuál (fresh_login) según el estado actual de la sesión.
+ *
+ * Devuelve `{ok,error}` en vez de tirar — un `throw` acá cruzaría el límite
+ * de la Server Action, y en producción Next.js redacta ese mensaje a un
+ * cartel genérico ("An error occurred in the Server Components render...")
+ * SIN IMPORTAR que el caller lo envuelva en try/catch (gotcha ya
+ * documentado en este proyecto). El worker puede tardar/estar caído — eso
+ * es un error esperable del mundo real, no una excepción de programación,
+ * así que el llamador necesita el texto real para poder mostrarlo. */
+export async function startWhatsAppWebSessionAction(targetMemberId?: string): Promise<StartWhatsAppWebSessionResult> {
+  try {
+    const { workspaceId, role } = await requireActiveWorkspace();
+    const supabase = await createClient();
+    const ownMemberId = await getCurrentMemberId(workspaceId);
+    const memberId = targetMemberId ?? ownMemberId;
+    if (!memberId) return { ok: false, error: "No se pudo resolver tu membresía en este workspace." };
 
-  const { data, error } = await supabase
-    .rpc("provision_whatsapp_web_session", { p_workspace_id: workspaceId, p_member_id: memberId })
-    .single();
-  if (error || !data) {
-    console.error("[whatsappWeb] provision_whatsapp_web_session failed:", error);
-    throw new Error("No se pudo iniciar la conexión de WhatsApp Web.");
+    await assertCanManage(workspaceId, role, ownMemberId, memberId);
+
+    const { data, error } = await supabase
+      .rpc("provision_whatsapp_web_session", { p_workspace_id: workspaceId, p_member_id: memberId })
+      .single();
+    if (error || !data) {
+      console.error("[whatsappWeb] provision_whatsapp_web_session failed:", error);
+      return { ok: false, error: "No se pudo iniciar la conexión de WhatsApp Web." };
+    }
+
+    const { session_id: sessionId, fresh_login: freshLogin } = data as { session_id: string; fresh_login: boolean };
+    await startWorkerSession(sessionId, workspaceId, memberId, !freshLogin);
+
+    revalidatePath("/profile");
+    return { ok: true, sessionId };
+  } catch (err) {
+    console.error("[whatsappWeb] startWhatsAppWebSessionAction failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo iniciar la conexión de WhatsApp Web." };
   }
-
-  const { session_id: sessionId, fresh_login: freshLogin } = data as { session_id: string; fresh_login: boolean };
-  await startWorkerSession(sessionId, workspaceId, memberId, !freshLogin);
-
-  revalidatePath("/profile");
-  return { sessionId };
 }
 
-export async function reconnectWhatsAppWebSessionAction(targetMemberId: string) {
+export async function reconnectWhatsAppWebSessionAction(targetMemberId: string): Promise<StartWhatsAppWebSessionResult> {
   return startWhatsAppWebSessionAction(targetMemberId);
 }
 
-export async function disconnectWhatsAppWebSessionAction(sessionId: string, targetMemberId: string) {
-  const { workspaceId, role } = await requireActiveWorkspace();
-  const ownMemberId = await getCurrentMemberId(workspaceId);
-  await assertCanManage(workspaceId, role, ownMemberId, targetMemberId);
+export async function disconnectWhatsAppWebSessionAction(sessionId: string, targetMemberId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { workspaceId, role } = await requireActiveWorkspace();
+    const ownMemberId = await getCurrentMemberId(workspaceId);
+    await assertCanManage(workspaceId, role, ownMemberId, targetMemberId);
 
-  await logoutWorkerSession(sessionId);
-  revalidatePath("/profile");
+    await logoutWorkerSession(sessionId);
+    revalidatePath("/profile");
+    return { ok: true };
+  } catch (err) {
+    console.error("[whatsappWeb] disconnectWhatsAppWebSessionAction failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo desconectar." };
+  }
 }

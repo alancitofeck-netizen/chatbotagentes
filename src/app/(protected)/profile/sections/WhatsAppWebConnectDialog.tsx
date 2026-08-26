@@ -84,11 +84,15 @@ export function WhatsAppWebConnectDialog({
     previousStatus.current = session?.status ?? null;
   }, [session]);
 
-  // Kick off provisioning + worker start on mount.
+  // Kick off provisioning + worker start on mount. La action devuelve
+  // {ok,error} en vez de tirar — un throw acá llega redactado a un cartel
+  // genérico en producción sin importar el try/catch (gotcha ya
+  // documentado), así que el mensaje real solo sobrevive si viaja como dato.
   useEffect(() => {
-    startWhatsAppWebSessionAction(memberId)
-      .then(({ sessionId }) => refetch(sessionId))
-      .catch((err) => toast.error(err instanceof Error ? err.message : "No se pudo iniciar la conexión."));
+    startWhatsAppWebSessionAction(memberId).then((result) => {
+      if (result.ok) refetch(result.sessionId);
+      else toast.error(result.error);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberId]);
 
@@ -121,12 +125,9 @@ export function WhatsAppWebConnectDialog({
 
   function handleReconnect() {
     startTransition(async () => {
-      try {
-        const { sessionId } = await startWhatsAppWebSessionAction(memberId);
-        refetch(sessionId);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "No se pudo reconectar.");
-      }
+      const result = await startWhatsAppWebSessionAction(memberId);
+      if (result.ok) refetch(result.sessionId);
+      else toast.error(result.error);
     });
   }
 
@@ -134,13 +135,13 @@ export function WhatsAppWebConnectDialog({
     if (!session) return;
     if (!window.confirm("¿Desconectar esta sesión de WhatsApp Web? Vas a tener que escanear un nuevo código QR para volver a conectarla.")) return;
     startTransition(async () => {
-      try {
-        await disconnectWhatsAppWebSessionAction(session.sessionId, memberId);
+      const result = await disconnectWhatsAppWebSessionAction(session.sessionId, memberId);
+      if (result.ok) {
         toast.success("Sesión desconectada.");
         onChanged();
         onClose();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "No se pudo desconectar.");
+      } else {
+        toast.error(result.error);
       }
     });
   }

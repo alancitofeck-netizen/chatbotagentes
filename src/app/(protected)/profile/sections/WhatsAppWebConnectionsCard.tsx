@@ -57,15 +57,14 @@ export function WhatsAppWebConnectionsCard({
     if (!window.confirm("¿Desconectar esta sesión de WhatsApp Web? Vas a tener que escanear un nuevo código QR para volver a conectarla.")) return;
     setDisconnectingId(session.sessionId);
     startTransition(async () => {
-      try {
-        await disconnectWhatsAppWebSessionAction(session.sessionId, session.memberId);
+      const result = await disconnectWhatsAppWebSessionAction(session.sessionId, session.memberId);
+      if (result.ok) {
         toast.success("Sesión desconectada.");
         refetch();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "No se pudo desconectar.");
-      } finally {
-        setDisconnectingId(null);
+      } else {
+        toast.error(result.error);
       }
+      setDisconnectingId(null);
     });
   }
 
