@@ -66,10 +66,15 @@ export function AiAgentsSection({ initialAgents }: { initialAgents: AiAgentListI
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-end gap-3">
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Sparkles size={15} aria-hidden="true" />
-          Nuevo agente
-        </Button>
+        <button type="button" onClick={() => setCreateOpen(true)} className="text-xs text-neutral-500 hover:text-foreground hover:underline">
+          Crear agente ATS (formulario simple)
+        </button>
+        <Link href="/agentes-ia/nuevo">
+          <Button size="sm">
+            <Sparkles size={15} aria-hidden="true" />
+            Nuevo agente
+          </Button>
+        </Link>
       </div>
 
       {agents.length === 0 ? (

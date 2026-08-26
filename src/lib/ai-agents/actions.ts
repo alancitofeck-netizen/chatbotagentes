@@ -23,8 +23,10 @@ import { runSandboxTurn } from "@/lib/ai/agentRuntime";
 import { notifyManagers } from "@/lib/notifications/service";
 import { getAdvisorProfile, analyzeAdvisor } from "@/lib/ai-agents/advisorProfile";
 import { getCachedAgentSuggestions, generateAgentSuggestions, getSuggestionForReview, markSuggestionReviewed } from "@/lib/ai-agents/suggestions";
+import { getOpenRouterCredentials, complete } from "@/lib/integrations/openrouter";
 
 const AI_AGENTS_PATH = "/agentes-ia";
+const MODEL_CHAIN = ["openai/gpt-4o-mini", "anthropic/claude-3.5-haiku"];
 
 async function getOwnAgent(workspaceId: string, agentId: string) {
   const supabase = await createClient();
@@ -89,13 +91,104 @@ export async function createAiAgent(input: { name: string; description: string; 
       eventType: "ai_agent_created",
       title: "Agente IA creado",
       message: input.name.trim(),
-      actionUrl: "/crm",
+      actionUrl: "/agentes-ia",
     },
     ownMemberId,
   );
 
   revalidatePath(AI_AGENTS_PATH);
   return { id: agent.id as string };
+}
+
+/** Constructor de Agentes IA (wizard) — orquesta las Server Actions ya
+ * existentes de este mismo archivo en secuencia (createAiAgent →
+ * updateAiAgentPersonality → toggleAgentTool → activar el prompt) en vez de
+ * reimplementar cualquiera de esos pasos. Cada llamada interna vuelve a
+ * autenticar/autorizar por su cuenta (mismo costo ya aceptado en
+ * reviewAgentSuggestionAction, Fase 11) — no hay una transacción real
+ * cruzando todos los inserts, así que si algo falla a mitad de camino el
+ * agente queda creado pero a medio configurar (visible en el listado,
+ * nunca oculto) en vez de fingir un rollback que la DB no ofrece acá. */
+export async function createAgentFromWizard(input: {
+  name: string;
+  description: string;
+  moduleKey: "crm" | "referrals";
+  personality: AgentPersonality;
+  rules: string[];
+  toolIds: string[];
+  systemPrompt: string;
+}) {
+  const { id } = await createAiAgent({ name: input.name, description: input.description, moduleKey: input.moduleKey });
+
+  await updateAiAgentPersonality(id, { personality: input.personality, rules: input.rules });
+
+  for (const toolId of input.toolIds) {
+    await toggleAgentTool(id, toolId, true);
+  }
+
+  if (input.systemPrompt.trim()) {
+    const prompts = await getAgentPrompts(id);
+    const draft = prompts.find((p) => p.status === "draft");
+    if (draft) {
+      await updateAgentPromptDraft(id, draft.id, input.systemPrompt.trim(), {});
+      await activateAgentPrompt(id, draft.id);
+    }
+  }
+
+  return { id };
+}
+
+/** Único punto de contacto con OpenRouter en todo el wizard — un solo
+ * llamado de texto libre (sin tool-calling), nunca se aplica el resultado
+ * solo: el cliente lo muestra como propuesta y el usuario confirma "Usar
+ * este prompt" antes de que llegue a `systemPrompt` del estado del wizard.
+ * Mismo MODEL_CHAIN/patrón que suggestions.ts (Fase 11). */
+export async function improvePromptDraftAction(input: {
+  currentPrompt: string;
+  agentName: string;
+  description: string;
+  moduleKey: "crm" | "referrals";
+  objectives: string[];
+  mainObjective: string;
+}) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  if (!input.currentPrompt.trim()) throw new Error("Escribí un prompt antes de mejorarlo con IA.");
+
+  const supabase = await createClient();
+  const credentials = await getOpenRouterCredentials(supabase, workspaceId);
+  if (!credentials) throw new Error("Este workspace todavía no tiene una API Key de OpenRouter conectada (Perfil → Integraciones).");
+
+  const context = [
+    `Agente: ${input.agentName || "(sin nombre)"}`,
+    input.description ? `Descripción: ${input.description}` : null,
+    `Módulo: ${input.moduleKey === "referrals" ? "Referidos (solo contactos autorizados)" : "CRM"}`,
+    input.mainObjective ? `Objetivo principal: ${input.mainObjective}` : null,
+    input.objectives.length ? `Otros objetivos: ${input.objectives.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const result = await complete({
+    apiKey: credentials.apiKey,
+    models: MODEL_CHAIN,
+    temperature: 0.5,
+    tools: [],
+    messages: [
+      {
+        role: "system",
+        content:
+          "Sos un experto redactando prompts de sistema para agentes de IA que conversan por WhatsApp con clientes reales. " +
+          "Te paso el contexto del agente y su prompt actual — reescribilo para que sea más claro, natural y efectivo, " +
+          "manteniendo el idioma español y la intención original. Respondé ÚNICAMENTE con el texto del prompt mejorado, sin explicaciones ni comillas.",
+      },
+      { role: "user", content: `${context}\n\nPrompt actual:\n${input.currentPrompt}` },
+    ],
+  });
+
+  const improved = result.message?.content?.trim();
+  if (!improved) throw new Error("No se pudo generar una mejora del prompt.");
+  return { improvedPrompt: improved };
 }
 
 export async function updateAiAgentGeneral(
