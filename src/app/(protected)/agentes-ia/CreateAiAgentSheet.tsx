@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Sheet } from "@/components/ui/Sheet";
 import { Input } from "@/components/ui/Input";
@@ -8,8 +8,6 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import { createAiAgent } from "@/lib/ai-agents/actions";
-import { getWorkspaceMembersListAction } from "@/lib/settings/actions";
-import type { WorkspaceMember } from "@/lib/settings/queries";
 
 type ModuleKey = "crm" | "ats" | "referrals";
 
@@ -18,15 +16,7 @@ export function CreateAiAgentSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [moduleKey, setModuleKey] = useState<ModuleKey>("crm");
-  const [advisorId, setAdvisorId] = useState("");
-  const [members, setMembers] = useState<WorkspaceMember[] | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (moduleKey === "referrals" && members === null) {
-      getWorkspaceMembersListAction().then(setMembers);
-    }
-  }, [moduleKey, members]);
 
   function handleCreate() {
     if (!name.trim()) {
@@ -35,7 +25,7 @@ export function CreateAiAgentSheet({ onClose }: { onClose: () => void }) {
     }
     startTransition(async () => {
       try {
-        const { id } = await createAiAgent({ name, description, moduleKey, advisorId: moduleKey === "referrals" ? advisorId || null : null });
+        const { id } = await createAiAgent({ name, description, moduleKey });
         toast.success("Agente creado.");
         router.push(`/agentes-ia/${id}`);
       } catch (err) {
@@ -64,20 +54,10 @@ export function CreateAiAgentSheet({ onClose }: { onClose: () => void }) {
           <option value="referrals">Referidos</option>
         </Select>
         {moduleKey === "referrals" && (
-          <div>
-            <Select label="Asesor asignado (opcional)" value={advisorId} onChange={(e) => setAdvisorId(e.target.value)}>
-              <option value="">Todos los referidos del workspace</option>
-              {(members ?? []).map((m) => (
-                <option key={m.memberId} value={m.memberId}>
-                  {m.fullName}
-                </option>
-              ))}
-            </Select>
-            <p className="mt-1.5 text-xs text-neutral-500">
-              Este agente solo puede operar sobre contactos autorizados por la lista de referidos (asesoria_referrals) — nunca puede
-              iniciar conversación con cualquier otro contacto del CRM.
-            </p>
-          </div>
+          <p className="text-xs text-neutral-500">
+            El agente queda asignado a vos — cada asesor crea y gestiona su propio agente de referidos. Solo puede operar sobre
+            contactos autorizados por tu lista de referidos (asesoria_referrals), nunca sobre cualquier otro contacto del CRM.
+          </p>
         )}
         <Button onClick={handleCreate} loading={isPending}>
           Crear agente

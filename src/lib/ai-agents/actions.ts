@@ -48,10 +48,16 @@ export async function getAiAgentDetailAction(agentId: string) {
  * Agentes IA de Referidos) — null/undefined = el agente atiende TODOS los
  * referidos del workspace, no solo los de un asesor puntual
  * (decisionEngine.ts desambigua por esto si hay más de un agente activo). */
-export async function createAiAgent(input: { name: string; description: string; moduleKey: "crm" | "ats" | "referrals"; advisorId?: string | null }) {
+/** Cada asesor crea su propio agente de referidos — el asesor asignado
+ * nunca se elige de una lista, se resuelve server-side como quien está
+ * creando el agente (mismo criterio de no confiar en un id que venga del
+ * cliente ya usado en los tools de referidos, ver update_referral.ts). */
+export async function createAiAgent(input: { name: string; description: string; moduleKey: "crm" | "ats" | "referrals" }) {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
   if (!input.name.trim()) throw new Error("El nombre es obligatorio.");
+
+  const ownMemberId = await getCurrentMemberId(workspaceId);
 
   const supabase = await createClient();
   const { data: agent, error } = await supabase
@@ -61,7 +67,7 @@ export async function createAiAgent(input: { name: string; description: string; 
       module_key: input.moduleKey,
       name: input.name.trim(),
       description: input.description.trim(),
-      advisor_id: input.moduleKey === "referrals" ? (input.advisorId ?? null) : null,
+      advisor_id: input.moduleKey === "referrals" ? ownMemberId : null,
     })
     .select("id")
     .single();
@@ -77,7 +83,6 @@ export async function createAiAgent(input: { name: string; description: string; 
     version: 1,
   });
 
-  const ownMemberId = await getCurrentMemberId(workspaceId);
   await notifyManagers(
     workspaceId,
     {
