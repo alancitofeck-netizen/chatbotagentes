@@ -126,33 +126,13 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
     return { ok: false, error: "conversation_missing_business_number" };
   }
 
-  // 24h free-session window (docs/blueprint/09-security.md): WhatsApp only
-  // allows a free-form text send within 24h of the contact's last inbound
-  // message — outside that window, a pre-approved template is required. This
-  // app has no template support yet, so outside the window every sender is
-  // rejected. This closes a gap the pre-Motor-de-IA composer left open
-  // (flagged there as "not implemented yet", not silently skipped here).
-  const { data: lastInbound } = await supabase
-    .from("messages")
-    .select("created_at")
-    .eq("conversation_id", conversationId)
-    .eq("direction", "inbound")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const elapsedMs = lastInbound ? Date.now() - new Date(lastInbound.created_at as string).getTime() : Infinity;
-  if (elapsedMs > FREE_SESSION_WINDOW_MS) {
-    console.warn(`[send] blocked: conversation ${conversationId} is outside the 24h free-session window (no template support yet).`);
-    return { ok: false, error: "outside_24h_window" };
-  }
-
   const serviceClient = createServiceRoleClient();
 
   // Provider dispatch — always resolved with a service-role client (see
   // resolveProvider.ts's own comment: a plain Agent's RLS-scoped session
   // can't see every workspace_web_sessions row, but this routing decision
-  // must, regardless of who's sending).
+  // must, regardless of who's sending). Resolved BEFORE the 24h check below,
+  // since that check only applies to one of the two providers.
   const resolution = await resolveMessagingProviderForConversation(
     serviceClient,
     workspaceId,
@@ -161,6 +141,34 @@ async function sendOutboundWhatsAppMessageInner(input: SendOutboundMessageInput)
   if (!resolution) {
     console.error(`[send] no active WhatsApp provider (YCloud or WhatsApp Web) configured for workspace ${workspaceId}.`);
     return { ok: false, error: "ycloud_not_configured" };
+  }
+
+  // 24h free-session window (docs/blueprint/09-security.md): this is a Meta
+  // WhatsApp Business (Cloud API) policy — a business-initiated send outside
+  // 24h of the contact's last inbound message requires a pre-approved
+  // template, which this app doesn't support yet. It applies ONLY to YCloud
+  // (our BSP for that official API). WhatsApp Web (Baileys) is a real
+  // personal WhatsApp session, not a Business API integration — it has no
+  // such restriction, the same way a person texting from their own phone
+  // doesn't need a template to message someone for the first time. Applying
+  // this gate to WhatsApp Web too would make any brand-new outbound-first
+  // conversation (e.g. the referral opener) permanently unsendable, since a
+  // first-ever contact by definition has no prior inbound message at all.
+  if (resolution.provider === "ycloud") {
+    const { data: lastInbound } = await supabase
+      .from("messages")
+      .select("created_at")
+      .eq("conversation_id", conversationId)
+      .eq("direction", "inbound")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const elapsedMs = lastInbound ? Date.now() - new Date(lastInbound.created_at as string).getTime() : Infinity;
+    if (elapsedMs > FREE_SESSION_WINDOW_MS) {
+      console.warn(`[send] blocked: conversation ${conversationId} is outside the 24h free-session window (no template support yet).`);
+      return { ok: false, error: "outside_24h_window" };
+    }
   }
 
   let sentMessage: { externalId: string | null; wamid: string | null; status: string };
