@@ -8,7 +8,16 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import type { AiToolOption } from "@/lib/ai-agents/queries";
 import { createAgentFromWizard } from "@/lib/ai-agents/actions";
-import { buildDefaultWizardState, buildInitialPrompt, stepsForModule, DEFAULT_TOOL_KEYS, SYSTEM_RULES, type WizardState, type WizardStep } from "./wizardConfig";
+import {
+  buildDefaultWizardState,
+  buildInitialPrompt,
+  stepsForModule,
+  DEFAULT_TOOL_KEYS,
+  TOOL_GROUPS,
+  SYSTEM_RULES,
+  type WizardState,
+  type WizardStep,
+} from "./wizardConfig";
 import { WizardStepIndicator } from "./WizardStepIndicator";
 import { WizardSummaryPanel } from "./WizardSummaryPanel";
 import { StepIdentity, stepIdentityIsValid } from "./steps/StepIdentity";
@@ -23,12 +32,19 @@ import { StepSummary } from "./steps/StepSummary";
 export function AgentWizardShell({ workspaceName, tools, referralCount }: { workspaceName: string; tools: AiToolOption[]; referralCount: number }) {
   const router = useRouter();
 
-  function defaultToolIdsFor(moduleKey: WizardState["moduleKey"]) {
+  function defaultToolIdsFor(agentType: WizardState["agentType"], moduleKey: WizardState["moduleKey"]) {
     const keyToId = new Map(tools.map((t) => [t.key, t.id]));
-    return DEFAULT_TOOL_KEYS[moduleKey].map((k) => keyToId.get(k)).filter((id): id is string => Boolean(id));
+    const availableInModule = new Set(TOOL_GROUPS[moduleKey].flatMap((g) => g.toolKeys));
+    return DEFAULT_TOOL_KEYS[agentType]
+      .filter((k) => availableInModule.has(k))
+      .map((k) => keyToId.get(k))
+      .filter((id): id is string => Boolean(id));
   }
 
-  const [state, setState] = useState<WizardState>(() => ({ ...buildDefaultWizardState(), toolIds: defaultToolIdsFor("referrals") }));
+  const [state, setState] = useState<WizardState>(() => ({
+    ...buildDefaultWizardState(),
+    toolIds: defaultToolIdsFor("referrals", "referrals"),
+  }));
   const [stepIndex, setStepIndex] = useState(0);
   const [isCreating, startCreate] = useTransition();
   const steps = stepsForModule(state.moduleKey);
@@ -38,9 +54,25 @@ export function AgentWizardShell({ workspaceName, tools, referralCount }: { work
     setState((prev) => ({ ...prev, ...patch }));
   }
 
-  function handleModuleChangeSideEffects(patch: Partial<WizardState>) {
-    if (patch.moduleKey && patch.moduleKey !== state.moduleKey) {
-      update({ ...patch, toolIds: defaultToolIdsFor(patch.moduleKey), systemPrompt: "", promptTouched: false });
+  /** "Tipo" y "módulo" (StepIdentity) se editan juntos porque cambiar
+   * cualquiera de los dos invalida el preset de tools/objetivos/prompt ya
+   * elegido — mismo criterio que ya existía para módulo solo, extendido a
+   * tipo. "Agente de Referidos" siempre fuerza moduleKey='referrals' (sin
+   * selector, igual que siempre). */
+  function handleIdentityChange(patch: Partial<WizardState>) {
+    const nextAgentType = patch.agentType ?? state.agentType;
+    const nextModuleKey = nextAgentType === "referrals" ? "referrals" : (patch.moduleKey ?? state.moduleKey);
+    const identityChanged = nextAgentType !== state.agentType || nextModuleKey !== state.moduleKey;
+    if (identityChanged) {
+      update({
+        ...patch,
+        agentType: nextAgentType,
+        moduleKey: nextModuleKey,
+        toolIds: defaultToolIdsFor(nextAgentType, nextModuleKey),
+        objectives: [],
+        systemPrompt: "",
+        promptTouched: false,
+      });
       return;
     }
     update(patch);
@@ -102,7 +134,7 @@ export function AgentWizardShell({ workspaceName, tools, referralCount }: { work
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <div className="lg:col-span-3">
-          {step === "identidad" && <StepIdentity state={state} update={handleModuleChangeSideEffects} workspaceName={workspaceName} />}
+          {step === "identidad" && <StepIdentity state={state} update={handleIdentityChange} workspaceName={workspaceName} />}
           {step === "objetivo" && <StepObjective state={state} update={update} />}
           {step === "cerebro" && <StepBrain state={state} update={update} />}
           {step === "acciones" && <StepActions state={state} update={update} tools={tools} />}

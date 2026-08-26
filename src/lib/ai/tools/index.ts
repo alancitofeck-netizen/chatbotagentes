@@ -8,6 +8,7 @@ import { runAutomation } from "@/lib/ai/tools/runAutomation";
 import { requestHumanHandoff } from "@/lib/ai/tools/requestHumanHandoff";
 import { updateReferral } from "@/lib/ai/tools/updateReferral";
 import { scheduleFollowup } from "@/lib/ai/tools/scheduleFollowup";
+import { updateAppointment } from "@/lib/ai/tools/updateAppointment";
 
 export type { ToolHandler, ToolContext } from "@/lib/ai/tools/shared";
 
@@ -26,6 +27,7 @@ export const handlers: Record<string, ToolHandler> = {
   request_human_handoff: requestHumanHandoff,
   update_referral: updateReferral,
   schedule_followup: scheduleFollowup,
+  update_appointment: updateAppointment,
 };
 
 export const SIDE_EFFECTING_HANDLER_KEYS = new Set([
@@ -34,4 +36,5 @@ export const SIDE_EFFECTING_HANDLER_KEYS = new Set([
   "run_automation",
   "update_referral",
   "schedule_followup",
+  "update_appointment",
 ]);

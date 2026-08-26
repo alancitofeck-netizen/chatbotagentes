@@ -20,7 +20,13 @@ export function StepActions({ state, update, tools }: { state: WizardState; upda
           Capacidad base de cualquier agente activo con canal WhatsApp — no se activa por separado.
         </p>
         <ul className="mt-2 flex flex-col gap-1.5">
-          {["Iniciar conversaciones", "Responder mensajes", "Mantener conversaciones", "Generar mensajes personalizados"].map((l) => (
+          {[
+            "Iniciar conversaciones",
+            "Responder mensajes",
+            "Mantener conversaciones",
+            "Generar mensajes personalizados",
+            ...(state.agentType === "citas" ? ["Confirmar la cita en la conversación"] : []),
+          ].map((l) => (
             <li key={l} className="flex items-center gap-2 text-sm text-foreground">
               <Check className="size-4 shrink-0 text-success-strong" aria-hidden="true" />
               {l}
@@ -74,7 +80,8 @@ export function StepActions({ state, update, tools }: { state: WizardState; upda
           <p className="text-sm text-foreground">Seguimientos y tareas</p>
           <p className="text-xs text-neutral-500">
             Este agente puede programar seguimientos (máx. 3 intentos por referido) — cada seguimiento vencido sin respuesta se convierte
-            automáticamente en una tarea asignada al asesor. No hay envío de mensajes automático fuera de una conversación real.
+            automáticamente en una tarea asignada al asesor. El seguimiento se cancela solo si el contacto responde o el asesor toma la
+            conversación. No hay envío de mensajes automático fuera de una conversación real.
           </p>
         </Card>
       )}

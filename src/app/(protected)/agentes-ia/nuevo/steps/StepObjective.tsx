@@ -13,7 +13,7 @@ export function StepObjective({ state, update }: { state: WizardState; update: (
         <CardHeader title="¿Qué debe conseguir este agente?" />
         <p className="mb-3 text-sm text-neutral-500">Elegí uno o más objetivos — le dan forma al prompt inicial del agente.</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {OBJECTIVE_OPTIONS.map((o) => {
+          {OBJECTIVE_OPTIONS[state.agentType].map((o) => {
             const active = state.objectives.includes(o.key);
             return (
               <button
