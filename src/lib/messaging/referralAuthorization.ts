@@ -55,20 +55,31 @@ export async function isPhoneAuthorizedReferral(supabase: SupabaseClient, worksp
 /** Segunda vía de autorización, además del teléfono — necesaria porque
  * WhatsApp Web puede entregar un mensaje entrante sin teléfono real en
  * absoluto (modo "LID" de privacidad de número del contacto, cada vez más
- * común). Si este chat id ya es la conversación de un referido (fue creada
- * por el flujo de referidos y quedó registrada en
- * `conversations.whatsapp_web_chat_id` al mandarle el primer mensaje — ver
- * send.ts), la existencia misma de esa conversación YA es la prueba de
- * autorización: no hace falta re-verificar el teléfono en cada respuesta.
- * El filtro por teléfono sigue aplicando tal cual para cualquier chat
- * genuinamente nuevo/desconocido. */
+ * común). Si este chat id ya es la conversación de un referido AUTORIZADO
+ * (el contacto de esa conversación tiene una fila real en
+ * asesoria_referrals — no alcanza con que la conversación simplemente
+ * exista, eso quedó demostrado como un agujero real: una conversación
+ * vieja, de antes de que este chequeo existiera o de una vez que este
+ * mismo bug la dejó pasar, quedaba autorizada para siempre solo por
+ * existir), esa fila YA es la prueba de autorización: no hace falta
+ * re-verificar el teléfono en cada respuesta. El filtro por teléfono sigue
+ * aplicando tal cual para cualquier chat genuinamente nuevo/desconocido. */
 export async function isKnownReferralConversationChatId(supabase: SupabaseClient, workspaceId: string, chatId: string): Promise<boolean> {
-  const { data } = await supabase
+  const { data: conversation } = await supabase
     .from("conversations")
-    .select("id")
+    .select("contact_id")
     .eq("workspace_id", workspaceId)
     .eq("whatsapp_web_chat_id", chatId)
     .limit(1)
     .maybeSingle();
-  return data !== null;
+  if (!conversation?.contact_id) return false;
+
+  const { data: referral } = await supabase
+    .from("asesoria_referrals")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("referred_contact_id", conversation.contact_id)
+    .limit(1)
+    .maybeSingle();
+  return referral !== null;
 }
