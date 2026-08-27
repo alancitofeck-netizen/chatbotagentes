@@ -199,27 +199,39 @@ export function ContactInfoPanel({
   function handleStatusChange(status: string) {
     if (!detail) return;
     startTransition(async () => {
-      await updateConversationStatus(detail.id, status);
-      onChanged();
-      toast.success("Estado actualizado.");
+      try {
+        await updateConversationStatus(detail.id, status);
+        onChanged();
+        toast.success("Estado actualizado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo actualizar el estado.");
+      }
     });
   }
 
   function handleModeChange(mode: string) {
     if (!detail) return;
     startTransition(async () => {
-      await updateConversationMode(detail.id, mode);
-      onChanged();
-      toast.success("Modo actualizado.");
+      try {
+        await updateConversationMode(detail.id, mode);
+        onChanged();
+        toast.success("Modo actualizado.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo actualizar el modo.");
+      }
     });
   }
 
   function handleAssign(memberId: string) {
     if (!detail) return;
     startTransition(async () => {
-      await assignConversation(detail.id, memberId || null);
-      onChanged();
-      toast.success("Conversación asignada.");
+      try {
+        await assignConversation(detail.id, memberId || null);
+        onChanged();
+        toast.success("Conversación asignada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo asignar la conversación.");
+      }
     });
   }
 
@@ -228,17 +240,25 @@ export function ContactInfoPanel({
     const body = noteBody.trim();
     setNoteBody("");
     startTransition(async () => {
-      await addConversationNote(detail.id, body);
-      onChanged();
-      toast.success("Nota agregada.");
+      try {
+        await addConversationNote(detail.id, body);
+        onChanged();
+        toast.success("Nota agregada.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo agregar la nota.");
+      }
     });
   }
 
   function handleToggleTag(tagId: string, enabled: boolean) {
     if (!detail) return;
     startTransition(async () => {
-      await toggleContactTag(detail.contact.id, tagId, enabled);
-      onChanged();
+      try {
+        await toggleContactTag(detail.contact.id, tagId, enabled);
+        onChanged();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo actualizar la etiqueta.");
+      }
     });
   }
 
