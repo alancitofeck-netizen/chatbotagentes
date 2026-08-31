@@ -11,16 +11,18 @@ import type { AgentListItem, Team } from "@/lib/agents/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import type { TaskItem, TaskOption } from "@/lib/tasks/queries";
 import type { PlatformWorkspaceSummary } from "@/lib/platform/queries";
+import type { ManychatLeadListItem } from "@/lib/integrations/manychat";
 import { ensureCrmPipelineAction } from "@/lib/crm/actions";
 import { CrmBoardShell } from "./CrmBoardShell";
 import { CrmAnalytics } from "./CrmAnalytics";
 import { AgentsList } from "./AgentsList";
 import { PlatformWorkspacesTable } from "./PlatformWorkspacesTable";
 import { TasksSection } from "./TasksSection";
+import { LeadsSection } from "./LeadsSection";
 import { CrmAtsTabStrip } from "./CrmAtsTabStrip";
 
-type View = "board" | "analytics" | "agents" | "tasks";
-const VALID_VIEWS: View[] = ["board", "analytics", "agents", "tasks"];
+type View = "board" | "analytics" | "agents" | "tasks" | "leads";
+const VALID_VIEWS: View[] = ["board", "analytics", "agents", "tasks", "leads"];
 
 export function CrmPageShell({
   workspaceId,
@@ -36,6 +38,8 @@ export function CrmPageShell({
   canAssignOthers,
   ownMemberId,
   atsEnabled,
+  manychatEnabled,
+  manychatLeads,
   isAgent,
   isOwner,
   isPlatformAdmin,
@@ -54,6 +58,8 @@ export function CrmPageShell({
   canAssignOthers: boolean;
   ownMemberId: string | null;
   atsEnabled: boolean;
+  manychatEnabled: boolean;
+  manychatLeads: ManychatLeadListItem[];
   isAgent: boolean;
   /** Gates "Cambiar rol" in the Agentes tab (AgentsList) — only the Owner
    * can change roles, per updateMemberRole (src/lib/settings/actions.ts). */
@@ -87,7 +93,7 @@ export function CrmPageShell({
   return (
     <div className="flex flex-col gap-4">
       <div className="px-4 sm:px-6 lg:px-8">
-        <CrmAtsTabStrip atsEnabled={atsEnabled} isAgent={isAgent} />
+        <CrmAtsTabStrip atsEnabled={atsEnabled} manychatEnabled={manychatEnabled} isAgent={isAgent} />
       </div>
 
       {view === "board" && (
@@ -130,6 +136,12 @@ export function CrmPageShell({
           ) : (
             <AgentsList initialAgents={agents} initialTeams={teams} workspaceId={workspaceId} isOwner={isOwner} />
           )}
+        </div>
+      )}
+
+      {view === "leads" && manychatEnabled && (
+        <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8">
+          <LeadsSection leads={manychatLeads} />
         </div>
       )}
 

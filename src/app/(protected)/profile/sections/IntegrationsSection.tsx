@@ -30,6 +30,7 @@ import { OwnAgendaSheetManager } from "./OwnAgendaSheetManager";
 import { WhatsAppWebConnectionsCard } from "./WhatsAppWebConnectionsCard";
 import { WhatsAppReferralsOnlyModeCard } from "./WhatsAppReferralsOnlyModeCard";
 import { InstagramConnectionCard } from "./InstagramConnectionCard";
+import { ManyChatConnectionCard } from "./ManyChatConnectionCard";
 
 /** Moved from the old standalone /settings/integrations page into the
  * Perfil > Integraciones tab — same components/actions, no logic changes. */
@@ -260,6 +261,8 @@ export function IntegrationsSection({
       <WhatsAppWebConnectionsCard currentRole={currentRole} currentMemberId={currentMemberId} />
 
       <InstagramConnectionCard canManage={canManage} />
+
+      <ManyChatConnectionCard canManage={canManage} />
 
       <Card>
         <div className="mb-4 flex items-center justify-between gap-3">

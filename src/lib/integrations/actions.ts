@@ -10,6 +10,7 @@ import { disconnectGoogleCalendar, getGoogleCalendarStatus, importGoogleEvents }
 import { disconnectGoogleDrive, getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
 import { disconnectGoogleSheets } from "@/lib/integrations/googleSheets";
 import { disconnectInstagram, getInstagramStatus } from "@/lib/integrations/instagram";
+import { getManychatStatus, generateManychatWebhookSecret, disconnectManychat, getManychatLeads, getManychatLeadDetail, updateManychatLeadStatus } from "@/lib/integrations/manychat";
 import { getWhatsAppReferralsOnlyMode, updateWhatsAppReferralsOnlyMode } from "@/lib/messaging/referralAuthorization";
 
 export async function getWhatsAppIntegrationAction() {
@@ -185,6 +186,43 @@ export async function disconnectInstagramAction() {
   await disconnectInstagram(workspaceId);
   revalidatePath("/profile");
   revalidatePath("/inbox");
+}
+
+export async function getManychatStatusAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getManychatStatus(workspaceId);
+}
+
+export async function generateManychatWebhookSecretAction() {
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
+  requireManagerRole(role);
+  return generateManychatWebhookSecret(workspaceId);
+}
+
+export async function disconnectManychatAction() {
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
+  requireManagerRole(role);
+  await disconnectManychat(workspaceId);
+  revalidatePath("/profile");
+  revalidatePath("/crm");
+}
+
+export async function getManychatLeadsAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getManychatLeads(workspaceId);
+}
+
+export async function getManychatLeadDetailAction(contactId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getManychatLeadDetail(workspaceId, contactId);
+}
+
+export async function updateManychatLeadStatusAction(contactId: string, status: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  await updateManychatLeadStatus(workspaceId, contactId, status);
+  revalidatePath("/crm");
 }
 
 /** "Solo Referidos CRM" — mismo criterio que Google Calendar/Sheets/Drive:

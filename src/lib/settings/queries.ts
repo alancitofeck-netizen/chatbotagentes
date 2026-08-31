@@ -20,6 +20,7 @@ const MODULE_KEYS = [
   "data_transfer",
   "agenda",
   "operaciones",
+  "manychat",
 ] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 

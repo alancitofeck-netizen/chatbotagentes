@@ -39,6 +39,8 @@ import {
 import { createTask } from "@/lib/tasks/actions";
 import { getPoliciesForContactAction } from "@/lib/policies/actions";
 import type { ContactPolicySummary } from "@/lib/policies/queries";
+import { getManychatLeadDetailAction } from "@/lib/integrations/actions";
+import type { ManychatLeadDetail } from "@/lib/integrations/manychat";
 import { POLICY_STATUS_BADGE_VARIANT, POLICY_STAGES } from "@/lib/policies/constants";
 import { tagBadgeVariant } from "./tagColor";
 import { MergeContactDialog } from "./MergeContactDialog";
@@ -78,7 +80,11 @@ const SOURCE_LABELS: Record<string, string> = {
   whatsapp: "WhatsApp",
   instagram: "Instagram",
   manual: "Alta manual",
+  manychat: "Instagram / ManyChat",
 };
+
+const MANYCHAT_LEVEL_LABEL: Record<string, string> = { none: "Sin interacción", low: "Interacción baja", medium: "Interacción media", high: "Interacción alta" };
+const MANYCHAT_LEVEL_VARIANT: Record<string, "neutral" | "warning" | "info" | "success"> = { none: "neutral", low: "warning", medium: "info", high: "success" };
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("es", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -116,6 +122,7 @@ export function ContactInfoPanel({
   const [crmLoading, setCrmLoading] = useState(false);
   const [policies, setPolicies] = useState<ContactPolicySummary[] | null>(null);
   const [policiesLoading, setPoliciesLoading] = useState(false);
+  const [manychatLead, setManychatLead] = useState<ManychatLeadDetail | null | undefined>(undefined);
   const [movingStage, setMovingStage] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -166,6 +173,17 @@ export function ContactInfoPanel({
       setPolicies(data);
       setPoliciesLoading(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.contact.id]);
+
+  // null = sin actividad de ManyChat para este contacto (la sección entera
+  // se oculta), undefined = todavía cargando.
+  useEffect(() => {
+    if (!detail) {
+      Promise.resolve().then(() => setManychatLead(undefined));
+      return;
+    }
+    getManychatLeadDetailAction(detail.contact.id).then(setManychatLead);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.contact.id]);
 
@@ -517,6 +535,60 @@ export function ContactInfoPanel({
                   </span>
                 </div>
               </section>
+
+              {/* Actividad de Instagram (ManyChat) — solo se muestra si este
+                  contacto tiene actividad real registrada; nunca se fabrica
+                  para el resto de los contactos. */}
+              {manychatLead && (
+                <section className="flex flex-col gap-2.5">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Actividad de Instagram</h3>
+                  <div className="flex flex-col gap-2 rounded-lg border border-border-default p-3">
+                    <div className="flex items-center justify-between">
+                      {manychatLead.instagramUsername ? (
+                        <span className="text-sm font-medium text-foreground">@{manychatLead.instagramUsername}</span>
+                      ) : (
+                        <span className="text-sm text-neutral-500">Instagram</span>
+                      )}
+                      <Badge variant="accent">ManyChat</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-neutral-500">
+                      <span>Primera interacción: {formatDate(manychatLead.firstInteractionAt)}</span>
+                      <span>Última interacción: {formatDate(manychatLead.lastInteractionAt)}</span>
+                      <span>Mensajes del lead: {manychatLead.leadMessageCount}</span>
+                      <span>Mensajes de ManyChat: {manychatLead.manychatMessageCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-t border-border-default pt-2">
+                      <Badge variant={MANYCHAT_LEVEL_VARIANT[manychatLead.interactionLevel]}>{MANYCHAT_LEVEL_LABEL[manychatLead.interactionLevel]}</Badge>
+                      <span className="font-mono text-sm font-semibold text-foreground">{manychatLead.interactionScore}/100</span>
+                    </div>
+                    {Object.keys(manychatLead.capturedData).length > 0 && (
+                      <div className="border-t border-border-default pt-2">
+                        <p className="mb-1 text-[11px] font-medium text-neutral-500">Datos capturados</p>
+                        <ul className="flex flex-col gap-0.5 text-xs text-neutral-600">
+                          {Object.entries(manychatLead.capturedData).map(([key, value]) => (
+                            <li key={key}>
+                              <span className="capitalize text-neutral-500">{key}:</span> {String(value)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {manychatLead.messages.length > 0 && (
+                      <div className="border-t border-border-default pt-2">
+                        <p className="mb-1 text-[11px] font-medium text-neutral-500">Conversación</p>
+                        <ul className="flex max-h-48 flex-col gap-1.5 overflow-y-auto text-xs">
+                          {manychatLead.messages.map((m) => (
+                            <li key={m.id} className="flex items-start gap-1.5">
+                              <span aria-hidden="true">{m.direction === "outbound" ? "🤖" : "👤"}</span>
+                              <span className="text-neutral-600">{m.body}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
 
               {/* CRM: pipeline / etapa / valor / owner — pedido explícito
                   ("Pipeline, Etapa, Owner" en el panel derecho), con acción de

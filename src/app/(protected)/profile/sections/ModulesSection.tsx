@@ -23,6 +23,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   ai_assistant: { name: "Asistente IA", description: "Copiloto in-app: consultá y ejecutá acciones en el CRM por chat, con tarjetas proactivas de prioridades y alertas." },
   insurance_providers: { name: "Conexión con Aseguradoras", description: "Centro de integraciones: sincronizá tu cartera cargando los exports de cada aseguradora." },
   data_transfer: { name: "Importar / Exportar", description: "Centro de migración: importá tu cartera, exportá tus datos y sincronizá con Google Sheets/Drive." },
+  manychat: { name: "ManyChat", description: "Recibe y analiza la actividad de los leads de Instagram que gestiona ManyChat — nunca controla su flujo ni responde en tu lugar." },
 };
 
 export function ModulesSection({
