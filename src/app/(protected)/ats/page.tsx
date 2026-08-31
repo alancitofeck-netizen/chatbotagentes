@@ -27,12 +27,11 @@ export default async function AtsPage() {
     getWorkspaceModuleStatus(workspaceId),
   ]);
   const atsEnabled = moduleStatus.some((m) => m.moduleKey === "ats" && m.enabled);
-  const manychatEnabled = moduleStatus.some((m) => m.moduleKey === "manychat" && m.enabled);
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <div className="px-4 sm:px-6 lg:px-8">
-        <CrmAtsTabStrip atsEnabled={atsEnabled} manychatEnabled={manychatEnabled} isAgent={false} />
+        <CrmAtsTabStrip atsEnabled={atsEnabled} isAgent={false} />
       </div>
       <div className="flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-1">

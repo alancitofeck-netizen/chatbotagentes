@@ -10,12 +10,6 @@ const CRM_TABS = [
   { key: "agents", label: "Agentes", href: "/crm?tab=agents", managerOnly: true },
 ] as const;
 
-/** Pestaña opt-in — a diferencia de ATS (feature universal, se muestra
- * deshabilitada como "Pronto"), ManyChat es una integración de nicho que la
- * mayoría de los workspaces nunca configura: se oculta del todo si el
- * módulo no está activo, en vez de sumar ruido con un estado "Pronto". */
-const LEADS_TAB = { key: "leads", label: "Leads", href: "/crm?tab=leads" } as const;
-
 /**
  * Shared tab strip for CRM and ATS — ATS kept its own top-level route (/ats,
  * /ats/[vacancyId]) rather than nesting under /crm/ats (would have weakened
@@ -34,14 +28,11 @@ const LEADS_TAB = { key: "leads", label: "Leads", href: "/crm?tab=leads" } as co
  * crm/page.tsx, ats/page.tsx and ats/[vacancyId]/page.tsx, since hiding the
  * button alone doesn't stop a typed-in URL).
  */
-export function CrmAtsTabStrip({ atsEnabled, manychatEnabled, isAgent }: { atsEnabled: boolean; manychatEnabled: boolean; isAgent: boolean }) {
+export function CrmAtsTabStrip({ atsEnabled, isAgent }: { atsEnabled: boolean; isAgent: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeKey = pathname.startsWith("/ats") ? "ats" : (searchParams.get("tab") ?? "board");
-  const visibleTabs = [
-    ...CRM_TABS.filter((tab) => !("managerOnly" in tab && tab.managerOnly && isAgent)),
-    ...(manychatEnabled ? [LEADS_TAB] : []),
-  ];
+  const visibleTabs = CRM_TABS.filter((tab) => !("managerOnly" in tab && tab.managerOnly && isAgent));
 
   return (
     <div role="tablist" className="flex gap-5 border-b border-border-default">

@@ -39,7 +39,13 @@ export function ManyChatConnectionCard({ canManage }: { canManage: boolean }) {
     startTransition(async () => {
       try {
         const secret = await generateManychatWebhookSecretAction();
-        setStatus((prev) => ({ connected: true, webhookPath: prev?.webhookPath ?? MANYCHAT_WEBHOOK_PATH, webhookSecret: secret }));
+        setStatus((prev) => ({
+          connected: true,
+          webhookPath: prev?.webhookPath ?? MANYCHAT_WEBHOOK_PATH,
+          webhookSecret: secret,
+          hasApiToken: prev?.hasApiToken ?? false,
+          lastSyncedAt: prev?.lastSyncedAt ?? null,
+        }));
         toast.success("Secreto generado.");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo generar el secreto.");
@@ -52,7 +58,13 @@ export function ManyChatConnectionCard({ canManage }: { canManage: boolean }) {
     startTransition(async () => {
       try {
         await disconnectManychatAction();
-        setStatus((prev) => ({ connected: false, webhookPath: prev?.webhookPath ?? MANYCHAT_WEBHOOK_PATH, webhookSecret: null }));
+        setStatus((prev) => ({
+          connected: false,
+          webhookPath: prev?.webhookPath ?? MANYCHAT_WEBHOOK_PATH,
+          webhookSecret: null,
+          hasApiToken: prev?.hasApiToken ?? false,
+          lastSyncedAt: prev?.lastSyncedAt ?? null,
+        }));
         toast.success("ManyChat desconectado.");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo desconectar.");

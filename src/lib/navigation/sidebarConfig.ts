@@ -2,6 +2,7 @@ import {
   AppWindow,
   BarChart3,
   Bot,
+  Camera,
   CalendarClock,
   CalendarDays,
   CircleDollarSign,
@@ -170,6 +171,20 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     section: "Inteligencia",
     badge: "IA",
     order: 6,
+  },
+  // Independiente de CRM (la pestaña "Leads" que vivía ahí se movió acá) —
+  // GrowthLink solo recibe/analiza actividad de leads que ManyChat gestiona
+  // en Instagram, nunca controla su flujo. Sin badge "IA": el interaction
+  // score es una fórmula determinística sobre señales reales, no un modelo
+  // (mismo criterio que Automatizaciones, sin badge por el mismo motivo).
+  {
+    id: "manychat",
+    name: "ManyChat",
+    icon: Camera,
+    route: "/manychat",
+    section: "Inteligencia",
+    moduleKey: "manychat",
+    order: 7,
   },
 
   { id: "classroom", name: "Classroom", icon: GraduationCap, route: "/classroom", section: "Aprendizaje", order: 0 },

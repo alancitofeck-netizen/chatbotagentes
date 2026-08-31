@@ -9,7 +9,6 @@ import { getAllWorkspacesForSupervision } from "@/lib/platform/queries";
 import { getWorkspaceMembers, getWorkspaceTags } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
-import { getManychatLeads } from "@/lib/integrations/manychat";
 import { CrmPageShell } from "./CrmPageShell";
 
 export const metadata: Metadata = {
@@ -37,6 +36,10 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   // module (/agentes-ia) so it's not just a CRM sub-tab, since it also
   // configures agents for module_key='ats'/'referrals', not only CRM.
   if (tab === "agentes-ia") redirect("/agentes-ia");
+  // Misma promoción — "Leads" (ManyChat) pasa a módulo propio, ya no vive
+  // dentro de CRM (GrowthLink es solo receptor pasivo de esos leads, no
+  // tiene sentido que compartan pantalla con el pipeline de ventas).
+  if (tab === "leads") redirect("/manychat");
 
   const isPlatformAdmin = await checkIsPlatformAdmin();
 
@@ -56,8 +59,6 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
       isPlatformAdmin ? getAllWorkspacesForSupervision() : Promise.resolve([]),
     ]);
   const atsEnabled = moduleStatus.some((m) => m.moduleKey === "ats" && m.enabled);
-  const manychatEnabled = moduleStatus.some((m) => m.moduleKey === "manychat" && m.enabled);
-  const manychatLeads = manychatEnabled ? await getManychatLeads(workspaceId) : [];
 
   let board = initialBoard;
   let pipelines = initialPipelines;
@@ -94,8 +95,6 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         canAssignOthers={role === "owner" || role === "admin"}
         ownMemberId={ownMemberId}
         atsEnabled={atsEnabled}
-        manychatEnabled={manychatEnabled}
-        manychatLeads={manychatLeads}
         isAgent={isRealAgent}
         isOwner={role === "owner"}
         isPlatformAdmin={isPlatformAdmin}

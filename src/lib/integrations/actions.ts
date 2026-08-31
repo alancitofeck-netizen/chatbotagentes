@@ -10,7 +10,18 @@ import { disconnectGoogleCalendar, getGoogleCalendarStatus, importGoogleEvents }
 import { disconnectGoogleDrive, getGoogleDriveStatus } from "@/lib/integrations/googleDrive";
 import { disconnectGoogleSheets } from "@/lib/integrations/googleSheets";
 import { disconnectInstagram, getInstagramStatus } from "@/lib/integrations/instagram";
-import { getManychatStatus, generateManychatWebhookSecret, disconnectManychat, getManychatLeads, getManychatLeadDetail, updateManychatLeadStatus } from "@/lib/integrations/manychat";
+import {
+  getManychatStatus,
+  generateManychatWebhookSecret,
+  disconnectManychat,
+  getManychatLeads,
+  getManychatLeadDetail,
+  updateManychatLeadStatus,
+  getManychatDashboardSummary,
+  getManychatContentStats,
+  saveManychatApiToken,
+  syncManychatContacts,
+} from "@/lib/integrations/manychat";
 import { getWhatsAppReferralsOnlyMode, updateWhatsAppReferralsOnlyMode } from "@/lib/messaging/referralAuthorization";
 
 export async function getWhatsAppIntegrationAction() {
@@ -197,7 +208,16 @@ export async function generateManychatWebhookSecretAction() {
   const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
   requireNotSupervising(isSupervising);
   requireManagerRole(role);
-  return generateManychatWebhookSecret(workspaceId);
+  const secret = await generateManychatWebhookSecret(workspaceId);
+  // Activa el módulo automáticamente al conectar — sin esto, el usuario
+  // tendría que además ir a Configuración → Módulos a prenderlo a mano,
+  // un segundo paso que no aporta nada acá (a diferencia de otros módulos,
+  // conectar YA es la señal explícita de que lo quiere activo).
+  const supabase = await createClient();
+  await supabase.from("workspace_modules").upsert({ workspace_id: workspaceId, module_key: "manychat", enabled: true, updated_at: new Date().toISOString() }, { onConflict: "workspace_id,module_key" });
+  revalidatePath("/manychat");
+  revalidatePath("/dashboard");
+  return secret;
 }
 
 export async function disconnectManychatAction() {
@@ -206,7 +226,7 @@ export async function disconnectManychatAction() {
   requireManagerRole(role);
   await disconnectManychat(workspaceId);
   revalidatePath("/profile");
-  revalidatePath("/crm");
+  revalidatePath("/manychat");
 }
 
 export async function getManychatLeadsAction() {
@@ -222,7 +242,35 @@ export async function getManychatLeadDetailAction(contactId: string) {
 export async function updateManychatLeadStatusAction(contactId: string, status: string) {
   const { workspaceId } = await requireActiveWorkspace();
   await updateManychatLeadStatus(workspaceId, contactId, status);
-  revalidatePath("/crm");
+  revalidatePath("/manychat");
+}
+
+export async function getManychatDashboardSummaryAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getManychatDashboardSummary(workspaceId);
+}
+
+export async function getManychatContentStatsAction() {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getManychatContentStats(workspaceId);
+}
+
+export async function saveManychatApiTokenAction(token: string) {
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
+  requireManagerRole(role);
+  if (!token.trim()) throw new Error("El API Token es obligatorio.");
+  await saveManychatApiToken(workspaceId, token.trim());
+  revalidatePath("/manychat");
+}
+
+export async function syncManychatContactsAction() {
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  requireNotSupervising(isSupervising);
+  requireManagerRole(role);
+  const result = await syncManychatContacts(workspaceId);
+  revalidatePath("/manychat");
+  return result;
 }
 
 /** "Solo Referidos CRM" — mismo criterio que Google Calendar/Sheets/Drive:
