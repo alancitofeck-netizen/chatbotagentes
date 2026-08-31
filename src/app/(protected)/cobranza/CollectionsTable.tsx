@@ -61,7 +61,7 @@ export function CollectionsTable({
             return (
               <tr key={item.id} className="border-b border-border-default last:border-0 hover:bg-surface-2">
                 <td className="px-3 py-2.5">
-                  <button type="button" onClick={() => onOpen(item)} className="text-left font-medium text-foreground hover:text-accent-700">
+                  <button type="button" onClick={() => onOpen(item)} data-tour="collections.open-row" className="text-left font-medium text-foreground hover:text-accent-700">
                     {item.contactName}
                   </button>
                 </td>

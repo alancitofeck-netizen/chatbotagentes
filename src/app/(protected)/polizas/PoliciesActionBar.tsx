@@ -48,7 +48,7 @@ export function PoliciesActionBar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative min-w-[220px] flex-1" data-tour="policies.search">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
           <input
             value={search}
@@ -84,7 +84,7 @@ export function PoliciesActionBar({
             { label: "PDF", icon: <FileText className="size-4" aria-hidden="true" />, onSelect: () => window.open("/api/policies/export?format=pdf", "_blank") },
           ]}
         />
-        <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)}>
+        <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)} data-tour="policies.filters">
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
         </Button>

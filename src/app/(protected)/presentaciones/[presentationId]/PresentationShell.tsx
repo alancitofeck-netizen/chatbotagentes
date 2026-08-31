@@ -132,7 +132,7 @@ export function PresentationShell({ presentation: initialPresentation }: { prese
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         {/* Rail de progreso */}
-        <div className="flex shrink-0 flex-col gap-2 lg:sticky lg:top-4 lg:w-[280px]">
+        <div className="flex shrink-0 flex-col gap-2 lg:sticky lg:top-4 lg:w-[280px]" data-tour="presentations.step-rail">
           <p className="px-1 text-xs font-medium uppercase tracking-wide text-neutral-400">Progreso</p>
           {PRESENTATION_STEPS.map((step, i) => {
             const idx = STEP_ORDER.indexOf(activeStep);

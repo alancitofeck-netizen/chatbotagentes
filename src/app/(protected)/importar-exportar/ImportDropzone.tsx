@@ -34,6 +34,7 @@ export function ImportDropzone({ onImported }: { onImported: () => void }) {
       </div>
 
       <motion.label
+        data-tour="data-transfer.dropzone"
         whileHover={{ scale: 1.005 }}
         transition={{ duration: 0.15 }}
         onDragOver={(e) => {

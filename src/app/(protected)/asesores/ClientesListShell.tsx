@@ -27,6 +27,7 @@ import { getClientsListAction } from "@/lib/clients/actions";
 import { NewClientWizard } from "./NewClientWizard";
 import { ClientCard } from "./ClientCard";
 import { ClientListRow } from "./ClientListRow";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 type StatusFilter = "all" | "en_onboarding" | "activo" | "pausado" | "archivado";
 type AlertFilter = "all" | ClientAlertType;
@@ -40,6 +41,7 @@ export function ClientesListShell({
   members: WorkspaceMemberOption[];
   moduleEnabled: boolean;
 }) {
+  useAutoStartTour("advisors-admin-intro");
   const [clients, setClients] = useState(initialClients);
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState("");
@@ -106,7 +108,7 @@ export function ClientesListShell({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end gap-2">
-        <Button onClick={() => setShowCreate(true)}>
+        <Button onClick={() => setShowCreate(true)} data-tour="advisors-admin.new-button">
           <Plus size={16} aria-hidden="true" />
           Nuevo asesor
         </Button>
@@ -161,7 +163,7 @@ export function ClientesListShell({
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" data-tour="advisors-admin.filters">
             <div className="relative flex-1 sm:max-w-xs">
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
               <input

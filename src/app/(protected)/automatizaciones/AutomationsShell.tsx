@@ -15,6 +15,7 @@ import { AutomationCard } from "./AutomationCard";
 import { AutomationDrawer } from "./AutomationDrawer";
 import { MyAutomationsTab } from "./MyAutomationsTab";
 import { HistoryTab } from "./HistoryTab";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 type Tab = "library" | "mine" | "history";
 type CategoryFilter = "Todas" | (typeof AUTOMATION_CATEGORIES)[number];
@@ -32,6 +33,7 @@ function StatTile({ icon, value, label }: { icon: React.ReactNode; value: number
 }
 
 export function AutomationsShell({ initial }: { initial: AutomationsBoardResult }) {
+  useAutoStartTour("automations-intro");
   const [automations, setAutomations] = useState(initial.automations);
   const [stats, setStats] = useState(initial.stats);
   const [tab, setTab] = useState<Tab>("library");
@@ -107,14 +109,14 @@ export function AutomationsShell({ initial }: { initial: AutomationsBoardResult 
           <StatTile icon={<Wand2 className="size-[18px]" aria-hidden="true" />} value={stats.customCount} label="Automatizaciones personalizadas" />
           <StatTile icon={<Play className="size-[18px]" aria-hidden="true" />} value={stats.executionsThisMonth} label="Ejecuciones este mes" />
         </Card>
-        <Button onClick={handleNewAutomation} size="lg" className="shrink-0">
+        <Button onClick={handleNewAutomation} size="lg" className="shrink-0" data-tour="automations.new-button">
           <Plus className="size-4" aria-hidden="true" />
           Nueva automatización
         </Button>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList>
+        <TabsList data-tour="automations.tabs">
           <TabsTrigger value="library">📚 Biblioteca</TabsTrigger>
           <TabsTrigger value="mine">⚡ Mis automatizaciones</TabsTrigger>
           <TabsTrigger value="history">📊 Historial</TabsTrigger>

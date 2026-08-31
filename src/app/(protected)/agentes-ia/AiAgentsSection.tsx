@@ -13,6 +13,7 @@ import type { AgentListStats, AiAgentListItem } from "@/lib/ai-agents/queries";
 import { duplicateAiAgent, toggleAiAgentStatus, deleteAiAgent } from "@/lib/ai-agents/actions";
 import { CreateAiAgentSheet } from "./CreateAiAgentSheet";
 import { AgentCard } from "./AgentCard";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 function MetricTile({ icon: Icon, iconClassName, label, value, sublabel }: { icon: typeof Bot; iconClassName: string; label: string; value: number; sublabel: string }) {
   return (
@@ -60,6 +61,7 @@ function moduleFilterValue(agent: AiAgentListItem): string {
 }
 
 export function AiAgentsSection({ initialAgents, stats }: { initialAgents: AiAgentListItem[]; stats: Record<string, AgentListStats> }) {
+  useAutoStartTour("ai-agents-intro");
   const [agents, setAgents] = useState(initialAgents);
   const [createOpen, setCreateOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -148,7 +150,7 @@ export function AiAgentsSection({ initialAgents, stats }: { initialAgents: AiAge
         <button type="button" onClick={() => setCreateOpen(true)} className="text-xs text-neutral-500 hover:text-foreground hover:underline">
           Crear agente ATS (formulario simple)
         </button>
-        <Link href="/agentes-ia/nuevo">
+        <Link href="/agentes-ia/nuevo" data-tour="ai-agents.new-link">
           <Button size="sm">
             <Sparkles size={15} aria-hidden="true" />
             Nuevo agente
@@ -167,7 +169,7 @@ export function AiAgentsSection({ initialAgents, stats }: { initialAgents: AiAge
             <MetricTile icon={CalendarCheck2} iconClassName="bg-warning-bg text-warning-strong" label="Citas generadas" value={totals.citas} sublabel="En los últimos 7 días" />
           </div>
 
-          <Card>
+          <Card data-tour="ai-agents.filters">
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-[200px] flex-1">
                 <Input label="Buscar agente" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar agente..." />

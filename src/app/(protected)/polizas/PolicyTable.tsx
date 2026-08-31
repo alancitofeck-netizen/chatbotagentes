@@ -97,7 +97,7 @@ export function PolicyTable({
                   </button>
                 </td>
                 <td className="px-3 py-2.5">
-                  <button type="button" onClick={() => onOpen(policy)} className="text-left font-medium text-foreground hover:text-accent-700">
+                  <button type="button" onClick={() => onOpen(policy)} data-tour="policies.open-row" className="text-left font-medium text-foreground hover:text-accent-700">
                     {policy.contactName}
                   </button>
                 </td>

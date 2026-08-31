@@ -5,6 +5,7 @@ import { getAgencyWorkspaceAccessForCurrentUser } from "@/lib/auth/roles";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TabLink } from "@/components/ui/Tabs";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
 /** Header + tabs de nivel LISTADO (Resumen | Performance | Agendas |
  * Operaciones) — mismo patrón que
@@ -22,7 +23,10 @@ export default async function AsesoresLayout({ children }: { children: ReactNode
         <Users className="size-5" aria-hidden="true" />
       </div>
       <div className="flex flex-col gap-1">
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Asesores</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Asesores</h1>
+          <ModuleHelp description="Desde acá podés administrar los asesores de tu agencia — su listado, perfil y actividad." tourKey="advisors-admin-intro" />
+        </div>
         <p className="text-sm text-neutral-500">Gestioná y monitoreá las cuentas de asesores de Growth Link.</p>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { assertModuleEnabled } from "@/lib/settings/queries";
 import { getInsuranceProvidersBoard } from "@/lib/insuranceProviders/queries";
 import { getCarteraSummary, getCarteraDetailSummary } from "@/lib/portfolioAgent/queries";
 import { PortfolioAgentShell } from "./PortfolioAgentShell";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
 /** "Analizador de Cartera" — dashboard nuevo sobre los MISMOS datos que
  * /aseguradoras (conexiones, pólizas sincronizadas): esa pantalla sigue
@@ -36,12 +37,14 @@ export default async function PortfolioAgentPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Agente IA de Cartera</h1>
               <Badge variant="accent">BETA</Badge>
+              <ModuleHelp description="Sincronizá el portal de una aseguradora y Growth Link organiza automáticamente tu cartera — sin cargar nada a mano." tourKey="portfolio-agent-intro" />
             </div>
             <p className="text-sm text-neutral-500">Sincronizá tu portal de pólizas y Growth Link organiza automáticamente tu cartera.</p>
           </div>
         </div>
         <Link
           href="/aseguradoras"
+          data-tour="portfolio-agent.connect-header-link"
           className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent-500 px-4 py-2.5 text-[13px] font-medium text-white hover:bg-accent-600"
         >
           <Plus className="size-4" aria-hidden="true" />

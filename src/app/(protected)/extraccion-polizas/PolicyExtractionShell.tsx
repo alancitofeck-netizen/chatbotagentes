@@ -12,6 +12,8 @@ import { recordUploadedDocument } from "@/lib/documents/actions";
 import { extractPolicyFromPdfAction, confirmPolicyFromExtractionAction } from "@/lib/policies/actions";
 import type { ExtractedPolicyData } from "@/lib/policies/pdfExtraction";
 import { computeExtractionConfidence, type ExtractionConfidence } from "@/lib/policies/extractionConfidence";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 type Step = "upload" | "extracting" | "review" | "saving";
 
@@ -60,6 +62,7 @@ function fieldClassName(lowConfidence: boolean) {
  * póliza igual, solo no se editan acá; para eso está el detalle completo
  * en /polizas una vez creada. */
 export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) {
+  useAutoStartTour("extraction-intro");
   const router = useRouter();
   const [step, setStep] = useState<Step>("upload");
   const [documentId, setDocumentId] = useState<string | null>(null);
@@ -143,10 +146,14 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
           <Zap className="size-3.5" aria-hidden="true" />
           Diferenciador
         </span>
-        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Extracción de pólizas con IA</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Extracción de pólizas con IA</h1>
+          <ModuleHelp description="Subí el PDF de una póliza y la IA detecta y organiza todos los datos por vos — vos solo revisás y confirmás." tourKey="extraction-intro" />
+        </div>
         <p className="text-sm text-neutral-500">Sube el PDF y la IA llena todos los campos por ti</p>
 
         <label
+          data-tour="extraction.dropzone"
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);

@@ -23,7 +23,7 @@ export function ProviderCard({ provider, onClick }: { provider: ProviderCardData
     .toUpperCase();
 
   return (
-    <button type="button" onClick={onClick} className="text-left">
+    <button type="button" onClick={onClick} data-tour="providers.card" className="text-left">
       <Card className="flex h-full flex-col gap-4 transition-all duration-150 ease-out hover:shadow-[var(--elevation-md)]">
         <div className="flex items-center justify-between gap-2">
           <span

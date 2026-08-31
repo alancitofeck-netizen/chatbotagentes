@@ -17,6 +17,7 @@ import { TimelineView } from "./TimelineView";
 import { HistorySheet } from "./HistorySheet";
 import { GoalFormSheet } from "./GoalFormSheet";
 import { CelebrationBurst } from "./CelebrationBurst";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -27,6 +28,7 @@ function startOfMonthIso(): string {
 }
 
 export function GoalsShell({ initialBoard, members }: { initialBoard: GoalsBoard; members: WorkspaceMemberOption[] }) {
+  useAutoStartTour("goals-intro");
   const [board, setBoard] = useState(initialBoard);
   const [formKind, setFormKind] = useState<GoalKind | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -55,7 +57,7 @@ export function GoalsShell({ initialBoard, members }: { initialBoard: GoalsBoard
             description={canManage ? "Creá tu primera meta o bono para empezar a trackear el avance." : "Todavía no te asignaron un objetivo — hablá con tu owner/admin."}
           />
         ) : (
-          <motion.div layout className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <motion.div layout className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="goals.grid">
             {board.goals.map((goal) => (
               <GoalCard key={goal.id} goal={goal} onOpen={() => {}} />
             ))}

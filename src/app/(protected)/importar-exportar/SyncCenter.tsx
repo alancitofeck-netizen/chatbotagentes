@@ -39,7 +39,7 @@ function SyncRow({
           </Badge>
         </div>
       ) : (
-        <Button size="sm" variant="secondary" onClick={onConnect}>
+        <Button size="sm" variant="secondary" onClick={onConnect} data-tour="data-transfer.sync-connect">
           Conectar
         </Button>
       )}

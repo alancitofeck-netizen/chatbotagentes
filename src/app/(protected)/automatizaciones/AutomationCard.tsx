@@ -47,7 +47,7 @@ export function AutomationCard({
         <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-neutral-400">{automation.category}</p>
       </div>
 
-      <Button variant="secondary" size="sm" onClick={onOpen}>
+      <Button variant="secondary" size="sm" onClick={onOpen} data-tour="automations.configure-button">
         <Settings2 className="size-3.5" aria-hidden="true" />
         Configurar
       </Button>

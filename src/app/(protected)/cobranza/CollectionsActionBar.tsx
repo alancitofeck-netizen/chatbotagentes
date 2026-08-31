@@ -22,7 +22,7 @@ export function CollectionsActionBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-[220px] flex-1">
+      <div className="relative min-w-[220px] flex-1" data-tour="collections.search">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
         <input
           value={search}
@@ -32,7 +32,7 @@ export function CollectionsActionBar({
         />
       </div>
 
-      <Button size="sm" onClick={onNewCollection}>
+      <Button size="sm" onClick={onNewCollection} data-tour="collections.new-button">
         <Plus className="size-4" aria-hidden="true" />
         Nuevo cobro
       </Button>
@@ -44,6 +44,7 @@ export function CollectionsActionBar({
       <div className="ml-auto flex items-center gap-1 rounded-md border border-border-default bg-surface-1 p-1">
         <button
           type="button"
+          data-tour="collections.table-view"
           onClick={() => onViewChange("table")}
           title="Tabla"
           className={`flex size-8 items-center justify-center rounded ${view === "table" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
@@ -68,6 +69,7 @@ export function CollectionsActionBar({
         </button>
         <button
           type="button"
+          data-tour="collections.priority-view"
           onClick={() => onViewChange("priority")}
           title="Prioridad (IA)"
           className={`flex size-8 items-center justify-center rounded ${view === "priority" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}

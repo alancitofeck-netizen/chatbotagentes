@@ -18,6 +18,7 @@ import { getKpiEntriesAction, getKpiSetterOptionsAction, getKpiGoalsAction, setK
 import type { KpiEntryRow, KpiSetterOption } from "@/lib/kpis/queries";
 import { agendas, conversionRate, estadoLevel, ESTADO_LABEL, sumKpiTotals, EMPTY_KPI_TOTALS, type KpiTotals } from "@/lib/kpis/formulas";
 import { createClient } from "@/lib/supabase/client";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 const CARD_DEFS: { key: keyof KpiTotals; label: string }[] = [
   { key: "conexion", label: "Conexión" },
@@ -48,6 +49,7 @@ function monthLabel(iso: string): string {
 }
 
 export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; teams: Team[] }) {
+  useAutoStartTour("kpis-intro");
   const [periodMonth, setPeriodMonth] = useState(currentMonthIso());
   const [tab, setTab] = useState<"1" | "2" | "3" | "4" | "monthly">("monthly");
   const [setterId, setSetterId] = useState<string>("");
@@ -172,7 +174,7 @@ export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; 
           title="Conectá tu hoja de KPIs"
           description="Conectá Google Sheets en Configuración → Integraciones para ver los números de tus setters acá, sin abrir la hoja."
           action={
-            <Button onClick={() => (window.location.href = "/profile?tab=integrations")} size="sm">
+            <Button onClick={() => (window.location.href = "/profile?tab=integrations")} size="sm" data-tour="kpis.connect-button">
               Ir a Integraciones
             </Button>
           }
@@ -183,7 +185,7 @@ export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; 
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3" data-tour="kpis.filters">
         <Input
           label="Mes"
           type="month"
@@ -217,8 +219,8 @@ export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; 
         </HorizontalCardScroller>
       ) : (
         <HorizontalCardScroller desktopClassName="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-5">
-          {CARD_DEFS.map((c) => (
-            <Card key={c.key}>
+          {CARD_DEFS.map((c, i) => (
+            <Card key={c.key} data-tour={i === 0 ? "kpis.tiles" : undefined}>
               <p className="font-mono text-[22px] font-semibold leading-none text-foreground">{totals[c.key]}</p>
               <p className="mt-1.5 text-[13px] text-neutral-500">{c.label}</p>
             </Card>

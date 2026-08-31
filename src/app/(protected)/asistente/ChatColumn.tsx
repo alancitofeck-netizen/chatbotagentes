@@ -172,7 +172,7 @@ export function ChatColumn({ conversationId, initialMessages }: { conversationId
         )}
       </div>
 
-      <div className="flex items-end gap-2 border-t border-border-default p-3">
+      <div className="flex items-end gap-2 border-t border-border-default p-3" data-tour="assistant.chat-input">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

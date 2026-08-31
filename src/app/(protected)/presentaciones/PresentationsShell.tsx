@@ -9,8 +9,10 @@ import type { PresentationListItem, PresentationsKpis } from "@/lib/presentation
 import { createPresentationAction, duplicatePresentationAction, deletePresentationAction } from "@/lib/presentations/actions";
 import { PresentationsKpiHeader } from "./PresentationsKpiHeader";
 import { PresentationsTable } from "./PresentationsTable";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 export function PresentationsShell({ initialItems, initialKpis }: { initialItems: PresentationListItem[]; initialKpis: PresentationsKpis }) {
+  useAutoStartTour("presentations-intro");
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [kpis] = useState(initialKpis);
@@ -51,7 +53,7 @@ export function PresentationsShell({ initialItems, initialKpis }: { initialItems
   return (
     <div className="flex flex-col gap-4 px-4 pb-4 sm:px-6 lg:px-8">
       <div>
-        <Button onClick={handleNew} loading={creating}>
+        <Button onClick={handleNew} loading={creating} data-tour="presentations.new-button">
           <Plus className="size-4" aria-hidden="true" />
           Nueva Presentación
         </Button>

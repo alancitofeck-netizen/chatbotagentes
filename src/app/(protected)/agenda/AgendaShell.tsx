@@ -15,6 +15,7 @@ import { AgendaEstadoDonut } from "./AgendaEstadoDonut";
 import { AgendaTipoBars } from "./AgendaTipoBars";
 import { AgendaAttendanceRate } from "./AgendaAttendanceRate";
 import { useAgendaPerformance } from "./useAgendaPerformance";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 const GRANULARITY_OPTIONS: { key: Granularity; label: string }[] = [
   { key: "dia", label: "Día" },
@@ -74,6 +75,7 @@ function weekdayLabel(selectedDate: Date): string {
  * toggle de scope porque no hay nada que alternar; la edición de estado sí
  * está disponible para los 3 roles, ver CitaCard/AgendaAppointmentsTable). */
 export function AgendaShell({ isManager }: { isManager: boolean }) {
+  useAutoStartTour("agenda-intro");
   const [granularity, setGranularity] = useState<Granularity>("dia");
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [calendarMonth, setCalendarMonth] = useState(() => firstOfMonth(new Date()));
@@ -143,7 +145,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 rounded-full bg-surface-2 p-1">
+        <div className="flex gap-1 rounded-full bg-surface-2 p-1" data-tour="agenda.range-switcher">
           {[
             {
               key: "hoy",
@@ -191,6 +193,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
         <div className="relative ml-auto">
           <button
             type="button"
+            data-tour="agenda.new-cita-button"
             onClick={() => setNewCitaOpen((v) => !v)}
             className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-accent-600"
           >
@@ -211,7 +214,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
               <p className="mb-3 text-[12.5px] text-neutral-500">
                 Para no duplicar la carga, Agenda no crea citas manualmente — cargá o actualizá la cita en tu hoja de Google Sheets conectada y se sincroniza sola en minutos.
               </p>
-              <Link href="/profile?tab=integrations" className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
+              <Link href="/profile?tab=integrations" data-tour="agenda.sheet-connect-link" className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
                 Gestionar mi hoja conectada →
               </Link>
             </div>
@@ -267,6 +270,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
               <div className="relative">
                 <button
                   type="button"
+                  data-tour="agenda.filters-button"
                   onClick={() => setFiltersOpen((v) => !v)}
                 className="flex items-center gap-1.5 rounded-md border border-border-default px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-2"
               >

@@ -162,6 +162,7 @@ export function SmartCardsColumn({ dashboard }: { dashboard: AssistantDashboard 
         ) : (
           <button
             type="button"
+            data-tour="assistant.generate-recommendations"
             onClick={handleGenerateRecommendations}
             disabled={generating}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700 disabled:opacity-50"

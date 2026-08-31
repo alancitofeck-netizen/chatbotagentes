@@ -11,6 +11,7 @@ import { SyncCenter } from "./SyncCenter";
 import { BackupManager } from "./BackupManager";
 import { HistoryTable } from "./HistoryTable";
 import { FutureIntegrationsGrid } from "./FutureIntegrationsGrid";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 export function ImportExportShell({
   initialHistory,
@@ -21,6 +22,7 @@ export function ImportExportShell({
   initialBackups: BackupSummary[];
   initialSync: SyncStatus;
 }) {
+  useAutoStartTour("data-transfer-intro");
   const [history, setHistory] = useState(initialHistory);
   const [backups, setBackups] = useState(initialBackups);
 

@@ -16,8 +16,10 @@ import { CollectionDetailDrawer } from "./CollectionDetailDrawer";
 import { CollectionFormSheet } from "./CollectionFormSheet";
 import { CollectionAutomationsSheet } from "./CollectionAutomationsSheet";
 import { filterCollections, type CollectionsQuickFilter } from "./collectionsFilters";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 export function CollectionsShell({ initialItems, initialKpis }: { initialItems: CollectionItem[]; initialKpis: CollectionsKpis }) {
+  useAutoStartTour("collections-intro");
   const [items, setItems] = useState(initialItems);
   const [kpis, setKpis] = useState(initialKpis);
   const [view, setView] = useState<CollectionsView>("calendar");

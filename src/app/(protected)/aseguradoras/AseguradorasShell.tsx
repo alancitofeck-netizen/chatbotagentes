@@ -9,6 +9,7 @@ import type { InsuranceProviderCard as ProviderCardData, InsuranceProvidersSumma
 import { ProviderCard } from "./ProviderCard";
 import { ConnectProviderModal } from "./ConnectProviderModal";
 import { ManageConnectionSheet } from "./ManageConnectionSheet";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 function SummaryTile({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
@@ -29,6 +30,7 @@ export function AseguradorasShell({
   initialProviders: ProviderCardData[];
   initialSummary: InsuranceProvidersSummary;
 }) {
+  useAutoStartTour("providers-intro");
   const [providers, setProviders] = useState(initialProviders);
   const [summary, setSummary] = useState(initialSummary);
   const [connectTarget, setConnectTarget] = useState<ProviderCardData | null>(null);

@@ -143,6 +143,7 @@ export function AgentCard({
         <p className="text-xs text-neutral-500">{formatLastActivity(stats?.lastActivityAt ?? null, agent.status)}</p>
         <Link
           href={`/agentes-ia/${agent.id}`}
+          data-tour="ai-agents.open-card"
           className="flex items-center gap-1 text-sm font-medium text-accent-600 opacity-80 transition-opacity group-hover:opacity-100 hover:underline"
         >
           Abrir agente <ArrowRight className="size-3.5" aria-hidden="true" />

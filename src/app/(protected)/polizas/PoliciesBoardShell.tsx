@@ -28,6 +28,7 @@ import { PolicyPdfUploadSheet } from "./PolicyPdfUploadSheet";
 import { PolicyAutomationsSheet } from "./PolicyAutomationsSheet";
 import { PolicyImportSheet } from "./PolicyImportSheet";
 import { PolicyCommissionsView } from "./PolicyCommissionsView";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 export function PoliciesBoardShell({
   workspaceId,
@@ -50,6 +51,7 @@ export function PoliciesBoardShell({
   const [pdfUploadOpen, setPdfUploadOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  useAutoStartTour("policies-list");
 
   // Deep links desde el Inbox (ContactInfoPanel.tsx) — mismo patrón "once on
   // mount" que CalendarShell.tsx's `?createContact=`/`?event=` readers.
@@ -172,7 +174,7 @@ export function PoliciesBoardShell({
           </div>
 
           {view === "table" && (
-            <div className="px-4 sm:px-6 lg:px-8">
+            <div className="px-4 sm:px-6 lg:px-8" data-tour="policies.list">
               <PolicyTable
                 policies={filtered.flat}
                 onOpen={(policy) => setDetailState({ id: policy.id, tab: "resumen" })}

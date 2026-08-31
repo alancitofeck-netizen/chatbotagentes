@@ -37,6 +37,8 @@ import { DocumentsGrid } from "@/components/documents/DocumentsGrid";
 import { DocumentDetailDrawer } from "@/components/documents/DocumentDetailDrawer";
 import { ImportWizard } from "@/components/documents/ImportWizard";
 import { GoogleDriveBrowser } from "@/components/documents/GoogleDriveBrowser";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 type Section = "crm" | "drive";
 
@@ -88,6 +90,7 @@ export function DocumentsShell({
     : "all";
   const folderId = searchParams.get("folder");
 
+  useAutoStartTour("documents-intro");
   const [documents, setDocuments] = useState(initialDocuments);
   const [folders, setFolders] = useState(initialFolders);
   const [search, setSearch] = useState("");
@@ -216,7 +219,10 @@ export function DocumentsShell({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-6 border-b border-border-default px-6 pt-4">
-        <h1 className="text-[19px] font-semibold text-foreground">Documentos</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-[19px] font-semibold text-foreground">Documentos</h1>
+          <ModuleHelp description="Acá podés organizar los documentos relacionados con tu trabajo — subir, buscar, filtrar y descargar." tourKey="documents-intro" />
+        </div>
         <Tabs
           value={section}
           onValueChange={(v) => {
@@ -280,7 +286,7 @@ export function DocumentsShell({
 
           <div className="relative flex min-w-0 flex-1 flex-col">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-default px-6 py-4">
-              <div className="relative w-64">
+              <div className="relative w-64" data-tour="documents.search">
                 <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
                 <input
                   value={search}
@@ -328,6 +334,7 @@ export function DocumentsShell({
                     </>
                   }
                   triggerClassName={buttonClassName({ size: "sm" })}
+                  triggerTourId="documents.new-trigger"
                   items={[
                     { label: "Nueva carpeta", icon: <FolderPlus size={14} />, onSelect: handleNewFolder },
                     { label: "Subir archivos", icon: <Upload size={14} />, onSelect: () => fileInputRef.current?.click() },

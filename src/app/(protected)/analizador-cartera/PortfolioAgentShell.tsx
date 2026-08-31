@@ -28,6 +28,7 @@ import { getInsuranceConnectionDetailAction } from "@/lib/insuranceProviders/act
 import type { InsuranceProviderCard, InsuranceSyncJobEntry } from "@/lib/insuranceProviders/queries";
 import { startPortalSyncAction, cancelPortalSyncAction } from "@/lib/portfolioAgent/actions";
 import { PORTAL_SYNC_STEP_LABEL } from "@/lib/insuranceProviders/constants";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 const POLL_INTERVAL_MS = 3000;
 const SYNC_STEPS = ["starting", "authenticating", "navigating", "extracting", "normalizing", "syncing"] as const;
@@ -97,6 +98,7 @@ export function PortfolioAgentShell({
   detailSummary: CarteraDetailSummary;
   portalProvider: InsuranceProviderCard | null;
 }) {
+  useAutoStartTour("portfolio-agent-intro");
   const [summary] = useState(initialSummary);
   const [jobs, setJobs] = useState<InsuranceSyncJobEntry[]>([]);
   const [isBusy, setIsBusy] = useState(false);
@@ -163,7 +165,7 @@ export function PortfolioAgentShell({
                 title="Sin portal conectado"
                 description="Conectá el portal de una aseguradora para que el Agente IA de Cartera empiece a sincronizar."
                 action={
-                  <Link href="/aseguradoras" className="text-sm font-medium text-accent-600 hover:underline">
+                  <Link href="/aseguradoras" data-tour="portfolio-agent.connect-empty-link" className="text-sm font-medium text-accent-600 hover:underline">
                     Ir a Aseguradoras →
                   </Link>
                 }
@@ -190,6 +192,7 @@ export function PortfolioAgentShell({
                   ) : (
                     <button
                       type="button"
+                      data-tour="portfolio-agent.sync-button"
                       onClick={handleSync}
                       disabled={isBusy}
                       className="flex shrink-0 items-center gap-1.5 rounded-full border border-border-default px-3.5 py-2 text-[13px] font-medium text-foreground hover:bg-surface-2 disabled:opacity-50"

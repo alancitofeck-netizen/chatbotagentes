@@ -255,6 +255,7 @@ function DocumentCard({
       <>
         <button
           type="button"
+          data-tour="documents.open-item"
           onClick={onOpen}
           className="flex w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:border-border-default hover:bg-surface-1 hover:shadow-[var(--elevation-xs)]"
         >
@@ -286,7 +287,7 @@ function DocumentCard({
   return (
     <>
       <div className="group relative flex flex-col gap-2 rounded-xl border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-xs)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[var(--elevation-sm)]">
-        <button type="button" onClick={onOpen} className="flex flex-col items-start gap-3 text-left">
+        <button type="button" data-tour="documents.open-item" onClick={onOpen} className="flex flex-col items-start gap-3 text-left">
           <Icon size={28} className={meta.color} aria-hidden="true" />
           <span className="line-clamp-2 text-[13px] font-medium text-foreground">{document.name}</span>
           <span className="text-[11px] text-neutral-400">

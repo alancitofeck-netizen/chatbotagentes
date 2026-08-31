@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { LayoutGrid, Settings2, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 /** Mismo lenguaje visual que AsesoriaStageOverview.tsx (Asesorías) —
  * duplicado en vez de compartido a propósito: son módulos independientes,
@@ -62,6 +65,7 @@ function ToolCard({
       <div className="flex items-center justify-between gap-3 border-t border-border-default pt-4">
         <Link
           href={href}
+          data-tour="operations.open-tool"
           className={`flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-sm font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
             isViolet ? "border-accent-200 text-accent-700 hover:bg-accent-50" : "border-blue-200 text-blue-700 hover:bg-blue-50"
           }`}
@@ -83,6 +87,7 @@ function ToolCard({
 }
 
 export function OperacionesOverview() {
+  useAutoStartTour("operations-intro");
   return (
     <div className="flex flex-col gap-4">
       <ToolCard

@@ -47,6 +47,7 @@ export function ClientCard({ client, accountManagerName, onChanged }: { client: 
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-2 transition-colors hover:bg-surface-3">
       <button
         type="button"
+        data-tour="advisors-admin.open-card"
         onClick={() => router.push(`/asesores/${client.id}`)}
         disabled={isPending}
         className="flex flex-1 flex-col gap-3 p-4 text-left disabled:opacity-60"

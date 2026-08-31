@@ -7,7 +7,7 @@ const CHIP_CLASS = "rounded-full border border-border-default px-3 py-1 text-xs 
 
 function ExportCard({ icon: Icon, title, links }: { icon: typeof Users; title: string; links: { label: string; href: string }[] }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border-default bg-surface-1 p-4">
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border-default bg-surface-1 p-4" data-tour="data-transfer.export-card">
       <div className="flex items-center gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-700">
           <Icon className="size-[18px]" aria-hidden="true" />

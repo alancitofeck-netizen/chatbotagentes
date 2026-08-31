@@ -2,6 +2,7 @@
 
 import { Trophy, Target, Gift, History } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
 export function GoalsHeader({
   canManage,
@@ -21,13 +22,16 @@ export function GoalsHeader({
           <Trophy className="size-5" aria-hidden="true" />
         </span>
         <div>
-          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Metas y Bonificaciones</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Metas y Bonificaciones</h1>
+            <ModuleHelp description="Acá podés ver tus objetivos y el progreso hacia tus metas — cuánto llevás, tu ranking, y lo que falta para el bono." tourKey="goals-intro" />
+          </div>
           <p className="text-sm text-neutral-500">Tu ritmo real, tu ranking, y lo que falta para cada objetivo</p>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="secondary" onClick={onOpenHistory}>
+        <Button size="sm" variant="secondary" onClick={onOpenHistory} data-tour="goals.history-button">
           <History className="size-4" aria-hidden="true" />
           Historial
         </Button>
@@ -37,7 +41,7 @@ export function GoalsHeader({
               <Gift className="size-4" aria-hidden="true" />
               Crear Bono
             </Button>
-            <Button size="sm" onClick={onCreateGoal}>
+            <Button size="sm" onClick={onCreateGoal} data-tour="goals.create-button">
               <Target className="size-4" aria-hidden="true" />
               Crear Meta
             </Button>
