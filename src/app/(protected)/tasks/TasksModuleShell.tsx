@@ -10,6 +10,8 @@ import { TemplatePickerDialog } from "@/components/tasks/TemplatePickerDialog";
 import { TasksSidebar } from "./TasksSidebar";
 import { NewItemMenu } from "./NewItemMenu";
 import { TaskAiPanel } from "./TaskAiPanel";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 /** Chrome for the whole Tasks/Workspace module: sidebar (Grupos list) + a
  * slim top bar ("Nuevo"/IA toggle) wrapping whatever page is active. Each
@@ -27,6 +29,7 @@ export function TasksModuleShell({
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  useAutoStartTour("tasks-create-task");
 
   function handleGroupCreated(groupId: string) {
     setShowGroupForm(false);
@@ -56,6 +59,7 @@ export function TasksModuleShell({
             <PanelLeft size={16} aria-hidden="true" />
           </button>
           <div className="flex items-center gap-2">
+            <ModuleHelp description="Las tareas te ayudan a saber qué tenés que hacer y cuándo. Organizalas en grupos y asignaselas a vos o a tu equipo." tourKey="tasks-create-task" />
             <NewItemMenu onNewGroup={() => setShowGroupForm(true)} onNewTemplate={() => setShowTemplatePicker(true)} />
             <button
               type="button"

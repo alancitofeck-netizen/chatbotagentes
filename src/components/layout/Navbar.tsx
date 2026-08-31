@@ -4,6 +4,7 @@ import { MobileNav } from "./MobileNav";
 import { NotificationBell } from "./NotificationBell";
 import { UserMenu } from "./UserMenu";
 import { GlobalSearch } from "./GlobalSearch";
+import { HelpCenterButton } from "@/components/onboarding/HelpCenterButton";
 import { getNotifications, getUnreadCount, getNotificationPreferences } from "@/lib/notifications/queries";
 
 interface NavbarProps {
@@ -44,6 +45,7 @@ export async function Navbar({ workspaceName, enabledModules, memberId, userName
       </div>
       <div className="flex flex-1 items-center justify-end gap-3">
         <GlobalSearch />
+        {memberId && <HelpCenterButton />}
         {memberId ? (
           <NotificationBell
             memberId={memberId}

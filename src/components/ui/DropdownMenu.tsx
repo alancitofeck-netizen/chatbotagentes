@@ -11,6 +11,10 @@ export interface DropdownMenuItem {
   icon?: ReactNode;
   destructive?: boolean;
   disabled?: boolean;
+  /** Opcional — si se pasa, se renderiza como `data-tour="<tourId>"` en el
+   * botón del ítem, para que un ProductTour pueda resaltarlo/esperar su
+   * click (ver src/lib/tours/). No afecta a callers que no lo pasen. */
+  tourId?: string;
 }
 
 /** Small hand-rolled positioned menu — no formal Popover/Menu primitive
@@ -27,6 +31,7 @@ export function DropdownMenu({
   align = "end",
   triggerClassName,
   triggerLabel,
+  triggerTourId,
 }: {
   trigger: ReactNode;
   items: DropdownMenuItem[];
@@ -37,6 +42,8 @@ export function DropdownMenu({
    * unlabeled so aria-label doesn't override that text as the accessible
    * name. */
   triggerLabel?: string;
+  /** Opcional — `data-tour="<triggerTourId>"` en el botón trigger, para que un ProductTour lo resalte/espere su click. */
+  triggerTourId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
@@ -84,6 +91,7 @@ export function DropdownMenu({
       <button
         ref={triggerRef}
         type="button"
+        data-tour={triggerTourId}
         aria-label={triggerLabel}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -107,6 +115,7 @@ export function DropdownMenu({
               <button
                 key={item.label}
                 type="button"
+                data-tour={item.tourId}
                 disabled={item.disabled}
                 onClick={(e) => {
                   e.stopPropagation();

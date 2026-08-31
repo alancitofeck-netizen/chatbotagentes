@@ -22,6 +22,8 @@ import { computeDaySummary, computeDayInsights } from "@/components/calendar/cal
 import { calPrimaryButton, calSecondaryButton } from "@/components/calendar/calendarColors";
 import { Fab } from "@/components/ui/Fab";
 import { useIsMobile } from "@/lib/utils/useMediaQuery";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 type ViewKey = "day" | "week" | "month" | "agenda";
 const VIEWS: { key: ViewKey; label: string }[] = [
@@ -126,6 +128,7 @@ export function CalendarShell({
   // + a mode flag), the established pattern for this app rather than a new one.
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  useAutoStartTour("calendar-intro");
 
   function clearSelection() {
     setSelectedIds(new Set());
@@ -307,6 +310,7 @@ export function CalendarShell({
                 <CalendarDays size={18} aria-hidden="true" />
               </span>
               <h1 className="text-[19px] font-semibold text-foreground">Calendario</h1>
+              <ModuleHelp description="Acá vas a organizar tus reuniones, citas y actividades. Podés crear eventos, arrastrarlos para cambiar fecha/horario, y sincronizarlos con Google Calendar." tourKey="calendar-intro" />
             </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={toggleSelectionMode} className={selectionMode ? calPrimaryButton : calSecondaryButton}>
@@ -318,6 +322,7 @@ export function CalendarShell({
                  a second entry point crowding an already-tight header. */}
               <button
                 type="button"
+                data-tour="calendar.new-event-button"
                 onClick={() => setSheetState({ mode: "create", defaultStart: date })}
                 className={cn(calPrimaryButton, "hidden md:inline-flex")}
               >
@@ -357,7 +362,7 @@ export function CalendarShell({
               <span className="text-[15px] font-medium capitalize text-foreground">{formatRangeLabel(view, date)}</span>
             </div>
 
-            <div className="flex gap-1 rounded-full bg-surface-2 p-1">
+            <div className="flex gap-1 rounded-full bg-surface-2 p-1" data-tour="calendar.view-switcher">
               {VIEWS.map((v) => (
                 <button
                   key={v.key}

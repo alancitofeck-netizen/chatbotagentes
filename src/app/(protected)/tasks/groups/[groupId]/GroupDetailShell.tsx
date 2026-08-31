@@ -391,6 +391,7 @@ export function GroupDetailShell({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            data-tour="tasks.new-task-button"
             onClick={() => setSheetState({ mode: "create" })}
             className="rounded-md bg-accent-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-accent-600"
           >

@@ -237,7 +237,7 @@ export function CalendarSidebar({
           {googleCalendarConnected ? (
             <span className="text-[11px] font-medium text-emerald-600">Conectado</span>
           ) : (
-            <a href="/profile?tab=integrations" className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:underline">
+            <a href="/profile?tab=integrations" data-tour="calendar.google-connect" className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:underline">
               <Link2 size={11} aria-hidden="true" /> Conectar
             </a>
           )}

@@ -106,7 +106,7 @@ export function TaskFormSheet({
   return (
     <Sheet open onClose={onClose} title={isEdit ? "Editar tarea" : "Nueva tarea"}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
-        <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus />
+        <Input label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus data-tour="tasks.task-title-input" />
 
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-foreground" htmlFor="task-description">
@@ -121,7 +121,7 @@ export function TaskFormSheet({
           />
         </div>
 
-        <Select label="Prioridad" value={priority} onChange={(e) => setPriority(e.target.value as typeof priority)}>
+        <Select label="Prioridad" value={priority} onChange={(e) => setPriority(e.target.value as typeof priority)} data-tour="tasks.task-priority-select">
           {Object.entries(PRIORITY_META).map(([value, meta]) => (
             <option key={value} value={value}>
               {meta.label}
@@ -158,7 +158,7 @@ export function TaskFormSheet({
         </div>
 
         {canAssignOthers ? (
-          <Select label="Asignar a" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+          <Select label="Asignar a" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} data-tour="tasks.task-assignee-select">
             {members.map((m) => (
               <option key={m.memberId} value={m.memberId}>
                 {m.memberId === ownMemberId ? `${m.fullName} (vos)` : m.fullName}
@@ -204,7 +204,7 @@ export function TaskFormSheet({
           <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
             Cancelar
           </Button>
-          <Button type="submit" loading={isPending}>
+          <Button type="submit" loading={isPending} data-tour="tasks.task-save-button">
             {isEdit ? "Guardar cambios" : "Crear tarea"}
           </Button>
         </div>

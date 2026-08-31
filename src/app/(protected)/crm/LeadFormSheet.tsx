@@ -110,16 +110,16 @@ export function LeadFormSheet({
     <Sheet open onClose={onClose} title={isEdit ? "Editar lead" : "Nuevo lead"}>
       <div className="flex flex-col gap-4 p-5">
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Contacto</p>
-        <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} data-tour="crm.lead-name-input" />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input label="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} data-tour="crm.lead-phone-input" />
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Empresa" value={company} onChange={(e) => setCompany(e.target.value)} />
           <Input label="Cargo" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
         </div>
-        <Input label="Fuente del lead" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Ej. LinkedIn, referido, web" />
+        <Input label="Fuente del lead" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Ej. LinkedIn, referido, web" data-tour="crm.lead-source-input" />
 
         <div className="my-1 h-px bg-border-default" />
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Oportunidad</p>
@@ -185,7 +185,7 @@ export function LeadFormSheet({
           </div>
         </div>
 
-        <Button onClick={handleSave} loading={isPending}>
+        <Button onClick={handleSave} loading={isPending} data-tour="crm.lead-save-button">
           {isEdit ? "Guardar cambios" : "Crear lead"}
         </Button>
       </div>

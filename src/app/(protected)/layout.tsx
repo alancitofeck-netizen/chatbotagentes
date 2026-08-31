@@ -7,6 +7,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
 import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
 import { SupervisorModeBanner } from "@/components/platform/SupervisorModeBanner";
+import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
+import { getOnboardingState } from "@/lib/onboarding/queries";
 
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -40,36 +42,39 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     .eq("workspace_id", activeWorkspace.workspaceId)
     .eq("enabled", true);
   const enabledModules = (modules ?? []).map((m) => m.module_key as string);
+  const onboardingState = await getOnboardingState();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-2" data-workspace-theme={activeWorkspace.theme}>
-      <Sidebar
-        enabledModules={enabledModules}
-        workspaceName={activeWorkspace.name}
-        role={activeWorkspace.role}
-        userName={userName}
-        userEmail={user.email ?? ""}
-        userAvatarUrl={userAvatarUrl}
-        isPlatformAdmin={isPlatformAdmin}
-        hasMultipleWorkspaces={hasMultipleWorkspaces}
-      />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {activeWorkspace.isSupervising && <SupervisorModeBanner workspaceName={activeWorkspace.name} />}
-        <Navbar
-          workspaceName={activeWorkspace.name}
+    <OnboardingProvider initialState={onboardingState}>
+      <div className="flex h-screen overflow-hidden bg-surface-2" data-workspace-theme={activeWorkspace.theme}>
+        <Sidebar
           enabledModules={enabledModules}
-          memberId={memberId}
+          workspaceName={activeWorkspace.name}
+          role={activeWorkspace.role}
           userName={userName}
           userEmail={user.email ?? ""}
           userAvatarUrl={userAvatarUrl}
           isPlatformAdmin={isPlatformAdmin}
           hasMultipleWorkspaces={hasMultipleWorkspaces}
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {activeWorkspace.isSupervising && <SupervisorModeBanner workspaceName={activeWorkspace.name} />}
+          <Navbar
+            workspaceName={activeWorkspace.name}
+            enabledModules={enabledModules}
+            memberId={memberId}
+            userName={userName}
+            userEmail={user.email ?? ""}
+            userAvatarUrl={userAvatarUrl}
+            isPlatformAdmin={isPlatformAdmin}
+            hasMultipleWorkspaces={hasMultipleWorkspaces}
+          />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+        </div>
+        {!activeWorkspace.isSupervising && (
+          <PresenceHeartbeat workspaceId={activeWorkspace.workspaceId} memberId={memberId} />
+        )}
       </div>
-      {!activeWorkspace.isSupervising && (
-        <PresenceHeartbeat workspaceId={activeWorkspace.workspaceId} memberId={memberId} />
-      )}
-    </div>
+    </OnboardingProvider>
   );
 }

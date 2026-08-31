@@ -32,6 +32,8 @@ import { CardDetailSheet } from "./CardDetailSheet";
 import { LeadFormSheet } from "./LeadFormSheet";
 import { ImportLeadsSheet } from "./ImportLeadsSheet";
 import { ManagePipelineSheet } from "./ManagePipelineSheet";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 function downloadCsv(csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -94,6 +96,7 @@ export function CrmBoardShell({
   );
   const [importOpen, setImportOpen] = useState(false);
   const [isCreatingPipeline, startCreatePipeline] = useTransition();
+  useAutoStartTour("crm-create-lead");
 
   function handleCreatePipeline() {
     startCreatePipeline(async () => {
@@ -311,10 +314,13 @@ export function CrmBoardShell({
               </button>
             </div>
           )}
-          <Button variant="secondary" size="sm" onClick={() => setManageOpen(true)}>
-            <Settings size={14} aria-hidden="true" />
-            Gestionar pipeline
-          </Button>
+          <div className="flex items-center gap-2">
+            <ModuleHelp description="En este módulo podés gestionar tus leads, consultar su información, cambiar su etapa y hacer seguimiento." tourKey="crm-create-lead" />
+            <Button variant="secondary" size="sm" onClick={() => setManageOpen(true)}>
+              <Settings size={14} aria-hidden="true" />
+              Gestionar pipeline
+            </Button>
+          </div>
         </div>
         <BoardKpiHeader kpis={board.kpis} />
         <BoardActionBar

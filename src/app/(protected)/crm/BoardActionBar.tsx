@@ -131,7 +131,7 @@ export function BoardActionBar({
           />
         </div>
 
-        <Button size="sm" onClick={onNewLead}>
+        <Button size="sm" onClick={onNewLead} data-tour="crm.new-lead-button">
           <Plus className="size-4" aria-hidden="true" />
           Nuevo lead
         </Button>

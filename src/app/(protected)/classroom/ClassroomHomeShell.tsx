@@ -11,6 +11,8 @@ import { CourseRow } from "./CourseRow";
 import type { ClassroomCategory, CategorySummary } from "@/lib/classroom/categories/queries";
 import type { ClassroomCourse, ClassroomCourseCard } from "@/lib/classroom/courses/queries";
 import type { CourseProgress } from "@/lib/classroom/progress/queries";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 export function ClassroomHomeShell({
   canManage,
@@ -29,6 +31,7 @@ export function ClassroomHomeShell({
   progressByCourse: Record<string, CourseProgress>;
   continueLearning: { course: ClassroomCourse; progress: CourseProgress; lessonId: string } | null;
 }) {
+  useAutoStartTour("classroom-intro");
   return (
     <div className="flex flex-col gap-8 p-6 sm:p-8">
       <div className="flex flex-col gap-4">
@@ -38,11 +41,14 @@ export function ClassroomHomeShell({
               <GraduationCap className="size-5" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">Classroom</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold text-foreground">Classroom</h1>
+                <ModuleHelp description="Acá vas a encontrar las capacitaciones para aprender a usar Growth Link y mejorar tu trabajo." tourKey="classroom-intro" />
+              </div>
               <p className="mt-1 text-sm text-neutral-500">Bienvenido nuevamente. Continúa donde quedaste.</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" data-tour="classroom.search">
             <SearchBar />
             {canManage && (
               <Link href="/classroom/admin" className={buttonClassName({ variant: "secondary" })}>
@@ -75,10 +81,14 @@ export function ClassroomHomeShell({
       ) : (
         <>
           {continueLearning && (
-            <ContinueLearningCard course={continueLearning.course} progress={continueLearning.progress} lessonId={continueLearning.lessonId} />
+            <div data-tour="classroom.continue-learning">
+              <ContinueLearningCard course={continueLearning.course} progress={continueLearning.progress} lessonId={continueLearning.lessonId} />
+            </div>
           )}
 
-          <CategoryGrid categories={categories} summaries={categorySummaries} />
+          <div data-tour="classroom.categories">
+            <CategoryGrid categories={categories} summaries={categorySummaries} />
+          </div>
 
           {featuredCourses.length > 0 && (
             <CourseRow

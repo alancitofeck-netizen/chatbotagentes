@@ -81,6 +81,12 @@
   --duration-slow: 240ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+
+  /* Product tour overlay — above every existing z-index in the app (current
+     max was z-[100], CelebrationBurst in /metas) so the spotlight/tooltip
+     always win, no matter which module is being toured. */
+  --z-tour-spotlight: 200;
+  --z-tour-tooltip: 210;
 }
 
 :root {
@@ -396,5 +402,17 @@ body {
   }
   50% {
     transform: translateY(-8px);
+  }
+}
+/* Flecha del ProductTour (TourTooltip.tsx) — solo se aplica cuando el
+   llamador ya comprobó prefers-reduced-motion (no queda una segunda guarda
+   acá para no duplicar la lógica). */
+@keyframes gl-tour-arrow-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
   }
 }

@@ -109,7 +109,7 @@ export function GroupFormDialog({
           )}
         </div>
 
-        <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+        <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} required autoFocus data-tour="tasks.group-name-input" />
 
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-foreground" htmlFor="group-description">
@@ -167,7 +167,7 @@ export function GroupFormDialog({
           <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
             Cancelar
           </Button>
-          <Button type="submit" loading={isPending}>
+          <Button type="submit" loading={isPending} data-tour="tasks.create-group-submit">
             {isEdit ? "Guardar cambios" : "Crear grupo"}
           </Button>
         </div>
