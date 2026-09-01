@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { calculateInteractionScore, deriveInteractionLevel } from "@/lib/integrations/manychatScoring";
 
 const PROVIDER = "manychat";
@@ -553,7 +554,14 @@ export interface ManychatSyncResult {
  * un contacto nuevo (eso solo lo hace el webhook). */
 export async function syncManychatContacts(workspaceId: string): Promise<ManychatSyncResult> {
   const supabase = await createClient();
-  const { data: credentialsRow } = await supabase.rpc("get_oauth_credentials", { p_workspace_id: workspaceId, p_provider: PROVIDER }).maybeSingle();
+  // get_oauth_credentials solo tiene EXECUTE otorgado a service_role (mismo
+  // motivo que getValidAccessToken en googleCalendar.ts: protege el secreto
+  // de ser leído por cualquier query RLS-scoped) — llamarlo con el cliente
+  // normal tira "permission denied" (era el error real detrás del digest
+  // genérico que veía el usuario). El resto de esta función sigue en
+  // `supabase` (RLS normal), solo esta lectura puntual necesita service-role.
+  const serviceClient = createServiceRoleClient();
+  const { data: credentialsRow } = await serviceClient.rpc("get_oauth_credentials", { p_workspace_id: workspaceId, p_provider: PROVIDER }).maybeSingle();
   const secretJson = (credentialsRow as { secret_json?: string } | null)?.secret_json;
   const apiToken = secretJson ? (JSON.parse(secretJson) as { api_token?: string }).api_token : null;
   if (!apiToken) throw new Error("Este workspace todavía no tiene un API Token de ManyChat conectado.");
