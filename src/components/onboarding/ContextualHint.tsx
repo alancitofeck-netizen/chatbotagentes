@@ -14,8 +14,11 @@ import { attachFloatingPosition, type FloatingPosition } from "./floatingPositio
  * rompa una fila flex existente (ej. una barra de acciones). "Mostrarme"/
  * "Ahora no" — cualquiera de las dos descarta el hint para siempre para
  * este miembro (kind='hint' en learning_progress), nunca vuelve a
- * molestar. El wrapper alrededor de `children` es `inline-flex`, así que
- * no cambia el layout visual del elemento envuelto. */
+ * molestar. El wrapper alrededor de `children` es un `div` simple —
+ * funciona igual envolviendo un botón chico en una fila flex (se ajusta a
+ * su contenido, como cualquier item de flexbox) o una Card de ancho
+ * completo en una columna flex (hereda el stretch del padre); un
+ * `inline-flex` rompía este segundo caso. */
 export function ContextualHint({
   hintKey,
   title,
@@ -32,7 +35,7 @@ export function ContextualHint({
 }) {
   const { getLearningStatus, setLearningStatus } = useOnboarding();
   const status = getLearningStatus("hint", hintKey);
-  const anchorRef = useRef<HTMLSpanElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const floatingRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<FloatingPosition | null>(null);
   const open = status === "pending";
@@ -60,7 +63,7 @@ export function ContextualHint({
   }
 
   return (
-    <span ref={anchorRef} className="relative inline-flex">
+    <div ref={anchorRef} className="relative">
       {children}
       {open &&
         createPortal(
@@ -100,6 +103,6 @@ export function ContextualHint({
           </div>,
           document.body,
         )}
-    </span>
+    </div>
   );
 }

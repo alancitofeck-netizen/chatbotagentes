@@ -36,6 +36,23 @@ export async function markOnboardingSeenAction(): Promise<void> {
     );
 }
 
+/** "Reiniciar tutoriales" (Perfil → Aprendizaje) — vuelve todo a 'pending'
+ * en vez de borrar filas: no hay policy de DELETE en ninguna de las dos
+ * tablas (nunca hizo falta hasta ahora, "ausencia de fila = pending" ya
+ * cubre el caso normal), así que un UPDATE masivo con las policies de
+ * "solo mi propia fila" que ya existen alcanza sin necesitar una
+ * migración nueva. */
+export async function resetAllProgressAction(): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  if (!memberId) return;
+  const supabase = await createClient();
+  await Promise.all([
+    supabase.from("onboarding_progress").update({ status: "pending", updated_at: new Date().toISOString() }).eq("member_id", memberId),
+    supabase.from("learning_progress").update({ status: "pending", completed_at: null, updated_at: new Date().toISOString() }).eq("member_id", memberId),
+  ]);
+}
+
 export async function setLearningProgressAction(kind: LearningKind, itemKey: string, status: LearningStatus): Promise<void> {
   const { workspaceId } = await requireActiveWorkspace();
   const memberId = await getCurrentMemberId(workspaceId);

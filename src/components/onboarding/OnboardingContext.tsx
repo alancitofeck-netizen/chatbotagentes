@@ -2,9 +2,10 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import type { OnboardingState, OnboardingStepKey, OnboardingStatus, LearningKind, LearningStatus } from "@/lib/onboarding/types";
-import { setOnboardingStepAction, markOnboardingSeenAction, setLearningProgressAction } from "@/lib/onboarding/actions";
+import { setOnboardingStepAction, markOnboardingSeenAction, setLearningProgressAction, resetAllProgressAction } from "@/lib/onboarding/actions";
 import { getTourByKey } from "@/lib/tours/registry";
 import type { TourConfig } from "@/lib/tours/types";
+import { ONBOARDING_STEPS } from "@/lib/onboarding/types";
 
 interface OnboardingContextValue {
   memberId: string | null;
@@ -22,6 +23,10 @@ interface OnboardingContextValue {
   isHelpCenterOpen: boolean;
   openHelpCenter: () => void;
   closeHelpCenter: () => void;
+  /** "Reiniciar tutoriales" (Perfil → Aprendizaje) — vuelve todos los pasos
+   * del checklist y todos los tours/hints a 'pending', local e
+   * inmediatamente (sin recargar la página). */
+  resetAllProgress: () => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -66,6 +71,12 @@ export function OnboardingProvider({ initialState, children }: { initialState: O
 
   const getLearningStatus = useCallback((kind: LearningKind, itemKey: string) => learning[`${kind}:${itemKey}`] ?? "pending", [learning]);
 
+  const resetAllProgress = useCallback(() => {
+    setSteps(Object.fromEntries(ONBOARDING_STEPS.map((k) => [k, "pending" as OnboardingStatus])) as Record<OnboardingStepKey, OnboardingStatus>);
+    setLearning({});
+    void resetAllProgressAction();
+  }, []);
+
   const activeTour = activeTourKey ? (getTourByKey(activeTourKey) ?? null) : null;
 
   const value = useMemo<OnboardingContextValue>(
@@ -85,8 +96,9 @@ export function OnboardingProvider({ initialState, children }: { initialState: O
       isHelpCenterOpen,
       openHelpCenter: () => setIsHelpCenterOpen(true),
       closeHelpCenter: () => setIsHelpCenterOpen(false),
+      resetAllProgress,
     }),
-    [initialState.memberId, steps, learning, setStepStatus, showWelcome, getLearningStatus, setLearningStatus, activeTour, isHelpCenterOpen],
+    [initialState.memberId, steps, learning, setStepStatus, showWelcome, getLearningStatus, setLearningStatus, activeTour, isHelpCenterOpen, resetAllProgress],
   );
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;

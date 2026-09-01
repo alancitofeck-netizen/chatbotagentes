@@ -14,6 +14,7 @@ import { duplicateAiAgent, toggleAiAgentStatus, deleteAiAgent } from "@/lib/ai-a
 import { CreateAiAgentSheet } from "./CreateAiAgentSheet";
 import { AgentCard } from "./AgentCard";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
+import { ContextualHint } from "@/components/onboarding/ContextualHint";
 
 function MetricTile({ icon: Icon, iconClassName, label, value, sublabel }: { icon: typeof Bot; iconClassName: string; label: string; value: number; sublabel: string }) {
   return (
@@ -169,6 +170,7 @@ export function AiAgentsSection({ initialAgents, stats }: { initialAgents: AiAge
             <MetricTile icon={CalendarCheck2} iconClassName="bg-warning-bg text-warning-strong" label="Citas generadas" value={totals.citas} sublabel="En los últimos 7 días" />
           </div>
 
+          <ContextualHint hintKey="ai-agents-filters-first-use" title="🔎 ¿Primera vez usando filtros?" description="Te mostramos rápidamente cómo funcionan.">
           <Card data-tour="ai-agents.filters">
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-[200px] flex-1">
@@ -210,6 +212,7 @@ export function AiAgentsSection({ initialAgents, stats }: { initialAgents: AiAge
               )}
             </div>
           </Card>
+          </ContextualHint>
 
           {filteredAgents.length === 0 ? (
             <EmptyState icon={Sparkles} title="Ningún agente coincide con los filtros" description="Probá limpiar los filtros o buscar con otro término." />

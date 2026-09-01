@@ -28,6 +28,7 @@ import { NewClientWizard } from "./NewClientWizard";
 import { ClientCard } from "./ClientCard";
 import { ClientListRow } from "./ClientListRow";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
+import { ContextualHint } from "@/components/onboarding/ContextualHint";
 
 type StatusFilter = "all" | "en_onboarding" | "activo" | "pausado" | "archivado";
 type AlertFilter = "all" | ClientAlertType;
@@ -163,6 +164,7 @@ export function ClientesListShell({
             />
           </div>
 
+          <ContextualHint hintKey="advisors-admin-filters-first-use" title="🔎 ¿Primera vez usando filtros?" description="Te mostramos rápidamente cómo funcionan.">
           <div className="flex flex-wrap items-center gap-2" data-tour="advisors-admin.filters">
             <div className="relative flex-1 sm:max-w-xs">
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
@@ -217,6 +219,7 @@ export function ClientesListShell({
               </button>
             </div>
           </div>
+          </ContextualHint>
 
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-2xl border border-border-default bg-surface-2 p-10 text-center">
