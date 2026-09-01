@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils/cn";
 import type { ConversationListItem, WorkspaceMemberOption, WorkspaceTag } from "@/lib/inbox/queries";
 import { tagBadgeVariant } from "./tagColor";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
 export type InboxTab = "all" | "unread" | "assigned" | "unassigned" | "closed";
 
@@ -133,7 +134,10 @@ export function ConversationList({
     <div className={cn("h-full flex-col bg-surface-1", className)}>
       <div className="flex flex-col gap-3 border-b border-border-default px-4 pb-3 pt-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-[17px] font-semibold tracking-[-0.01em] text-foreground">Bandeja de entrada</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[17px] font-semibold tracking-[-0.01em] text-foreground">Bandeja de entrada</h1>
+            <ModuleHelp description="En este módulo podés gestionar tus conversaciones de WhatsApp/Instagram, consultar su información, y hacer seguimiento — todo en un solo lugar." tourKey="inbox-intro" />
+          </div>
           <button
             type="button"
             aria-label="Nueva conversación"
@@ -142,7 +146,7 @@ export function ConversationList({
             <Pencil size={15} />
           </button>
         </div>
-        <div className="relative">
+        <div className="relative" data-tour="inbox.search">
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
           <input
             value={search}
@@ -238,6 +242,7 @@ export function ConversationList({
                 <li key={c.id}>
                   <button
                     type="button"
+                    data-tour="inbox.open-conversation"
                     onClick={() => onSelect(c.id)}
                     className={cn(
                       "group relative flex w-full items-start gap-3 border-b border-border-default py-3 pl-3.5 pr-4 text-left transition-colors",

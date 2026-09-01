@@ -12,6 +12,7 @@ import {
   IdCard,
   Workflow,
   Palette,
+  GraduationCap,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils/cn";
@@ -33,6 +34,7 @@ import { AppearanceSection } from "./sections/AppearanceSection";
 import { AutomationsSection } from "./sections/AutomationsSection";
 import { IntegrationsSection } from "./sections/IntegrationsSection";
 import { BillingSection } from "./sections/BillingSection";
+import { LearningProgressSection } from "./sections/LearningProgressSection";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -47,6 +49,7 @@ const TABS = [
   { key: "preferences", label: "Preferencias", icon: SlidersHorizontal },
   { key: "workspace", label: "Workspace", icon: Building2 },
   { key: "appearance", label: "Apariencia", icon: Palette },
+  { key: "learning", label: "Aprendizaje", icon: GraduationCap },
   { key: "automations", label: "Automatizaciones", icon: Workflow },
   { key: "integrations", label: "Integraciones", icon: Plug },
   { key: "billing", label: "Facturación", icon: CreditCard },
@@ -188,6 +191,7 @@ export function ProfileShell({
             />
           )}
           {activeTab === "appearance" && <AppearanceSection currentTheme={profile.workspaceTheme} canManage={canManage} />}
+          {activeTab === "learning" && <LearningProgressSection />}
           {activeTab === "automations" && <AutomationsSection initialAutomations={initialAutomations} />}
           {activeTab === "integrations" && (
             <IntegrationsSection

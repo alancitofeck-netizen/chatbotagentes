@@ -119,7 +119,13 @@ export function ManyChatConnectionCard({ canManage }: { canManage: boolean }) {
       )}
 
       <div className="flex gap-2">
-        <Button size="sm" variant={status?.webhookSecret ? "secondary" : "primary"} disabled={!canManage || isPending} onClick={handleGenerate}>
+        <Button
+          size="sm"
+          variant={status?.webhookSecret ? "secondary" : "primary"}
+          disabled={!canManage || isPending}
+          onClick={handleGenerate}
+          data-tour="manychat.generate-secret"
+        >
           <RefreshCw className="size-3.5" aria-hidden="true" />
           {status?.webhookSecret ? "Regenerar secreto" : "Generar secreto"}
         </Button>

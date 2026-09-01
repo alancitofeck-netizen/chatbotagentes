@@ -12,6 +12,8 @@ import { ContenidoTab } from "./tabs/ContenidoTab";
 import { AnalyticsTab } from "./tabs/AnalyticsTab";
 import { ConfiguracionTab } from "./tabs/ConfiguracionTab";
 import { LeadDetailPanel } from "./LeadDetailPanel";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 type Tab = "resumen" | "leads" | "conversaciones" | "contenido" | "analytics" | "configuracion";
 const VALID_TABS: Tab[] = ["resumen", "leads", "conversaciones", "contenido", "analytics", "configuracion"];
@@ -41,6 +43,7 @@ export function ManychatShell({
   dashboard: ManychatDashboardSummary | null;
   contentStats: ManychatContentStat[];
 }) {
+  useAutoStartTour("manychat-intro");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState(initialStatus);
@@ -61,19 +64,24 @@ export function ManychatShell({
           <Camera className="size-5" aria-hidden="true" />
         </span>
         <div>
-          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">ManyChat</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">ManyChat</h1>
+            <ModuleHelp description="GrowthLink recibe y analiza la actividad de los leads que ManyChat gestiona en tu Instagram — nunca controla su flujo ni responde por vos." tourKey="manychat-intro" />
+          </div>
           <p className="text-sm text-neutral-500">Instagram Automation & Analytics — {workspaceName}</p>
         </div>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-        <TabsList>
+        <TabsList data-tour="manychat.tabs">
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="leads">Leads</TabsTrigger>
           <TabsTrigger value="conversaciones">Conversaciones</TabsTrigger>
           <TabsTrigger value="contenido">Contenido</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="configuracion">Configuración</TabsTrigger>
+          <TabsTrigger value="configuracion" data-tour="manychat.tabs.configuracion">
+            Configuración
+          </TabsTrigger>
         </TabsList>
 
         <div className="pt-4">

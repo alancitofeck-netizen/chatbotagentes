@@ -10,6 +10,7 @@ import { getConversationDetailAction, getConversationListAction, markConversatio
 import { ConversationList, type InboxTab } from "./ConversationList";
 import { ConversationThread } from "./ConversationThread";
 import { ContactInfoPanel } from "./ContactInfoPanel";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 export function InboxShell({
   workspaceId,
@@ -26,6 +27,7 @@ export function InboxShell({
   tags: WorkspaceTag[];
   approvedTemplates: WhatsAppTemplate[];
 }) {
+  useAutoStartTour("inbox-intro");
   const [conversations, setConversations] = useState(initialConversations);
   // Tabs (Todas/No leídas/Mis conversaciones/Sin asignar/Cerradas) are filtered client-side over
   // the same fetched list — only the text search still round-trips to the

@@ -26,7 +26,7 @@ export function VacancyBoardView({ board }: { board: VacancyBoard }) {
   return (
     <>
       <div className="flex justify-end px-4 sm:px-6 lg:px-8">
-        <Button size="sm" onClick={() => setAddSheetOpen(true)}>
+        <Button size="sm" onClick={() => setAddSheetOpen(true)} data-tour="ats.add-candidate-button">
           <UserPlus size={16} /> Agregar candidato
         </Button>
       </div>

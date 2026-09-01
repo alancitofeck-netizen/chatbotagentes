@@ -56,6 +56,7 @@ export function MiniAppCard({ app, onDeleted, canManage }: { app: MiniAppListIte
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-1 transition-all hover:border-accent-300 hover:shadow-[var(--elevation-sm)]">
       <button
         type="button"
+        data-tour="mini-apps.open-item"
         onClick={() => router.push(`/mini-apps/${app.id}`)}
         disabled={isPending}
         className="flex flex-1 flex-col gap-4 p-5 text-left disabled:opacity-60"

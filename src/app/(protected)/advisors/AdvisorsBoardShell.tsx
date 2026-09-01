@@ -13,6 +13,7 @@ import { AdvisorsKpiHeader } from "./AdvisorsKpiHeader";
 import { AdvisorsKanban } from "./AdvisorsKanban";
 import { DealFormSheet } from "./DealFormSheet";
 import { DealDetailSheet } from "./DealDetailSheet";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 /** First-pass "Asesores" board — deliberately narrower than the CRM board
  * (no Tabla/bulk actions/CSV import-export/advanced filters): rich Kanban
@@ -25,6 +26,7 @@ export function AdvisorsBoardShell({
   initialBoard: AdvisorsBoard | null;
   members: WorkspaceMemberOption[];
 }) {
+  useAutoStartTour("advisors-intro");
   const [board, setBoard] = useState(initialBoard);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [dealForm, setDealForm] = useState<{ card: DealCard | null; defaultStageId: string | null } | null>(null);
@@ -73,11 +75,11 @@ export function AdvisorsBoardShell({
           <div className="flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
             <AdvisorsKpiHeader kpis={board.kpis} />
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button onClick={() => setDealForm({ card: null, defaultStageId: board.stages[0]?.id ?? null })}>
+              <Button onClick={() => setDealForm({ card: null, defaultStageId: board.stages[0]?.id ?? null })} data-tour="advisors.new-button">
                 <Plus className="size-4" aria-hidden="true" />
                 Nuevo prospecto
               </Button>
-              <LinkButton href="/advisors/import" variant="secondary">
+              <LinkButton href="/advisors/import" variant="secondary" data-tour="advisors.import-link">
                 <Upload className="size-4" aria-hidden="true" />
                 Importar cartera
               </LinkButton>

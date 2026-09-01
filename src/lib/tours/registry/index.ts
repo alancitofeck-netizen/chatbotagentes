@@ -19,6 +19,13 @@ import { aiAgentsTours } from "./aiAgents";
 import { advisorsAdminTours } from "./advisorsAdmin";
 import { operationsTours } from "./operations";
 import { dataTransferTours } from "./dataTransfer";
+import { dashboardTours } from "./dashboard";
+import { inboxTours } from "./inbox";
+import { advisorsTours } from "./advisors";
+import { miniAppsTours } from "./miniApps";
+import { asesoriasTours } from "./asesorias";
+import { manychatTours } from "./manychat";
+import { atsTours } from "./ats";
 
 /** Registro central de todos los tours de producto — cada módulo nuevo solo
  * necesita agregar un archivo `registry/<modulo>.ts` + sumarlo acá, nunca
@@ -44,6 +51,13 @@ export const ALL_TOURS: TourConfig[] = [
   ...advisorsAdminTours,
   ...operationsTours,
   ...dataTransferTours,
+  ...dashboardTours,
+  ...inboxTours,
+  ...advisorsTours,
+  ...miniAppsTours,
+  ...asesoriasTours,
+  ...manychatTours,
+  ...atsTours,
 ];
 
 export function getTourByKey(key: string): TourConfig | undefined {

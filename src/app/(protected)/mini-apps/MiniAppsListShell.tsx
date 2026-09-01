@@ -12,6 +12,7 @@ import { NewMiniAppWizard } from "./NewMiniAppWizard";
 import { LinkAppWizard } from "./LinkAppWizard";
 import { MiniAppCard } from "./MiniAppCard";
 import { MiniAppListRow } from "./MiniAppListRow";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 type StatusFilter = "all" | "active" | "inactive";
 
@@ -26,6 +27,7 @@ export function MiniAppsListShell({
   moduleEnabled: boolean;
   canManage: boolean;
 }) {
+  useAutoStartTour("mini-apps-intro");
   const [miniApps, setMiniApps] = useState(initialMiniApps);
   const [showCreate, setShowCreate] = useState(false);
   const [showLinkApp, setShowLinkApp] = useState(false);
@@ -72,7 +74,7 @@ export function MiniAppsListShell({
           <Link2 size={16} aria-hidden="true" />
           Vincular App
         </Button>
-        <Button onClick={() => setShowCreate(true)}>
+        <Button onClick={() => setShowCreate(true)} data-tour="mini-apps.new-button">
           <Plus size={16} aria-hidden="true" />
           Nueva Mini App
         </Button>
@@ -95,7 +97,7 @@ export function MiniAppsListShell({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 sm:max-w-xs">
+            <div className="relative flex-1 sm:max-w-xs" data-tour="mini-apps.search">
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
               <input
                 value={search}

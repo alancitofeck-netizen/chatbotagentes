@@ -426,7 +426,12 @@ export function CalendarShell({
         </div>
       </div>
 
-      <Fab aria-label="Nuevo evento" title="Nuevo evento" onClick={() => setSheetState({ mode: "create", defaultStart: date })} />
+      <Fab
+        aria-label="Nuevo evento"
+        title="Nuevo evento"
+        data-tour="calendar.new-event-button"
+        onClick={() => setSheetState({ mode: "create", defaultStart: date })}
+      />
 
       {sheetState?.mode === "view" && (
         <EventDetailDrawer

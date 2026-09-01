@@ -39,6 +39,7 @@ export function MiniAppListRow({ app, onDeleted, canManage }: { app: MiniAppList
     <div className="flex items-center gap-3 rounded-xl border border-border-default bg-surface-2 p-3 transition-colors hover:bg-surface-3">
       <button
         type="button"
+        data-tour="mini-apps.open-item"
         onClick={() => router.push(`/mini-apps/${app.id}`)}
         disabled={isPending}
         className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:opacity-60"

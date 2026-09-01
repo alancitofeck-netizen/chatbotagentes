@@ -46,7 +46,7 @@ export function PriorityInsights({ insights }: { insights: Insight[] }) {
               <p className="text-sm font-semibold text-foreground">{insight.title}</p>
               <p className="mt-1 text-[13px] text-neutral-500">{insight.explanation}</p>
             </div>
-            <LinkButton href={insight.actionHref} variant="secondary" size="sm" className="mt-auto self-start">
+            <LinkButton href={insight.actionHref} variant="secondary" size="sm" className="mt-auto self-start" data-tour="dashboard.insight-link">
               {insight.actionLabel}
             </LinkButton>
           </Card>

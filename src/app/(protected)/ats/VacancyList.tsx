@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "@/components/toast/toast";
 import type { VacancySummary } from "@/lib/ats/queries";
 import { createVacancy } from "@/lib/ats/actions";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 const STATUS_LABEL: Record<string, { label: string; variant: "accent" | "warning" | "neutral" }> = {
   open: { label: "Abierta", variant: "accent" },
@@ -59,6 +60,7 @@ function NewVacancySheet({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 export function VacancyList({ vacancies }: { vacancies: VacancySummary[] }) {
+  useAutoStartTour("ats-intro");
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
@@ -67,7 +69,7 @@ export function VacancyList({ vacancies }: { vacancies: VacancySummary[] }) {
         <p className="text-sm text-neutral-500">
           {vacancies.length} {vacancies.length === 1 ? "vacante" : "vacantes"}
         </p>
-        <Button size="sm" onClick={() => setSheetOpen(true)}>
+        <Button size="sm" onClick={() => setSheetOpen(true)} data-tour="ats.new-vacancy-button">
           <Plus size={16} /> Nueva vacante
         </Button>
       </div>
@@ -83,7 +85,7 @@ export function VacancyList({ vacancies }: { vacancies: VacancySummary[] }) {
           {vacancies.map((v) => {
             const status = STATUS_LABEL[v.status] ?? STATUS_LABEL.open;
             return (
-              <Link key={v.id} href={`/ats/${v.id}`}>
+              <Link key={v.id} href={`/ats/${v.id}`} data-tour="ats.open-vacancy">
                 <Card className="flex h-full flex-col gap-3 transition-shadow hover:shadow-[var(--elevation-md)]">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-[15px] font-medium text-foreground">{v.title}</h3>

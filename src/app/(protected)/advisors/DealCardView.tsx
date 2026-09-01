@@ -98,7 +98,7 @@ export function DealCardView({
       <div className="flex items-center justify-between border-t border-border-default pt-2">
         <Avatar name={card.ownerName ?? "Sin asignar"} src={card.ownerAvatarUrl} size={20} />
         <div className="flex items-center gap-2">
-          <button type="button" onClick={onOpen} className="text-neutral-400 hover:text-accent-700" title="Ver">
+          <button type="button" data-tour="advisors.open-card" onClick={onOpen} className="text-neutral-400 hover:text-accent-700" title="Ver">
             <Eye className="size-3.5" aria-hidden="true" />
           </button>
           <button type="button" onClick={onEdit} className="text-neutral-400 hover:text-accent-700" title="Editar">

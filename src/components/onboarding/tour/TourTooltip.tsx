@@ -60,7 +60,7 @@ export function TourTooltip({
       role="dialog"
       aria-modal="true"
       className={cn(
-        "fixed w-[300px] rounded-lg border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-lg)]",
+        "fixed w-[min(300px,calc(100vw-32px))] rounded-lg border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-lg)]",
         !reduced && "transition-opacity duration-[var(--duration-base)]",
         pos ? "opacity-100" : "opacity-0",
       )}

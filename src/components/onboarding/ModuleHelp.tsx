@@ -52,7 +52,10 @@ export function ModuleHelp({ description, tourKey }: { description: string; tour
           <div
             ref={floatingRef}
             role="dialog"
-            className={cn("fixed w-72 rounded-lg border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-md)]", pos ? "opacity-100" : "opacity-0")}
+            className={cn(
+              "fixed w-[min(288px,calc(100vw-32px))] rounded-lg border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-md)]",
+              pos ? "opacity-100" : "opacity-0",
+            )}
             style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, zIndex: "var(--z-tour-tooltip)" as unknown as number }}
           >
             <p className="mb-3 text-[13px] leading-relaxed text-neutral-600">{description}</p>

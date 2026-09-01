@@ -999,6 +999,7 @@ export function ConversationThread({
           </div>
 
           <textarea
+            data-tour="inbox.composer"
             value={messageInput}
             onChange={(e) => setMessageInput(e.target.value)}
             onKeyDown={(e) => {

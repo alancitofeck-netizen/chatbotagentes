@@ -8,6 +8,7 @@ import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { POLICY_STAGES, type InsuranceType } from "@/lib/policies/constants";
 import { EMPTY_POLICIES_FILTERS, type PoliciesFilters } from "@/lib/policies/boardFilters";
+import { ContextualHint } from "@/components/onboarding/ContextualHint";
 
 const INSURANCE_TYPE_LABEL: Record<InsuranceType, string> = { auto: "Auto", hogar: "Hogar", vida: "Vida", otro: "Otro" };
 
@@ -84,10 +85,17 @@ export function PoliciesActionBar({
             { label: "PDF", icon: <FileText className="size-4" aria-hidden="true" />, onSelect: () => window.open("/api/policies/export?format=pdf", "_blank") },
           ]}
         />
-        <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)} data-tour="policies.filters">
-          <SlidersHorizontal className="size-4" aria-hidden="true" />
-          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-        </Button>
+        <ContextualHint
+          hintKey="policies-filters-first-use"
+          title="🔎 ¿Primera vez usando filtros?"
+          description="Te mostramos rápidamente cómo funcionan."
+          onShowMe={() => setFiltersOpen(true)}
+        >
+          <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)} data-tour="policies.filters">
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </Button>
+        </ContextualHint>
         <Button size="sm" variant="secondary" onClick={onOpenAutomations}>
           <Zap className="size-4" aria-hidden="true" />
           Automatizaciones

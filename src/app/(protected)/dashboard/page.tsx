@@ -40,6 +40,7 @@ import { PriorityInsights } from "./PriorityInsights";
 import { RecommendedActions } from "./RecommendedActions";
 import { Trends } from "./Trends";
 import { AdvisorPerformance } from "./AdvisorPerformance";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
 export const metadata: Metadata = {
   title: "Dashboard — Growth Link",
@@ -147,7 +148,10 @@ export default async function DashboardPage() {
       <ExecutiveSummary greetingName={firstName} bullets={bullets} health={health} />
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-[15px] font-semibold text-foreground">Insights prioritarios</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-[15px] font-semibold text-foreground">Insights prioritarios</h2>
+          <ModuleHelp description="Tu resumen del día — insights, tendencias, tareas pendientes y actividad reciente, todo en un solo lugar." tourKey="dashboard-intro" />
+        </div>
         <PriorityInsights insights={insights} />
       </section>
 

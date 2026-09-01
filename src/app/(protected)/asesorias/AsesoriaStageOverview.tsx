@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowDown, Users, TrendingUp, CalendarClock, UserRound, MessageSquareText, Lock, ListChecks, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 function formatLastActivity(iso: string | null) {
   if (!iso) return "Sin actividad";
@@ -93,6 +96,7 @@ function StageCard({
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-default pt-4">
         <Link
           href={detailsHref}
+          data-tour="asesorias.details-link"
           className={`flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-sm font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
             isViolet ? "border-accent-200 text-accent-700 hover:bg-accent-50" : "border-blue-200 text-blue-700 hover:bg-blue-50"
           }`}
@@ -123,6 +127,7 @@ export function AsesoriaStageOverview({
   lastActivityAt: string | null;
   advisorName: string | null;
 }) {
+  useAutoStartTour("asesorias-intro");
   return (
     <div className="flex flex-col items-stretch">
       <StageCard
@@ -148,6 +153,7 @@ export function AsesoriaStageOverview({
         primaryAction={
           <Link
             href="/asesorias/presentacion?crear=1"
+            data-tour="asesorias.create-link"
             className="flex items-center gap-1.5 rounded-md bg-accent-600 px-3.5 py-2 text-sm font-medium text-white transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-accent-700"
           >
             <Plus className="size-4" aria-hidden="true" />

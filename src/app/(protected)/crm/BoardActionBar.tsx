@@ -21,6 +21,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import type { OpportunityTag, PipelineStage } from "@/lib/crm/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
+import { ContextualHint } from "@/components/onboarding/ContextualHint";
 
 export interface BoardFilters {
   agentId: string;
@@ -147,10 +148,17 @@ export function BoardActionBar({
           <ListChecks className="size-4" aria-hidden="true" />
           Acciones masivas
         </Button>
-        <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)}>
-          <SlidersHorizontal className="size-4" aria-hidden="true" />
-          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-        </Button>
+        <ContextualHint
+          hintKey="crm-filters-first-use"
+          title="🔎 ¿Primera vez usando filtros?"
+          description="Te mostramos rápidamente cómo funcionan."
+          onShowMe={() => setFiltersOpen(true)}
+        >
+          <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)}>
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+          </Button>
+        </ContextualHint>
 
         <select
           value={sortBy}

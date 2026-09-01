@@ -5,6 +5,7 @@ import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getMiniAppsList } from "@/lib/miniApps/queries";
 import { MiniAppsListShell } from "./MiniAppsListShell";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
 export const metadata: Metadata = {
   title: "Mini Apps — Growth Link",
@@ -27,7 +28,10 @@ export default async function MiniAppsPage() {
           <AppWindow className="size-5" aria-hidden="true" />
         </div>
         <div className="flex flex-col gap-1">
-          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Mini Apps</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Mini Apps</h1>
+            <ModuleHelp description="Creá simuladores y formularios públicos que capturan leads directo para tu CRM." tourKey="mini-apps-intro" />
+          </div>
           <p className="text-sm text-neutral-500">Simuladores y formularios públicos que capturan leads para el CRM.</p>
         </div>
       </div>

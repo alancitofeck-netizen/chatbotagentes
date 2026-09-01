@@ -9,6 +9,7 @@ import { HomeKpiCards } from "./HomeKpiCards";
 import { SalesEfficacyPanel } from "./SalesEfficacyPanel";
 import { GoalsProgressPanel } from "./GoalsProgressPanel";
 import { formatCurrency } from "@/lib/utils/format";
+import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 const PERIOD_LABEL: Record<DashboardPeriod, string> = { day: "Día", week: "Semana", month: "Mes", year: "Año" };
 const PERIODS: DashboardPeriod[] = ["day", "week", "month", "year"];
@@ -20,6 +21,7 @@ const PERIODS: DashboardPeriod[] = ["day", "week", "month", "year"];
  * cubre esa vista; duplicarlo con otro gráfico de barras al lado se sentía
  * repetido (ver el feedback del usuario). */
 export function DashboardHomeSection({ initialData, initialPeriod }: { initialData: DashboardHomeData; initialPeriod: DashboardPeriod }) {
+  useAutoStartTour("dashboard-intro");
   const [period, setPeriod] = useState(initialPeriod);
   const [data, setData] = useState(initialData);
   const [isPending, startTransition] = useTransition();
@@ -46,7 +48,7 @@ export function DashboardHomeSection({ initialData, initialPeriod }: { initialDa
           <h2 className="text-[17px] font-semibold text-foreground">Tu día de hoy</h2>
           <p className="text-sm text-neutral-500">{summaryParts.join(" · ")}</p>
         </div>
-        <div className="flex shrink-0 gap-1 rounded-full bg-surface-2 p-1">
+        <div className="flex shrink-0 gap-1 rounded-full bg-surface-2 p-1" data-tour="dashboard.period-selector">
           {PERIODS.map((p) => (
             <button
               key={p}
