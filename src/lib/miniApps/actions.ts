@@ -7,6 +7,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
+import { requireMiniAppEditAccess } from "@/lib/miniApps/access";
 import { generateApiKey, hashApiKey, lastFour, slugify } from "@/lib/miniApps/apiKey";
 import { injectSdkSnippet } from "@/lib/miniApps/sdkInjection";
 import { createOpportunity, bulkAssignOwner } from "@/lib/crm/actions";
@@ -176,8 +177,9 @@ export interface UpdateMiniAppInput {
 }
 
 export async function updateMiniApp(id: string, input: UpdateMiniAppInput): Promise<void> {
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "mini_apps");
+  await requireMiniAppEditAccess(workspaceId, id, role);
   if (!input.name.trim()) throw new Error("El nombre es obligatorio.");
   const supabase = await createClient();
   const config = await resolveConfigWithAgentName(workspaceId, input.assignedAgentId, input.config);
@@ -206,8 +208,9 @@ export async function updateMiniApp(id: string, input: UpdateMiniAppInput): Prom
  * has already run; the wizard's "Publicar" step calls createMiniApp first,
  * then uploads the logo, then calls this with the resulting public URL. */
 export async function updateMiniAppBranding(id: string, branding: MiniAppBranding): Promise<void> {
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "mini_apps");
+  await requireMiniAppEditAccess(workspaceId, id, role);
   const supabase = await createClient();
 
   await supabase

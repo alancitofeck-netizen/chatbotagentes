@@ -49,6 +49,7 @@ export function MiniAppListRow({ app, onDeleted, canManage }: { app: MiniAppList
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
+            {app.isPrivate && <span title="Mini App privada">🔒</span>}
             <h3 className="truncate text-[14px] font-semibold text-foreground">{app.name}</h3>
             <span
               className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${

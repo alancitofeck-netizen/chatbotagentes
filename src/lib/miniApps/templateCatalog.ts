@@ -12,7 +12,14 @@ import type { MiniAppTemplateKey } from "@/lib/miniApps/queries";
  * queries.ts's "server-only" boundary — it needs to render client-side
  * (the category filter pills in ContactsShell.tsx).
  */
-export type MiniAppTemplateCategory = "simuladores" | "calculadoras" | "quizzes" | "formularios" | "landing_pages" | "vinculadas";
+export type MiniAppTemplateCategory =
+  | "simuladores"
+  | "calculadoras"
+  | "quizzes"
+  | "formularios"
+  | "landing_pages"
+  | "vinculadas"
+  | "herramientas_internas";
 
 export const TEMPLATE_CATEGORIES: { key: MiniAppTemplateCategory; label: string }[] = [
   { key: "simuladores", label: "Simuladores" },
@@ -21,6 +28,7 @@ export const TEMPLATE_CATEGORIES: { key: MiniAppTemplateCategory; label: string 
   { key: "formularios", label: "Formularios" },
   { key: "landing_pages", label: "Landing Pages" },
   { key: "vinculadas", label: "Apps Vinculadas" },
+  { key: "herramientas_internas", label: "Herramientas internas" },
 ];
 
 export const TEMPLATE_KEY_META: Record<MiniAppTemplateKey, { label: string; category: MiniAppTemplateCategory }> = {
@@ -36,6 +44,7 @@ export const TEMPLATE_KEY_META: Record<MiniAppTemplateKey, { label: string; cate
   diagnostico_salud_financiera: { label: "Diagnóstico de Salud Financiera", category: "quizzes" },
   calculadora_ahorro_fiscal: { label: "Calculadora de Ahorro Fiscal", category: "calculadoras" },
   control_financiero_base_cero: { label: "Top Apps, de ingresos y gastos", category: "calculadoras" },
+  content_calendar: { label: "Cronograma de Contenido", category: "herramientas_internas" },
 };
 
 export function templateKeysForCategory(category: MiniAppTemplateCategory): MiniAppTemplateKey[] {

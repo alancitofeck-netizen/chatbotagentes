@@ -75,7 +75,10 @@ export function MiniAppCard({ app, onDeleted, canManage }: { app: MiniAppListIte
         </div>
 
         <div className="min-w-0">
-          <h3 className="text-[16px] font-semibold text-foreground">{app.name}</h3>
+          <h3 className="flex items-center gap-1.5 text-[16px] font-semibold text-foreground">
+            {app.isPrivate && <span title="Mini App privada">🔒</span>}
+            <span className="truncate">{app.name}</span>
+          </h3>
           <p className="mt-1 line-clamp-2 text-[13px] text-neutral-500">
             {app.description || `Plantilla: ${TEMPLATE_KEY_META[app.templateKey]?.label ?? app.templateKey}`}
           </p>

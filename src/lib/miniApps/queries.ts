@@ -60,7 +60,8 @@ export type MiniAppTemplateKey =
   | "test_preparacion_emergencia_financiera"
   | "diagnostico_salud_financiera"
   | "calculadora_ahorro_fiscal"
-  | "control_financiero_base_cero";
+  | "control_financiero_base_cero"
+  | "content_calendar";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
 
@@ -84,6 +85,11 @@ export interface MiniAppListItem {
    * para que el listado no le asigne un ícono genérico a todas las apps
    * vinculadas por igual. */
   linkedAppIcon?: LinkedAppIconKey;
+  /** Privacidad por Mini App individual (0180_mini_app_privacy.sql) —
+   * default false para las 13 plantillas existentes, sin cambio de
+   * comportamiento. Solo controla si se muestra el candado 🔒 en el
+   * listado; el filtrado real de qué filas llegan acá lo hace la RLS. */
+  isPrivate: boolean;
 }
 
 /** Config for the "Calculadora de Brecha de Retiro" template — the
@@ -240,6 +246,10 @@ export interface MiniAppConfigByTemplate {
   diagnostico_salud_financiera: DiagnosticoSaludConfig;
   calculadora_ahorro_fiscal: AhorroFiscalConfig;
   control_financiero_base_cero: ControlFinancieroConfig;
+  /** "Cronograma de Contenido" no tiene config propio — todo su contenido
+   * vive en tablas relacionales (mini_app_content_*, ver contentCalendar.ts),
+   * a diferencia de las demás plantillas. */
+  content_calendar: Record<string, never>;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -263,6 +273,7 @@ export type MiniAppDetail<K extends MiniAppTemplateKey = MiniAppTemplateKey> = {
     branding: MiniAppBranding;
     config: MiniAppConfigByTemplate[T];
     createdAt: string;
+    isPrivate: boolean;
   };
 }[K];
 
@@ -306,7 +317,7 @@ export async function getMiniAppsList(workspaceId: string): Promise<MiniAppListI
   const [{ data: apps }, memberNames] = await Promise.all([
     supabase
       .from("mini_apps")
-      .select("id, name, description, template_key, slug, status, assigned_agent_id, created_at, config")
+      .select("id, name, description, template_key, slug, status, assigned_agent_id, created_at, config, is_private")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false }),
     getMemberNamesById(supabase, workspaceId),
@@ -342,6 +353,7 @@ export async function getMiniAppsList(workspaceId: string): Promise<MiniAppListI
     lastLeadAt: statsByApp.get(a.id as string)?.lastLeadAt ?? null,
     createdAt: a.created_at as string,
     linkedAppIcon: a.template_key === "app_vinculada" ? ((a.config as { icon?: LinkedAppIconKey } | null)?.icon ?? undefined) : undefined,
+    isPrivate: (a.is_private as boolean | null) ?? false,
   }));
 }
 
@@ -452,6 +464,9 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
     };
     return config as MiniAppConfigByTemplate[T];
   }
+  if (templateKey === "content_calendar") {
+    return {} as MiniAppConfigByTemplate[T];
+  }
   const config: MiniAppFieldConfig = {
     annualReturnRatePct: typeof raw.annualReturnRatePct === "number" ? raw.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT,
     showIngresoActual: typeof raw.showIngresoActual === "boolean" ? raw.showIngresoActual : true,
@@ -467,7 +482,7 @@ export async function getMiniAppDetail(workspaceId: string, miniAppId: string): 
     supabase
       .from("mini_apps")
       .select(
-        "id, workspace_id, name, description, template_key, slug, external_url, assigned_agent_id, allowed_origins, api_key_last4, status, branding, config, created_at",
+        "id, workspace_id, name, description, template_key, slug, external_url, assigned_agent_id, allowed_origins, api_key_last4, status, branding, config, created_at, is_private",
       )
       .eq("workspace_id", workspaceId)
       .eq("id", miniAppId)
@@ -499,6 +514,7 @@ export async function getMiniAppDetail(workspaceId: string, miniAppId: string): 
     },
     config: normalizeConfigForTemplate(templateKey, (app.config as Record<string, unknown>) ?? {}),
     createdAt: app.created_at as string,
+    isPrivate: (app.is_private as boolean | null) ?? false,
   } as MiniAppDetail;
 }
 
@@ -625,6 +641,9 @@ export interface MiniAppFieldConfig {
  * "simulador_retiro")` branch narrows `app.config` automatically. */
 export type PublicMiniAppView<K extends MiniAppTemplateKey = MiniAppTemplateKey> = {
   [T in K]: {
+    /** Solo necesario para "content_calendar" (traer su contenido de las
+     * tablas mini_app_content_*) — las demás plantillas no lo usan. */
+    id: string;
     slug: string;
     name: string;
     description: string | null;
@@ -654,7 +673,7 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
   const supabase = createServiceRoleClient();
   const { data } = await supabase
     .from("mini_apps")
-    .select("slug, name, description, template_key, external_url, status, branding, config")
+    .select("id, slug, name, description, template_key, external_url, status, branding, config")
     .eq("slug", slug)
     .maybeSingle();
   if (!data || data.status !== "active") return null;
@@ -672,6 +691,7 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
   }
 
   return {
+    id: data.id as string,
     slug: data.slug as string,
     name: data.name as string,
     description: data.description as string | null,

@@ -1,4 +1,4 @@
-import { PieChart, Calculator, Link2, TrendingUp, ShieldCheck, Layout, Presentation, FileText, Sparkles, Landmark, GraduationCap, LifeBuoy, Gauge, Activity, Percent, Wallet, type LucideIcon } from "lucide-react";
+import { PieChart, Calculator, Link2, TrendingUp, ShieldCheck, Layout, Presentation, FileText, Sparkles, Landmark, GraduationCap, LifeBuoy, Gauge, Activity, Percent, Wallet, CalendarDays, type LucideIcon } from "lucide-react";
 import type { MiniAppListItem, MiniAppTemplateKey } from "@/lib/miniApps/queries";
 import type { LinkedAppIconKey } from "@/lib/miniApps/linkedAppOptions";
 
@@ -36,6 +36,7 @@ const TEMPLATE_VISUAL: Record<MiniAppTemplateKey, { icon: LucideIcon; hue: Hue }
   diagnostico_salud_financiera: { icon: Activity, hue: "blue" },
   calculadora_ahorro_fiscal: { icon: Percent, hue: "violet" },
   control_financiero_base_cero: { icon: Wallet, hue: "emerald" },
+  content_calendar: { icon: CalendarDays, hue: "orange" },
 };
 
 /** Para "App Vinculada": el ícono real que el usuario eligió al vincularla

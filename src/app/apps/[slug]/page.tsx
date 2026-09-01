@@ -14,6 +14,7 @@ import { TestEmergenciaApp } from "./TestEmergenciaApp";
 import { DiagnosticoSaludApp } from "./DiagnosticoSaludApp";
 import { ControlFinancieroApp } from "./ControlFinancieroApp";
 import { AhorroFiscalApp } from "./AhorroFiscalApp";
+import { ContentCalendarApp } from "./ContentCalendarApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -133,6 +134,14 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
     // Hanken Grotesk/Space Grotesk autocontenido (ver
     // ControlFinancieroApp.tsx), sin themeCss/--ma-*.
     return <ControlFinancieroApp app={app} />;
+  }
+
+  if (app.templateKey === "content_calendar") {
+    // Mismo motivo que diagnostico_solidez_financiera: diseño Fraunces/
+    // Inter/IBM Plex Mono autocontenido (ver ContentCalendarApp.tsx), sin
+    // themeCss/--ma-*. A diferencia de las demás plantillas, solo lectura
+    // — la edición vive en el panel interno protegido (/mini-apps/[id]).
+    return <ContentCalendarApp app={app} />;
   }
 
   notFound();
