@@ -5,14 +5,14 @@
 -- aún) — visible solo para Owner/Admin hasta que el usuario las invite y
 -- use "Gestionar acceso".
 --
--- workspace_id: el de "Alan Feck" (047afecb…) — confirmado explícitamente
--- por el usuario como el workspace real del equipo (donde están los demás
--- asesores), después de que la primera aplicación de esta migración la
--- hubiera puesto en el workspace personal de Adriel por error de inferencia.
+-- workspace_id: el de la cuenta de adripuc (6258d07f…) — confirmado
+-- explícitamente por el usuario. Ojo: Alan Feck NO es miembro de este
+-- workspace hoy, así que no va a poder ver/editar esta Mini App hasta que
+-- se lo agregue como miembro acá (o se decida moverla/copiarla más adelante).
 
 do $$
 declare
-  v_workspace_id uuid := '047afecb-b549-422f-bad9-066140d5cf0a';
+  v_workspace_id uuid := '6258d07f-8666-48b5-80fa-3088c9cf7c4c';
   v_mini_app_id uuid;
   v_day_id uuid;
   -- md5() en vez de digest()/pgcrypto: esta Mini App nunca va a recibir
