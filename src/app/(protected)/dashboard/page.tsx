@@ -41,6 +41,7 @@ import { RecommendedActions } from "./RecommendedActions";
 import { Trends } from "./Trends";
 import { AdvisorPerformance } from "./AdvisorPerformance";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { DashboardLearningCard } from "@/components/onboarding/DashboardLearningCard";
 
 export const metadata: Metadata = {
   title: "Dashboard — Growth Link",
@@ -154,6 +155,8 @@ export default async function DashboardPage() {
         </div>
         <PriorityInsights insights={insights} />
       </section>
+
+      <DashboardLearningCard />
 
       <RecommendedActions actions={recommendedActions} />
 
