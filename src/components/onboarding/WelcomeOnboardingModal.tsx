@@ -5,16 +5,8 @@ import { CheckCircle2, SkipForward, Circle, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
 import { useOnboarding } from "./OnboardingContext";
-import { ONBOARDING_STEPS, type OnboardingStepKey } from "@/lib/onboarding/types";
-
-const STEP_META: Record<OnboardingStepKey, { label: string; description: string; ctaLabel: string; href: string }> = {
-  profile: { label: "Perfil", description: "Completá tu nombre y foto para que tu equipo te reconozca.", ctaLabel: "Ir a mi perfil", href: "/profile" },
-  whatsapp: { label: "WhatsApp", description: "Conectá WhatsApp para recibir y gestionar tus conversaciones directamente desde Growth Link.", ctaLabel: "Conectar WhatsApp", href: "/profile?tab=integrations" },
-  manychat: { label: "Instagram / ManyChat", description: "Recibí y analizá los leads que ManyChat gestiona en tu Instagram.", ctaLabel: "Conectar ManyChat", href: "/manychat?tab=configuracion" },
-  calendar: { label: "Calendario", description: "Sincronizá Google Calendar para que tus eventos se organicen solos.", ctaLabel: "Conectar Calendario", href: "/profile?tab=integrations" },
-  crm: { label: "CRM", description: "Acá vas a gestionar tus leads y oportunidades — vas a aprender a crear el primero apenas entres.", ctaLabel: "Ir al CRM", href: "/crm" },
-  automations: { label: "Automatizaciones", description: "Hacé que Growth Link trabaje automáticamente por vos.", ctaLabel: "Ir a Automatizaciones", href: "/automatizaciones" },
-};
+import { ONBOARDING_STEPS } from "@/lib/onboarding/types";
+import { STEP_META } from "@/lib/onboarding/stepMeta";
 
 /** "Configuración de tu Growth Link" (§1-§3) — se auto-muestra una sola vez
  * (isFirstVisit, ver OnboardingContext), y después solo desde el botón de

@@ -9,7 +9,11 @@ export const ONBOARDING_STEPS: readonly OnboardingStepKey[] = ["profile", "whats
 export const AUTO_DERIVABLE_STEPS: readonly OnboardingStepKey[] = ["manychat", "calendar"];
 
 export type LearningKind = "tour" | "hint" | "module";
-export type LearningStatus = "pending" | "completed" | "skipped";
+/** "in_progress" solo tiene sentido real para kind='tour' (se repite un
+ * tour omitido/completado desde "Tu aprendizaje" — ver LearningProgress.tsx)
+ * — un hint no tiene "a medias", así que esos siguen usando solo pending/
+ * completed/skipped en la práctica, aunque el tipo lo permita para todos. */
+export type LearningStatus = "pending" | "in_progress" | "completed" | "skipped";
 
 export interface OnboardingState {
   /** null si el miembro está en Modo Supervisor (no tiene workspace_members real). */
