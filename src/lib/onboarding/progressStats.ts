@@ -5,7 +5,10 @@ export interface LearningStats {
   /** 0-100, redondeado. */
   pct: number;
   completedCount: number;
-  /** "pending" + "in_progress" — todavía queda algo por hacer. */
+  inProgressCount: number;
+  /** Pendiente puro — NO incluye "in_progress" (ver inProgressCount aparte,
+   * ambos se muestran como filtros/contadores distintos en el panel y en
+   * la tarjeta del Dashboard). */
   pendingCount: number;
   skippedCount: number;
   totalCount: number;
@@ -26,23 +29,26 @@ export function computeLearningStats(
   getLearningStatus: (kind: "tour", itemKey: string) => LearningStatus,
 ): LearningStats {
   let completedCount = 0;
+  let inProgressCount = 0;
   let skippedCount = 0;
 
   for (const key of ONBOARDING_STEPS) {
     const status = steps[key];
     if (status === "completed") completedCount++;
+    else if (status === "in_progress") inProgressCount++;
     else if (status === "skipped") skippedCount++;
   }
   for (const tour of ALL_TOURS) {
     const status = getLearningStatus("tour", tour.key);
     if (status === "completed") completedCount++;
+    else if (status === "in_progress") inProgressCount++;
     else if (status === "skipped") skippedCount++;
   }
 
   const totalCount = ONBOARDING_STEPS.length + ALL_TOURS.length;
+  const pendingCount = totalCount - completedCount - inProgressCount - skippedCount;
   const doneCount = completedCount + skippedCount;
-  const pendingCount = totalCount - doneCount;
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
-  return { pct, completedCount, pendingCount, skippedCount, totalCount, isComplete: pendingCount === 0 };
+  return { pct, completedCount, inProgressCount, pendingCount, skippedCount, totalCount, isComplete: pendingCount === 0 && inProgressCount === 0 };
 }

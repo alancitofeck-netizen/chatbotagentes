@@ -107,7 +107,7 @@ export function HelpCenterPanel() {
             </a>
 
             <div className="my-2 border-t border-border-default" />
-            <LearningProgress />
+            <LearningProgress showHelpCta={false} onNavigateAway={close} />
           </div>
         )}
 

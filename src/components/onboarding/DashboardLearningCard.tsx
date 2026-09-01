@@ -55,13 +55,19 @@ export function DashboardLearningCard() {
             <span className="absolute font-mono text-[13px] font-semibold text-foreground">{stats.pct}%</span>
           </div>
 
-          <div className="flex flex-col gap-0.5 text-xs text-neutral-500">
-            <span>
-              <span className="font-mono font-medium text-foreground">{stats.pendingCount}</span> pendientes
-            </span>
-            <span>
-              <span className="font-mono font-medium text-foreground">{stats.skippedCount}</span> omitidos
-            </span>
+          <div className="hidden gap-4 text-center sm:flex">
+            <div>
+              <p className="font-mono text-lg font-semibold text-foreground">{stats.completedCount}</p>
+              <p className="text-xs text-neutral-500">Completados</p>
+            </div>
+            <div>
+              <p className="font-mono text-lg font-semibold text-foreground">{stats.inProgressCount}</p>
+              <p className="text-xs text-neutral-500">En progreso</p>
+            </div>
+            <div>
+              <p className="font-mono text-lg font-semibold text-foreground">{stats.pendingCount}</p>
+              <p className="text-xs text-neutral-500">Pendientes</p>
+            </div>
           </div>
 
           <Button size="sm" variant="secondary" onClick={() => setDetailOpen(true)}>
@@ -72,7 +78,7 @@ export function DashboardLearningCard() {
 
       <Sheet open={detailOpen} onClose={() => setDetailOpen(false)} title="Tu aprendizaje">
         <div className="p-5">
-          <LearningProgress />
+          <LearningProgress onNavigateAway={() => setDetailOpen(false)} />
         </div>
       </Sheet>
     </>
