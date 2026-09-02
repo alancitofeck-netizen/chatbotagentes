@@ -9,6 +9,7 @@ import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 import type { OpportunityCard, PipelineStage } from "@/lib/crm/queries";
 import { formatCurrency } from "@/lib/utils/format";
+import { CHANNEL_LABEL, CHANNEL_ICON, resolveChannel } from "@/lib/crm/channels";
 
 const PRIORITY_LABEL: Record<OpportunityCard["priority"], string> = { high: "Alta", medium: "Media", low: "Baja" };
 const PRIORITY_VARIANT: Record<OpportunityCard["priority"], "error" | "warning" | "neutral"> = {
@@ -55,6 +56,8 @@ export function OpportunityCardView({
 
   const stage = stages.find((s) => s.id === card.stageId);
   const isHighValue = avgOpenValue > 0 && card.value >= avgOpenValue * 1.5;
+  const channel = resolveChannel(card.source);
+  const ChannelIcon = CHANNEL_ICON[channel];
 
   return (
     <div
@@ -73,6 +76,9 @@ export function OpportunityCardView({
         >
           <Avatar name={card.contactName} src={card.contactAvatarUrl} size={26} />
           <p className="min-w-0 flex-1 truncate text-[13px] font-medium leading-tight text-foreground">{card.contactName}</p>
+          <span title={CHANNEL_LABEL[channel]} className="shrink-0">
+            <ChannelIcon className="size-3 text-neutral-400" aria-hidden="true" />
+          </span>
         </button>
         {selectionMode ? (
           <input

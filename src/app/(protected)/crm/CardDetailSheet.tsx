@@ -33,11 +33,14 @@ import type { OpportunityDetail, OpportunityActivityEntry, PipelineStage } from 
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import type { TaskItem } from "@/lib/tasks/queries";
 import type { DocumentItem } from "@/lib/documents/queries";
+import type { ContactConversationSummary } from "@/lib/inbox/queries";
 import { getOpportunityDetailAction, addOpportunityNote, getOpportunityActivityAction, moveOpportunityCard, deleteOpportunity } from "@/lib/crm/actions";
 import { getContactEventsAction } from "@/lib/calendar/actions";
 import { getOpportunityTasksAction } from "@/lib/tasks/actions";
 import { createTask, completeTask } from "@/lib/tasks/actions";
 import { getDocumentsByRelatedAction, recordUploadedDocument, trashDocument, getDownloadUrl } from "@/lib/documents/actions";
+import { getContactConversationsSummaryAction } from "@/lib/inbox/actions";
+import { CHANNEL_LABEL, CHANNEL_ICON, resolveChannel } from "@/lib/crm/channels";
 
 function formatCurrency(value: number, currency: string) {
   return new Intl.NumberFormat("es", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
@@ -80,7 +83,7 @@ const PRIORITY_VARIANT: Record<"high" | "medium" | "low", "error" | "warning" | 
   medium: "warning",
   low: "neutral",
 };
-const COMING_SOON_TABS = ["conversaciones", "emails", "whatsapp", "ia"];
+const COMING_SOON_TABS = ["emails", "whatsapp", "ia"];
 
 /** Drawer lateral de detalle de un lead — header moderno (avatar, nombre,
  * valor, prioridad) + fila de acciones rápidas, luego las mismas 6 tabs de
@@ -96,7 +99,7 @@ export function CardDetailSheet({
   onChanged,
 }: {
   opportunityId: string | null;
-  initialTab?: "resumen" | "notas" | "tareas" | "reuniones" | "historial";
+  initialTab?: "resumen" | "notas" | "tareas" | "reuniones" | "historial" | "conversaciones";
   stages: PipelineStage[];
   onClose: () => void;
   onEdit: () => void;
@@ -105,7 +108,7 @@ export function CardDetailSheet({
   onChanged: () => void;
 }) {
   const [detail, setDetail] = useState<OpportunityDetail | null>(null);
-  const [tab, setTab] = useState<"resumen" | "notas" | "tareas" | "archivos" | "reuniones" | "historial">(initialTab);
+  const [tab, setTab] = useState<"resumen" | "notas" | "tareas" | "archivos" | "reuniones" | "historial" | "conversaciones">(initialTab);
   const [noteBody, setNoteBody] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
@@ -118,6 +121,8 @@ export function CardDetailSheet({
   const [uploading, setUploading] = useState(false);
   const [activity, setActivity] = useState<OpportunityActivityEntry[]>([]);
   const [activityLoaded, setActivityLoaded] = useState(false);
+  const [conversations, setConversations] = useState<ContactConversationSummary[]>([]);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [movingStage, setMovingStage] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -162,6 +167,14 @@ export function CardDetailSheet({
       setActivityLoaded(true);
     });
   }, [tab, activityLoaded, opportunityId]);
+
+  useEffect(() => {
+    if (tab !== "conversaciones" || conversationsLoaded || !detail?.contact.id) return;
+    getContactConversationsSummaryAction(detail.contact.id).then((fresh) => {
+      setConversations(fresh);
+      setConversationsLoaded(true);
+    });
+  }, [tab, conversationsLoaded, detail]);
 
   function handleAddNote() {
     if (!opportunityId || !noteBody.trim()) return;
@@ -359,7 +372,7 @@ export function CardDetailSheet({
           <div className="flex-1 overflow-y-auto px-5 pt-4">
             <Tabs
               value={tab}
-              onValueChange={(v) => setTab(v as "resumen" | "notas" | "tareas" | "archivos" | "reuniones" | "historial")}
+              onValueChange={(v) => setTab(v as "resumen" | "notas" | "tareas" | "archivos" | "reuniones" | "historial" | "conversaciones")}
             >
               <TabsList className="overflow-x-auto">
                 <TabsTrigger value="resumen">Resumen</TabsTrigger>
@@ -368,6 +381,7 @@ export function CardDetailSheet({
                 <TabsTrigger value="archivos">Archivos</TabsTrigger>
                 <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
                 <TabsTrigger value="historial">Historial</TabsTrigger>
+                <TabsTrigger value="conversaciones">Conversaciones</TabsTrigger>
                 {COMING_SOON_TABS.map((t) => (
                   <TabsTrigger key={t} value={t} disabled>
                     {t === "ia" ? "IA" : t[0].toUpperCase() + t.slice(1)}
@@ -441,6 +455,23 @@ export function CardDetailSheet({
                         <dd className="text-foreground">{detail.contact.phone}</dd>
                       </div>
                     )}
+                    <div className="flex items-center justify-between">
+                      <dt className="text-neutral-500">Fuente</dt>
+                      <dd className="flex items-center gap-1.5 text-foreground">
+                        {(() => {
+                          const channel = resolveChannel(detail.contact.source);
+                          const Icon = CHANNEL_ICON[channel];
+                          const label = CHANNEL_LABEL[channel];
+                          const raw = detail.contact.source;
+                          return (
+                            <>
+                              <Icon size={13} className="text-neutral-400" aria-hidden="true" />
+                              {raw && raw !== label.toLowerCase() ? `${label} (${raw})` : label}
+                            </>
+                          );
+                        })()}
+                      </dd>
+                    </div>
                   </dl>
                 </TabsContent>
 
@@ -652,6 +683,49 @@ export function CardDetailSheet({
                                 {a.actorName && ` · ${a.actorName}`}
                               </p>
                             </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="conversaciones">
+                  {!conversationsLoaded ? (
+                    <Skeleton className="h-16 w-full" />
+                  ) : conversations.length === 0 ? (
+                    <p className="text-sm text-neutral-500">Sin conversaciones todavía.</p>
+                  ) : (
+                    <ul className="flex flex-col gap-3">
+                      {conversations.map((conv) => {
+                        const channel = resolveChannel(conv.channel);
+                        const Icon = CHANNEL_ICON[channel];
+                        return (
+                          <li key={conv.id} className="rounded-lg bg-surface-2 p-3">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <span className="flex items-center gap-1.5 text-xs font-medium text-neutral-500">
+                                <Icon size={13} aria-hidden="true" />
+                                {CHANNEL_LABEL[channel]}
+                              </span>
+                              <Link href={`/inbox?conversation=${conv.id}`} className="text-[12px] text-accent-600 hover:underline">
+                                Abrir en Inbox →
+                              </Link>
+                            </div>
+                            {conv.recentMessages.length === 0 ? (
+                              <p className="text-sm text-neutral-500">Sin mensajes.</p>
+                            ) : (
+                              <ul className="flex flex-col gap-1.5">
+                                {conv.recentMessages.map((m) => (
+                                  <li key={m.id} className="text-sm">
+                                    <span className={m.direction === "outbound" ? "text-accent-700" : "text-foreground"}>
+                                      {m.direction === "outbound" ? "Nosotros: " : "Contacto: "}
+                                    </span>
+                                    <span className="text-foreground">{m.preview}</span>
+                                    <span className="ml-1.5 text-xs text-neutral-400">{formatDate(m.createdAt)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </li>
                         );
                       })}

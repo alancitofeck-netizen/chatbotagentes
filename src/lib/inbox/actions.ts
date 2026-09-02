@@ -11,6 +11,7 @@ import {
   getWorkspaceTags,
   getWorkspaceTagsWithUsage,
   getContactCrmSummary,
+  getContactConversationsSummary,
   searchContactsForMerge,
 } from "@/lib/inbox/queries";
 import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
@@ -47,6 +48,11 @@ export async function getConversationDetailAction(conversationId: string) {
 export async function getContactCrmSummaryAction(contactId: string, conversationId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getContactCrmSummary(workspaceId, contactId, conversationId);
+}
+
+export async function getContactConversationsSummaryAction(contactId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getContactConversationsSummary(workspaceId, contactId);
 }
 
 /** "Mover pipeline" desde el panel del Inbox — misma acción que ya usa el

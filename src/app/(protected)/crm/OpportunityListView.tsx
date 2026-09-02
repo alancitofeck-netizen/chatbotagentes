@@ -7,6 +7,7 @@ import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { OpportunityCard, PipelineStage } from "@/lib/crm/queries";
 import { formatCurrency, formatRelativeTime } from "@/lib/utils/format";
+import { CHANNEL_LABEL, CHANNEL_ICON, resolveChannel } from "@/lib/crm/channels";
 
 const PRIORITY_LABEL: Record<OpportunityCard["priority"], string> = { high: "Alta", medium: "Media", low: "Baja" };
 const PRIORITY_VARIANT: Record<OpportunityCard["priority"], "error" | "warning" | "neutral"> = {
@@ -55,6 +56,8 @@ export function OpportunityListView({
     <div className="flex flex-col divide-y divide-border-default rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-xs)]">
       {cards.map((card) => {
         const stage = stageById.get(card.stageId);
+        const channel = resolveChannel(card.source);
+        const ChannelIcon = CHANNEL_ICON[channel];
         return (
           <div key={card.id} className="flex items-center gap-3 px-3 py-2 hover:bg-surface-2">
             {selectionMode && (
@@ -71,6 +74,9 @@ export function OpportunityListView({
                 <p className="truncate text-[13px] font-medium leading-tight text-foreground">{card.contactName}</p>
                 <p className="truncate text-[11.5px] leading-tight text-neutral-500">{card.company ?? card.title}</p>
               </div>
+              <span title={CHANNEL_LABEL[channel]} className="shrink-0">
+                <ChannelIcon className="size-3 text-neutral-400" aria-hidden="true" />
+              </span>
             </button>
 
             {stage && (

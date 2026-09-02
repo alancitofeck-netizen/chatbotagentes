@@ -9,6 +9,9 @@ import { getAllWorkspacesForSupervision } from "@/lib/platform/queries";
 import { getWorkspaceMembers, getWorkspaceTags } from "@/lib/inbox/queries";
 import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
+import { getWhatsAppIntegration } from "@/lib/integrations/queries";
+import { getInstagramStatus } from "@/lib/integrations/instagram";
+import { getManychatStatus } from "@/lib/integrations/manychat";
 import { CrmPageShell } from "./CrmPageShell";
 
 export const metadata: Metadata = {
@@ -43,22 +46,52 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
 
   const isPlatformAdmin = await checkIsPlatformAdmin();
 
-  const [initialBoard, initialPipelines, agents, teams, members, tags, tasks, contactOptions, conversationOptions, ownMemberId, moduleStatus, platformWorkspaces] =
-    await Promise.all([
-      getCrmBoard(workspaceId),
-      getCrmPipelines(workspaceId),
-      getAgentList(workspaceId),
-      getTeams(workspaceId),
-      getWorkspaceMembers(workspaceId),
-      getWorkspaceTags(workspaceId),
-      getTasks(workspaceId),
-      getContactOptions(workspaceId),
-      getConversationOptions(workspaceId),
-      getCurrentMemberId(workspaceId),
-      getWorkspaceModuleStatus(workspaceId),
-      isPlatformAdmin ? getAllWorkspacesForSupervision() : Promise.resolve([]),
-    ]);
+  const [
+    initialBoard,
+    initialPipelines,
+    agents,
+    teams,
+    members,
+    tags,
+    tasks,
+    contactOptions,
+    conversationOptions,
+    ownMemberId,
+    moduleStatus,
+    platformWorkspaces,
+    whatsappIntegration,
+    instagramStatus,
+    manychatStatus,
+  ] = await Promise.all([
+    getCrmBoard(workspaceId),
+    getCrmPipelines(workspaceId),
+    getAgentList(workspaceId),
+    getTeams(workspaceId),
+    getWorkspaceMembers(workspaceId),
+    getWorkspaceTags(workspaceId),
+    getTasks(workspaceId),
+    getContactOptions(workspaceId),
+    getConversationOptions(workspaceId),
+    getCurrentMemberId(workspaceId),
+    getWorkspaceModuleStatus(workspaceId),
+    isPlatformAdmin ? getAllWorkspacesForSupervision() : Promise.resolve([]),
+    getWhatsAppIntegration(workspaceId),
+    getInstagramStatus(workspaceId),
+    getManychatStatus(workspaceId),
+  ]);
   const atsEnabled = moduleStatus.some((m) => m.moduleKey === "ats" && m.enabled);
+  // "Canales conectados" (sección del CRM omnicanal) — estado REAL, nunca
+  // hardcodeado: WhatsApp/Instagram salen de integration_connections tal
+  // cual ya lo muestra /profile?tab=integrations; ManyChat se agrupa dentro
+  // de "Instagram" (mismo canal de conversación) porque así se agrupa
+  // también en la barra de canales del board (src/lib/crm/channels.ts).
+  // "Web/Formularios" no es una integración OAuth — Mini Apps ya ingesta
+  // contactos hoy sin necesitar conexión, así que va siempre "Activo".
+  const channelStatus = {
+    whatsapp: whatsappIntegration?.status === "active",
+    instagram: instagramStatus.connected || manychatStatus.connected,
+    web: true,
+  };
 
   let board = initialBoard;
   let pipelines = initialPipelines;
@@ -95,6 +128,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         canAssignOthers={role === "owner" || role === "admin"}
         ownMemberId={ownMemberId}
         atsEnabled={atsEnabled}
+        channelStatus={channelStatus}
         isAgent={isRealAgent}
         isOwner={role === "owner"}
         isPlatformAdmin={isPlatformAdmin}

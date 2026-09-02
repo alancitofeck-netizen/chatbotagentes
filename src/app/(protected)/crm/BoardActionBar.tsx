@@ -19,6 +19,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import type { OpportunityTag, PipelineStage } from "@/lib/crm/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
+import type { Channel } from "@/lib/crm/channels";
 import { ContextualHint } from "@/components/onboarding/ContextualHint";
 
 export interface BoardFilters {
@@ -26,6 +27,11 @@ export interface BoardFilters {
   stageId: string;
   priority: string;
   source: string;
+  /** Filtro agrupado por canal (ver src/lib/crm/channels.ts) — seteado desde
+   * ChannelFilterBar, independiente del <Select> "Origen" (que sigue
+   * filtrando por el valor libre exacto de `source`). Los dos pueden
+   * combinarse: si ambos están seteados, un card debe pasar los dos. */
+  channel: Channel | "";
   company: string;
   tagId: string;
   supervisorId: string;
@@ -40,6 +46,7 @@ export const EMPTY_FILTERS: BoardFilters = {
   stageId: "",
   priority: "",
   source: "",
+  channel: "",
   company: "",
   tagId: "",
   supervisorId: "",

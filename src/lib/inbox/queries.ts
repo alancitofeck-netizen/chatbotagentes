@@ -484,6 +484,72 @@ export async function getContactCrmSummary(workspaceId: string, contactId: strin
   };
 }
 
+export interface ContactConversationMessage {
+  id: string;
+  direction: string;
+  senderType: string;
+  preview: string;
+  createdAt: string;
+}
+
+export interface ContactConversationSummary {
+  id: string;
+  channel: string;
+  status: string;
+  lastMessageAt: string | null;
+  /** Últimos mensajes, más viejo→más nuevo — resumen de solo lectura para
+   * la tab "Conversaciones" del CRM (CardDetailSheet.tsx). No reemplaza al
+   * Inbox: no trae paginación completa ni permite responder, solo da
+   * contexto rápido con un link "Abrir en Inbox" para el resto. */
+  recentMessages: ContactConversationMessage[];
+}
+
+/** Viaje inverso de getContactCrmSummary (que trae contexto CRM DENTRO del
+ * Inbox): acá se trae un resumen liviano de conversaciones/mensajes para
+ * mostrar DENTRO del CRM, sin duplicar el módulo de Inbox completo. */
+export async function getContactConversationsSummary(
+  workspaceId: string,
+  contactId: string,
+): Promise<ContactConversationSummary[]> {
+  const supabase = await createClient();
+
+  const { data: conversations } = await supabase
+    .from("conversations")
+    .select("id, channel, status, last_message_at")
+    .eq("workspace_id", workspaceId)
+    .eq("contact_id", contactId)
+    .order("last_message_at", { ascending: false, nullsFirst: false });
+
+  if (!conversations || conversations.length === 0) return [];
+
+  return Promise.all(
+    conversations.map(async (c) => {
+      const { data: messages } = await supabase
+        .from("messages")
+        .select("id, direction, sender_type, type, content, created_at")
+        .eq("conversation_id", c.id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      return {
+        id: c.id as string,
+        channel: (c.channel as string | null) ?? "whatsapp",
+        status: c.status as string,
+        lastMessageAt: (c.last_message_at as string | null) ?? null,
+        recentMessages: (messages ?? [])
+          .reverse()
+          .map((m) => ({
+            id: m.id as string,
+            direction: m.direction as string,
+            senderType: m.sender_type as string,
+            preview: previewBody(m.type as string, m.content as string | undefined),
+            createdAt: m.created_at as string,
+          })),
+      };
+    }),
+  );
+}
+
 /** For "Fusionar contacto" — search candidates by name/phone/email within the
  * same workspace, excluding the contact being merged FROM. */
 export async function searchContactsForMerge(workspaceId: string, excludeContactId: string, query: string) {

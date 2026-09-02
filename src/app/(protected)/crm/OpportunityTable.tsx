@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 import type { OpportunityCard, PipelineStage } from "@/lib/crm/queries";
 import { formatCurrency, formatRelativeTime } from "@/lib/utils/format";
+import { CHANNEL_LABEL, CHANNEL_ICON, resolveChannel } from "@/lib/crm/channels";
 
 const PRIORITY_LABEL: Record<OpportunityCard["priority"], string> = { high: "Alta", medium: "Media", low: "Baja" };
 const PRIORITY_VARIANT: Record<OpportunityCard["priority"], "error" | "warning" | "neutral"> = {
@@ -56,13 +57,17 @@ export function OpportunityTable({
             <th className="px-3 py-2 font-medium">Probabilidad</th>
             <th className="px-3 py-2 font-medium">Etapa</th>
             <th className="px-3 py-2 font-medium">Agente</th>
+            <th className="px-3 py-2 font-medium">Fuente</th>
             <th className="px-3 py-2 font-medium">Etiquetas</th>
             <th className="px-3 py-2 font-medium">Última actividad</th>
             <th className="px-3 py-2 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {cards.map((card) => (
+          {cards.map((card) => {
+            const channel = resolveChannel(card.source);
+            const ChannelIcon = CHANNEL_ICON[channel];
+            return (
             <tr key={card.id} className="border-b border-border-default last:border-0 hover:bg-surface-2">
               {selectionMode && (
                 <td className="px-3 py-2">
@@ -100,6 +105,12 @@ export function OpportunityTable({
                   "Sin asignar"
                 )}
               </td>
+              <td className="px-3 py-2 text-neutral-600">
+                <span className="flex items-center gap-1.5">
+                  <ChannelIcon className="size-3.5 shrink-0 text-neutral-400" aria-hidden="true" />
+                  {CHANNEL_LABEL[channel]}
+                </span>
+              </td>
               <td className="px-3 py-2">
                 <div className="flex flex-wrap gap-1">
                   {card.tags.map((tag) => (
@@ -126,7 +137,8 @@ export function OpportunityTable({
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

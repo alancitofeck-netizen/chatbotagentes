@@ -398,6 +398,10 @@ export interface OpportunityDetail {
     company: string | null;
     email: string | null;
     phone: string | null;
+    /** contacts.source (texto libre) — mismo campo que ya alimenta el
+     * filtro "Origen"/OpportunityCard.source, ver src/lib/crm/channels.ts
+     * para su agrupación en canales. */
+    source: string | null;
   };
   createdAt: string;
   notes: { id: string; body: string; createdAt: string }[];
@@ -416,7 +420,7 @@ export async function getOpportunityDetail(
   const { data: opp } = await supabase
     .from("opportunities")
     .select(
-      "id, title, value, currency, status, priority, probability, expected_close_date, calendar_event_id, owner_id, created_at, pipeline_item_id, contacts(id, name, company, email, phone), pipeline_items(stage_id)",
+      "id, title, value, currency, status, priority, probability, expected_close_date, calendar_event_id, owner_id, created_at, pipeline_item_id, contacts(id, name, company, email, phone, source), pipeline_items(stage_id)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", opportunityId)
@@ -462,6 +466,7 @@ export async function getOpportunityDetail(
       company: contact?.company ?? null,
       email: contact?.email ?? null,
       phone: contact?.phone ?? null,
+      source: contact?.source ?? null,
     },
     createdAt: opp.created_at as string,
     notes: (notes ?? []).map((n) => ({

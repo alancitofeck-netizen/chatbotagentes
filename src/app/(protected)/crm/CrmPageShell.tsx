@@ -36,6 +36,7 @@ export function CrmPageShell({
   canAssignOthers,
   ownMemberId,
   atsEnabled,
+  channelStatus,
   isAgent,
   isOwner,
   isPlatformAdmin,
@@ -54,6 +55,7 @@ export function CrmPageShell({
   canAssignOthers: boolean;
   ownMemberId: string | null;
   atsEnabled: boolean;
+  channelStatus: { whatsapp: boolean; instagram: boolean; web: boolean };
   isAgent: boolean;
   /** Gates "Cambiar rol" in the Agentes tab (AgentsList) — only the Owner
    * can change roles, per updateMemberRole (src/lib/settings/actions.ts). */
@@ -97,6 +99,7 @@ export function CrmPageShell({
           members={members}
           agents={agents}
           tags={tags}
+          channelStatus={channelStatus}
           onBoardChange={setBoard}
         />
       )}

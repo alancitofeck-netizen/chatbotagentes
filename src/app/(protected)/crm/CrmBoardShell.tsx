@@ -27,6 +27,8 @@ import {
 import { filterAndSortBoard } from "@/lib/crm/boardFilters";
 import { BoardActionBar, EMPTY_FILTERS, type BoardFilters, type BoardView, type SortOption } from "./BoardActionBar";
 import { BoardKpiHeader } from "./BoardKpiHeader";
+import { ChannelFilterBar } from "./ChannelFilterBar";
+import { ConnectedChannelsPanel, type ChannelConnectionStatus } from "./ConnectedChannelsPanel";
 import { KanbanBoard } from "./KanbanBoard";
 import { OpportunityTable } from "./OpportunityTable";
 import { OpportunityListView } from "./OpportunityListView";
@@ -58,6 +60,7 @@ export function CrmBoardShell({
   members,
   agents,
   tags,
+  channelStatus,
   onBoardChange,
 }: {
   initialBoard: CrmBoard | null;
@@ -65,6 +68,7 @@ export function CrmBoardShell({
   members: WorkspaceMemberOption[];
   agents: AgentListItem[];
   tags: OpportunityTag[];
+  channelStatus: ChannelConnectionStatus;
   /** CrmPageShell also renders Analytics from the same board — this keeps
    * that sibling tab in sync after a client-side mutation here (e.g.
    * creating the pipeline) without requiring a full page reload. */
@@ -352,7 +356,14 @@ export function CrmBoardShell({
             </Button>
           </div>
         </div>
+        <ConnectedChannelsPanel status={channelStatus} />
         <BoardKpiHeader kpis={board.kpis} />
+        <ChannelFilterBar
+          cards={allCards}
+          stages={board.stages}
+          value={filters.channel}
+          onChange={(channel) => setFilters((prev) => ({ ...prev, channel }))}
+        />
         <BoardActionBar
           view={view}
           onViewChange={setView}

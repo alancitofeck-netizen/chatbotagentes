@@ -1,5 +1,6 @@
 import type { CrmBoard, OpportunityCard } from "@/lib/crm/queries";
 import type { BoardFilters, SortOption } from "@/app/(protected)/crm/BoardActionBar";
+import { resolveChannel } from "@/lib/crm/channels";
 
 /** Pure client-side filter/sort over an already-fetched CrmBoard — both the
  * Kanban and Tabla views read from this so they never disagree on what
@@ -24,6 +25,7 @@ export function filterAndSortBoard(
     if (filters.agentId && card.ownerId !== filters.agentId) return false;
     if (filters.priority && card.priority !== filters.priority) return false;
     if (filters.source && card.source !== filters.source) return false;
+    if (filters.channel && resolveChannel(card.source) !== filters.channel) return false;
     if (filters.company && card.company !== filters.company) return false;
     if (filters.tagId && !card.tags.some((t) => t.id === filters.tagId)) return false;
     if (filters.supervisorId) {
