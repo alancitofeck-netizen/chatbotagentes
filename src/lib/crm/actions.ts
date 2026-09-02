@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
-import { getCrmBoard, getCrmPipelines, getOpportunityActivity, getOpportunityDetail } from "@/lib/crm/queries";
+import {
+  getCrmBoard,
+  getCrmPipelines,
+  getOpportunityActivity,
+  getOpportunityDetail,
+  findContactConversationByPhone,
+} from "@/lib/crm/queries";
 import { getCrmAnalyticsRangeData, resolveDateRange, type DateRangePreset } from "@/lib/crm/analyticsRange";
 import { syncCloseDateEvent, updateCloseEventStatus, deleteCloseDateEvent } from "@/lib/crm/calendarSync";
 import { logActivity } from "@/lib/activity/log";
@@ -412,6 +418,10 @@ export interface LeadFormInput {
   company: string;
   jobTitle: string;
   source: string;
+  /** Campos opcionales por fuente (wizard de "Nuevo lead") — se guardan en
+   * contacts.custom_fields.source_details, mismo JSONB que ya guarda
+   * job_title. null/undefined = no tocar esa clave. */
+  sourceDetails?: Record<string, unknown> | null;
   title: string;
   value: number;
   currency: string;
@@ -419,6 +429,19 @@ export interface LeadFormInput {
   probability: number | null;
   expectedCloseDate: string | null;
   ownerId: string | null;
+}
+
+/** contacts.custom_fields es un solo JSONB compartido por varias claves
+ * (job_title, source_details) escritas desde distintos momentos — un
+ * `update`/`upsert` ingenuo reemplazaría el objeto entero y borraría
+ * silenciosamente lo que no se está tocando ahora mismo. Se lee el actual
+ * y se mezclan encima solo las claves que este formulario administra. */
+function mergeCustomFields(existing: Record<string, unknown> | null | undefined, input: LeadFormInput): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...(existing ?? {}) };
+  if (input.jobTitle.trim()) merged.job_title = input.jobTitle.trim();
+  else delete merged.job_title;
+  if (input.sourceDetails) merged.source_details = input.sourceDetails;
+  return merged;
 }
 
 /** Upserts the underlying contact by phone (same pattern as createContact,
@@ -448,13 +471,25 @@ export async function createOpportunity(input: LeadFormInput, stageId?: string) 
   }
 
   const phone = input.phone.trim() || null;
+
+  let existingCustomFields: Record<string, unknown> | null = null;
+  if (phone) {
+    const { data: existingContact } = await supabase
+      .from("contacts")
+      .select("custom_fields")
+      .eq("workspace_id", workspaceId)
+      .eq("phone", phone)
+      .maybeSingle();
+    existingCustomFields = (existingContact?.custom_fields as Record<string, unknown> | null) ?? null;
+  }
+
   const contactPayload = {
     workspace_id: workspaceId,
     name: input.name.trim(),
     email: input.email.trim() || null,
     company: input.company.trim() || null,
     source: input.source.trim() || null,
-    custom_fields: input.jobTitle.trim() ? { job_title: input.jobTitle.trim() } : {},
+    custom_fields: mergeCustomFields(existingCustomFields, input),
   };
 
   const { data: contact, error: contactError } = phone
@@ -554,12 +589,15 @@ export async function updateOpportunity(opportunityId: string, contactId: string
   if (!input.title.trim()) throw new Error("El título de la oportunidad es obligatorio.");
   const supabase = await createClient();
 
-  const { data: existing } = await supabase
-    .from("opportunities")
-    .select("calendar_event_id, pipeline_item_id, owner_id")
-    .eq("id", opportunityId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
+  const [{ data: existing }, { data: existingContact }] = await Promise.all([
+    supabase
+      .from("opportunities")
+      .select("calendar_event_id, pipeline_item_id, owner_id")
+      .eq("id", opportunityId)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle(),
+    supabase.from("contacts").select("custom_fields").eq("id", contactId).eq("workspace_id", workspaceId).maybeSingle(),
+  ]);
 
   await supabase
     .from("contacts")
@@ -569,7 +607,7 @@ export async function updateOpportunity(opportunityId: string, contactId: string
       email: input.email.trim() || null,
       company: input.company.trim() || null,
       source: input.source.trim() || null,
-      custom_fields: input.jobTitle.trim() ? { job_title: input.jobTitle.trim() } : {},
+      custom_fields: mergeCustomFields((existingContact?.custom_fields as Record<string, unknown> | null) ?? null, input),
     })
     .eq("id", contactId)
     .eq("workspace_id", workspaceId);
@@ -636,6 +674,16 @@ export async function updateOpportunity(opportunityId: string, contactId: string
 
   revalidatePath("/crm");
   revalidatePath("/calendar");
+}
+
+/** Chequeo "Conversación encontrada" del paso 1 del wizard (fuente
+ * WhatsApp) — puramente informativo, no crea ninguna relación: el
+ * upsert-por-teléfono que ya hace createOpportunity es lo que
+ * efectivamente conecta el lead al contacto/conversación real si el
+ * teléfono coincide. */
+export async function findContactConversationByPhoneAction(phone: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return findContactConversationByPhone(workspaceId, phone);
 }
 
 export async function deleteOpportunity(opportunityId: string) {

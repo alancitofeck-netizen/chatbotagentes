@@ -33,7 +33,7 @@ import { KanbanBoard } from "./KanbanBoard";
 import { OpportunityTable } from "./OpportunityTable";
 import { OpportunityListView } from "./OpportunityListView";
 import { CardDetailSheet } from "./CardDetailSheet";
-import { LeadFormSheet } from "./LeadFormSheet";
+import { LeadWizardSheet } from "./LeadWizardSheet";
 import { ImportLeadsSheet } from "./ImportLeadsSheet";
 import { ManagePipelineSheet } from "./ManagePipelineSheet";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
@@ -494,7 +494,7 @@ export function CrmBoardShell({
       />
 
       {leadForm && (
-        <LeadFormSheet
+        <LeadWizardSheet
           card={leadForm.card}
           stages={board.stages}
           defaultStageId={leadForm.defaultStageId}
@@ -502,6 +502,7 @@ export function CrmBoardShell({
           tags={tags}
           onClose={() => setLeadForm(null)}
           onSaved={refreshBoard}
+          onViewLead={(opportunityId) => setDetailState({ id: opportunityId, tab: "resumen" })}
         />
       )}
 

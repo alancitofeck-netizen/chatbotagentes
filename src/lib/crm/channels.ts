@@ -32,6 +32,6 @@ export const CHANNEL_ICON: Record<Channel, LucideIcon> = {
 export function resolveChannel(source: string | null): Channel {
   if (source === "whatsapp") return "whatsapp";
   if (source === "instagram" || source === "manychat") return "instagram";
-  if (source === "mini_app") return "web";
+  if (source === "mini_app" || source === "web") return "web";
   return "manual";
 }

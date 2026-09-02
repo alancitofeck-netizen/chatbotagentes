@@ -33,6 +33,9 @@ export interface OpportunityCard {
   company: string | null;
   jobTitle: string | null;
   source: string | null;
+  /** contacts.custom_fields.source_details (wizard de "Nuevo lead") — campos
+   * opcionales por fuente, ver src/app/(protected)/crm/LeadWizardSheet.tsx. */
+  sourceDetails: Record<string, unknown> | null;
   email: string | null;
   phone: string | null;
   tags: OpportunityTag[];
@@ -282,6 +285,7 @@ export async function getCrmBoard(workspaceId: string, pipelineId?: string): Pro
       contactAvatarUrl: contact?.avatar_url ?? null,
       company: contact?.company ?? null,
       jobTitle: (customFields.job_title as string | undefined) ?? null,
+      sourceDetails: (customFields.source_details as Record<string, unknown> | undefined) ?? null,
       source: contact?.source ?? null,
       email: contact?.email ?? null,
       phone: contact?.phone ?? null,
@@ -544,4 +548,44 @@ export async function getOpportunityOptions(workspaceId: string): Promise<Opport
     const contact = Array.isArray(o.contacts) ? o.contacts[0] : o.contacts;
     return { id: o.id as string, label: contact ? `${o.title as string} — ${contact.name as string}` : (o.title as string) };
   });
+}
+
+export interface ContactConversationMatch {
+  contactId: string;
+  conversationId: string | null;
+  conversationChannel: string | null;
+}
+
+/** Paso 1 del wizard de "Nuevo lead" (fuente WhatsApp) — busca si ya existe
+ * un contacto real con este teléfono y, si tiene conversaciones, la más
+ * reciente. Misma comparación exacta de `phone` que ya usa el
+ * upsert-por-teléfono de createOpportunity — puramente informativo, no
+ * crea ninguna relación nueva. */
+export async function findContactConversationByPhone(workspaceId: string, phone: string): Promise<ContactConversationMatch | null> {
+  const trimmed = phone.trim();
+  if (!trimmed) return null;
+  const supabase = await createClient();
+
+  const { data: contact } = await supabase
+    .from("contacts")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("phone", trimmed)
+    .maybeSingle();
+  if (!contact) return null;
+
+  const { data: conversation } = await supabase
+    .from("conversations")
+    .select("id, channel")
+    .eq("workspace_id", workspaceId)
+    .eq("contact_id", contact.id)
+    .order("last_message_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    contactId: contact.id as string,
+    conversationId: (conversation?.id as string | undefined) ?? null,
+    conversationChannel: (conversation?.channel as string | undefined) ?? null,
+  };
 }
