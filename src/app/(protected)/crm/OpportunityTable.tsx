@@ -48,24 +48,24 @@ export function OpportunityTable({
       <table className="w-full min-w-[1200px] text-left text-sm">
         <thead>
           <tr className="border-b border-border-default text-xs text-neutral-500">
-            {selectionMode && <th className="w-10 px-3 py-2.5" />}
-            <th className="px-3 py-2.5 font-medium">Lead</th>
-            <th className="px-3 py-2.5 font-medium">Empresa</th>
-            <th className="px-3 py-2.5 font-medium">Valor</th>
-            <th className="px-3 py-2.5 font-medium">Prioridad</th>
-            <th className="px-3 py-2.5 font-medium">Probabilidad</th>
-            <th className="px-3 py-2.5 font-medium">Etapa</th>
-            <th className="px-3 py-2.5 font-medium">Agente</th>
-            <th className="px-3 py-2.5 font-medium">Etiquetas</th>
-            <th className="px-3 py-2.5 font-medium">Última actividad</th>
-            <th className="px-3 py-2.5 font-medium">Acciones</th>
+            {selectionMode && <th className="w-10 px-3 py-2" />}
+            <th className="px-3 py-2 font-medium">Lead</th>
+            <th className="px-3 py-2 font-medium">Empresa</th>
+            <th className="px-3 py-2 font-medium">Valor</th>
+            <th className="px-3 py-2 font-medium">Prioridad</th>
+            <th className="px-3 py-2 font-medium">Probabilidad</th>
+            <th className="px-3 py-2 font-medium">Etapa</th>
+            <th className="px-3 py-2 font-medium">Agente</th>
+            <th className="px-3 py-2 font-medium">Etiquetas</th>
+            <th className="px-3 py-2 font-medium">Última actividad</th>
+            <th className="px-3 py-2 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {cards.map((card) => (
             <tr key={card.id} className="border-b border-border-default last:border-0 hover:bg-surface-2">
               {selectionMode && (
-                <td className="px-3 py-2.5">
+                <td className="px-3 py-2">
                   <input
                     type="checkbox"
                     checked={selectedIds.has(card.id)}
@@ -74,7 +74,7 @@ export function OpportunityTable({
                   />
                 </td>
               )}
-              <td className="px-3 py-2.5">
+              <td className="px-3 py-2">
                 <button type="button" onClick={() => onOpen(card)} className="flex items-center gap-2 text-left hover:text-accent-700">
                   <Avatar name={card.contactName} src={card.contactAvatarUrl} size={28} />
                   <div className="min-w-0">
@@ -83,14 +83,14 @@ export function OpportunityTable({
                   </div>
                 </button>
               </td>
-              <td className="px-3 py-2.5 text-neutral-600">{card.company ?? "—"}</td>
-              <td className="whitespace-nowrap px-3 py-2.5 font-mono">{formatCurrency(card.value, card.currency)}</td>
-              <td className="px-3 py-2.5">
+              <td className="px-3 py-2 text-neutral-600">{card.company ?? "—"}</td>
+              <td className="whitespace-nowrap px-3 py-2 font-mono">{formatCurrency(card.value, card.currency)}</td>
+              <td className="px-3 py-2">
                 <Badge variant={PRIORITY_VARIANT[card.priority]}>{PRIORITY_LABEL[card.priority]}</Badge>
               </td>
-              <td className="px-3 py-2.5 text-neutral-600">{card.probability !== null ? `${card.probability}%` : "—"}</td>
-              <td className="px-3 py-2.5 text-neutral-600">{stageNameById.get(card.stageId) ?? "—"}</td>
-              <td className="px-3 py-2.5 text-neutral-600">
+              <td className="px-3 py-2 text-neutral-600">{card.probability !== null ? `${card.probability}%` : "—"}</td>
+              <td className="px-3 py-2 text-neutral-600">{stageNameById.get(card.stageId) ?? "—"}</td>
+              <td className="px-3 py-2 text-neutral-600">
                 {card.ownerName ? (
                   <span className="flex items-center gap-1.5">
                     <Avatar name={card.ownerName} src={card.ownerAvatarUrl} size={20} />
@@ -100,7 +100,7 @@ export function OpportunityTable({
                   "Sin asignar"
                 )}
               </td>
-              <td className="px-3 py-2.5">
+              <td className="px-3 py-2">
                 <div className="flex flex-wrap gap-1">
                   {card.tags.map((tag) => (
                     <Badge key={tag.id} variant={tagBadgeVariant(tag.color)}>
@@ -109,10 +109,10 @@ export function OpportunityTable({
                   ))}
                 </div>
               </td>
-              <td className="whitespace-nowrap px-3 py-2.5 text-xs text-neutral-500">
+              <td className="whitespace-nowrap px-3 py-2 text-xs text-neutral-500">
                 {card.lastContactAt ? formatRelativeTime(card.lastContactAt) : "Sin actividad"}
               </td>
-              <td className="px-3 py-2.5">
+              <td className="px-3 py-2">
                 <div className="flex items-center gap-2 text-neutral-400">
                   <button type="button" onClick={() => onOpen(card)} title="Ver" className="hover:text-accent-700">
                     <Eye className="size-4" aria-hidden="true" />

@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import { Briefcase, UserPlus, CalendarClock, FileText, Award, Wallet, Percent, TrendingUp, TrendingDown } from "lucide-react";
-import { Card } from "@/components/ui/Card";
 import type { BoardKpis } from "@/lib/crm/queries";
 
 function formatCurrency(value: number) {
@@ -12,10 +11,8 @@ function formatCurrency(value: number) {
 function DeltaBadge({ pct }: { pct: number | null }) {
   if (pct === null) return null;
   return (
-    <span
-      className={`flex items-center gap-0.5 text-xs font-semibold ${pct >= 0 ? "text-success-strong" : "text-error-strong"}`}
-    >
-      {pct >= 0 ? <TrendingUp className="size-3.5" aria-hidden="true" /> : <TrendingDown className="size-3.5" aria-hidden="true" />}
+    <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${pct >= 0 ? "text-success-strong" : "text-error-strong"}`}>
+      {pct >= 0 ? <TrendingUp className="size-3" aria-hidden="true" /> : <TrendingDown className="size-3" aria-hidden="true" />}
       {pct >= 0 ? "+" : ""}
       {pct}%
     </span>
@@ -40,78 +37,80 @@ function KpiTile({
   footnote?: string;
 }) {
   return (
-    <Card className="flex flex-col gap-3">
-      <div className="flex items-start justify-between">
-        <span className={`flex size-10 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
-        {deltaPct !== undefined && <DeltaBadge pct={deltaPct} />}
+    <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-border-default bg-surface-1 px-3 py-2.5">
+      <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[11.5px] leading-tight text-neutral-500">{label}</p>
+        <div className="flex items-baseline gap-1.5">
+          <p className="font-mono text-[17px] font-semibold leading-tight text-foreground">{value}</p>
+          {deltaPct !== undefined && <DeltaBadge pct={deltaPct} />}
+        </div>
+        {footnote && <p className="truncate text-[10px] text-neutral-400">{footnote}</p>}
       </div>
-      <div>
-        <p className="font-mono text-2xl font-semibold leading-none text-foreground">{value}</p>
-        <p className="mt-1.5 text-[13px] text-neutral-500">{label}</p>
-        {footnote && <p className="mt-1 truncate text-xs text-neutral-500">{footnote}</p>}
-      </div>
-    </Card>
+    </div>
   );
 }
 
-/** 7 KPI tiles requested for the board header. Only 3 (Nuevos leads, Ventas
- * cerradas, Conversión) have a real month-over-month baseline to compute a
- * delta from (see BoardKpis in src/lib/crm/queries.ts) — the rest show the
- * current value only rather than a fabricated trend. */
+/** Fila compacta de 7 KPIs — mismos 7 números y mismo cálculo que antes
+ * (BoardKpis, src/lib/crm/queries.ts), solo una presentación mucho más
+ * densa (una sola franja delgada en vez de tarjetas grandes) para que el
+ * pipeline/leads sean lo primero que ocupe espacio en pantalla, no las
+ * métricas. Solo 3 KPIs (Nuevos leads, Ventas cerradas, Conversión) tienen
+ * una base mes-a-mes real para calcular variación — el resto muestra solo
+ * el valor actual en vez de una tendencia inventada. */
 export function BoardKpiHeader({ kpis }: { kpis: BoardKpis }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="flex flex-wrap gap-2">
       <KpiTile
-        icon={<Briefcase className="size-[18px]" aria-hidden="true" />}
+        icon={<Briefcase className="size-4" aria-hidden="true" />}
         iconBg="bg-accent-100"
         iconColor="text-accent-700"
         value={String(kpis.totalOpportunities)}
-        label="Total de oportunidades"
+        label="Oportunidades"
       />
       <KpiTile
-        icon={<UserPlus className="size-[18px]" aria-hidden="true" />}
+        icon={<UserPlus className="size-4" aria-hidden="true" />}
         iconBg="bg-[var(--color-chart-3)]/15"
         iconColor="text-[var(--color-chart-3)]"
         value={String(kpis.newLeadsThisMonth)}
-        label="Nuevos leads (mes)"
+        label="Nuevos leads"
         deltaPct={kpis.newLeadsDeltaPct}
       />
       <KpiTile
-        icon={<CalendarClock className="size-[18px]" aria-hidden="true" />}
+        icon={<CalendarClock className="size-4" aria-hidden="true" />}
         iconBg="bg-[var(--color-chart-2)]/15"
         iconColor="text-[var(--color-chart-2)]"
         value={String(kpis.meetingsScheduled)}
-        label="Reuniones agendadas"
-        footnote="Próximas, todo el workspace"
+        label="Reuniones"
       />
       <KpiTile
-        icon={<FileText className="size-[18px]" aria-hidden="true" />}
+        icon={<FileText className="size-4" aria-hidden="true" />}
         iconBg="bg-[var(--color-chart-4)]/15"
         iconColor="text-[var(--color-chart-4)]"
         value={String(kpis.proposalsSent)}
-        label="Propuestas enviadas"
+        label="Propuestas"
       />
       <KpiTile
-        icon={<Award className="size-[18px]" aria-hidden="true" />}
+        icon={<Award className="size-4" aria-hidden="true" />}
         iconBg="bg-[var(--color-success-bg)]"
         iconColor="text-[var(--color-success-strong)]"
         value={String(kpis.dealsWonThisMonth)}
-        label="Ventas cerradas (mes)"
+        label="Ventas cerradas"
         deltaPct={kpis.dealsWonDeltaPct}
       />
       <KpiTile
-        icon={<Wallet className="size-[18px]" aria-hidden="true" />}
+        icon={<Wallet className="size-4" aria-hidden="true" />}
         iconBg="bg-primary-100"
         iconColor="text-primary-700"
         value={formatCurrency(kpis.totalPipelineValue)}
-        label="Valor total del pipeline"
+        label="Pipeline"
       />
       <KpiTile
-        icon={<Percent className="size-[18px]" aria-hidden="true" />}
+        icon={<Percent className="size-4" aria-hidden="true" />}
         iconBg="bg-accent-100"
         iconColor="text-accent-700"
         value={`${kpis.monthlyConversionRate}%`}
-        label="Conversión del mes"
+        label="Conversión"
         deltaPct={kpis.monthlyConversionDeltaPct}
       />
     </div>

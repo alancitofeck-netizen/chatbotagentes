@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Fab } from "@/components/ui/Fab";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { KanbanSquare, Settings } from "lucide-react";
 import { toast } from "@/components/toast/toast";
 import type { CrmBoard, CrmPipelineOption, OpportunityCard, OpportunityTag } from "@/lib/crm/queries";
@@ -24,10 +25,11 @@ import {
   createPipeline,
 } from "@/lib/crm/actions";
 import { filterAndSortBoard } from "@/lib/crm/boardFilters";
-import { BoardActionBar, EMPTY_FILTERS, type BoardFilters, type SortOption } from "./BoardActionBar";
+import { BoardActionBar, EMPTY_FILTERS, type BoardFilters, type BoardView, type SortOption } from "./BoardActionBar";
 import { BoardKpiHeader } from "./BoardKpiHeader";
 import { KanbanBoard } from "./KanbanBoard";
 import { OpportunityTable } from "./OpportunityTable";
+import { OpportunityListView } from "./OpportunityListView";
 import { CardDetailSheet } from "./CardDetailSheet";
 import { LeadFormSheet } from "./LeadFormSheet";
 import { ImportLeadsSheet } from "./ImportLeadsSheet";
@@ -75,7 +77,7 @@ export function CrmBoardShell({
     setBoardState(next);
     onBoardChange?.(next);
   }
-  const [view, setView] = useState<"kanban" | "table">("kanban");
+  const [view, setView] = useState<BoardView>("kanban");
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
   const [sortBy, setSortBy] = useState<SortOption>("date_desc");
@@ -87,7 +89,7 @@ export function CrmBoardShell({
   // Read once as the lazy initial state (not an effect — setState-in-effect
   // is flagged by this project's lint rules, and this only ever needs to
   // seed the initial value, never react to later URL changes).
-  const [detailState, setDetailState] = useState<{ id: string; tab: "resumen" | "notas" } | null>(() => {
+  const [detailState, setDetailState] = useState<{ id: string; tab: "resumen" | "notas" | "tareas" } | null>(() => {
     const opportunityId = searchParams.get("opportunity");
     return opportunityId ? { id: opportunityId, tab: "resumen" } : null;
   });
@@ -95,6 +97,10 @@ export function CrmBoardShell({
     null,
   );
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<OpportunityCard | null>(null);
+  const [deletingOne, setDeletingOne] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isCreatingPipeline, startCreatePipeline] = useTransition();
   useAutoStartTour("crm-create-lead");
 
@@ -228,21 +234,45 @@ export function CrmBoardShell({
     refreshBoard();
   }
 
-  async function handleBulkDelete() {
-    const cards = selectedCards();
-    if (!window.confirm(`¿Eliminar ${cards.length} lead(s)? Esta acción no se puede deshacer.`)) return;
-    await bulkDeleteOpportunities(cards.map((c) => c.id));
-    toast.success(`${cards.length} lead(s) eliminado(s).`);
-    clearSelection();
-    setSelectionMode(false);
-    refreshBoard();
+  function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    setBulkDeleteOpen(true);
   }
 
-  async function handleDeleteOne(card: OpportunityCard) {
-    if (!window.confirm(`¿Eliminar "${card.title}"? Esta acción no se puede deshacer.`)) return;
-    await deleteOpportunity(card.id);
-    toast.success("Lead eliminado.");
-    refreshBoard();
+  async function confirmBulkDelete() {
+    const cards = selectedCards();
+    setBulkDeleting(true);
+    try {
+      await bulkDeleteOpportunities(cards.map((c) => c.id));
+      toast.success(`${cards.length} lead(s) eliminado(s).`);
+      clearSelection();
+      setSelectionMode(false);
+      setBulkDeleteOpen(false);
+      refreshBoard();
+    } catch {
+      toast.error("No se pudieron eliminar los leads seleccionados.");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  function handleDeleteOne(card: OpportunityCard) {
+    setDeleteTarget(card);
+  }
+
+  async function confirmDeleteOne() {
+    if (!deleteTarget) return;
+    setDeletingOne(true);
+    try {
+      await deleteOpportunity(deleteTarget.id);
+      toast.success("Lead eliminado.");
+      setDeleteTarget(null);
+      refreshBoard();
+    } catch {
+      toast.error("No se pudo eliminar el lead.");
+    } finally {
+      setDeletingOne(false);
+    }
   }
 
   function handleNewLead() {
@@ -351,14 +381,11 @@ export function CrmBoardShell({
         />
       </div>
 
-      {/* No fixed-height/overflow-hidden box here on purpose — the board grows
-         naturally (stages stacked top-to-bottom, see KanbanBoard's orientation="rows")
-         and the page itself scrolls (via the (protected) layout's <main overflow-y-auto>),
-         instead of confining everything to a small internally-scrolling strip.
-         Below `sm`, KanbanBoard switches itself to horizontal-scrolling columns
-         with real touch drag-and-drop (see src/app/(protected)/crm/KanbanBoard.tsx
-         useIsMobile), so it's shown regardless of the desktop kanban/tabla toggle —
-         a wide table is never the right mobile view, the touch-friendly kanban is. */}
+      {/* No fixed-height/overflow-hidden box here on purpose — el board crece
+         naturalmente y la página misma scrollea (layout de (protected)).
+         Tabla y Lista se ocultan en mobile a favor del Kanban (columnas,
+         con drag táctil real vía TouchSensor) — una tabla/lista angosta
+         nunca es la vista correcta en una pantalla chica. */}
       {view === "kanban" ? (
         <KanbanBoard
           stages={board.stages}
@@ -370,21 +397,36 @@ export function CrmBoardShell({
           onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
           onEdit={(card) => setLeadForm({ card, defaultStageId: null })}
           onNote={(card) => setDetailState({ id: card.id, tab: "notas" })}
+          onTask={(card) => setDetailState({ id: card.id, tab: "tareas" })}
           onChanged={refreshBoard}
         />
       ) : (
         <>
           <div className="hidden px-4 pb-4 sm:block sm:px-6 lg:px-8">
-            <OpportunityTable
-              cards={filtered.flat}
-              stages={board.stages}
-              selectionMode={selectionMode}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelect}
-              onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
-              onEdit={(card) => setLeadForm({ card, defaultStageId: null })}
-              onDelete={handleDeleteOne}
-            />
+            {view === "table" ? (
+              <OpportunityTable
+                cards={filtered.flat}
+                stages={board.stages}
+                selectionMode={selectionMode}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
+                onEdit={(card) => setLeadForm({ card, defaultStageId: null })}
+                onDelete={handleDeleteOne}
+              />
+            ) : (
+              <OpportunityListView
+                cards={filtered.flat}
+                stages={board.stages}
+                selectionMode={selectionMode}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
+                onEdit={(card) => setLeadForm({ card, defaultStageId: null })}
+                onNote={(card) => setDetailState({ id: card.id, tab: "notas" })}
+                onDelete={handleDeleteOne}
+              />
+            )}
           </div>
           <div className="sm:hidden">
             <KanbanBoard
@@ -397,6 +439,7 @@ export function CrmBoardShell({
               onOpen={(card) => setDetailState({ id: card.id, tab: "resumen" })}
               onEdit={(card) => setLeadForm({ card, defaultStageId: null })}
               onNote={(card) => setDetailState({ id: card.id, tab: "notas" })}
+              onTask={(card) => setDetailState({ id: card.id, tab: "tareas" })}
               onChanged={refreshBoard}
             />
           </div>
@@ -409,12 +452,34 @@ export function CrmBoardShell({
         key={detailState?.id ?? "closed"}
         opportunityId={detailState?.id ?? null}
         initialTab={detailState?.tab}
+        stages={board.stages}
         onClose={() => setDetailState(null)}
         onEdit={() => {
           const card = detailState ? cardById.get(detailState.id) : null;
           if (card) setLeadForm({ card, defaultStageId: null });
           setDetailState(null);
         }}
+        onChanged={refreshBoard}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={`¿Eliminar "${deleteTarget?.title ?? "este lead"}"?`}
+        description="Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        isLoading={deletingOne}
+        onConfirm={confirmDeleteOne}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        title={`¿Eliminar ${selectedIds.size} lead(s)?`}
+        description="Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        isLoading={bulkDeleting}
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setBulkDeleteOpen(false)}
       />
 
       {leadForm && (

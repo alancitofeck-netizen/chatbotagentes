@@ -10,11 +10,9 @@ import {
   SlidersHorizontal,
   KanbanSquare,
   Table as TableIcon,
-  List,
-  LayoutGrid,
-  Calendar,
-  GitBranch,
+  Rows3,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -52,13 +50,16 @@ export const EMPTY_FILTERS: BoardFilters = {
 };
 
 export type SortOption = "date_desc" | "value_desc" | "probability_desc" | "name_asc";
+export type BoardView = "kanban" | "table" | "list";
 
-const DISABLED_VIEWS: { key: string; label: string; icon: typeof List }[] = [
-  { key: "list", label: "Lista", icon: List },
-  { key: "cards", label: "Cards", icon: LayoutGrid },
-  { key: "calendar", label: "Calendario", icon: Calendar },
-  { key: "pipeline", label: "Pipeline", icon: GitBranch },
+const VIEW_OPTIONS: { key: BoardView; label: string; icon: typeof TableIcon }[] = [
+  { key: "kanban", label: "Kanban", icon: KanbanSquare },
+  { key: "table", label: "Tabla", icon: TableIcon },
+  { key: "list", label: "Lista", icon: Rows3 },
 ];
+
+const pillButton =
+  "flex items-center gap-1.5 rounded-full border border-border-default bg-surface-1 px-3 py-1.5 text-[13px] font-medium text-foreground hover:border-border-strong";
 
 export function BoardActionBar({
   view,
@@ -86,8 +87,8 @@ export function BoardActionBar({
   onBulkAddTag,
   onBulkDelete,
 }: {
-  view: "kanban" | "table";
-  onViewChange: (v: "kanban" | "table") => void;
+  view: BoardView;
+  onViewChange: (v: BoardView) => void;
   search: string;
   onSearchChange: (v: string) => void;
   sortBy: SortOption;
@@ -120,15 +121,15 @@ export function BoardActionBar({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
           <input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar por nombre, empresa, email, teléfono, agente o etiqueta…"
-            className="w-full rounded-sm border border-border-strong bg-surface-1 py-2 pl-9 pr-3 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+            placeholder="Buscar leads…"
+            className="w-full rounded-full border border-border-default bg-surface-1 py-1.5 pl-9 pr-3 text-[13px] outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
           />
         </div>
 
@@ -136,76 +137,81 @@ export function BoardActionBar({
           <Plus className="size-4" aria-hidden="true" />
           Nuevo lead
         </Button>
-        <Button size="sm" variant="secondary" onClick={onImport}>
-          <Upload className="size-4" aria-hidden="true" />
-          Importar
-        </Button>
-        <Button size="sm" variant="secondary" onClick={onExport}>
-          <Download className="size-4" aria-hidden="true" />
-          Exportar
-        </Button>
-        <Button size="sm" variant={selectionMode ? "primary" : "secondary"} onClick={onToggleSelectionMode}>
-          <ListChecks className="size-4" aria-hidden="true" />
-          Acciones masivas
-        </Button>
+
         <ContextualHint
           hintKey="crm-filters-first-use"
           title="🔎 ¿Primera vez usando filtros?"
           description="Te mostramos rápidamente cómo funcionan."
           onShowMe={() => setFiltersOpen(true)}
         >
-          <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)}>
-            <SlidersHorizontal className="size-4" aria-hidden="true" />
+          <button type="button" onClick={() => setFiltersOpen((v) => !v)} className={`${pillButton} ${filtersOpen ? "border-accent-500 bg-accent-50 text-accent-700" : ""}`}>
+            <SlidersHorizontal className="size-3.5" aria-hidden="true" />
             Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-          </Button>
+            <ChevronDown className="size-3.5" aria-hidden="true" />
+          </button>
         </ContextualHint>
 
-        <select
-          value={sortBy}
-          onChange={(e) => onSortChange(e.target.value as SortOption)}
-          className="rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+        <button type="button" onClick={onImport} className={pillButton} title="Importar leads desde CSV">
+          <Upload className="size-3.5" aria-hidden="true" />
+          Importar
+        </button>
+        <button type="button" onClick={onExport} className={pillButton} title="Exportar leads a CSV">
+          <Download className="size-3.5" aria-hidden="true" />
+          Exportar
+        </button>
+        <button
+          type="button"
+          onClick={onToggleSelectionMode}
+          className={`${pillButton} ${selectionMode ? "border-accent-500 bg-accent-50 text-accent-700" : ""}`}
         >
-          <option value="date_desc">Más recientes</option>
-          <option value="value_desc">Mayor valor</option>
-          <option value="probability_desc">Mayor probabilidad</option>
-          <option value="name_asc">Nombre (A-Z)</option>
-        </select>
+          <ListChecks className="size-3.5" aria-hidden="true" />
+          Acciones masivas
+        </button>
 
-        <div className="ml-auto flex items-center gap-1 rounded-md border border-border-default bg-surface-1 p-1">
-          <button
-            type="button"
-            onClick={() => onViewChange("kanban")}
-            title="Kanban"
-            className={`flex size-8 items-center justify-center rounded ${view === "kanban" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
+        <div className="ml-auto flex items-center gap-2">
+          <select
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value as SortOption)}
+            className="rounded-full border border-border-default bg-surface-1 px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
           >
-            <KanbanSquare className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewChange("table")}
-            title="Tabla"
-            className={`flex size-8 items-center justify-center rounded ${view === "table" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
-          >
-            <TableIcon className="size-4" aria-hidden="true" />
-          </button>
-          {DISABLED_VIEWS.map(({ key, label, icon: Icon }) => (
-            <button key={key} type="button" disabled title={`${label} — próximamente`} className="flex size-8 cursor-not-allowed items-center justify-center rounded text-neutral-300">
-              <Icon className="size-4" aria-hidden="true" />
-            </button>
-          ))}
+            <option value="date_desc">Más recientes</option>
+            <option value="value_desc">Mayor valor</option>
+            <option value="probability_desc">Mayor probabilidad</option>
+            <option value="name_asc">Nombre (A-Z)</option>
+          </select>
+
+          <div className="flex items-center gap-0.5 rounded-full border border-border-default bg-surface-1 p-0.5">
+            {VIEW_OPTIONS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onViewChange(key)}
+                title={label}
+                aria-label={label}
+                aria-pressed={view === key}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12.5px] font-medium ${
+                  view === key ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:text-foreground"
+                }`}
+              >
+                <Icon className="size-3.5" aria-hidden="true" />
+                <span className="hidden lg:inline">{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {selectionMode && selectedCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md bg-accent-50 px-3 py-2 text-sm">
-          <span className="font-medium text-accent-700">{selectedCount} seleccionado(s)</span>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent-200 bg-accent-50 px-3 py-2 text-sm shadow-[var(--elevation-xs)]">
+          <span className="font-semibold text-accent-700">{selectedCount} seleccionado{selectedCount === 1 ? "" : "s"}</span>
+          <div className="h-4 w-px bg-accent-200" />
           <select
             defaultValue=""
             onChange={(e) => {
               if (e.target.value) onBulkMoveStage(e.target.value);
               e.target.value = "";
             }}
-            className="rounded-sm border border-border-strong bg-surface-1 px-2 py-1 text-xs outline-none"
+            className="rounded-full border border-border-strong bg-surface-1 px-2.5 py-1 text-xs outline-none"
           >
             <option value="" disabled>
               Mover a etapa…
@@ -222,7 +228,7 @@ export function BoardActionBar({
               onBulkAssignOwner(e.target.value || null);
               e.target.value = "";
             }}
-            className="rounded-sm border border-border-strong bg-surface-1 px-2 py-1 text-xs outline-none"
+            className="rounded-full border border-border-strong bg-surface-1 px-2.5 py-1 text-xs outline-none"
           >
             <option value="" disabled>
               Asignar agente…
@@ -240,7 +246,7 @@ export function BoardActionBar({
               if (e.target.value) onBulkAddTag(e.target.value);
               e.target.value = "";
             }}
-            className="rounded-sm border border-border-strong bg-surface-1 px-2 py-1 text-xs outline-none"
+            className="rounded-full border border-border-strong bg-surface-1 px-2.5 py-1 text-xs outline-none"
           >
             <option value="" disabled>
               Etiquetar…
@@ -251,7 +257,7 @@ export function BoardActionBar({
               </option>
             ))}
           </select>
-          <button type="button" onClick={onBulkDelete} className="flex items-center gap-1 text-xs font-medium text-error-strong hover:underline">
+          <button type="button" onClick={onBulkDelete} className="ml-auto flex items-center gap-1 text-xs font-medium text-error-strong hover:underline">
             <Trash2 className="size-3.5" aria-hidden="true" />
             Eliminar
           </button>
@@ -259,7 +265,7 @@ export function BoardActionBar({
       )}
 
       {filtersOpen && (
-        <div className="grid grid-cols-2 gap-3 rounded-md border border-border-default bg-surface-1 p-3 sm:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-border-default bg-surface-1 p-3 sm:grid-cols-3 xl:grid-cols-5">
           <Select label="Etapa" value={filters.stageId} onChange={(e) => setFilter("stageId", e.target.value)}>
             <option value="">Todas</option>
             {stages.map((s) => (

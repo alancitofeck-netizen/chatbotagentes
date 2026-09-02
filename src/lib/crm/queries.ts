@@ -401,6 +401,10 @@ export interface OpportunityDetail {
   };
   createdAt: string;
   notes: { id: string; body: string; createdAt: string }[];
+  /** Necesarios para "Mover etapa" desde el drawer de detalle
+   * (moveOpportunityCard toma pipelineItemId, no opportunityId). */
+  pipelineItemId: string | null;
+  stageId: string | null;
 }
 
 export async function getOpportunityDetail(
@@ -412,7 +416,7 @@ export async function getOpportunityDetail(
   const { data: opp } = await supabase
     .from("opportunities")
     .select(
-      "id, title, value, currency, status, priority, probability, expected_close_date, calendar_event_id, owner_id, created_at, contacts(id, name, company, email, phone)",
+      "id, title, value, currency, status, priority, probability, expected_close_date, calendar_event_id, owner_id, created_at, pipeline_item_id, contacts(id, name, company, email, phone), pipeline_items(stage_id)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", opportunityId)
@@ -421,6 +425,7 @@ export async function getOpportunityDetail(
   if (!opp) return null;
 
   const contact = Array.isArray(opp.contacts) ? opp.contacts[0] : opp.contacts;
+  const pipelineItem = Array.isArray(opp.pipeline_items) ? opp.pipeline_items[0] : opp.pipeline_items;
 
   const [{ data: notes }, { data: tagRows }] = await Promise.all([
     supabase
@@ -464,6 +469,8 @@ export async function getOpportunityDetail(
       body: n.body as string,
       createdAt: n.created_at as string,
     })),
+    pipelineItemId: (opp.pipeline_item_id as string | null) ?? null,
+    stageId: (pipelineItem?.stage_id as string | undefined) ?? null,
   };
 }
 
