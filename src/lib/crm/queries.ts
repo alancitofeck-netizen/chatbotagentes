@@ -395,6 +395,7 @@ export interface OpportunityDetail {
   expectedCloseDate: string | null;
   calendarEventId: string | null;
   ownerId: string | null;
+  ownerName: string | null;
   tags: OpportunityTag[];
   contact: {
     id: string;
@@ -402,10 +403,14 @@ export interface OpportunityDetail {
     company: string | null;
     email: string | null;
     phone: string | null;
+    jobTitle: string | null;
     /** contacts.source (texto libre) — mismo campo que ya alimenta el
      * filtro "Origen"/OpportunityCard.source, ver src/lib/crm/channels.ts
      * para su agrupación en canales. */
     source: string | null;
+    /** contacts.custom_fields.source_details (wizard de "Nuevo lead") —
+     * campos opcionales por fuente, mismo shape que OpportunityCard.sourceDetails. */
+    sourceDetails: Record<string, unknown> | null;
   };
   createdAt: string;
   notes: { id: string; body: string; createdAt: string }[];
@@ -424,7 +429,7 @@ export async function getOpportunityDetail(
   const { data: opp } = await supabase
     .from("opportunities")
     .select(
-      "id, title, value, currency, status, priority, probability, expected_close_date, calendar_event_id, owner_id, created_at, pipeline_item_id, contacts(id, name, company, email, phone, source), pipeline_items(stage_id)",
+      "id, title, value, currency, status, priority, probability, expected_close_date, calendar_event_id, owner_id, created_at, pipeline_item_id, contacts(id, name, company, email, phone, source, custom_fields), pipeline_items(stage_id)",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", opportunityId)
@@ -434,8 +439,9 @@ export async function getOpportunityDetail(
 
   const contact = Array.isArray(opp.contacts) ? opp.contacts[0] : opp.contacts;
   const pipelineItem = Array.isArray(opp.pipeline_items) ? opp.pipeline_items[0] : opp.pipeline_items;
+  const customFields = (contact?.custom_fields as Record<string, unknown> | null) ?? {};
 
-  const [{ data: notes }, { data: tagRows }] = await Promise.all([
+  const [{ data: notes }, { data: tagRows }, { data: ownerNames }] = await Promise.all([
     supabase
       .from("notes")
       .select("id, body, created_at")
@@ -446,7 +452,11 @@ export async function getOpportunityDetail(
     contact?.id
       ? supabase.from("contact_tags").select("tags(id, name, color)").eq("contact_id", contact.id)
       : Promise.resolve({ data: [] }),
+    opp.owner_id ? supabase.rpc("workspace_member_names", { ws_id: workspaceId }) : Promise.resolve({ data: null }),
   ]);
+  const ownerName = opp.owner_id
+    ? ((ownerNames as { member_id: string; full_name: string }[] | null)?.find((m) => m.member_id === opp.owner_id)?.full_name ?? null)
+    : null;
 
   return {
     id: opp.id as string,
@@ -460,6 +470,7 @@ export async function getOpportunityDetail(
     expectedCloseDate: (opp.expected_close_date as string | null) ?? null,
     calendarEventId: (opp.calendar_event_id as string | null) ?? null,
     ownerId: (opp.owner_id as string | null) ?? null,
+    ownerName,
     tags: (tagRows ?? [])
       .map((r) => (Array.isArray(r.tags) ? r.tags[0] : r.tags))
       .filter((t): t is { id: string; name: string; color: string } => Boolean(t))
@@ -470,7 +481,9 @@ export async function getOpportunityDetail(
       company: contact?.company ?? null,
       email: contact?.email ?? null,
       phone: contact?.phone ?? null,
+      jobTitle: (customFields.job_title as string | undefined) ?? null,
       source: contact?.source ?? null,
+      sourceDetails: (customFields.source_details as Record<string, unknown> | undefined) ?? null,
     },
     createdAt: opp.created_at as string,
     notes: (notes ?? []).map((n) => ({

@@ -19,17 +19,19 @@ import {
   Upload,
   MessageCircle,
   Phone,
+  Mail,
   ListTodo,
   MoreHorizontal,
   Plus,
   Pencil,
   ArrowRightLeft,
   Clock,
+  ChevronRight,
 } from "lucide-react";
 import { tagBadgeVariant } from "@/app/(protected)/inbox/tagColor";
 import { uploadDocumentFile } from "@/lib/documents/uploadClient";
 import { fileTypeMetaFor, formatFileSize } from "@/components/documents/documentIcons";
-import type { OpportunityDetail, OpportunityActivityEntry, PipelineStage } from "@/lib/crm/queries";
+import type { OpportunityDetail, OpportunityActivityEntry, OpportunityTag, PipelineStage } from "@/lib/crm/queries";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import type { TaskItem } from "@/lib/tasks/queries";
 import type { DocumentItem } from "@/lib/documents/queries";
@@ -39,7 +41,7 @@ import { getContactEventsAction } from "@/lib/calendar/actions";
 import { getOpportunityTasksAction } from "@/lib/tasks/actions";
 import { createTask, completeTask } from "@/lib/tasks/actions";
 import { getDocumentsByRelatedAction, recordUploadedDocument, trashDocument, getDownloadUrl } from "@/lib/documents/actions";
-import { getContactConversationsSummaryAction } from "@/lib/inbox/actions";
+import { getContactConversationsSummaryAction, toggleContactTag } from "@/lib/inbox/actions";
 import { CHANNEL_LABEL, CHANNEL_ICON, resolveChannel } from "@/lib/crm/channels";
 
 function formatCurrency(value: number, currency: string) {
@@ -83,32 +85,64 @@ const PRIORITY_VARIANT: Record<"high" | "medium" | "low", "error" | "warning" | 
   medium: "warning",
   low: "neutral",
 };
-const COMING_SOON_TABS = ["emails", "whatsapp", "ia"];
 
-/** Drawer lateral de detalle de un lead — header moderno (avatar, nombre,
- * valor, prioridad) + fila de acciones rápidas, luego las mismas 6 tabs de
- * siempre (Resumen/Notas/Tareas/Archivos/Reuniones/Historial, misma data y
- * mismos endpoints — solo el estilo cambió), y una barra de acciones fija
- * abajo (Editar/Mover etapa/Eliminar). */
+const CONVERSATION_STATUS_LABEL: Record<string, string> = { open: "Activa", pending_human: "Esperando respuesta", closed: "Cerrada" };
+
+/** Labels de los campos opcionales por fuente que escribe el wizard de
+ * "Nuevo lead" (LeadWizardSheet.tsx) en contacts.custom_fields.source_details
+ * — se muestra el primer bloque que tenga datos reales, y dentro de él solo
+ * los campos que realmente tengan valor (nunca campos vacíos). */
+const SOURCE_DETAIL_LABELS: Record<string, Record<string, string>> = {
+  instagram: { username: "Usuario", campaign: "Campaña", ad: "Anuncio", conversationId: "ID de conversación" },
+  tiktok: { username: "Usuario", campaign: "Campaña", video: "Video / anuncio", leadId: "ID de lead" },
+  web: { landingPage: "Landing Page", formulario: "Formulario", utmSource: "UTM Source", utmCampaign: "UTM Campaign" },
+  miniApp: { miniAppName: "Mini App", formulario: "Formulario", submissionId: "ID de envío" },
+  referido: { referredBy: "Referido por", relation: "Relación", notes: "Notas" },
+};
+
+function sourceDetailRows(sourceDetails: Record<string, unknown> | null): [string, string][] | null {
+  if (!sourceDetails) return null;
+  for (const [key, labels] of Object.entries(SOURCE_DETAIL_LABELS)) {
+    const block = sourceDetails[key] as Record<string, string> | undefined;
+    if (!block) continue;
+    const rows = Object.entries(labels)
+      .map(([field, label]): [string, string] => [label, block[field] ?? ""])
+      .filter(([, value]) => value.trim());
+    if (rows.length > 0) return rows;
+  }
+  return null;
+}
+
+type DrawerTab = "resumen" | "actividad" | "conversaciones" | "notas" | "tareas" | "archivos" | "reuniones";
+
+/** Drawer lateral de detalle de un lead — "centro de control": header con
+ * fuente/etapa/valor/prioridad, acciones rápidas, 7 tabs reales (Resumen/
+ * Actividad/Conversaciones/Notas/Tareas/Archivos/Reuniones) y una barra de
+ * acciones fija abajo (Editar/Mover etapa/Eliminar). */
 export function CardDetailSheet({
   opportunityId,
   initialTab = "resumen",
   stages,
+  tags,
   onClose,
   onEdit,
   onChanged,
 }: {
   opportunityId: string | null;
-  initialTab?: "resumen" | "notas" | "tareas" | "reuniones" | "historial" | "conversaciones";
+  initialTab?: "resumen" | "notas" | "tareas" | "reuniones" | "actividad" | "conversaciones";
   stages: PipelineStage[];
+  /** Etiquetas reales del workspace — para el picker "+ Agregar etiqueta"
+   * de Resumen (mismo toggleContactTag que ya usa LeadWizardSheet.tsx). */
+  tags: OpportunityTag[];
   onClose: () => void;
   onEdit: () => void;
-  /** Se llama tras mover de etapa o eliminar, para que CrmBoardShell
-   * refresque el board (mismo patrón que el resto de mutaciones). */
+  /** Se llama tras mover de etapa, (des)agregar etiqueta o eliminar, para
+   * que CrmBoardShell refresque el board (mismo patrón que el resto de
+   * mutaciones). */
   onChanged: () => void;
 }) {
   const [detail, setDetail] = useState<OpportunityDetail | null>(null);
-  const [tab, setTab] = useState<"resumen" | "notas" | "tareas" | "archivos" | "reuniones" | "historial" | "conversaciones">(initialTab);
+  const [tab, setTab] = useState<DrawerTab>(initialTab);
   const [noteBody, setNoteBody] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
@@ -125,6 +159,7 @@ export function CardDetailSheet({
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [movingStage, setMovingStage] = useState(false);
+  const [togglingTagId, setTogglingTagId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -135,6 +170,18 @@ export function CardDetailSheet({
     if (!opportunityId) return;
     getOpportunityDetailAction(opportunityId).then(setDetail);
   }, [opportunityId]);
+
+  // Se dispara apenas carga `detail` (no solo al entrar a la tab
+  // Conversaciones) porque Resumen también necesita esta misma data para
+  // su sección "Canal actual" (la conversación más reciente) — mismo
+  // query, un solo fetch, ambas tabs leen el mismo estado ya cargado.
+  useEffect(() => {
+    if (conversationsLoaded || !detail?.contact.id) return;
+    getContactConversationsSummaryAction(detail.contact.id).then((fresh) => {
+      setConversations(fresh);
+      setConversationsLoaded(true);
+    });
+  }, [conversationsLoaded, detail]);
 
   useEffect(() => {
     if (tab !== "reuniones" || eventsLoaded || !detail) return;
@@ -161,20 +208,12 @@ export function CardDetailSheet({
   }, [tab, documentsLoaded, opportunityId]);
 
   useEffect(() => {
-    if (tab !== "historial" || activityLoaded || !opportunityId) return;
+    if (tab !== "actividad" || activityLoaded || !opportunityId) return;
     getOpportunityActivityAction(opportunityId).then((fresh) => {
       setActivity(fresh);
       setActivityLoaded(true);
     });
   }, [tab, activityLoaded, opportunityId]);
-
-  useEffect(() => {
-    if (tab !== "conversaciones" || conversationsLoaded || !detail?.contact.id) return;
-    getContactConversationsSummaryAction(detail.contact.id).then((fresh) => {
-      setConversations(fresh);
-      setConversationsLoaded(true);
-    });
-  }, [tab, conversationsLoaded, detail]);
 
   function handleAddNote() {
     if (!opportunityId || !noteBody.trim()) return;
@@ -284,6 +323,18 @@ export function CardDetailSheet({
       .finally(() => setMovingStage(false));
   }
 
+  function handleToggleTag(tagId: string, currentlyOn: boolean) {
+    if (!detail?.contact.id || !opportunityId) return;
+    setTogglingTagId(tagId);
+    toggleContactTag(detail.contact.id, tagId, !currentlyOn)
+      .then(async () => {
+        setDetail(await getOpportunityDetailAction(opportunityId));
+        onChanged();
+      })
+      .catch(() => toast.error("No se pudo actualizar la etiqueta."))
+      .finally(() => setTogglingTagId(null));
+  }
+
   function handleDelete() {
     if (!opportunityId) return;
     setDeleting(true);
@@ -297,6 +348,13 @@ export function CardDetailSheet({
       .catch(() => toast.error("No se pudo eliminar el lead."))
       .finally(() => setDeleting(false));
   }
+
+  const channel = detail ? resolveChannel(detail.contact.source) : null;
+  const ChannelIcon = channel ? CHANNEL_ICON[channel] : null;
+  const latestConversation = conversations[0] ?? null;
+  const latestConversationChannel = latestConversation ? resolveChannel(latestConversation.channel) : null;
+  const LatestConversationIcon = latestConversationChannel ? CHANNEL_ICON[latestConversationChannel] : null;
+  const sourceRows = detail ? sourceDetailRows(detail.contact.sourceDetails) : null;
 
   return (
     <Sheet
@@ -324,9 +382,32 @@ export function CardDetailSheet({
         </div>
       ) : (
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between gap-3 border-b border-border-default px-5 py-3">
-            <p className="font-mono text-base font-semibold text-foreground">{formatCurrency(detail.value, detail.currency)}</p>
-            <Badge variant={PRIORITY_VARIANT[detail.priority]}>{PRIORITY_LABEL[detail.priority]}</Badge>
+          <div className="flex flex-col gap-2 border-b border-border-default px-5 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-mono text-base font-semibold text-foreground">{formatCurrency(detail.value, detail.currency)}</p>
+              <Badge variant={PRIORITY_VARIANT[detail.priority]}>{PRIORITY_LABEL[detail.priority]}</Badge>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-xs text-neutral-500">
+              {ChannelIcon && channel && (
+                <span className="flex items-center gap-1.5">
+                  <ChannelIcon size={13} aria-hidden="true" />
+                  {CHANNEL_LABEL[channel]}
+                </span>
+              )}
+              <select
+                value={detail.stageId ?? ""}
+                disabled={movingStage}
+                onChange={(e) => e.target.value && handleMoveStage(e.target.value)}
+                aria-label="Etapa"
+                className="ml-auto rounded-full border border-border-default bg-surface-1 px-2.5 py-1 text-[12px] font-medium text-foreground outline-none disabled:opacity-50"
+              >
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 border-b border-border-default px-5 py-2.5">
@@ -370,276 +451,188 @@ export function CardDetailSheet({
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 pt-4">
-            <Tabs
-              value={tab}
-              onValueChange={(v) => setTab(v as "resumen" | "notas" | "tareas" | "archivos" | "reuniones" | "historial" | "conversaciones")}
-            >
+            <Tabs value={tab} onValueChange={(v) => setTab(v as DrawerTab)}>
               <TabsList className="overflow-x-auto">
                 <TabsTrigger value="resumen">Resumen</TabsTrigger>
+                <TabsTrigger value="actividad">Actividad</TabsTrigger>
+                <TabsTrigger value="conversaciones">Conversaciones</TabsTrigger>
                 <TabsTrigger value="notas">Notas</TabsTrigger>
                 <TabsTrigger value="tareas">Tareas</TabsTrigger>
                 <TabsTrigger value="archivos">Archivos</TabsTrigger>
                 <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
-                <TabsTrigger value="historial">Historial</TabsTrigger>
-                <TabsTrigger value="conversaciones">Conversaciones</TabsTrigger>
-                {COMING_SOON_TABS.map((t) => (
-                  <TabsTrigger key={t} value={t} disabled>
-                    {t === "ia" ? "IA" : t[0].toUpperCase() + t.slice(1)}
-                  </TabsTrigger>
-                ))}
               </TabsList>
 
               <div className="py-4">
                 <TabsContent value="resumen">
-                  <dl className="flex flex-col gap-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Estado</dt>
-                      <dd>
-                        <Badge variant={detail.status === "won" ? "success" : "neutral"}>{detail.status}</Badge>
-                      </dd>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Probabilidad de cierre</dt>
-                      <dd className="text-foreground">{detail.probability !== null ? `${detail.probability}%` : "—"}</dd>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Fecha de cierre estimada</dt>
-                      <dd className="flex items-center gap-2 text-foreground">
-                        {detail.expectedCloseDate ? formatDateOnly(detail.expectedCloseDate) : "—"}
-                        {detail.expectedCloseDate && (
-                          <Link
-                            href={`/calendar?view=day&date=${detail.expectedCloseDate}${detail.calendarEventId ? `&event=${detail.calendarEventId}` : ""}`}
-                            className="text-[12px] text-accent-600 hover:underline"
-                          >
-                            Ver en calendario
-                          </Link>
+                  <div className="flex flex-col gap-5">
+                    <section className="flex flex-col gap-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Información comercial</p>
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+                        <div>
+                          <dt className="text-xs text-neutral-500">Estado</dt>
+                          <dd className="mt-0.5">
+                            <Badge variant={detail.status === "won" ? "success" : "neutral"}>{detail.status}</Badge>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-neutral-500">Valor</dt>
+                          <dd className="mt-0.5 font-mono text-foreground">{formatCurrency(detail.value, detail.currency)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-neutral-500">Probabilidad de cierre</dt>
+                          <dd className="mt-0.5 text-foreground">{detail.probability !== null ? `${detail.probability}%` : "—"}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-neutral-500">Moneda</dt>
+                          <dd className="mt-0.5 text-foreground">{detail.currency}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-neutral-500">Fecha de cierre estimada</dt>
+                          <dd className="mt-0.5 flex items-center gap-1.5 text-foreground">
+                            {detail.expectedCloseDate ? formatDateOnly(detail.expectedCloseDate) : "—"}
+                            {detail.expectedCloseDate && (
+                              <Link
+                                href={`/calendar?view=day&date=${detail.expectedCloseDate}${detail.calendarEventId ? `&event=${detail.calendarEventId}` : ""}`}
+                                className="text-[11px] text-accent-600 hover:underline"
+                              >
+                                Ver
+                              </Link>
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-neutral-500">Creado</dt>
+                          <dd className="mt-0.5 text-foreground">{formatEventDate(detail.createdAt)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-neutral-500">Etapa</dt>
+                          <dd className="mt-0.5 text-foreground">{stages.find((s) => s.id === detail.stageId)?.name ?? "—"}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-neutral-500">Responsable</dt>
+                          <dd className="mt-0.5 text-foreground">{detail.ownerName ?? "Sin asignar"}</dd>
+                        </div>
+                      </dl>
+                    </section>
+
+                    <div className="h-px bg-border-default" />
+
+                    <section className="flex flex-col gap-2.5">
+                      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Contacto</p>
+                      <dl className="flex flex-col gap-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <dt className="text-neutral-500">Nombre</dt>
+                          <dd className="text-foreground">{detail.contact.name}</dd>
+                        </div>
+                        {detail.contact.company && (
+                          <div className="flex items-center justify-between">
+                            <dt className="text-neutral-500">Empresa</dt>
+                            <dd className="text-foreground">{detail.contact.company}</dd>
+                          </div>
                         )}
-                      </dd>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Creado</dt>
-                      <dd className="text-foreground">{formatEventDate(detail.createdAt)}</dd>
-                    </div>
-                    {detail.tags.length > 0 && (
-                      <div className="flex items-center justify-between gap-2">
-                        <dt className="shrink-0 text-neutral-500">Etiquetas</dt>
-                        <dd className="flex flex-wrap justify-end gap-1">
-                          {detail.tags.map((tag) => (
-                            <Badge key={tag.id} variant={tagBadgeVariant(tag.color)}>
-                              {tag.name}
-                            </Badge>
-                          ))}
-                        </dd>
+                        {detail.contact.email && (
+                          <div className="flex items-center justify-between">
+                            <dt className="text-neutral-500">Email</dt>
+                            <dd className="flex items-center gap-1.5 truncate text-foreground">
+                              <a href={`mailto:${detail.contact.email}`} className="truncate hover:underline">
+                                {detail.contact.email}
+                              </a>
+                              <Mail size={12} className="shrink-0 text-neutral-400" aria-hidden="true" />
+                            </dd>
+                          </div>
+                        )}
+                        {detail.contact.phone && (
+                          <div className="flex items-center justify-between">
+                            <dt className="text-neutral-500">Teléfono</dt>
+                            <dd className="flex items-center gap-1.5 text-foreground">
+                              <a href={`tel:${detail.contact.phone}`} className="hover:underline">
+                                {detail.contact.phone}
+                              </a>
+                              <a href={waLink(detail.contact.phone)} target="_blank" rel="noreferrer" title="WhatsApp">
+                                <MessageCircle size={12} className="shrink-0 text-success-strong" aria-hidden="true" />
+                              </a>
+                            </dd>
+                          </div>
+                        )}
+                        {detail.contact.jobTitle && (
+                          <div className="flex items-center justify-between">
+                            <dt className="text-neutral-500">Cargo</dt>
+                            <dd className="text-foreground">{detail.contact.jobTitle}</dd>
+                          </div>
+                        )}
+                      </dl>
+                    </section>
+
+                    <div className="h-px bg-border-default" />
+
+                    <section className="flex flex-col gap-2.5">
+                      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Origen del lead</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-neutral-500">Fuente</span>
+                        <span className="flex items-center gap-1.5 text-foreground">
+                          {ChannelIcon && channel && <ChannelIcon size={13} className="text-neutral-400" aria-hidden="true" />}
+                          {channel && detail.contact.source && detail.contact.source !== CHANNEL_LABEL[channel].toLowerCase()
+                            ? `${CHANNEL_LABEL[channel]} (${detail.contact.source})`
+                            : (channel ? CHANNEL_LABEL[channel] : "—")}
+                        </span>
                       </div>
+                      {sourceRows?.map(([label, value]) => (
+                        <div key={label} className="flex items-center justify-between text-sm">
+                          <span className="text-neutral-500">{label}</span>
+                          <span className="truncate text-foreground">{value}</span>
+                        </div>
+                      ))}
+                    </section>
+
+                    {latestConversation && (
+                      <>
+                        <div className="h-px bg-border-default" />
+                        <section className="flex flex-col gap-2.5">
+                          <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Canal actual</p>
+                          <button
+                            type="button"
+                            onClick={() => setTab("conversaciones")}
+                            className="flex items-center justify-between gap-2 text-sm hover:text-accent-700"
+                          >
+                            <span className="flex items-center gap-1.5 text-foreground">
+                              {LatestConversationIcon && <LatestConversationIcon size={13} className="text-neutral-400" aria-hidden="true" />}
+                              {latestConversationChannel && CHANNEL_LABEL[latestConversationChannel]}
+                            </span>
+                            <span className="flex items-center gap-1 text-neutral-500">
+                              {CONVERSATION_STATUS_LABEL[latestConversation.status] ?? latestConversation.status}
+                              <ChevronRight size={13} aria-hidden="true" />
+                            </span>
+                          </button>
+                        </section>
+                      </>
                     )}
-                    <div className="my-1 h-px bg-border-default" />
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Contacto</dt>
-                      <dd className="text-foreground">{detail.contact.name}</dd>
-                    </div>
-                    {detail.contact.company && (
-                      <div className="flex items-center justify-between">
-                        <dt className="text-neutral-500">Empresa</dt>
-                        <dd className="text-foreground">{detail.contact.company}</dd>
-                      </div>
-                    )}
-                    {detail.contact.email && (
-                      <div className="flex items-center justify-between">
-                        <dt className="text-neutral-500">Email</dt>
-                        <dd className="truncate text-foreground">{detail.contact.email}</dd>
-                      </div>
-                    )}
-                    {detail.contact.phone && (
-                      <div className="flex items-center justify-between">
-                        <dt className="text-neutral-500">Teléfono</dt>
-                        <dd className="text-foreground">{detail.contact.phone}</dd>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <dt className="text-neutral-500">Fuente</dt>
-                      <dd className="flex items-center gap-1.5 text-foreground">
-                        {(() => {
-                          const channel = resolveChannel(detail.contact.source);
-                          const Icon = CHANNEL_ICON[channel];
-                          const label = CHANNEL_LABEL[channel];
-                          const raw = detail.contact.source;
+
+                    <div className="h-px bg-border-default" />
+
+                    <section className="flex flex-col gap-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">Etiquetas</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {tags.length === 0 && <p className="text-xs text-neutral-500">Todavía no hay etiquetas en el workspace.</p>}
+                        {tags.map((t) => {
+                          const isOn = detail.tags.some((dt) => dt.id === t.id);
                           return (
-                            <>
-                              <Icon size={13} className="text-neutral-400" aria-hidden="true" />
-                              {raw && raw !== label.toLowerCase() ? `${label} (${raw})` : label}
-                            </>
-                          );
-                        })()}
-                      </dd>
-                    </div>
-                  </dl>
-                </TabsContent>
-
-                <TabsContent value="notas">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex gap-2">
-                      <input
-                        value={noteBody}
-                        onChange={(e) => setNoteBody(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
-                        placeholder="Agregar una nota…"
-                        className="flex-1 rounded-full border border-border-default bg-surface-1 px-3 py-2 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
-                      />
-                      <Button size="sm" onClick={handleAddNote} loading={isPending}>
-                        Agregar
-                      </Button>
-                    </div>
-                    {detail.notes.length === 0 ? (
-                      <p className="text-sm text-neutral-500">Sin notas todavía.</p>
-                    ) : (
-                      <ul className="flex flex-col gap-2.5">
-                        {detail.notes.map((note) => (
-                          <li key={note.id} className="rounded-lg border border-[#F0DFA8] bg-[#FBF3D9] p-3 dark:border-[#4a3f1a] dark:bg-[#2b2412]">
-                            <p className="text-sm text-foreground">{note.body}</p>
-                            <p className="mt-1 text-xs text-neutral-500">{formatDate(note.createdAt)}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="tareas">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex gap-2">
-                      <input
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        placeholder="Nueva tarea…"
-                        className="flex-1 rounded-full border border-border-default bg-surface-1 px-3 py-2 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
-                      />
-                      <input
-                        type="date"
-                        value={newTaskDueDate}
-                        onChange={(e) => setNewTaskDueDate(e.target.value)}
-                        className="rounded-full border border-border-default bg-surface-1 px-2 py-2 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
-                      />
-                      <Button size="sm" onClick={handleAddTask} loading={isPending}>
-                        Agregar
-                      </Button>
-                    </div>
-                    {!tasksLoaded ? (
-                      <Skeleton className="h-16 w-full" />
-                    ) : tasks.length === 0 ? (
-                      <p className="text-sm text-neutral-500">Sin tareas todavía.</p>
-                    ) : (
-                      <ul className="flex flex-col gap-2">
-                        {tasks.map((task) => (
-                          <li key={task.id} className="flex items-center gap-2 rounded-lg bg-surface-2 p-3">
                             <button
+                              key={t.id}
                               type="button"
-                              onClick={() => task.status !== "completed" && handleCompleteTask(task.id)}
-                              className="shrink-0 text-neutral-400 hover:text-success-strong"
-                              aria-label="Marcar completada"
+                              disabled={togglingTagId === t.id}
+                              onClick={() => handleToggleTag(t.id, isOn)}
+                              className={isOn ? "" : "opacity-40 hover:opacity-70"}
                             >
-                              {task.status === "completed" ? (
-                                <CheckCircle2 size={17} className="text-success-strong" aria-hidden="true" />
-                              ) : (
-                                <Circle size={17} aria-hidden="true" />
-                              )}
+                              <Badge variant={tagBadgeVariant(t.color)}>{t.name}</Badge>
                             </button>
-                            <div className="min-w-0 flex-1">
-                              <p className={`truncate text-sm ${task.status === "completed" ? "text-neutral-400 line-through" : "text-foreground"}`}>
-                                {task.title}
-                              </p>
-                              {task.dueAt && <p className="text-xs text-neutral-500">Vence: {formatEventDate(task.dueAt)}</p>}
-                            </div>
-                            <Link href={`/tasks/${task.id}`} className="shrink-0 text-[12px] text-accent-600 hover:underline">
-                              Abrir en Workspace →
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="archivos">
-                  <div className="flex flex-col gap-3">
-                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-3 text-sm text-neutral-500 hover:border-accent-500 hover:text-accent-600">
-                      <Upload size={15} aria-hidden="true" />
-                      {uploading ? "Subiendo…" : "Subir archivo"}
-                      <input
-                        type="file"
-                        multiple
-                        className="hidden"
-                        disabled={uploading}
-                        onChange={(e) => handleUploadFiles(e.target.files)}
-                      />
-                    </label>
-                    {!documentsLoaded ? (
-                      <Skeleton className="h-16 w-full" />
-                    ) : documents.length === 0 ? (
-                      <p className="text-sm text-neutral-500">Sin archivos todavía.</p>
-                    ) : (
-                      <ul className="flex flex-col gap-2">
-                        {documents.map((doc) => {
-                          const meta = fileTypeMetaFor(doc.name);
-                          const Icon = meta.icon;
-                          return (
-                            <li key={doc.id} className="flex items-center gap-2 rounded-lg bg-surface-2 p-3">
-                              <Icon size={16} className={meta.color} aria-hidden="true" />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm text-foreground">{doc.name}</p>
-                                <p className="text-xs text-neutral-500">{formatFileSize(doc.sizeBytes)}</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleDownload(doc.id)}
-                                className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground"
-                                aria-label="Descargar"
-                              >
-                                <Download size={14} aria-hidden="true" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteDocument(doc.id)}
-                                className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-error-bg hover:text-error-strong"
-                                aria-label="Eliminar"
-                              >
-                                <Trash2 size={14} aria-hidden="true" />
-                              </button>
-                            </li>
                           );
                         })}
-                      </ul>
-                    )}
+                      </div>
+                    </section>
                   </div>
                 </TabsContent>
 
-                <TabsContent value="reuniones">
-                  {!eventsLoaded ? (
-                    <Skeleton className="h-16 w-full" />
-                  ) : events.length === 0 ? (
-                    <p className="text-sm text-neutral-500">Sin reuniones todavía.</p>
-                  ) : (
-                    <ul className="flex flex-col gap-3">
-                      {events.map((event) => {
-                        const isPast = new Date(event.endTime) < new Date();
-                        return (
-                          <li key={event.id} className="rounded-lg bg-surface-2 p-3">
-                            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                              <CalendarDays size={14} aria-hidden="true" />
-                              {isPast ? "Reunión agendada" : "Próxima reunión"}
-                            </p>
-                            <p className="mt-1 text-sm text-foreground">{event.title}</p>
-                            <p className="mt-1 text-xs text-neutral-500">
-                              Fecha: {formatEventDate(event.startTime)} · Hora: {formatEventTime(event.startTime)}
-                              {event.assignedTo && ` · Responsable: ${event.assignedTo.fullName}`}
-                            </p>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="historial">
+                <TabsContent value="actividad">
                   {!activityLoaded ? (
                     <Skeleton className="h-16 w-full" />
                   ) : (
@@ -698,14 +691,14 @@ export function CardDetailSheet({
                   ) : (
                     <ul className="flex flex-col gap-3">
                       {conversations.map((conv) => {
-                        const channel = resolveChannel(conv.channel);
-                        const Icon = CHANNEL_ICON[channel];
+                        const convChannel = resolveChannel(conv.channel);
+                        const Icon = CHANNEL_ICON[convChannel];
                         return (
                           <li key={conv.id} className="rounded-lg bg-surface-2 p-3">
                             <div className="mb-2 flex items-center justify-between gap-2">
                               <span className="flex items-center gap-1.5 text-xs font-medium text-neutral-500">
                                 <Icon size={13} aria-hidden="true" />
-                                {CHANNEL_LABEL[channel]}
+                                {CHANNEL_LABEL[convChannel]}
                               </span>
                               <Link href={`/inbox?conversation=${conv.id}`} className="text-[12px] text-accent-600 hover:underline">
                                 Abrir en Inbox →
@@ -733,11 +726,215 @@ export function CardDetailSheet({
                   )}
                 </TabsContent>
 
-                {COMING_SOON_TABS.map((t) => (
-                  <TabsContent key={t} value={t}>
-                    <p className="text-sm text-neutral-500">Disponible cuando se active el módulo de Inbox.</p>
-                  </TabsContent>
-                ))}
+                <TabsContent value="notas">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex gap-2">
+                      <input
+                        value={noteBody}
+                        onChange={(e) => setNoteBody(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
+                        placeholder="Agregar una nota…"
+                        className="flex-1 rounded-full border border-border-default bg-surface-1 px-3 py-2 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+                      />
+                      <Button size="sm" onClick={handleAddNote} loading={isPending}>
+                        Agregar
+                      </Button>
+                    </div>
+                    {detail.notes.length === 0 ? (
+                      <p className="text-sm text-neutral-500">Sin notas todavía.</p>
+                    ) : (
+                      <ul className="flex flex-col gap-2.5">
+                        {detail.notes.map((note) => (
+                          <li key={note.id} className="rounded-lg border border-[#F0DFA8] bg-[#FBF3D9] p-3 dark:border-[#4a3f1a] dark:bg-[#2b2412]">
+                            <p className="text-sm text-foreground">{note.body}</p>
+                            <p className="mt-1 text-xs text-neutral-500">{formatDate(note.createdAt)}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="tareas">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex gap-2">
+                      <input
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder="Nueva tarea…"
+                        className="flex-1 rounded-full border border-border-default bg-surface-1 px-3 py-2 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+                      />
+                      <input
+                        type="date"
+                        value={newTaskDueDate}
+                        onChange={(e) => setNewTaskDueDate(e.target.value)}
+                        className="rounded-full border border-border-default bg-surface-1 px-2 py-2 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+                      />
+                      <Button size="sm" onClick={handleAddTask} loading={isPending}>
+                        Agregar
+                      </Button>
+                    </div>
+                    {!tasksLoaded ? (
+                      <Skeleton className="h-16 w-full" />
+                    ) : tasks.length === 0 ? (
+                      <p className="text-sm text-neutral-500">Sin tareas todavía.</p>
+                    ) : (
+                      <>
+                        {tasks.some((t) => t.status !== "completed") && (
+                          <ul className="flex flex-col gap-2">
+                            {tasks
+                              .filter((t) => t.status !== "completed")
+                              .map((task) => (
+                                <li key={task.id} className="flex items-center gap-2 rounded-lg bg-surface-2 p-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCompleteTask(task.id)}
+                                    className="shrink-0 text-neutral-400 hover:text-success-strong"
+                                    aria-label="Marcar completada"
+                                  >
+                                    <Circle size={17} aria-hidden="true" />
+                                  </button>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm text-foreground">{task.title}</p>
+                                    {task.dueAt && <p className="text-xs text-neutral-500">Vence: {formatEventDate(task.dueAt)}</p>}
+                                  </div>
+                                  <Link href={`/tasks/${task.id}`} className="shrink-0 text-[12px] text-accent-600 hover:underline">
+                                    Abrir en Workspace →
+                                  </Link>
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                        {tasks.some((t) => t.status === "completed") && (
+                          <>
+                            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-neutral-400">Completadas</p>
+                            <ul className="flex flex-col gap-2">
+                              {tasks
+                                .filter((t) => t.status === "completed")
+                                .map((task) => (
+                                  <li key={task.id} className="flex items-center gap-2 rounded-lg bg-surface-2 p-3">
+                                    <CheckCircle2 size={17} className="shrink-0 text-success-strong" aria-hidden="true" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm text-neutral-400 line-through">{task.title}</p>
+                                      {task.dueAt && <p className="text-xs text-neutral-500">Vence: {formatEventDate(task.dueAt)}</p>}
+                                    </div>
+                                    <Link href={`/tasks/${task.id}`} className="shrink-0 text-[12px] text-accent-600 hover:underline">
+                                      Abrir en Workspace →
+                                    </Link>
+                                  </li>
+                                ))}
+                            </ul>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="archivos">
+                  <div className="flex flex-col gap-3">
+                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-3 text-sm text-neutral-500 hover:border-accent-500 hover:text-accent-600">
+                      <Upload size={15} aria-hidden="true" />
+                      {uploading ? "Subiendo…" : "Subir archivo"}
+                      <input
+                        type="file"
+                        multiple
+                        className="hidden"
+                        disabled={uploading}
+                        onChange={(e) => handleUploadFiles(e.target.files)}
+                      />
+                    </label>
+                    {!documentsLoaded ? (
+                      <Skeleton className="h-16 w-full" />
+                    ) : documents.length === 0 ? (
+                      <p className="text-sm text-neutral-500">No hay archivos asociados.</p>
+                    ) : (
+                      <ul className="flex flex-col gap-2">
+                        {documents.map((doc) => {
+                          const meta = fileTypeMetaFor(doc.name);
+                          const Icon = meta.icon;
+                          return (
+                            <li key={doc.id} className="flex items-center gap-2 rounded-lg bg-surface-2 p-3">
+                              <Icon size={16} className={meta.color} aria-hidden="true" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm text-foreground">{doc.name}</p>
+                                <p className="text-xs text-neutral-500">{formatFileSize(doc.sizeBytes)}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDownload(doc.id)}
+                                className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground"
+                                aria-label="Descargar"
+                              >
+                                <Download size={14} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDocument(doc.id)}
+                                className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-error-bg hover:text-error-strong"
+                                aria-label="Eliminar"
+                              >
+                                <Trash2 size={14} aria-hidden="true" />
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="reuniones">
+                  {!eventsLoaded ? (
+                    <Skeleton className="h-16 w-full" />
+                  ) : events.length === 0 ? (
+                    <p className="text-sm text-neutral-500">Sin reuniones todavía.</p>
+                  ) : (
+                    <>
+                      {events.some((e) => new Date(e.endTime) >= new Date()) && (
+                        <ul className="flex flex-col gap-3">
+                          {events
+                            .filter((e) => new Date(e.endTime) >= new Date())
+                            .map((event) => (
+                              <li key={event.id} className="rounded-lg bg-surface-2 p-3">
+                                <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                                  <CalendarDays size={14} aria-hidden="true" />
+                                  Próxima reunión
+                                </p>
+                                <p className="mt-1 text-sm text-foreground">{event.title}</p>
+                                <p className="mt-1 text-xs text-neutral-500">
+                                  Fecha: {formatEventDate(event.startTime)} · Hora: {formatEventTime(event.startTime)}
+                                  {event.assignedTo && ` · Responsable: ${event.assignedTo.fullName}`}
+                                </p>
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                      {events.some((e) => new Date(e.endTime) < new Date()) && (
+                        <>
+                          <p className="mt-3 mb-2 text-xs font-medium uppercase tracking-wide text-neutral-400">Anteriores</p>
+                          <ul className="flex flex-col gap-3">
+                            {events
+                              .filter((e) => new Date(e.endTime) < new Date())
+                              .map((event) => (
+                                <li key={event.id} className="rounded-lg bg-surface-2 p-3">
+                                  <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                                    <CalendarDays size={14} aria-hidden="true" />
+                                    Reunión agendada
+                                  </p>
+                                  <p className="mt-1 text-sm text-foreground">{event.title}</p>
+                                  <p className="mt-1 text-xs text-neutral-500">
+                                    Fecha: {formatEventDate(event.startTime)} · Hora: {formatEventTime(event.startTime)}
+                                    {event.assignedTo && ` · Responsable: ${event.assignedTo.fullName}`}
+                                  </p>
+                                </li>
+                              ))}
+                          </ul>
+                        </>
+                      )}
+                    </>
+                  )}
+                </TabsContent>
               </div>
             </Tabs>
           </div>

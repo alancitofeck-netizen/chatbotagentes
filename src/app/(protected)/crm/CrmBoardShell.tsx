@@ -464,6 +464,7 @@ export function CrmBoardShell({
         opportunityId={detailState?.id ?? null}
         initialTab={detailState?.tab}
         stages={board.stages}
+        tags={tags}
         onClose={() => setDetailState(null)}
         onEdit={() => {
           const card = detailState ? cardById.get(detailState.id) : null;
