@@ -137,12 +137,23 @@ export async function createMiniApp(input: CreateMiniAppInput): Promise<{ id: st
   }
 
   const createdBy = await getCurrentMemberId(workspaceId);
-  const supabase = await createClient();
   const slug = slugify(input.name);
   const apiKey = generateApiKey();
   const config = await resolveConfigWithAgentName(workspaceId, input.assignedAgentId, input.config);
 
-  const { data, error } = await supabase
+  // Service-role, no el cliente RLS normal — con INSERT ... RETURNING (lo
+  // que hace .select().single()), Postgres exige que la fila nueva TAMBIÉN
+  // pase la policy de SELECT (mini_apps_select -> core.can_view_mini_app,
+  // agregada en 0180/0183) para poder devolverla, y esa policy vía función
+  // SECURITY DEFINER falla ahí específicamente (confirmado en vivo: el
+  // mismo INSERT sin RETURNING funciona perfecto, con RETURNING tira "new
+  // row violates row-level security policy" — un caso límite real de
+  // Postgres con RLS + RETURNING, no un problema de permisos). La
+  // autorización real (miembro del workspace) ya la garantizó
+  // requireActiveWorkspace() más arriba, así que usar service-role acá no
+  // abre nada que RLS no dejara pasar de todos modos.
+  const serviceClient = createServiceRoleClient();
+  const { data, error } = await serviceClient
     .from("mini_apps")
     .insert({
       workspace_id: workspaceId,
