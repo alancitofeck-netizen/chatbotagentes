@@ -139,6 +139,7 @@ export function ConfiguracionTab({
 
   const [linkedAppType, setLinkedAppType] = useState<LinkedAppType>(isLinkedApp ? miniApp.config.linkedAppType : "otro");
   const [linkedAppIcon, setLinkedAppIcon] = useState(isLinkedApp ? miniApp.config.icon : DEFAULT_LINKED_APP_ICON);
+  const [linkedAppCalendlyUrl, setLinkedAppCalendlyUrl] = useState(isLinkedApp ? (miniApp.config.calendlyUrl ?? "") : "");
 
   const [diagNombre, setDiagNombre] = useState(isDiagnostico ? miniApp.config.agente.nombre : "");
   const [diagMarca, setDiagMarca] = useState(isDiagnostico ? miniApp.config.agente.marca : DEFAULT_DIAGNOSTICO_AGENTE.marca);
@@ -351,6 +352,7 @@ export function ConfiguracionTab({
               ? {
                   linkedAppType,
                   icon: linkedAppIcon,
+                  calendlyUrl: linkedAppCalendlyUrl.trim() || undefined,
                   // config es un reemplazo completo, no un merge (ver
                   // updateMiniApp) — hay que reenviar estos tres campos para
                   // no perder la publicación alojada al guardar Datos
@@ -763,6 +765,14 @@ export function ConfiguracionTab({
                   </option>
                 ))}
               </Select>
+              {isUploadedApp && (
+                <Input
+                  label="URL de Calendly (opcional)"
+                  value={linkedAppCalendlyUrl}
+                  onChange={(e) => setLinkedAppCalendlyUrl(e.target.value)}
+                  placeholder="https://calendly.com/tu-agenda"
+                />
+              )}
             </>
           ) : isDiagnostico ? (
             <>

@@ -119,6 +119,11 @@ export interface LinkedAppConfig {
   indexPath?: string;
   bundleVersion?: number;
   assignedAgentName?: string;
+  /** Solo aplica a hostingMode "upload" — se inyecta como
+   * `window.GL_CALENDLY_URL` en el bundle alojado (ver calendlyInjection.ts)
+   * para que el HTML subido pueda ofrecer un botón real de agendar, sin
+   * tener que hardcodear la URL dentro del archivo del usuario. */
+  calendlyUrl?: string;
 }
 
 /** Config para "Diagnóstico Interactivo Financiero" — ver
@@ -382,6 +387,7 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
       indexPath: typeof raw.indexPath === "string" ? raw.indexPath : undefined,
       bundleVersion: typeof raw.bundleVersion === "number" ? raw.bundleVersion : undefined,
       assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+      calendlyUrl: typeof raw.calendlyUrl === "string" ? raw.calendlyUrl : undefined,
     };
     return config as MiniAppConfigByTemplate[T];
   }

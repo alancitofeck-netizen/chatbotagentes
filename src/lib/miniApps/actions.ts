@@ -10,6 +10,7 @@ import { assertModuleEnabled } from "@/lib/settings/queries";
 import { requireMiniAppEditAccess } from "@/lib/miniApps/access";
 import { generateApiKey, hashApiKey, lastFour, slugify } from "@/lib/miniApps/apiKey";
 import { injectSdkSnippet } from "@/lib/miniApps/sdkInjection";
+import { injectCalendlySnippet } from "@/lib/miniApps/calendlyInjection";
 import { createOpportunity, bulkAssignOwner } from "@/lib/crm/actions";
 import {
   getMiniAppLeadDetail,
@@ -210,6 +211,17 @@ export async function updateMiniApp(id: string, input: UpdateMiniAppInput): Prom
     .eq("id", id)
     .eq("workspace_id", workspaceId);
 
+  // Solo para "Vincular App" alojada (hostingMode "upload") — el bundle es
+  // un archivo estático en Storage, así que el campo "URL de Calendly" que
+  // se acaba de guardar en `config` no llega solo al HTML ya publicado; hay
+  // que re-inyectarlo ahí, igual que resyncUploadedBundleKey hace con la API
+  // key. Best-effort: un fallo acá no debe tumbar el guardado de
+  // Configuración, que ya quedó persistido arriba.
+  const linkedConfig = config as Partial<LinkedAppConfig>;
+  if (linkedConfig.hostingMode === "upload" && linkedConfig.indexPath) {
+    await resyncUploadedBundleCalendly(workspaceId, id, linkedConfig.indexPath, linkedConfig.calendlyUrl);
+  }
+
   revalidateMiniAppsPaths(id);
 }
 
@@ -276,6 +288,44 @@ async function resyncUploadedBundleKey(workspaceId: string, miniAppId: string, s
   await service
     .from("mini_apps")
     .update({ config: { ...config, bundleVersion: previousVersion + 1 } })
+    .eq("id", miniAppId)
+    .eq("workspace_id", workspaceId);
+}
+
+/** Re-inyecta `window.GL_CALENDLY_URL` en un bundle ya alojado cada vez que
+ * se guarda Configuración — mismo motivo/patrón que resyncUploadedBundleKey
+ * (el archivo servido es estático, así que un cambio en `config` no le
+ * llega solo). Best-effort: nunca tira la actualización de Configuración,
+ * que ya se persistió en la fila antes de llamar a esto. */
+async function resyncUploadedBundleCalendly(workspaceId: string, miniAppId: string, indexPath: string, calendlyUrl: string | undefined): Promise<void> {
+  const service = createServiceRoleClient();
+  const objectPath = `${workspaceId}/${miniAppId}/${indexPath}`;
+
+  const { data: file, error: downloadError } = await service.storage.from(BUNDLE_BUCKET).download(objectPath);
+  if (downloadError || !file) {
+    console.error(`[mini-apps] resyncUploadedBundleCalendly: couldn't download ${objectPath}:`, downloadError);
+    return;
+  }
+
+  const html = await file.text();
+  const injected = injectCalendlySnippet(html, calendlyUrl);
+  if (injected === html) return; // sin cambios reales — no gastar un upload/bundleVersion de más
+
+  const { error: uploadError } = await service.storage.from(BUNDLE_BUCKET).upload(objectPath, new TextEncoder().encode(injected), {
+    contentType: "text/html",
+    upsert: true,
+  });
+  if (uploadError) {
+    console.error(`[mini-apps] resyncUploadedBundleCalendly: couldn't re-upload ${objectPath}:`, uploadError);
+    return;
+  }
+
+  const { data: row } = await service.from("mini_apps").select("config").eq("id", miniAppId).single();
+  const currentConfig = (row?.config as Record<string, unknown>) ?? {};
+  const previousVersion = typeof currentConfig.bundleVersion === "number" ? currentConfig.bundleVersion : 0;
+  await service
+    .from("mini_apps")
+    .update({ config: { ...currentConfig, bundleVersion: previousVersion + 1 } })
     .eq("id", miniAppId)
     .eq("workspace_id", workspaceId);
 }
