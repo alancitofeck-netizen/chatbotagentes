@@ -28,6 +28,7 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   meta: "Meta",
   brecha: "Brecha",
   email: "Correo electrónico",
+  notas: "Notas",
   score: "Puntaje",
   level: "Nivel",
   perfil: "Perfil",

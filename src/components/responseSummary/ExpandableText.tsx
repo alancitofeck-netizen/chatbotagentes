@@ -27,7 +27,11 @@ export function ExpandableText({
 
   return (
     <div>
-      <p className={`text-sm leading-relaxed text-foreground transition-all duration-[180ms] ease-out ${!expanded && isLong ? "line-clamp-2" : ""} ${className ?? ""}`}>{text}</p>
+      <p
+        className={`whitespace-pre-line text-sm leading-relaxed text-foreground transition-all duration-[180ms] ease-out ${!expanded && isLong ? "line-clamp-2" : ""} ${className ?? ""}`}
+      >
+        {text}
+      </p>
       {isLong && (
         <button
           type="button"
