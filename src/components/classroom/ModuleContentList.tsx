@@ -74,28 +74,32 @@ function LessonRow({
 
   const rowClass = "flex items-center gap-3 rounded-xl border border-border-default bg-surface-1 p-3";
 
+  const lessonHref = `/classroom/cursos/${courseSlug}/${lesson.id}`;
+
   if (hasVideo) {
     return (
       <li className={rowClass}>
-        <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-950">
-          {thumbnailUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- remote thumbnail, dimensions fixed by container
-            <img src={thumbnailUrl} alt="" className="h-full w-full object-cover opacity-70" />
-          ) : (
-            <Film size={20} className="text-white/50" aria-hidden="true" />
-          )}
-          <PlayCircle size={22} className="absolute text-white drop-shadow" aria-hidden="true" />
-          {lesson.durationSeconds ? (
-            <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[10px] font-medium text-white">{formatDuration(lesson.durationSeconds)}</span>
-          ) : null}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-foreground">
-            {lesson.title}
-            {lesson.isCompleted && <CheckCircle2 size={13} className="shrink-0 text-success-strong" aria-hidden="true" />}
-          </p>
-          {lesson.description && <p className="truncate text-xs text-neutral-500">{lesson.description}</p>}
-        </div>
+        <Link href={lessonHref} className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-950">
+            {thumbnailUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- remote thumbnail, dimensions fixed by container
+              <img src={thumbnailUrl} alt="" className="h-full w-full object-cover opacity-70" />
+            ) : (
+              <Film size={20} className="text-white/50" aria-hidden="true" />
+            )}
+            <PlayCircle size={22} className="absolute text-white drop-shadow" aria-hidden="true" />
+            {lesson.durationSeconds ? (
+              <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[10px] font-medium text-white">{formatDuration(lesson.durationSeconds)}</span>
+            ) : null}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-foreground hover:underline">
+              {lesson.title}
+              {lesson.isCompleted && <CheckCircle2 size={13} className="shrink-0 text-success-strong" aria-hidden="true" />}
+            </p>
+            {lesson.description && <p className="truncate text-xs text-neutral-500">{lesson.description}</p>}
+          </div>
+        </Link>
         <button
           type="button"
           onClick={() =>
@@ -120,22 +124,24 @@ function LessonRow({
     const Icon = RESOURCE_KIND_ICON[kind];
     return (
       <li className={rowClass}>
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-error-bg text-error-strong">
-          <Icon size={22} aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-foreground">
-            {lesson.title}
-            {lesson.isCompleted && <CheckCircle2 size={13} className="shrink-0 text-success-strong" aria-hidden="true" />}
-          </p>
-          {(lesson.description || pdfResource.description) && (
-            <p className="truncate text-xs text-neutral-500">{lesson.description ?? pdfResource.description}</p>
-          )}
-          <p className="truncate text-[11px] text-neutral-400">
-            {pdfResource.label}
-            {pdfResource.fileSizeBytes != null && ` · ${formatFileSize(pdfResource.fileSizeBytes)}`}
-          </p>
-        </div>
+        <Link href={lessonHref} className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-error-bg text-error-strong">
+            <Icon size={22} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-foreground hover:underline">
+              {lesson.title}
+              {lesson.isCompleted && <CheckCircle2 size={13} className="shrink-0 text-success-strong" aria-hidden="true" />}
+            </p>
+            {(lesson.description || pdfResource.description) && (
+              <p className="truncate text-xs text-neutral-500">{lesson.description ?? pdfResource.description}</p>
+            )}
+            <p className="truncate text-[11px] text-neutral-400">
+              {pdfResource.label}
+              {pdfResource.fileSizeBytes != null && ` · ${formatFileSize(pdfResource.fileSizeBytes)}`}
+            </p>
+          </div>
+        </Link>
         <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
@@ -163,19 +169,28 @@ function LessonRow({
   if (otherResources.length > 0) {
     return (
       <li className="flex flex-col gap-2 rounded-xl border border-border-default bg-surface-1 p-3">
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center gap-3 text-left">
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-700">
-            <ExternalLink size={20} aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-foreground">
-              {lesson.title}
-              {lesson.isCompleted && <CheckCircle2 size={13} className="shrink-0 text-success-strong" aria-hidden="true" />}
-            </p>
-            {lesson.description && <p className="truncate text-xs text-neutral-500">{lesson.description}</p>}
-          </div>
-          {expanded ? <ChevronDown size={16} className="shrink-0 text-neutral-400" aria-hidden="true" /> : <ChevronRight size={16} className="shrink-0 text-neutral-400" aria-hidden="true" />}
-        </button>
+        <div className="flex w-full items-center gap-3">
+          <Link href={lessonHref} className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-700">
+              <ExternalLink size={20} aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-foreground hover:underline">
+                {lesson.title}
+                {lesson.isCompleted && <CheckCircle2 size={13} className="shrink-0 text-success-strong" aria-hidden="true" />}
+              </p>
+              {lesson.description && <p className="truncate text-xs text-neutral-500">{lesson.description}</p>}
+            </div>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-label={expanded ? "Ocultar material complementario" : "Ver material complementario"}
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-2 hover:text-foreground"
+          >
+            {expanded ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+          </button>
+        </div>
         {expanded && (
           <ul className="flex flex-col gap-1.5 pl-[68px]">
             {otherResources.map((r) => (
@@ -193,23 +208,19 @@ function LessonRow({
 
   return (
     <li className={rowClass}>
-      <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-neutral-400">
-        <ExternalLink size={20} aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-foreground">
-          {lesson.title}
-          {lesson.isCompleted && <CheckCircle2 size={13} className="shrink-0 text-success-strong" aria-hidden="true" />}
-        </p>
-        {lesson.description && <p className="truncate text-xs text-neutral-500">{lesson.description}</p>}
-      </div>
-      <Link
-        href={`/classroom/cursos/${courseSlug}/${lesson.id}`}
-        className="flex size-8 shrink-0 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-2 hover:text-foreground"
-        aria-label="Abrir lección"
-      >
-        <ChevronRight size={16} aria-hidden="true" />
+      <Link href={lessonHref} className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-neutral-400">
+          <ExternalLink size={20} aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 truncate text-[13px] font-semibold text-foreground hover:underline">
+            {lesson.title}
+            {lesson.isCompleted && <CheckCircle2 size={13} className="shrink-0 text-success-strong" aria-hidden="true" />}
+          </p>
+          {lesson.description && <p className="truncate text-xs text-neutral-500">{lesson.description}</p>}
+        </div>
       </Link>
+      <ChevronRight size={16} className="shrink-0 text-neutral-400" aria-hidden="true" />
     </li>
   );
 }
