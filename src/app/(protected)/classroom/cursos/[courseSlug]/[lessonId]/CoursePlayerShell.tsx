@@ -218,7 +218,7 @@ export function CoursePlayerShell({
           />
         ) : heroResource && heroKind ? (
           <div className="flex flex-col gap-2">
-            <div className="h-[60vh] min-h-[420px] w-full overflow-hidden rounded-lg border border-border-default bg-surface-2">
+            <div className="h-[80vh] min-h-[620px] w-full overflow-hidden rounded-lg border border-border-default bg-surface-2">
               {heroKind === "pdf" ? (
                 <iframe src={heroResource.fileUrl} title={heroResource.label} className="size-full border-0" />
               ) : (
