@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ArrowLeft, Target } from "lucide-react";
+import { ArrowLeft, BarChart3, Clock, Target } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { buttonClassName } from "@/components/ui/Button";
-import { ChapterLessonNav } from "@/components/classroom/ChapterLessonNav";
+import { ModuleContentList } from "@/components/classroom/ModuleContentList";
 import { CLASSROOM_COLOR_META, COURSE_LEVEL_META } from "@/components/classroom/colorMeta";
 import { cn } from "@/lib/utils/cn";
 import type { ClassroomCategory } from "@/lib/classroom/categories/queries";
@@ -32,6 +32,11 @@ export function CourseOverview({
   const ctaLesson = firstIncomplete ?? allLessons[0];
   const colorMeta = CLASSROOM_COLOR_META[course.color];
   const levelMeta = COURSE_LEVEL_META[course.level];
+  // Ya está cargado en `chapters` (duration_seconds por lección) — se suma
+  // acá en vez de pedir getLessonSummaries (esa función es para las cards
+  // del catálogo, que no tienen el árbol completo).
+  const totalMinutes = Math.round(allLessons.reduce((sum, l) => sum + (l.durationSeconds ?? 0), 0) / 60);
+  const estimatedTime = totalMinutes > 0 ? (totalMinutes >= 60 ? `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min` : `${totalMinutes} minutos`) : null;
 
   return (
     <div className="flex flex-col gap-6 p-6 sm:p-8">
@@ -77,6 +82,19 @@ export function CourseOverview({
 
       {course.description && <p className="max-w-2xl text-[15px] text-neutral-600">{course.description}</p>}
 
+      <div className="flex flex-wrap items-center gap-4 text-[13px] text-neutral-500">
+        <span className="flex items-center gap-1.5">
+          <BarChart3 size={14} aria-hidden="true" />
+          Nivel: {levelMeta.label}
+        </span>
+        {estimatedTime && (
+          <span className="flex items-center gap-1.5">
+            <Clock size={14} aria-hidden="true" />
+            Tiempo estimado: {estimatedTime}
+          </span>
+        )}
+      </div>
+
       {course.objectives.length > 0 && (
         <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-surface-1 p-4">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -109,10 +127,8 @@ export function CourseOverview({
       </div>
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-[15px] font-semibold text-foreground">Contenido del curso</h2>
-        <div className="rounded-lg border border-border-default bg-surface-1 p-2">
-          <ChapterLessonNav chapters={chapters} courseSlug={course.slug} />
-        </div>
+        <h2 className="text-[15px] font-semibold text-foreground">Contenido del módulo</h2>
+        <ModuleContentList chapters={chapters} courseSlug={course.slug} />
       </div>
     </div>
   );

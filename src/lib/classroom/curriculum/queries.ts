@@ -87,6 +87,11 @@ export async function getChapterTree(courseId: string): Promise<ClassroomChapter
 
 export interface LearnerLesson extends ClassroomLesson {
   isCompleted: boolean;
+  /** Recursos reales de la lección (PDF/imagen/enlace/archivo) — usados por
+   * ModuleContentList.tsx (portada del curso) para decidir el "tipo" de
+   * cada fila (video/PDF/material complementario) sin una query aparte por
+   * lección. */
+  resources: ClassroomLessonResource[];
 }
 
 export interface LearnerChapter extends Omit<ClassroomChapter, "lessons"> {
@@ -94,8 +99,8 @@ export interface LearnerChapter extends Omit<ClassroomChapter, "lessons"> {
 }
 
 /** Same tree as getChapterTree, plus each lesson's completion flag for the
- * given user — used by the learner-facing chapter/lesson nav and the course
- * overview page. */
+ * given user and its resources (one bulk query, not N+1) — used by the
+ * learner-facing chapter/lesson nav and the course overview page. */
 export async function getLearnerChapterTree(courseId: string, userId: string): Promise<LearnerChapter[]> {
   const supabase = await createClient();
   const [chapters, { data: progress }] = await Promise.all([
@@ -107,9 +112,24 @@ export async function getLearnerChapterTree(courseId: string, userId: string): P
     ((progress ?? []) as { lesson_id: string; is_completed: boolean }[]).filter((p) => p.is_completed).map((p) => p.lesson_id),
   );
 
+  const lessonIds = chapters.flatMap((c) => c.lessons.map((l) => l.id));
+  const { data: resourceRows } = lessonIds.length
+    ? await supabase
+        .from("classroom_lesson_resources")
+        .select("id, lesson_id, label, description, file_url, file_type, file_size_bytes, position")
+        .in("lesson_id", lessonIds)
+        .order("position", { ascending: true })
+    : { data: [] as LessonResourceRow[] };
+  const resourcesByLesson = new Map<string, ClassroomLessonResource[]>();
+  for (const r of (resourceRows ?? []) as LessonResourceRow[]) {
+    const list = resourcesByLesson.get(r.lesson_id) ?? [];
+    list.push(mapResourceRow(r));
+    resourcesByLesson.set(r.lesson_id, list);
+  }
+
   return chapters.map((c) => ({
     ...c,
-    lessons: c.lessons.map((l) => ({ ...l, isCompleted: completedLessonIds.has(l.id) })),
+    lessons: c.lessons.map((l) => ({ ...l, isCompleted: completedLessonIds.has(l.id), resources: resourcesByLesson.get(l.id) ?? [] })),
   }));
 }
 
@@ -141,14 +161,8 @@ interface LessonResourceRow {
   position: number;
 }
 
-export async function getLessonResources(lessonId: string): Promise<ClassroomLessonResource[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("classroom_lesson_resources")
-    .select("id, lesson_id, label, description, file_url, file_type, file_size_bytes, position")
-    .eq("lesson_id", lessonId)
-    .order("position", { ascending: true });
-  return ((data ?? []) as LessonResourceRow[]).map((r) => ({
+function mapResourceRow(r: LessonResourceRow): ClassroomLessonResource {
+  return {
     id: r.id,
     lessonId: r.lesson_id,
     label: r.label,
@@ -157,7 +171,17 @@ export async function getLessonResources(lessonId: string): Promise<ClassroomLes
     fileType: r.file_type,
     fileSizeBytes: r.file_size_bytes,
     position: r.position,
-  }));
+  };
+}
+
+export async function getLessonResources(lessonId: string): Promise<ClassroomLessonResource[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("classroom_lesson_resources")
+    .select("id, lesson_id, label, description, file_url, file_type, file_size_bytes, position")
+    .eq("lesson_id", lessonId)
+    .order("position", { ascending: true });
+  return ((data ?? []) as LessonResourceRow[]).map(mapResourceRow);
 }
 
 /** First not-completed lesson in course order — the target for a course
