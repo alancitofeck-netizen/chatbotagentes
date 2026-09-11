@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, ListVideo, Paperclip, Target, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Eye, ExternalLink, ListVideo, Target, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
@@ -10,17 +10,14 @@ import { cn } from "@/lib/utils/cn";
 import { VideoPlayer } from "@/components/classroom/VideoPlayer";
 import { LessonSidebarNav } from "@/components/classroom/LessonSidebarNav";
 import { CommentThread } from "@/components/classroom/CommentThread";
+import { ResourceViewerModal } from "@/components/classroom/ResourceViewerModal";
 import { COURSE_LEVEL_META } from "@/components/classroom/colorMeta";
+import { resourceKind, RESOURCE_KIND_ICON } from "@/lib/classroom/resourceKind";
+import { formatFileSize } from "@/components/documents/documentIcons";
 import type { ClassroomCategory } from "@/lib/classroom/categories/queries";
 import type { ClassroomCourse } from "@/lib/classroom/courses/queries";
 import type { ClassroomLesson, ClassroomLessonResource, LearnerChapter } from "@/lib/classroom/curriculum/queries";
 import type { CourseProgress } from "@/lib/classroom/progress/queries";
-
-function formatFileSize(bytes: number | null): string {
-  if (!bytes) return "";
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${Math.round((bytes / (1024 * 1024)) * 10) / 10} MB`;
-}
 
 type Tab = "descripcion" | "materiales" | "comentarios";
 
@@ -61,6 +58,7 @@ export function CoursePlayerShell({
   const [navOpen, setNavOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tab, setTab] = useState<Tab>("descripcion");
+  const [viewerResource, setViewerResource] = useState<ClassroomLessonResource | null>(null);
 
   return (
     <div className="flex h-full">
@@ -197,24 +195,63 @@ export function CoursePlayerShell({
 
           {resources.length > 0 && (
             <TabsContent value="materiales">
-              <ul className="flex flex-col gap-1.5 pt-4">
-                {resources.map((r) => (
-                  <li key={r.id} className="flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2">
-                    <Paperclip size={13} className="shrink-0 text-neutral-400" aria-hidden="true" />
-                    <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">{r.label}</span>
-                    {r.fileSizeBytes && <span className="text-xs text-neutral-400">{formatFileSize(r.fileSizeBytes)}</span>}
-                    <a
-                      href={r.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      download
-                      className="flex size-9 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground"
-                      aria-label="Descargar"
-                    >
-                      <Download size={15} aria-hidden="true" />
-                    </a>
-                  </li>
-                ))}
+              <ul className="flex flex-col gap-2 pt-4">
+                {resources.map((r) => {
+                  const kind = resourceKind(r.fileType, r.label);
+                  const Icon = RESOURCE_KIND_ICON[kind];
+                  const canPreview = kind === "pdf" || kind === "image";
+                  return (
+                    <li key={r.id} className="flex items-center gap-3 rounded-lg border border-border-default bg-surface-1 px-3 py-2.5">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-neutral-500">
+                        <Icon size={16} aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-foreground">{r.label}</p>
+                        {r.description ? (
+                          <p className="truncate text-xs text-neutral-500">{r.description}</p>
+                        ) : (
+                          r.fileSizeBytes != null && kind !== "link" && <p className="text-xs text-neutral-400">{formatFileSize(r.fileSizeBytes)}</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {kind === "link" ? (
+                          <a
+                            href={r.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2"
+                          >
+                            <ExternalLink size={13} aria-hidden="true" />
+                            Abrir enlace
+                          </a>
+                        ) : (
+                          <>
+                            {canPreview && (
+                              <button
+                                type="button"
+                                onClick={() => setViewerResource(r)}
+                                className="flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2"
+                              >
+                                <Eye size={13} aria-hidden="true" />
+                                {kind === "pdf" ? "Ver PDF" : "Ver"}
+                              </button>
+                            )}
+                            <a
+                              href={r.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              download
+                              className="flex size-8 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+                              aria-label="Descargar"
+                            >
+                              <Download size={15} aria-hidden="true" />
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </TabsContent>
           )}
@@ -243,6 +280,15 @@ export function CoursePlayerShell({
             </span>
           </div>
         </aside>
+      )}
+
+      {viewerResource && (
+        <ResourceViewerModal
+          title={viewerResource.label}
+          fileUrl={viewerResource.fileUrl}
+          kind={resourceKind(viewerResource.fileType, viewerResource.label) === "image" ? "image" : "pdf"}
+          onClose={() => setViewerResource(null)}
+        />
       )}
     </div>
   );

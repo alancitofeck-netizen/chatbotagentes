@@ -123,9 +123,21 @@ export interface ClassroomLessonResource {
   id: string;
   lessonId: string;
   label: string;
+  description: string | null;
   fileUrl: string;
   fileType: string | null;
   fileSizeBytes: number | null;
+  position: number;
+}
+
+interface LessonResourceRow {
+  id: string;
+  lesson_id: string;
+  label: string;
+  description: string | null;
+  file_url: string;
+  file_type: string | null;
+  file_size_bytes: number | null;
   position: number;
 }
 
@@ -133,20 +145,19 @@ export async function getLessonResources(lessonId: string): Promise<ClassroomLes
   const supabase = await createClient();
   const { data } = await supabase
     .from("classroom_lesson_resources")
-    .select("id, lesson_id, label, file_url, file_type, file_size_bytes, position")
+    .select("id, lesson_id, label, description, file_url, file_type, file_size_bytes, position")
     .eq("lesson_id", lessonId)
     .order("position", { ascending: true });
-  return ((data ?? []) as { id: string; lesson_id: string; label: string; file_url: string; file_type: string | null; file_size_bytes: number | null; position: number }[]).map(
-    (r) => ({
-      id: r.id,
-      lessonId: r.lesson_id,
-      label: r.label,
-      fileUrl: r.file_url,
-      fileType: r.file_type,
-      fileSizeBytes: r.file_size_bytes,
-      position: r.position,
-    }),
-  );
+  return ((data ?? []) as LessonResourceRow[]).map((r) => ({
+    id: r.id,
+    lessonId: r.lesson_id,
+    label: r.label,
+    description: r.description,
+    fileUrl: r.file_url,
+    fileType: r.file_type,
+    fileSizeBytes: r.file_size_bytes,
+    position: r.position,
+  }));
 }
 
 /** First not-completed lesson in course order — the target for a course
