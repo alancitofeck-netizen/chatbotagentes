@@ -19,7 +19,68 @@ import type { ClassroomCourse } from "@/lib/classroom/courses/queries";
 import type { ClassroomLesson, ClassroomLessonResource, LearnerChapter } from "@/lib/classroom/curriculum/queries";
 import type { CourseProgress } from "@/lib/classroom/progress/queries";
 
-type Tab = "descripcion" | "materiales" | "comentarios";
+type Tab = "descripcion" | "comentarios";
+
+/** Una fila de "Material complementario" — misma tarjeta tipada
+ * (ícono/tamaño/Ver-Descargar-Abrir enlace) que antes vivía dentro de la
+ * tab "Materiales", extraída para reusarla ahora que ese contenido está
+ * siempre visible en el flujo principal. */
+function MaterialRow({ resource, onView }: { resource: ClassroomLessonResource; onView: () => void }) {
+  const kind = resourceKind(resource.fileType, resource.label);
+  const Icon = RESOURCE_KIND_ICON[kind];
+  const canPreview = kind === "pdf" || kind === "image";
+  return (
+    <li className="flex items-center gap-3 rounded-lg border border-border-default bg-surface-1 px-3 py-2.5">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-neutral-500">
+        <Icon size={16} aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-medium text-foreground">{resource.label}</p>
+        {resource.description ? (
+          <p className="truncate text-xs text-neutral-500">{resource.description}</p>
+        ) : (
+          resource.fileSizeBytes != null && kind !== "link" && <p className="text-xs text-neutral-400">{formatFileSize(resource.fileSizeBytes)}</p>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        {kind === "link" ? (
+          <a
+            href={resource.fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2"
+          >
+            <ExternalLink size={13} aria-hidden="true" />
+            Abrir enlace
+          </a>
+        ) : (
+          <>
+            {canPreview && (
+              <button
+                type="button"
+                onClick={onView}
+                className="flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2"
+              >
+                <Eye size={13} aria-hidden="true" />
+                {kind === "pdf" ? "Ver PDF" : "Ver"}
+              </button>
+            )}
+            <a
+              href={resource.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              download
+              className="flex size-8 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+              aria-label="Descargar"
+            >
+              <Download size={15} aria-hidden="true" />
+            </a>
+          </>
+        )}
+      </div>
+    </li>
+  );
+}
 
 /** Hotmart-style course player: reproductor grande y protagonista, un único
  * sidebar a la derecha (buscador + clase actual + temario) — antes había dos
@@ -59,6 +120,21 @@ export function CoursePlayerShell({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tab, setTab] = useState<Tab>("descripcion");
   const [viewerResource, setViewerResource] = useState<ClassroomLessonResource | null>(null);
+
+  // Si la lección no tiene video, el lugar protagonista de arriba (donde
+  // antes quedaba una caja negra vacía "Sin video para esta lección") lo
+  // ocupa su PDF o, si no hay PDF, su primera imagen — nunca los dos casos
+  // a la vez, y ese recurso no se repite más abajo en "Material
+  // complementario". Con video, nada de esto aplica: se ve igual que
+  // siempre.
+  const hasVideo = Boolean(lesson.videoUrl?.trim());
+  const heroResource = hasVideo
+    ? null
+    : (resources.find((r) => resourceKind(r.fileType, r.label) === "pdf") ??
+      resources.find((r) => resourceKind(r.fileType, r.label) === "image") ??
+      null);
+  const heroKind = heroResource ? resourceKind(heroResource.fileType, heroResource.label) : null;
+  const secondaryResources = resources.filter((r) => r.id !== heroResource?.id);
 
   return (
     <div className="flex h-full">
@@ -132,13 +208,52 @@ export function CoursePlayerShell({
           </div>
         </div>
 
-        <VideoPlayer
-          videoUrl={lesson.videoUrl ?? ""}
-          lessonId={lesson.id}
-          courseSlug={course.slug}
-          isCompleted={isCompleted}
-          initialResumePositionSeconds={resumePositionSeconds}
-        />
+        {hasVideo ? (
+          <VideoPlayer
+            videoUrl={lesson.videoUrl ?? ""}
+            lessonId={lesson.id}
+            courseSlug={course.slug}
+            isCompleted={isCompleted}
+            initialResumePositionSeconds={resumePositionSeconds}
+          />
+        ) : heroResource && heroKind ? (
+          <div className="flex flex-col gap-2">
+            <div className="h-[60vh] min-h-[420px] w-full overflow-hidden rounded-lg border border-border-default bg-surface-2">
+              {heroKind === "pdf" ? (
+                <iframe src={heroResource.fileUrl} title={heroResource.label} className="size-full border-0" />
+              ) : (
+                <div className="flex size-full items-center justify-center overflow-auto p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- remote Storage URL, dimensions are dynamic */}
+                  <img src={heroResource.fileUrl} alt={heroResource.label} className="max-h-full max-w-full object-contain" />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">{heroResource.label}</p>
+                {heroResource.description && <p className="truncate text-xs text-neutral-500">{heroResource.description}</p>}
+              </div>
+              <a
+                href={heroResource.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="flex shrink-0 items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2"
+              >
+                <Download size={13} aria-hidden="true" />
+                Descargar
+              </a>
+            </div>
+          </div>
+        ) : (
+          <VideoPlayer
+            videoUrl=""
+            lessonId={lesson.id}
+            courseSlug={course.slug}
+            isCompleted={isCompleted}
+            initialResumePositionSeconds={resumePositionSeconds}
+          />
+        )}
 
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -151,6 +266,17 @@ export function CoursePlayerShell({
           </div>
           <h1 className="text-xl font-semibold text-foreground">{lesson.title}</h1>
         </div>
+
+        {secondaryResources.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold text-foreground">Material complementario</p>
+            <ul className="flex flex-col gap-2">
+              {secondaryResources.map((r) => (
+                <MaterialRow key={r.id} resource={r} onView={() => setViewerResource(r)} />
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-surface-1 p-3 lg:hidden">
           <div className="flex items-center justify-between text-[13px]">
@@ -166,7 +292,6 @@ export function CoursePlayerShell({
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
           <TabsList>
             <TabsTrigger value="descripcion">Descripción</TabsTrigger>
-            {resources.length > 0 && <TabsTrigger value="materiales">Materiales {resources.length}</TabsTrigger>}
             <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
           </TabsList>
 
@@ -192,69 +317,6 @@ export function CoursePlayerShell({
               )}
             </div>
           </TabsContent>
-
-          {resources.length > 0 && (
-            <TabsContent value="materiales">
-              <ul className="flex flex-col gap-2 pt-4">
-                {resources.map((r) => {
-                  const kind = resourceKind(r.fileType, r.label);
-                  const Icon = RESOURCE_KIND_ICON[kind];
-                  const canPreview = kind === "pdf" || kind === "image";
-                  return (
-                    <li key={r.id} className="flex items-center gap-3 rounded-lg border border-border-default bg-surface-1 px-3 py-2.5">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-neutral-500">
-                        <Icon size={16} aria-hidden="true" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium text-foreground">{r.label}</p>
-                        {r.description ? (
-                          <p className="truncate text-xs text-neutral-500">{r.description}</p>
-                        ) : (
-                          r.fileSizeBytes != null && kind !== "link" && <p className="text-xs text-neutral-400">{formatFileSize(r.fileSizeBytes)}</p>
-                        )}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        {kind === "link" ? (
-                          <a
-                            href={r.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2"
-                          >
-                            <ExternalLink size={13} aria-hidden="true" />
-                            Abrir enlace
-                          </a>
-                        ) : (
-                          <>
-                            {canPreview && (
-                              <button
-                                type="button"
-                                onClick={() => setViewerResource(r)}
-                                className="flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-2"
-                              >
-                                <Eye size={13} aria-hidden="true" />
-                                {kind === "pdf" ? "Ver PDF" : "Ver"}
-                              </button>
-                            )}
-                            <a
-                              href={r.fileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              download
-                              className="flex size-8 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground"
-                              aria-label="Descargar"
-                            >
-                              <Download size={15} aria-hidden="true" />
-                            </a>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </TabsContent>
-          )}
 
           <TabsContent value="comentarios">
             <div className="pt-4">
