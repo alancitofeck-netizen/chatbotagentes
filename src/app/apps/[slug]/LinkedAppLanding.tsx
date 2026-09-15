@@ -13,10 +13,15 @@
  *   propio. La única UI de GrowthLink es una barra superior delgada
  *   (Volver / nombre / estado / compartir / abrir en pestaña nueva); todo lo
  *   demás del viewport es el iframe (sandbox="allow-scripts allow-forms
- *   allow-popups", deliberadamente sin allow-same-origin: el HTML de un
- *   tercero corre con un origen opaco, así que no puede leer las cookies/DOM
- *   de GrowthLink ni arrastrar la sesión del visitante en sus propios
- *   fetch() — mismo mecanismo que usan CodeSandbox/JSFiddle). */
+ *   allow-popups allow-popups-to-escape-sandbox", deliberadamente sin
+ *   allow-same-origin: el HTML de un tercero corre con un origen opaco, así
+ *   que no puede leer las cookies/DOM de GrowthLink ni arrastrar la sesión
+ *   del visitante en sus propios fetch() — mismo mecanismo que usan
+ *   CodeSandbox/JSFiddle). `allow-popups-to-escape-sandbox` es necesario
+ *   para que un `window.open()` hacia WhatsApp (wa.me/api.whatsapp.com) abra
+ *   una pestaña normal, sin heredar el origen opaco del iframe — sin esto,
+ *   la pestaña nueva queda igual de sandboxeada y WhatsApp la rechaza
+ *   (confirmado en vivo: ERR_BLOCKED_BY_RESPONSE en api.whatsapp.com). */
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -97,7 +102,7 @@ function HostedAppView({ app }: { app: PublicMiniAppView<"app_vinculada"> }) {
       </div>
       <iframe
         src={app.bundlePublicUrl as string}
-        sandbox="allow-scripts allow-forms allow-popups"
+        sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
         className="block w-full flex-1 border-0"
         title={app.name}
       />
