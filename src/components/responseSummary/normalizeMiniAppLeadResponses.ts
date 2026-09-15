@@ -394,7 +394,7 @@ function normalizeDiagnosticoSalud(lead: MiniAppLeadDetail): ResponseViewModel[]
 
 function normalizeGeneric(lead: MiniAppLeadDetail): ResponseViewModel[] {
   return Object.entries(lead.data)
-    .filter(([key]) => !SKIP_GENERIC_KEYS.has(key))
+    .filter(([key, value]) => !SKIP_GENERIC_KEYS.has(key) && value !== null && value !== undefined && value !== "")
     .map(([key, value], i) => ({
       key,
       question: GENERIC_FIELD_LABELS[key] ?? key,
