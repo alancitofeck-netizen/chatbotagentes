@@ -85,6 +85,17 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   rendimiento_anual: "Rendimiento anual estimado",
   objetivo: "Objetivo principal",
   interes_urgencia: "Urgencia declarada",
+  tipo_constructor: "Quién construye la meta",
+  titular_1_edad: "Edad del titular 1",
+  titular_1_sexo: "Sexo del titular 1",
+  titular_2_edad: "Edad del titular 2",
+  titular_2_sexo: "Sexo del titular 2",
+  recomendado_por: "¿Le recomendaron la calculadora?",
+  utm_source: "Fuente (UTM)",
+  utm_medium: "Medio (UTM)",
+  utm_campaign: "Campaña (UTM)",
+  utm_content: "Contenido (UTM)",
+  utm_term: "Término (UTM)",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
