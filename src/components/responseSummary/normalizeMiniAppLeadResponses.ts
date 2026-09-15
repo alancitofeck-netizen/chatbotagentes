@@ -80,9 +80,24 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   saldo_estimado: "Saldo estimado",
   tasa_marginal: "Tasa marginal",
   opportunity_level: "Nivel de oportunidad",
+  anos_aportacion: "Años de aportación",
+  total_aportado: "Total aportado",
+  rendimiento_anual: "Rendimiento anual estimado",
+  objetivo: "Objetivo principal",
+  interes_urgencia: "Urgencia declarada",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
+
+/** Campos monetarios (pesos) del fallback genérico — mismo concepto que ya
+ * usan simulador_retiro/calculadora_brecha_retiro (también caen acá, sin
+ * normalizador propio), así que formatearlos con signo de moneda mejora esas
+ * lecturas también, no solo las de "App Vinculada". */
+const MONEY_FIELD_KEYS = new Set(["ahorro_mensual", "fondo_estimado", "fondo_rango_bajo", "fondo_rango_alto", "renta_mensual_estimada", "total_aportado"]);
+
+/** Campos que llegan como fracción (0.07 = 7%), no como porcentaje entero
+ * — a diferencia de `score`/`overall`/etc., que ya llegan en escala 0-100. */
+const PERCENT_FIELD_KEYS = new Set(["rendimiento_anual"]);
 
 /** Etiquetas legibles para DiagnosticoRetiroThemeKey (diagnosticoRetiroDefaults.ts)
  * — la pregunta de "objetivo" (sin puntos, solo tema) guarda la clave interna
@@ -94,8 +109,12 @@ const THEME_LABELS: Record<string, string> = {
   liquidez: "Liquidez",
 };
 
-function formatGenericValue(value: unknown): string {
-  if (typeof value === "number") return new Intl.NumberFormat("es-MX").format(value);
+function formatGenericValue(key: string, value: unknown): string {
+  if (typeof value === "number") {
+    if (PERCENT_FIELD_KEYS.has(key)) return `${new Intl.NumberFormat("es-MX", { maximumFractionDigits: 1 }).format(value * 100)}%`;
+    if (MONEY_FIELD_KEYS.has(key)) return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat("es-MX").format(value);
+  }
   if (Array.isArray(value)) {
     return value.map((v) => (typeof v === "object" && v !== null ? Object.values(v).join(" ") : String(v))).join(", ");
   }
@@ -368,7 +387,7 @@ function normalizeGeneric(lead: MiniAppLeadDetail): ResponseViewModel[] {
     .map(([key, value], i) => ({
       key,
       question: GENERIC_FIELD_LABELS[key] ?? key,
-      answer: formatGenericValue(value),
+      answer: formatGenericValue(key, value),
       answerType: "field" as const,
       section: "Datos",
       order: i,
