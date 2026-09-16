@@ -10,25 +10,26 @@
  * - "upload" (Fase 2): GrowthLink SÍ aloja el HTML/ZIP subido, y se debe ver
  *   EXACTAMENTE igual que abrir ese HTML directamente — sin Card, sin
  *   max-width, sin padding, sin bordes, sin sombra, sin scroll interno
- *   propio. La única UI de GrowthLink es una barra superior delgada
- *   (Volver / nombre / estado / compartir / abrir en pestaña nueva); todo lo
- *   demás del viewport es el iframe (sandbox="allow-scripts allow-forms
- *   allow-popups allow-popups-to-escape-sandbox", deliberadamente sin
- *   allow-same-origin: el HTML de un tercero corre con un origen opaco, así
- *   que no puede leer las cookies/DOM de GrowthLink ni arrastrar la sesión
- *   del visitante en sus propios fetch() — mismo mecanismo que usan
- *   CodeSandbox/JSFiddle). `allow-popups-to-escape-sandbox` es necesario
- *   para que un `window.open()` hacia WhatsApp (wa.me/api.whatsapp.com) abra
- *   una pestaña normal, sin heredar el origen opaco del iframe — sin esto,
- *   la pestaña nueva queda igual de sandboxeada y WhatsApp la rechaza
+ *   propio, y sin ninguna barra/chrome de GrowthLink por encima (pedido
+ *   explícito: la Mini App debe ocupar todo el viewport desde arriba,
+ *   idéntica a abrir el HTML directamente — "Volver" queda cubierto por la
+ *   navegación propia del navegador, ya que esta página pública no vive
+ *   dentro de ningún layout/nav de GrowthLink que reemplazar). Todo el
+ *   viewport es el iframe (sandbox="allow-scripts allow-forms allow-popups
+ *   allow-popups-to-escape-sandbox", deliberadamente sin allow-same-origin:
+ *   el HTML de un tercero corre con un origen opaco, así que no puede leer
+ *   las cookies/DOM de GrowthLink ni arrastrar la sesión del visitante en
+ *   sus propios fetch() — mismo mecanismo que usan CodeSandbox/JSFiddle).
+ *   `allow-popups-to-escape-sandbox` es necesario para que un
+ *   `window.open()` hacia WhatsApp (wa.me/api.whatsapp.com) abra una
+ *   pestaña normal, sin heredar el origen opaco del iframe — sin esto, la
+ *   pestaña nueva queda igual de sandboxeada y WhatsApp la rechaza
  *   (confirmado en vivo: ERR_BLOCKED_BY_RESPONSE en api.whatsapp.com). */
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Calculator, Check, Copy, FileText, Layout, Link2, Presentation, Sparkles, type LucideIcon } from "lucide-react";
+import { useEffect } from "react";
+import { ArrowUpRight, Calculator, FileText, Layout, Link2, Presentation, Sparkles, type LucideIcon } from "lucide-react";
 import type { PublicMiniAppView } from "@/lib/miniApps/queries";
 import type { LinkedAppIconKey } from "@/lib/miniApps/linkedAppOptions";
-import { Badge } from "@/components/ui/Badge";
 import { AgentBar, DecorativeBackground, MiniAppButton } from "@/components/miniApps/uiPrimitives";
 
 const ICON_COMPONENTS: Record<LinkedAppIconKey, LucideIcon> = {
@@ -50,63 +51,18 @@ export function LinkedAppLanding({ app }: { app: PublicMiniAppView<"app_vinculad
   return <ExternalAppLanding app={app} />;
 }
 
-/** hostingMode "upload" — full-viewport, chrome-free besides the thin top
- * bar. No Card/max-width/padding/border/shadow: this must be pixel-for-pixel
- * what the visitor would see opening the original HTML file. */
+/** hostingMode "upload" — full-viewport, completely chrome-free (no
+ * GrowthLink bar/header at all — pedido explícito). No Card/max-width/
+ * padding/border/shadow: this must be pixel-for-pixel what the visitor
+ * would see opening the original HTML file, from the very top. */
 function HostedAppView({ app }: { app: PublicMiniAppView<"app_vinculada"> }) {
-  const router = useRouter();
-  const [copied, setCopied] = useState(false);
-
-  function handleShare() {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden">
-      <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border-default bg-surface-1 px-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="flex shrink-0 items-center gap-1 text-sm text-neutral-500 hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Volver
-          </button>
-          <span className="truncate text-sm font-medium text-foreground">{app.name}</span>
-          <Badge variant="success" dot className="hidden sm:inline-flex">
-            Conectada
-          </Badge>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={handleShare}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-neutral-500 hover:bg-surface-2 hover:text-foreground"
-          >
-            {copied ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
-            {copied ? "Copiado" : "Compartir"}
-          </button>
-          <a
-            href={app.bundlePublicUrl as string}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-neutral-500 hover:bg-surface-2 hover:text-foreground"
-          >
-            <ArrowUpRight className="size-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">Abrir en nueva pestaña</span>
-          </a>
-        </div>
-      </div>
-      <iframe
-        src={app.bundlePublicUrl as string}
-        sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-        className="block w-full flex-1 border-0"
-        title={app.name}
-      />
-    </div>
+    <iframe
+      src={app.bundlePublicUrl as string}
+      sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+      className="block h-dvh w-full border-0"
+      title={app.name}
+    />
   );
 }
 
