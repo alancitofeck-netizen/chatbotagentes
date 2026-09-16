@@ -96,6 +96,15 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   utm_campaign: "Campaña (UTM)",
   utm_content: "Contenido (UTM)",
   utm_term: "Término (UTM)",
+  tipo_cobertura: "A quién quiere proteger",
+  ubicacion: "Ubicación",
+  objetivo_proteccion: "Qué busca principalmente",
+  costo_esencial_mensual: "Protección Esencial (mensual)",
+  costo_esencial_anual: "Protección Esencial (anual)",
+  costo_equilibrada_mensual: "Protección Equilibrada (mensual)",
+  costo_equilibrada_anual: "Protección Equilibrada (anual)",
+  costo_mayor_mensual: "Mayor Protección (mensual)",
+  costo_mayor_anual: "Mayor Protección (anual)",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
@@ -104,7 +113,20 @@ const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
  * usan simulador_retiro/calculadora_brecha_retiro (también caen acá, sin
  * normalizador propio), así que formatearlos con signo de moneda mejora esas
  * lecturas también, no solo las de "App Vinculada". */
-const MONEY_FIELD_KEYS = new Set(["ahorro_mensual", "fondo_estimado", "fondo_rango_bajo", "fondo_rango_alto", "renta_mensual_estimada", "total_aportado"]);
+const MONEY_FIELD_KEYS = new Set([
+  "ahorro_mensual",
+  "fondo_estimado",
+  "fondo_rango_bajo",
+  "fondo_rango_alto",
+  "renta_mensual_estimada",
+  "total_aportado",
+  "costo_esencial_mensual",
+  "costo_esencial_anual",
+  "costo_equilibrada_mensual",
+  "costo_equilibrada_anual",
+  "costo_mayor_mensual",
+  "costo_mayor_anual",
+]);
 
 /** Campos que llegan como fracción (0.07 = 7%), no como porcentaje entero
  * — a diferencia de `score`/`overall`/etc., que ya llegan en escala 0-100. */
