@@ -105,6 +105,24 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   costo_equilibrada_anual: "Protección Equilibrada (anual)",
   costo_mayor_mensual: "Mayor Protección (mensual)",
   costo_mayor_anual: "Mayor Protección (anual)",
+  // App Vinculada — Formulario Pre-Cita (agentes/asesores)
+  estado: "Estado del guardado",
+  fit: "Fit",
+  equipo: "Equipo",
+  experiencia: "Experiencia",
+  aseguradora: "Aseguradora",
+  producto_interes: "Producto de interés",
+  produccion_mensual: "Producción mensual (pólizas)",
+  origen_clientes: "Origen de clientes",
+  problema_principal: "Principal reto",
+  porcentaje_cierre: "% de citas que cierra",
+  ya_intento: "Ya intentó",
+  objetivo_6_12_meses: "Objetivo (6-12 meses)",
+  urgencia: "Urgencia declarada",
+  preguntas_sugeridas: "Preguntas sugeridas para la llamada",
+  nota_prospecto: "Nota del prospecto",
+  dia_preferido: "Día preferido",
+  horario_preferido: "Horario preferido",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
