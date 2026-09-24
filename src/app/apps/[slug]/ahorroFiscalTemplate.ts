@@ -821,7 +821,7 @@ var FAQS = [
   {q:"¿Qué es un Plan Personal de Retiro (PPR)?",
    a:"Es una cuenta o plan de inversión reconocido por el Artículo 151, fracción V de la LISR, pensado específicamente para el retiro. Tus aportaciones son deducibles de tu declaración anual, dentro de los topes que le apliquen a tu situación."},
   {q:"¿Cómo funciona la relación entre el PPR y mi ISR?",
-   a:"Al aportar a tu PPR, reduces tu base gravable del ejercicio, lo que baja el ISR que causas. Esto no es automáticamente una \"devolución\": si ya tenías ISR retenido de más durante el año, ese exceso puede convertirse en saldo a favor; si no, simplemente pagas menos ISR del que hubieras pagado sin la aportación."},
+   a:"Al aportar a tu PPR, reduces tu base gravable del ejercicio, lo que baja el ISR que causas. Esto no es automáticamente una 'devolución': si ya tenías ISR retenido de más durante el año, ese exceso puede convertirse en saldo a favor; si no, simplemente pagas menos ISR del que hubieras pagado sin la aportación."},
   {q:"¿Cuál es el límite de deducción del PPR en 2026?",
    a:"El menor entre el 10% de tu ingreso anual acumulable y el equivalente a 5 UMAs anuales ($213,973.20 en 2026). Es un tope independiente de tus otras deducciones personales."},
   {q:"¿Qué son las deducciones personales del 15%?",
@@ -1155,7 +1155,7 @@ function sendLeadToCRM(lead){
 
 function revealResult(skip){
   if(!skip){
-    var nombre=$("leadName").value.trim(), wa=$("leadWa").value.replace(/\D/g,''), email=$("leadEmail").value.trim();
+    var nombre=$("leadName").value.trim(), wa=$("leadWa").value.replace(/\\D/g,''), email=$("leadEmail").value.trim();
     if(nombre.length<2||wa.length<10||!$("leadConsent").checked){
       if(nombre.length<2)$("leadName").style.borderColor="var(--danger)";
       if(wa.length<10)$("leadWa").style.borderColor="var(--danger)";
@@ -1229,7 +1229,7 @@ function paintResultado(){
 
   buildRelated();
 
-  var msg="Hola "+CONFIG.agente.split(" ")[0]+", soy "+(S.lead?S.lead.nombre.split(" ")[0]:"[tu nombre]")+".\n\nAcabo de completar la Calculadora de Ahorro Fiscal 2026.\nLa simulación mostró una diferencia fiscal que me gustaría revisar contigo.\n\n¿Podemos analizarla?";
+  var msg="Hola "+CONFIG.agente.split(" ")[0]+", soy "+(S.lead?S.lead.nombre.split(" ")[0]:"[tu nombre]")+".\\n\\nAcabo de completar la Calculadora de Ahorro Fiscal 2026.\\nLa simulación mostró una diferencia fiscal que me gustaría revisar contigo.\\n\\n¿Podemos analizarla?";
   $("waBtn").href="https://wa.me/"+CONFIG.whatsapp+"?text="+encodeURIComponent(msg);
 }
 
