@@ -356,7 +356,7 @@ export function Sidebar({
            centrados) cuando está colapsado — el botón de toggle NUNCA se
            esconde (a diferencia de la v1 de este port, que solo dejaba
            expandir haciendo clic en el logo). */}
-        <div className={cn("flex shrink-0 items-center gap-1.5 px-3 pb-2.5 pt-3.5", isExpanded ? "flex-row" : "flex-col gap-2.5")}>
+        <div className={cn("flex shrink-0 items-center px-3 pb-2.5 pt-3.5", isExpanded ? "flex-row gap-1.5" : "flex-col gap-2.5")}>
           {hasMultipleWorkspaces ? (
             <Link
               href="/select-workspace"
@@ -367,16 +367,24 @@ export function Sidebar({
               )}
             >
               <Logo size="sm" inverted />
-              <span className={cn("flex min-w-0 flex-1 flex-col", fadeClassName(isExpanded))}>
-                <span className="truncate text-sm font-semibold text-white">{workspaceName}</span>
-                <span className="truncate text-xs text-[var(--sidebar-muted)]">{roleLabel}</span>
+              {/* Envueltos juntos (no dos elementos sueltos con solo opacity-0
+                 cada uno) — así `w-0` de verdad los saca del layout al
+                 colapsar; si no, el chevron (shrink-0) sigue ocupando ancho
+                 real aunque sea invisible, y el contenido desborda el rail
+                 angosto de 76px (recortado por el overflow-hidden del panel
+                 — la causa real del logo "distorsionado" reportado). */}
+              <span className={cn("flex min-w-0 items-center gap-2.5", isExpanded ? "flex-1" : "w-0 flex-none", fadeClassName(isExpanded))}>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-semibold text-white">{workspaceName}</span>
+                  <span className="truncate text-xs text-[var(--sidebar-muted)]">{roleLabel}</span>
+                </span>
+                <ChevronsUpDown className="size-4 shrink-0 text-[var(--sidebar-muted)]" aria-hidden="true" />
               </span>
-              <ChevronsUpDown className={cn("size-4 shrink-0 text-[var(--sidebar-muted)]", fadeClassName(isExpanded))} aria-hidden="true" />
             </Link>
           ) : (
             <div className={cn("flex min-w-0 items-center gap-2.5 rounded-xl p-1.5", isExpanded ? "flex-1" : "flex-none")}>
               <Logo size="sm" inverted />
-              <span className={cn("flex min-w-0 flex-1 flex-col", fadeClassName(isExpanded))}>
+              <span className={cn("flex min-w-0 flex-col", isExpanded ? "flex-1" : "w-0 flex-none", fadeClassName(isExpanded))}>
                 <span className="truncate text-sm font-semibold text-white">{workspaceName}</span>
                 <span className="truncate text-xs text-[var(--sidebar-muted)]">{roleLabel}</span>
               </span>
@@ -401,19 +409,20 @@ export function Sidebar({
           onClick={openSearch}
           title="Buscar (Ctrl+K)"
           className={cn(
-            "mx-3 mb-1.5 flex h-10 items-center gap-2.5 rounded-[10px] border border-[var(--sidebar-line)] bg-[var(--sidebar-raised)]/40 px-3 text-[var(--sidebar-muted)] transition-colors hover:border-[var(--sidebar-line-2)] hover:text-[var(--sidebar-text-2)]",
-            !isExpanded && "mx-[14px] w-9 justify-center px-0",
+            "mb-1.5 flex h-10 items-center gap-2.5 rounded-[10px] border border-[var(--sidebar-line)] bg-[var(--sidebar-raised)]/40 text-[var(--sidebar-muted)] transition-colors hover:border-[var(--sidebar-line-2)] hover:text-[var(--sidebar-text-2)]",
+            isExpanded ? "mx-3 px-3" : "mx-[14px] w-9 justify-center px-0",
           )}
         >
           <Search className="size-4 shrink-0" aria-hidden="true" />
-          <span className={cn("flex-1 truncate text-left text-[13px]", fadeClassName(isExpanded))}>Buscar o saltar a…</span>
-          <span
-            className={cn(
-              "shrink-0 rounded-md border border-[var(--sidebar-line-2)] bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-neutral-300",
-              fadeClassName(isExpanded),
-            )}
-          >
-            {isMac ? "⌘K" : "Ctrl K"}
+          {/* Envueltos juntos, no dos elementos sueltos — mismo motivo que el
+             nombre del workspace de arriba: el badge de teclado es
+             shrink-0, así que sin colapsar el ancho del wrapper entero
+             seguía empujando/tapando el ícono de lupa al colapsar el rail. */}
+          <span className={cn("flex min-w-0 items-center gap-2.5", isExpanded ? "flex-1" : "w-0 flex-none", fadeClassName(isExpanded))}>
+            <span className="flex-1 truncate text-left text-[13px]">Buscar o saltar a…</span>
+            <span className="shrink-0 rounded-md border border-[var(--sidebar-line-2)] bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-neutral-300">
+              {isMac ? "⌘K" : "Ctrl K"}
+            </span>
           </span>
         </button>
 
