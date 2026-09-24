@@ -128,6 +128,17 @@
      marca (Configuración → Apariencia, data-workspace-theme). */
   --sidebar-bg: var(--color-neutral-950);
   --sidebar-accent: var(--color-accent-500);
+  /* Tokens secundarios del rail (sidebar-premium-v2 port) — a diferencia de
+     --sidebar-bg/--sidebar-accent, estos NO varían por [data-workspace-theme]
+     porque el mock de referencia tampoco los varía; son el fondo "elevado"
+     de la píldora activa/menús, líneas divisorias y texto secundario sobre
+     el rail oscuro. */
+  --sidebar-raised: #171a27;
+  --sidebar-pop: #1c1f2e;
+  --sidebar-line: rgba(255, 255, 255, 0.06);
+  --sidebar-line-2: rgba(255, 255, 255, 0.1);
+  --sidebar-text-2: #a3a9ba;
+  --sidebar-muted: #7a8196;
 
   /* Texto sobre el color de acento (botón primario, badges accent) — blanco
      por default; un acento muy claro (ej. lima brillante de Lime Dark)
@@ -348,7 +359,7 @@ body {
  * entirely from React state, not CSS — this rule only covers the static
  * placeholder's very first paint. */
 :root[data-sidebar-pinned="true"] .sidebar-placeholder {
-  width: 280px;
+  width: 272px;
 }
 
 /* Hide scrollbars everywhere (SaaS app-shell feel) — purely visual, never

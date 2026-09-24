@@ -229,6 +229,7 @@ export function GlobalSearch() {
       <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
       <input
         ref={inputRef}
+        id="global-search-input"
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}

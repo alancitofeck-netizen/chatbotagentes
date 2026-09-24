@@ -52,7 +52,7 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
       <div
         inert={!open}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col gap-1 bg-[var(--sidebar-bg)] p-4 shadow-[var(--elevation-lg)]",
+          "fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col gap-1 bg-[var(--sidebar-bg)] p-4 shadow-[var(--elevation-lg)]",
           "transition-transform duration-300 ease-[var(--ease-out)]",
           open ? "translate-x-0" : "-translate-x-full",
         )}

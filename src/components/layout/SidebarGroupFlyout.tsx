@@ -44,9 +44,9 @@ export function SidebarGroupFlyout({ open, anchorRef, category, items, pathname 
       role="menu"
       aria-label={category}
       style={{ position: "fixed", top: style.top, left: style.left, zIndex: 70 }}
-      className="w-56 rounded-xl border border-border-default bg-surface-1 p-1.5 shadow-[var(--elevation-lg)]"
+      className="w-56 rounded-[14px] border border-[var(--sidebar-line-2)] bg-[var(--sidebar-pop)] p-1.5 shadow-[0_24px_48px_-16px_rgba(0,0,0,0.85)]"
     >
-      <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">{category}</p>
+      <p className="px-2.5 pb-1.5 pt-1 text-xs text-[var(--sidebar-muted)]">{category}</p>
       {items.map((item) => {
         const Icon = item.icon;
         const active = isNavItemActive(pathname, item.href);
@@ -58,12 +58,12 @@ export function SidebarGroupFlyout({ open, anchorRef, category, items, pathname 
             onClick={(e) => item.comingSoon && e.preventDefault()}
             role="menuitem"
             className={cn(
-              "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm",
+              "flex items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13.5px]",
               item.comingSoon
-                ? "cursor-default text-neutral-400"
+                ? "cursor-default text-neutral-600"
                 : active
-                  ? "bg-accent-500/12 font-medium text-foreground"
-                  : "text-foreground hover:bg-surface-2",
+                  ? "text-[#F6F6FB] [&>svg]:stroke-[var(--sidebar-accent)]"
+                  : "text-[var(--sidebar-text-2)] hover:bg-white/[0.05] hover:text-white",
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />
