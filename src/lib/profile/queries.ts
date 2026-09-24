@@ -17,6 +17,11 @@ export interface MyProfile {
    * writing it can trigger (or fail without) phone verification depending on
    * whether that provider is configured. This is just a contact field. */
   phone: string;
+  /** Sin dato "real" que respaldar más allá de lo que el propio usuario
+   * tipee — igual que phone, vive en user_metadata, nunca en una columna
+   * nativa de auth.users. */
+  bio: string;
+  title: string;
   role: string;
   workspaceName: string;
   workspaceSlug: string;
@@ -38,6 +43,8 @@ export async function getMyProfile(): Promise<MyProfile> {
     full_name?: string;
     username?: string;
     phone?: string;
+    bio?: string;
+    title?: string;
     avatar_url?: string;
   };
 
@@ -47,6 +54,8 @@ export async function getMyProfile(): Promise<MyProfile> {
     username: metadata.username ?? "",
     email: user?.email ?? "",
     phone: metadata.phone ?? "",
+    bio: metadata.bio ?? "",
+    title: metadata.title ?? "",
     avatarUrl: metadata.avatar_url ?? null,
     role,
     workspaceName,

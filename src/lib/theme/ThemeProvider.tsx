@@ -1,14 +1,20 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { THEME_STORAGE_KEY } from "./script";
 
 type Theme = "light" | "dark";
+/** Preferencia elegida por el usuario — a diferencia de `Theme` (el tema
+ * EFECTIVO ya resuelto, lo que se aplica), "system" es una tercera opción
+ * real y persistida, no solo el fallback implícito de no haber elegido
+ * nada. */
+type ThemeMode = "light" | "dark" | "system";
 
 interface ThemeContextValue {
   theme: Theme;
-  setTheme: (theme: Theme) => void;
+  mode: ThemeMode;
+  setMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
 }
 
@@ -40,11 +46,52 @@ function getServerSnapshot(): Theme {
   return "light";
 }
 
+function readStoredMode(): ThemeMode {
+  try {
+    const v = localStorage.getItem(THEME_STORAGE_KEY);
+    return v === "light" || v === "dark" ? v : "system";
+  } catch {
+    return "system";
+  }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  // No necesita el tratamiento anti-flash pre-hidratación de `theme` —
+  // "mode" solo se usa para resaltar el botón elegido en Preferencias, no
+  // para pintar nada; arranca en "system" (coincide con el server) y se
+  // hidrata un tick después, mismo criterio que `recentSearches` en
+  // GlobalSearch.tsx.
+  const [mode, setModeState] = useState<ThemeMode>("system");
 
-  const setTheme = useCallback((next: Theme) => {
-    document.documentElement.setAttribute("data-theme", next);
+  useEffect(() => {
+    Promise.resolve().then(() => setModeState(readStoredMode()));
+  }, []);
+
+  // Modo "Sistema" en vivo: si el SO cambia de tema mientras la pestaña
+  // sigue abierta, refleja el cambio sin necesitar un refresh — themeInitScript's
+  // ausencia de atributo ya deja que la media query de globals.css decida el
+  // primer paint; esto solo mantiene sincronizado el `theme` resuelto en
+  // React mientras tanto (`getSnapshot` ya sabe leer matchMedia, pero
+  // useSyncExternalStore no se entera de un cambio del SO sin que algo
+  // dispare `emitChange()`).
+  useEffect(() => {
+    if (mode !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    function handleChange() {
+      emitChange();
+    }
+    mq.addEventListener("change", handleChange);
+    return () => mq.removeEventListener("change", handleChange);
+  }, [mode]);
+
+  const setMode = useCallback((next: ThemeMode) => {
+    setModeState(next);
+    if (next === "system") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", next);
+    }
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
@@ -54,10 +101,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [theme, setTheme]);
+    setMode(theme === "dark" ? "light" : "dark");
+  }, [theme, setMode]);
 
-  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme]);
+  const value = useMemo(() => ({ theme, mode, setMode, toggleTheme }), [theme, mode, setMode, toggleTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

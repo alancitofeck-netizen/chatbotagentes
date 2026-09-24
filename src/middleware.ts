@@ -69,6 +69,30 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // 2FA real (src/lib/profile/actions.ts) — una sesión con password ya
+  // validado pero sin el segundo factor pasado todavía en ESTE navegador
+  // (aal1, con aal2 pendiente) no puede ver rutas protegidas. Cubre el caso
+  // que signIn (src/app/login/actions.ts) no cubre: una cookie de sesión ya
+  // existente (ej. quedó abierta hace días) que todavía no completó el
+  // segundo factor. Solo se activa para cuentas que de verdad enrolaron
+  // 2FA — nextLevel nunca sube para una cuenta que nunca lo activó, así que
+  // esto es 100% opt-in de fondo, cero fricción nueva para nadie más. Un
+  // error real (no el caso "falta verificar", sino una falla de red/API)
+  // se ignora y deja pasar — nunca bloquea a todo el mundo por una falla
+  // transitoria de Supabase.
+  if (isProtected && user) {
+    try {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== aal.nextLevel) {
+        const verifyUrl = new URL("/login/verify-mfa", request.url);
+        verifyUrl.searchParams.set("next", pathname);
+        return NextResponse.redirect(verifyUrl);
+      }
+    } catch {
+      // ver comentario de arriba — nunca bloquear por un error inesperado acá
+    }
+  }
+
   if (isGuestOnly && user) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

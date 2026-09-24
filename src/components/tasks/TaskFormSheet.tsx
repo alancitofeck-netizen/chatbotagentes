@@ -32,8 +32,8 @@ function combineDueAt(date: string, time: string): string | null {
 }
 
 /** Single form for both create and edit — same convention as
- * WhatsAppIntegrationSheet/EditProfileSheet (conditionally mounted by the
- * parent, state seeded directly from `current`, no resync effect). Estado
+ * WhatsAppIntegrationSheet (conditionally mounted by the parent, state
+ * seeded directly from `current`, no resync effect). Estado
  * only renders in edit mode — creation always starts "pending", matching
  * the field list the user actually asked for in each mode. */
 export function TaskFormSheet({

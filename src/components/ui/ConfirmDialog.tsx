@@ -11,6 +11,15 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   isLoading?: boolean;
+  /** Deshabilita el botón de confirmar sin tocar `isLoading` — para
+   * guardarraíles tipo "escribí ELIMINAR para confirmar" (AccountSection.tsx),
+   * donde `children` renderiza el input que controla esto. Default false
+   * (comportamiento de siempre). */
+  confirmDisabled?: boolean;
+  /** Variante destructiva del botón de confirmar — para acciones
+   * irreversibles como eliminar una cuenta. Default false (botón primario
+   * de siempre). */
+  danger?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   children?: ReactNode;
@@ -27,6 +36,8 @@ export function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   isLoading = false,
+  confirmDisabled = false,
+  danger = false,
   onConfirm,
   onCancel,
   children,
@@ -60,7 +71,7 @@ export function ConfirmDialog({
           <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading}>
             {cancelLabel}
           </Button>
-          <Button type="button" onClick={onConfirm} loading={isLoading}>
+          <Button type="button" variant={danger ? "destructive" : "primary"} onClick={onConfirm} loading={isLoading} disabled={confirmDisabled}>
             {confirmLabel}
           </Button>
         </div>
