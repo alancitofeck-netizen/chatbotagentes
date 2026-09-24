@@ -24,7 +24,6 @@ import { inboxTours } from "./inbox";
 import { advisorsTours } from "./advisors";
 import { miniAppsTours } from "./miniApps";
 import { asesoriasTours } from "./asesorias";
-import { manychatTours } from "./manychat";
 import { atsTours } from "./ats";
 
 /** Registro central de todos los tours de producto — cada módulo nuevo solo
@@ -56,7 +55,6 @@ export const ALL_TOURS: TourConfig[] = [
   ...advisorsTours,
   ...miniAppsTours,
   ...asesoriasTours,
-  ...manychatTours,
   ...atsTours,
 ];
 
