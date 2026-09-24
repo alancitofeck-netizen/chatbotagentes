@@ -80,9 +80,75 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   saldo_estimado: "Saldo estimado",
   tasa_marginal: "Tasa marginal",
   opportunity_level: "Nivel de oportunidad",
+  anos_aportacion: "Años de aportación",
+  total_aportado: "Total aportado",
+  rendimiento_anual: "Rendimiento anual estimado",
+  objetivo: "Objetivo principal",
+  interes_urgencia: "Urgencia declarada",
+  tipo_constructor: "Quién construye la meta",
+  titular_1_edad: "Edad del titular 1",
+  titular_1_sexo: "Sexo del titular 1",
+  titular_2_edad: "Edad del titular 2",
+  titular_2_sexo: "Sexo del titular 2",
+  recomendado_por: "¿Le recomendaron la calculadora?",
+  utm_source: "Fuente (UTM)",
+  utm_medium: "Medio (UTM)",
+  utm_campaign: "Campaña (UTM)",
+  utm_content: "Contenido (UTM)",
+  utm_term: "Término (UTM)",
+  tipo_cobertura: "A quién quiere proteger",
+  ubicacion: "Ubicación",
+  objetivo_proteccion: "Qué busca principalmente",
+  costo_esencial_mensual: "Protección Esencial (mensual)",
+  costo_esencial_anual: "Protección Esencial (anual)",
+  costo_equilibrada_mensual: "Protección Equilibrada (mensual)",
+  costo_equilibrada_anual: "Protección Equilibrada (anual)",
+  costo_mayor_mensual: "Mayor Protección (mensual)",
+  costo_mayor_anual: "Mayor Protección (anual)",
+  // App Vinculada — Formulario Pre-Cita (agentes/asesores)
+  estado: "Estado del guardado",
+  fit: "Fit",
+  equipo: "Equipo",
+  experiencia: "Experiencia",
+  aseguradora: "Aseguradora",
+  producto_interes: "Producto de interés",
+  produccion_mensual: "Producción mensual (pólizas)",
+  origen_clientes: "Origen de clientes",
+  problema_principal: "Principal reto",
+  porcentaje_cierre: "% de citas que cierra",
+  ya_intento: "Ya intentó",
+  objetivo_6_12_meses: "Objetivo (6-12 meses)",
+  urgencia: "Urgencia declarada",
+  preguntas_sugeridas: "Preguntas sugeridas para la llamada",
+  nota_prospecto: "Nota del prospecto",
+  dia_preferido: "Día preferido",
+  horario_preferido: "Horario preferido",
 };
 
 const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
+
+/** Campos monetarios (pesos) del fallback genérico — mismo concepto que ya
+ * usan simulador_retiro/calculadora_brecha_retiro (también caen acá, sin
+ * normalizador propio), así que formatearlos con signo de moneda mejora esas
+ * lecturas también, no solo las de "App Vinculada". */
+const MONEY_FIELD_KEYS = new Set([
+  "ahorro_mensual",
+  "fondo_estimado",
+  "fondo_rango_bajo",
+  "fondo_rango_alto",
+  "renta_mensual_estimada",
+  "total_aportado",
+  "costo_esencial_mensual",
+  "costo_esencial_anual",
+  "costo_equilibrada_mensual",
+  "costo_equilibrada_anual",
+  "costo_mayor_mensual",
+  "costo_mayor_anual",
+]);
+
+/** Campos que llegan como fracción (0.07 = 7%), no como porcentaje entero
+ * — a diferencia de `score`/`overall`/etc., que ya llegan en escala 0-100. */
+const PERCENT_FIELD_KEYS = new Set(["rendimiento_anual"]);
 
 /** Etiquetas legibles para DiagnosticoRetiroThemeKey (diagnosticoRetiroDefaults.ts)
  * — la pregunta de "objetivo" (sin puntos, solo tema) guarda la clave interna
@@ -94,8 +160,12 @@ const THEME_LABELS: Record<string, string> = {
   liquidez: "Liquidez",
 };
 
-function formatGenericValue(value: unknown): string {
-  if (typeof value === "number") return new Intl.NumberFormat("es-MX").format(value);
+function formatGenericValue(key: string, value: unknown): string {
+  if (typeof value === "number") {
+    if (PERCENT_FIELD_KEYS.has(key)) return `${new Intl.NumberFormat("es-MX", { maximumFractionDigits: 1 }).format(value * 100)}%`;
+    if (MONEY_FIELD_KEYS.has(key)) return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat("es-MX").format(value);
+  }
   if (Array.isArray(value)) {
     return value.map((v) => (typeof v === "object" && v !== null ? Object.values(v).join(" ") : String(v))).join(", ");
   }
@@ -364,11 +434,11 @@ function normalizeDiagnosticoSalud(lead: MiniAppLeadDetail): ResponseViewModel[]
 
 function normalizeGeneric(lead: MiniAppLeadDetail): ResponseViewModel[] {
   return Object.entries(lead.data)
-    .filter(([key]) => !SKIP_GENERIC_KEYS.has(key))
+    .filter(([key, value]) => !SKIP_GENERIC_KEYS.has(key) && value !== null && value !== undefined && value !== "")
     .map(([key, value], i) => ({
       key,
       question: GENERIC_FIELD_LABELS[key] ?? key,
-      answer: formatGenericValue(value),
+      answer: formatGenericValue(key, value),
       answerType: "field" as const,
       section: "Datos",
       order: i,

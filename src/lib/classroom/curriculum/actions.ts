@@ -156,6 +156,7 @@ export async function moveLessonToChapter(lessonId: string, newChapterId: string
 
 export interface LessonResourceInput {
   label: string;
+  description?: string | null;
   fileUrl: string;
   fileType: string | null;
   fileSizeBytes: number | null;
@@ -172,6 +173,7 @@ export async function addLessonResource(lessonId: string, courseId: string, inpu
     .insert({
       lesson_id: lessonId,
       label,
+      description: input.description?.trim() || null,
       file_url: input.fileUrl,
       file_type: input.fileType,
       file_size_bytes: input.fileSizeBytes,
@@ -182,6 +184,57 @@ export async function addLessonResource(lessonId: string, courseId: string, inpu
   if (error || !data) throw new Error("No se pudo agregar el recurso.");
   revalidateCourseEditor(courseId);
   return { id: data.id as string };
+}
+
+/** Editar título/descripción, y opcionalmente reemplazar el archivo (el
+ * caller ya subió el nuevo archivo por la misma ruta de addLessonResource
+ * antes de llamar acá) — mismo cleanup de Storage que removeLessonResource
+ * cuando se reemplaza. */
+export async function updateLessonResource(
+  resourceId: string,
+  courseId: string,
+  input: { label: string; description?: string | null; replacement?: { fileUrl: string; fileType: string | null; fileSizeBytes: number | null } },
+): Promise<void> {
+  await requireClassroomManager();
+  const label = input.label.trim();
+  if (!label) throw new Error("El nombre del recurso es obligatorio.");
+  const supabase = await createClient();
+
+  const { data: existing } = input.replacement
+    ? await supabase.from("classroom_lesson_resources").select("file_url").eq("id", resourceId).maybeSingle()
+    : { data: null };
+
+  const { error } = await supabase
+    .from("classroom_lesson_resources")
+    .update({
+      label,
+      description: input.description?.trim() || null,
+      ...(input.replacement
+        ? { file_url: input.replacement.fileUrl, file_type: input.replacement.fileType, file_size_bytes: input.replacement.fileSizeBytes }
+        : {}),
+    })
+    .eq("id", resourceId);
+  if (error) throw new Error("No se pudo actualizar el recurso.");
+
+  if (input.replacement && existing?.file_url) {
+    const marker = "/classroom-resources/";
+    const idx = (existing.file_url as string).indexOf(marker);
+    if (idx !== -1) {
+      const path = (existing.file_url as string).slice(idx + marker.length).split("?")[0];
+      await createServiceRoleClient().storage.from("classroom-resources").remove([path]);
+    }
+  }
+  revalidateCourseEditor(courseId);
+}
+
+/** Mismo patrón bulk-update de `position` que reorderChapters/reorderLessons. */
+export async function reorderLessonResources(lessonId: string, courseId: string, orderedIds: string[]): Promise<void> {
+  await requireClassroomManager();
+  const supabase = await createClient();
+  await Promise.all(
+    orderedIds.map((id, index) => supabase.from("classroom_lesson_resources").update({ position: index }).eq("id", id).eq("lesson_id", lessonId)),
+  );
+  revalidateCourseEditor(courseId);
 }
 
 /** Removes both the DB row and the underlying Storage object. Uses the
