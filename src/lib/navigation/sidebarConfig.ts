@@ -64,33 +64,39 @@ export interface SidebarModuleConfig {
    * (dinámico, por workspace), un item con enabled:false no se renderiza
    * para NADIE hasta que se vuelva a poner en true. Default true. */
   enabled?: boolean;
+  /** Letra para el atajo "G luego <letra>" del sidebar (Sidebar.tsx) — sin
+   * colisiones entre sí. Opcional: un item sin `shortcut` simplemente no
+   * tiene atajo de teclado. */
+  shortcut?: string;
 }
 
 export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
-  { id: "dashboard", name: "Dashboard", icon: LayoutDashboard, route: "/dashboard", section: "Principal", order: 0 },
-  { id: "inbox", name: "Inbox", icon: Inbox, route: "/inbox", section: "Principal", order: 1 },
+  { id: "dashboard", name: "Dashboard", icon: LayoutDashboard, route: "/dashboard", section: "Principal", order: 0, shortcut: "d" },
+  { id: "inbox", name: "Inbox", icon: Inbox, route: "/inbox", section: "Principal", order: 1, shortcut: "i" },
 
-  { id: "crm", name: "CRM", icon: Kanban, route: "/crm", section: "Clientes", moduleKey: "crm", order: 0 },
-  { id: "advisors", name: "Prospectos", icon: ShieldCheck, route: "/advisors", section: "Clientes", moduleKey: "advisors", order: 1 },
-  { id: "mini_apps", name: "Mini Apps", icon: AppWindow, route: "/mini-apps", section: "Clientes", moduleKey: "mini_apps", order: 2 },
-  { id: "asesorias", name: "Asesorías", icon: Presentation, route: "/asesorias", section: "Clientes", moduleKey: "asesorias", order: 3 },
+  { id: "crm", name: "CRM", icon: Kanban, route: "/crm", section: "Clientes", moduleKey: "crm", order: 0, shortcut: "c" },
+  { id: "advisors", name: "Prospectos", icon: ShieldCheck, route: "/advisors", section: "Clientes", moduleKey: "advisors", order: 1, shortcut: "p" },
+  { id: "mini_apps", name: "Mini Apps", icon: AppWindow, route: "/mini-apps", section: "Clientes", moduleKey: "mini_apps", order: 2, shortcut: "m" },
+  { id: "asesorias", name: "Asesorías", icon: Presentation, route: "/asesorias", section: "Clientes", moduleKey: "asesorias", order: 3, shortcut: "s" },
 
-  { id: "policies", name: "Pólizas", icon: FileCheck2, route: "/polizas", section: "Pólizas", moduleKey: "policies", order: 0 },
+  { id: "policies", name: "Pólizas", icon: FileCheck2, route: "/polizas", section: "Pólizas", moduleKey: "policies", order: 0, shortcut: "o" },
 
-  { id: "calendar", name: "Calendario", icon: CalendarDays, route: "/calendar", section: "Operación", order: 0 },
+  { id: "calendar", name: "Calendario", icon: CalendarDays, route: "/calendar", section: "Operación", order: 0, shortcut: "l" },
   // Módulo independiente, NO anidado en CRM — su fuente es la hoja KPI
   // sincronizada (agenda_appointments), nunca bookings/Google Calendar (ver
   // src/lib/appointmentSync/runner.ts). Ícono deliberadamente distinto de
   // Calendario para no confundir los dos conceptos en el sidebar colapsado.
-  { id: "agenda", name: "Agenda", icon: CalendarClock, route: "/agenda", section: "Operación", moduleKey: "agenda", order: 1 },
-  { id: "collections", name: "Cobranza", icon: CircleDollarSign, route: "/cobranza", section: "Operación", moduleKey: "collections", order: 2 },
-  { id: "goals", name: "Metas y Bonos", icon: Trophy, route: "/metas", section: "Operación", moduleKey: "goals", order: 3 },
-  { id: "tasks", name: "Tareas", icon: ListTodo, route: "/tasks", section: "Operación", moduleKey: "tasks", order: 4 },
-  { id: "documents", name: "Documentos", icon: Folder, route: "/documents", section: "Operación", order: 5 },
+  { id: "agenda", name: "Agenda", icon: CalendarClock, route: "/agenda", section: "Operación", moduleKey: "agenda", order: 1, shortcut: "a" },
+  { id: "collections", name: "Cobranza", icon: CircleDollarSign, route: "/cobranza", section: "Operación", moduleKey: "collections", order: 2, shortcut: "b" },
+  // "e" y no "g" — la letra "g" está reservada como gatillo del combo
+  // "G luego <letra>" (Sidebar.tsx) y nunca puede ser además el destino.
+  { id: "goals", name: "Metas y Bonos", icon: Trophy, route: "/metas", section: "Operación", moduleKey: "goals", order: 3, shortcut: "e" },
+  { id: "tasks", name: "Tareas", icon: ListTodo, route: "/tasks", section: "Operación", moduleKey: "tasks", order: 4, shortcut: "t" },
+  { id: "documents", name: "Documentos", icon: Folder, route: "/documents", section: "Operación", order: 5, shortcut: "f" },
   // KPIs no es una feature de IA (sincroniza planillas, no genera nada con
   // un modelo) — vuelve a Operación en vez de quedarse en Inteligencia solo
   // porque compartía categoría con Presentaciones por comodidad.
-  { id: "kpis", name: "KPIs", icon: BarChart3, route: "/kpis", section: "Operación", order: 6 },
+  { id: "kpis", name: "KPIs", icon: BarChart3, route: "/kpis", section: "Operación", order: 6, shortcut: "k" },
 
   // --- Inteligencia — todo lo que depende de IA vive acá, agrupado, listo
   // para sumar Agentes IA / Voz IA / Análisis IA / Chat IA / Predicciones IA
@@ -104,6 +110,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     moduleKey: "policy_extraction",
     badge: "IA",
     order: 0,
+    shortcut: "x",
   },
   {
     id: "ai_assistant",
@@ -114,6 +121,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     moduleKey: "ai_assistant",
     badge: "IA",
     order: 1,
+    shortcut: "h",
   },
   {
     id: "insurance_providers",
@@ -124,6 +132,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     moduleKey: "insurance_providers",
     badge: "IA",
     order: 2,
+    shortcut: "r",
   },
   {
     // Mismo moduleKey que "Aseguradoras" a propósito — es una vista nueva
@@ -137,6 +146,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     moduleKey: "insurance_providers",
     badge: "IA",
     order: 3,
+    shortcut: "v",
   },
   {
     // Sin badge "IA" a propósito — combina reglas/recordatorios/flujos que
@@ -147,6 +157,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     route: "/automatizaciones",
     section: "Inteligencia",
     order: 4,
+    shortcut: "u",
   },
   {
     id: "presentations",
@@ -157,6 +168,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     moduleKey: "presentations",
     badge: "IA",
     order: 5,
+    shortcut: "y",
   },
   // Promovido fuera de /crm (era la pestaña "Agentes IA", ?tab=agentes-ia)
   // a módulo propio — un agente puede ser de module_key='crm'/'ats'/
@@ -171,6 +183,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     section: "Inteligencia",
     badge: "IA",
     order: 6,
+    shortcut: "j",
   },
   // Independiente de CRM (la pestaña "Leads" que vivía ahí se movió acá) —
   // GrowthLink solo recibe/analiza actividad de leads que ManyChat gestiona
@@ -185,9 +198,10 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
     section: "Inteligencia",
     moduleKey: "manychat",
     order: 7,
+    shortcut: "n",
   },
 
-  { id: "classroom", name: "Classroom", icon: GraduationCap, route: "/classroom", section: "Aprendizaje", order: 0 },
+  { id: "classroom", name: "Classroom", icon: GraduationCap, route: "/classroom", section: "Aprendizaje", order: 0, shortcut: "z" },
 
   // "Asesores" es el panel administrativo del Owner global sobre las
   // cuentas reales de asesores de Growth Link — deliberadamente en su
@@ -196,12 +210,15 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   // conceptos. moduleEnabled sigue viniendo de workspace_modules como
   // cualquier otro módulo — el gate real de "quién puede verlo" vive en la
   // página (isPlatformAdmin), no acá.
-  { id: "asesores", name: "Asesores", icon: Users, route: "/asesores", section: "Administración", moduleKey: "asesores", order: 0 },
+  { id: "asesores", name: "Asesores", icon: Users, route: "/asesores", section: "Administración", moduleKey: "asesores", order: 0, shortcut: "w" },
   // Solo owner/admin — mismo motivo que "Asesores": el gate real vive en
   // src/app/(protected)/operaciones/layout.tsx (no acá, ver comentario de
   // `permissions` arriba), moduleEnabled sigue siendo el mecanismo genérico.
-  { id: "operaciones", name: "Operaciones", icon: Workflow, route: "/operaciones", section: "Administración", moduleKey: "operaciones", order: 1 },
+  { id: "operaciones", name: "Operaciones", icon: Workflow, route: "/operaciones", section: "Administración", moduleKey: "operaciones", order: 1, shortcut: "q" },
 
+  // Sin `shortcut` — el alfabeto de letras libres sin colisión se agotó
+  // (26 items reales, "g" reservado como gatillo del combo); queda como el
+  // único módulo sin atajo "G luego letra".
   {
     id: "data_transfer",
     name: "Importar / Exportar",
@@ -224,6 +241,8 @@ export interface NavItem {
   comingSoon?: boolean;
   /** Shows a small green "IA" pill next to the label when expanded. */
   isAI?: boolean;
+  /** "G luego <letra>" shortcut key — see SidebarModuleConfig.shortcut. */
+  shortcut?: string;
 }
 
 /** Resolves SIDEBAR_MODULES (static config) into the flat, ordered NavItem[]
@@ -258,6 +277,7 @@ export function getSidebarNavItems(enabledModules: ReadonlySet<string>): NavItem
       category: m.section,
       comingSoon: m.moduleKey ? !enabledModules.has(m.moduleKey) : false,
       isAI: m.badge === "IA",
+      shortcut: m.shortcut,
     }));
 }
 

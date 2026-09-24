@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -87,6 +87,7 @@ export function CrmBoardShell({
   const [sortBy, setSortBy] = useState<SortOption>("date_desc");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const router = useRouter();
   const searchParams = useSearchParams();
   // Deep link from outside the board — e.g. the "Link al lead" embedded in a
   // close-date calendar event's description (src/lib/crm/calendarSync.ts).
@@ -107,6 +108,19 @@ export function CrmBoardShell({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isCreatingPipeline, startCreatePipeline] = useTransition();
   useAutoStartTour("crm-create-lead");
+
+  // `?crear=1` — Buscador Global's "Nuevo lead" acción rápida (mismo patrón
+  // que PoliciesBoardShell's propio `?crear=1`). Si el workspace todavía no
+  // tiene un pipeline de ventas (board null), el early-return de más abajo
+  // no llega a montar LeadWizardSheet — no hay nada más que hacer acá para
+  // ese caso, el usuario ve la pantalla de "crear pipeline" como siempre.
+  useEffect(() => {
+    if (searchParams.get("crear") === "1") {
+      Promise.resolve().then(() => setLeadForm({ card: null, defaultStageId: board?.stages[0]?.id ?? null }));
+      router.replace("/crm", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleCreatePipeline() {
     startCreatePipeline(async () => {

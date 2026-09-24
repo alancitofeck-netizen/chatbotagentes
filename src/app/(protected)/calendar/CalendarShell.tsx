@@ -226,6 +226,17 @@ export function CalendarShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // `?crear=1` — Buscador Global's "Agendar reunión" acción rápida (sin
+  // contacto preseleccionado, a diferencia del deep link de arriba). Mismo
+  // patrón `?crear=1` que PoliciesBoardShell/CrmBoardShell.
+  useEffect(() => {
+    if (searchParams.get("crear") !== "1") return;
+    if (searchParams.get("createContact")) return; // el reader de arriba ya lo maneja
+    Promise.resolve().then(() => setSheetState({ mode: "create", defaultStart: date }));
+    router.replace("/calendar", { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function toggleCategory(key: CategoryKey) {
     setActiveCategories((prev) => {
       const next = new Set(prev);

@@ -18,6 +18,8 @@ import {
   UserPlus,
   ListTodo,
   Clock,
+  Bot,
+  Kanban,
   type LucideIcon,
 } from "lucide-react";
 import { globalSearchAction } from "@/lib/search/actions";
@@ -35,6 +37,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   File,
   UserPlus,
   ListTodo,
+  Bot,
+  Kanban,
 };
 
 const DEBOUNCE_MS = 250;
@@ -128,6 +132,23 @@ export function GlobalSearch() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
+
+  // Ctrl/Cmd+K — atajo global del Command Palette (no existía ningún atajo
+  // de teclado para esto en toda la app hasta ahora). Toma foco y abre el
+  // dropdown desde cualquier página, sin importar dónde esté el foco actual
+  // — ese es justamente el propósito del atajo, así que no se filtra por
+  // "ya hay algo enfocado" como si fuera un caso a evitar.
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setIsOpen(true);
+      }
+    }
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
 
   const trimmedQuery = query.trim();
   const showingResults = trimmedQuery.length >= MIN_QUERY_LENGTH;

@@ -52,18 +52,18 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
       <div
         inert={!open}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col gap-1 bg-surface-1 p-4 shadow-[var(--elevation-lg)]",
+          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col gap-1 bg-[var(--sidebar-bg)] p-4 shadow-[var(--elevation-lg)]",
           "transition-transform duration-300 ease-[var(--ease-out)]",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="mb-4 flex items-center justify-between">
-          <Logo />
+          <Logo size="sm" inverted />
           <button
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Cerrar menú"
-            className="flex size-8 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2"
+            className="flex size-8 items-center justify-center rounded-md text-neutral-400 hover:bg-white/10 hover:text-white"
           >
             <X className="size-4" aria-hidden="true" />
           </button>
@@ -71,7 +71,7 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
         <nav className="flex flex-col gap-1 overflow-y-auto">
           {groups.map((group) => (
             <div key={group.category} className="flex flex-col gap-1">
-              <p role="presentation" className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 first:pt-0">
+              <p role="presentation" className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 first:pt-0">
                 {group.category}
               </p>
               {group.items.map((item) => {
@@ -87,12 +87,12 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
                     }}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                      "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium",
                       item.comingSoon
-                        ? "cursor-default text-neutral-400"
+                        ? "cursor-default text-neutral-600"
                         : isActive
-                          ? "bg-surface-2 text-foreground"
-                          : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+                          ? "bg-[var(--sidebar-accent)] text-[var(--on-accent)] shadow-[var(--elevation-glow-accent)]"
+                          : "text-neutral-400 hover:bg-[var(--sidebar-accent)]/12 hover:text-neutral-100",
                     )}
                   >
                     <Icon className="size-[18px] shrink-0" aria-hidden="true" />
@@ -113,8 +113,8 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
             </div>
           ))}
         </nav>
-        <div className="mt-auto flex items-center justify-between border-t border-border-default pt-3">
-          <span className="text-sm text-neutral-500">Tema</span>
+        <div className="mt-auto flex items-center justify-between border-t border-white/10 pt-3">
+          <span className="text-sm text-neutral-400">Tema</span>
           <ThemeToggle />
         </div>
       </div>

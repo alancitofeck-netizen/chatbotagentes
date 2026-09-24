@@ -40,12 +40,16 @@ export interface QuickAction {
  * es una lista plana que cualquier módulo nuevo puede sumar una entrada a,
  * no un builder de comandos por módulo. Cada ruta lee `?crear=1` en el
  * módulo destino para auto-abrir su propio formulario de alta (ver
- * ContactsShell/PoliciesBoardShell/AutomationsShell) — "Nueva tarea" no
- * tiene ese soporte todavía porque Tareas no tiene un punto de alta a nivel
- * global (las tareas viven dentro de un grupo/lista), así que solo navega. */
+ * ContactsShell/PoliciesBoardShell/AutomationsShell/CrmBoardShell/
+ * CalendarShell) — "Nueva tarea" no tiene ese soporte todavía porque Tareas
+ * no tiene un punto de alta a nivel global (las tareas viven dentro de un
+ * grupo/lista), así que solo navega. */
 export const QUICK_ACTIONS: QuickAction[] = [
+  { id: "new-lead", label: "Nuevo lead", icon: "Kanban", route: "/crm?crear=1" },
   { id: "new-contact", label: "Nuevo cliente", icon: "UserPlus", route: "/inbox/contactos?crear=1" },
   { id: "new-policy", label: "Nueva póliza", icon: "FileCheck2", route: "/polizas?crear=1" },
+  { id: "new-event", label: "Agendar reunión", icon: "CalendarDays", route: "/calendar?crear=1" },
   { id: "new-automation", label: "Nueva automatización", icon: "Zap", route: "/automatizaciones?crear=1" },
   { id: "new-task", label: "Nueva tarea", icon: "ListTodo", route: "/tasks" },
+  { id: "ask-assistant", label: "Preguntarle al Asistente", icon: "Bot", route: "/asistente" },
 ];
