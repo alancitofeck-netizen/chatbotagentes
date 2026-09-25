@@ -42,6 +42,25 @@ function sanitizeGvizDates(text: string): string {
   });
 }
 
+/** El caso real (confirmado contra una hoja de verdad, no solo lo
+ * documentado): gviz devuelve las celdas de fecha con `v` como un STRING
+ * válido que contiene literalmente el texto `"Date(2026,8,24,22,44,11)"`
+ * — JSON perfectamente válido (por eso `sanitizeGvizDates` de arriba, que
+ * apunta al literal SIN comillas, no hacía nada acá), pero el texto en sí
+ * no es una fecha parseable — `new Date("Date(...)")` da Invalid Date, así
+ * que la fila se descartaba entera por "sin fecha válida". Lo extraemos a
+ * mano y lo devolvemos en el mismo formato sin ambigüedad que usa
+ * sanitizeGvizDates. */
+function parseGvizDateString(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const m = v.match(/^Date\((\d+(?:,\s*-?\d+)*)\)$/);
+  if (!m) return null;
+  const parts = m[1].split(",").map((n) => parseInt(n.trim(), 10));
+  const [y, mo = 0, d = 1, h = 0, mi = 0, s = 0] = parts;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${y}-${pad(mo + 1)}-${pad(d)} ${pad(h)}:${pad(mi)}:${pad(s)}`;
+}
+
 interface GvizCell {
   v?: unknown;
   f?: string;
@@ -127,7 +146,7 @@ export async function GET(request: NextRequest) {
       // (texto, moneda), .f suele ser más legible y sigue siendo texto plano.
       const isDateCol = dateTypes.has(cols[i]?.type ?? "");
       record[header] = isDateCol
-        ? (cell?.v != null ? String(cell.v) : (cell?.f ?? ""))
+        ? (parseGvizDateString(cell?.v) ?? cell?.f ?? "")
         : (cell?.f ?? (cell?.v != null ? String(cell.v) : ""));
     });
     return record;
