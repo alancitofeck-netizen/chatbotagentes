@@ -22,6 +22,23 @@ function extractSheetRef(rawUrl: string): { sheetId: string; gid: string | null 
   return { sheetId: match[1], gid: gidFromQuery ?? gidFromHash };
 }
 
+/** Bug conocido del endpoint gviz: una celda de tipo Fecha real (no texto)
+ * viene serializada como el literal `Date(2026,8,24)` SIN comillas — texto
+ * JS válido, pero JSON inválido, así que `JSON.parse` revienta apenas la
+ * hoja tiene una sola celda de fecha (el caso normal para una columna
+ * "Fecha" real). La arreglamos antes de parsear, convirtiendo cada
+ * `Date(y,m,d[,h,mi,s])` en un string ISO entre comillas — igual de válido
+ * como JSON, y ya no hace falta: preferimos `cell.f` (el valor formateado,
+ * siempre texto plano) en el resto del archivo de todos modos. */
+function sanitizeGvizDates(text: string): string {
+  return text.replace(/new Date\((\d+(?:,\s*-?\d+)*)\)/g, (_match, args: string) => {
+    const parts = args.split(",").map((n) => parseInt(n.trim(), 10));
+    const [y, mo = 0, d = 1, h = 0, mi = 0, s = 0] = parts;
+    const iso = new Date(y, mo, d, h, mi, s).toISOString();
+    return JSON.stringify(iso);
+  });
+}
+
 interface GvizCell {
   v?: unknown;
   f?: string;
@@ -88,7 +105,7 @@ export async function GET(request: NextRequest) {
 
   let parsed: GvizResponse;
   try {
-    parsed = JSON.parse(wrapped[1]);
+    parsed = JSON.parse(sanitizeGvizDates(wrapped[1]));
   } catch {
     return NextResponse.json({ error: "La hoja devolvió un formato inesperado." }, { status: 502 });
   }
