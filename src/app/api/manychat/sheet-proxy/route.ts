@@ -27,15 +27,18 @@ function extractSheetRef(rawUrl: string): { sheetId: string; gid: string | null 
  * JS válido, pero JSON inválido, así que `JSON.parse` revienta apenas la
  * hoja tiene una sola celda de fecha (el caso normal para una columna
  * "Fecha" real). La arreglamos antes de parsear, convirtiendo cada
- * `Date(y,m,d[,h,mi,s])` en un string ISO entre comillas — igual de válido
- * como JSON, y ya no hace falta: preferimos `cell.f` (el valor formateado,
- * siempre texto plano) en el resto del archivo de todos modos. */
+ * `Date(y,m,d[,h,mi,s])` en un string "YYYY-MM-DD HH:mm:ss" entre comillas
+ * — sin 'Z' ni offset a propósito, para que el parser del dashboard
+ * (parseDate() en dashboardTemplate.ts) tome la rama que interpreta
+ * año-mes-día sin ambigüedad, en vez de cell.f (que Google formatea según
+ * el idioma/región de la hoja — día/mes vs. mes/día — y llevaba a
+ * fechas mal interpretadas, ver mapRow() más abajo). */
 function sanitizeGvizDates(text: string): string {
   return text.replace(/new Date\((\d+(?:,\s*-?\d+)*)\)/g, (_match, args: string) => {
     const parts = args.split(",").map((n) => parseInt(n.trim(), 10));
     const [y, mo = 0, d = 1, h = 0, mi = 0, s = 0] = parts;
-    const iso = new Date(y, mo, d, h, mi, s).toISOString();
-    return JSON.stringify(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return JSON.stringify(`${y}-${pad(mo + 1)}-${pad(d)} ${pad(h)}:${pad(mi)}:${pad(s)}`);
   });
 }
 
@@ -45,7 +48,7 @@ interface GvizCell {
 }
 interface GvizResponse {
   table?: {
-    cols?: { label?: string }[];
+    cols?: { label?: string; type?: string }[];
     rows?: { c?: (GvizCell | null)[] }[];
   };
 }
@@ -112,12 +115,20 @@ export async function GET(request: NextRequest) {
 
   const cols = parsed.table?.cols ?? [];
   const headers = cols.map((c, i) => c.label?.trim() || `col${i + 1}`);
+  const dateTypes = new Set(["date", "datetime", "timeofday"]);
   const rows = (parsed.table?.rows ?? []).map((row) => {
     const record: Record<string, string> = {};
     (row.c ?? []).forEach((cell, i) => {
       const header = headers[i];
       if (!header) return;
-      record[header] = cell?.f ?? (cell?.v != null ? String(cell.v) : "");
+      // Para columnas de fecha, el valor crudo (ya saneado arriba a
+      // "YYYY-MM-DD HH:mm:ss") es más confiable que el formateado (.f),
+      // que varía según el idioma/región de la hoja — para todo lo demás
+      // (texto, moneda), .f suele ser más legible y sigue siendo texto plano.
+      const isDateCol = dateTypes.has(cols[i]?.type ?? "");
+      record[header] = isDateCol
+        ? (cell?.v != null ? String(cell.v) : (cell?.f ?? ""))
+        : (cell?.f ?? (cell?.v != null ? String(cell.v) : ""));
     });
     return record;
   });
