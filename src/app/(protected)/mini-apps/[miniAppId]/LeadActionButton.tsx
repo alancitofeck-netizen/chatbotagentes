@@ -3,12 +3,13 @@ import type { ButtonHTMLAttributes } from "react";
 import { LoaderCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
-type Variant = "primary" | "secondary" | "confirmed";
+type Variant = "primary" | "secondary" | "confirmed" | "danger";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary: "bg-gradient-to-r from-accent-500 to-primary-600 text-white hover:brightness-110",
   secondary: "border border-border-default bg-surface-2 text-foreground hover:bg-surface-3",
   confirmed: "border border-success-strong/30 bg-success-strong/10 text-success-strong cursor-default",
+  danger: "bg-transparent text-error-strong hover:bg-error-bg",
 };
 
 interface LeadActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -17,11 +18,12 @@ interface LeadActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> 
   icon?: React.ReactNode;
 }
 
-/** Mismas 3 apariencias que antes vivían como <Button variant="secondary">
+/** Mismas apariencias que antes vivían como <Button variant="secondary">
  * sueltos — misma acción/lógica del caller, solo el estilo cambia (ver
  * LeadDetailDrawer.tsx). `variant="confirmed"` es un estado, no un botón
  * clickeable (mismo `disabled` que ya usaba el drawer para "Ya es
- * Contacto"/"Ya está en el Pipeline"). */
+ * Contacto"/"Ya está en el Pipeline"). `variant="danger"` es para "Eliminar
+ * lead" — mismos tokens que <Button variant="destructive">. */
 export const LeadActionButton = forwardRef<HTMLButtonElement, LeadActionButtonProps>(
   ({ variant = "secondary", loading = false, icon, disabled, className, children, ...props }, ref) => {
     const isConfirmed = variant === "confirmed";

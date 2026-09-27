@@ -71,7 +71,7 @@ export function MiniAppDetailShell({
 
       <div className="px-4 sm:px-6 lg:px-8">
         {view === "dashboard" && <DashboardTab leads={leads} visitsCount={visitsCount} templateKey={miniApp.templateKey} />}
-        {view === "leads" && <LeadsTab miniApp={miniApp} leads={leads} members={members} onChanged={refetchLeads} />}
+        {view === "leads" && <LeadsTab miniApp={miniApp} leads={leads} members={members} canManage={canManage} onChanged={refetchLeads} />}
         {view === "configuracion" && <ConfiguracionTab miniApp={miniApp} members={members} canManage={canManage} />}
         {view === "analiticas" && <AnaliticasTab miniAppId={miniApp.id} />}
         {view === "acceso" && <AccesoTab miniAppId={miniApp.id} members={members} />}

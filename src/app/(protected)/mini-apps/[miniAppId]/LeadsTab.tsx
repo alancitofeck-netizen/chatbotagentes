@@ -12,11 +12,13 @@ export function LeadsTab({
   miniApp,
   leads,
   members,
+  canManage,
   onChanged,
 }: {
   miniApp: MiniAppDetail;
   leads: MiniAppLeadRow[];
   members: WorkspaceMemberOption[];
+  canManage: boolean;
   onChanged: () => void;
 }) {
   const [search, setSearch] = useState("");
@@ -85,6 +87,7 @@ export function LeadsTab({
         <LeadDetailDrawer
           leadId={selectedLeadId}
           members={members}
+          canManage={canManage}
           onClose={() => setSelectedLeadId(null)}
           onChanged={onChanged}
         />

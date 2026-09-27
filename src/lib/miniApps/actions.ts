@@ -382,6 +382,32 @@ export async function updateMiniAppLeadStatus(leadId: string, status: MiniAppLea
   revalidateMiniAppsPaths(data?.mini_app_id as string | undefined);
 }
 
+/** Borra un lead de la bandeja de una mini app — irreversible, por eso
+ * mismo gate (owner/admin) que deleteMiniApp/regenerateApiKey, reforzado
+ * además por la policy "mini_app_leads_delete" (0185_mini_app_leads_delete.sql;
+ * hasta esa migración la tabla no tenía NINGUNA policy de delete, así que el
+ * default-deny de RLS bloqueaba esto en silencio incluso con el rol
+ * correcto). No borra el contacto/oportunidad que el lead haya generado —
+ * convertMiniAppLeadToContact/moveMiniAppLeadToPipeline ya son datos del CRM
+ * por derecho propio en ese punto, independientes del lead crudo. */
+export async function deleteMiniAppLead(leadId: string): Promise<void> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  await assertModuleEnabled(workspaceId, "mini_apps");
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("mini_app_leads")
+    .delete()
+    .eq("id", leadId)
+    .eq("workspace_id", workspaceId)
+    .select("mini_app_id")
+    .single();
+  if (error) throw new Error("No se pudo eliminar el lead.");
+
+  revalidateMiniAppsPaths(data?.mini_app_id as string | undefined);
+}
+
 /** Contact-only conversion — deliberately does NOT create an opportunity
  * (that's the separate "Mover a Pipeline" action below). Mirrors the same
  * upsert-by-phone shape createOpportunity uses for its own contact step

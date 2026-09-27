@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowLeftRight, MessageCircle } from "lucide-react";
+import { Sparkles, ArrowLeftRight, MessageCircle, Trash2 } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/components/toast/toast";
 import type { MiniAppLeadDetail, MiniAppDetail } from "@/lib/miniApps/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
@@ -14,6 +15,7 @@ import {
   moveMiniAppLeadToPipeline,
   assignMiniAppLeadAdvisor,
   startMiniAppLeadConversation,
+  deleteMiniAppLead,
 } from "@/lib/miniApps/actions";
 import { normalizeMiniAppLeadResponses } from "@/components/responseSummary/normalizeMiniAppLeadResponses";
 import { SimulationMetricCard } from "@/components/responseSummary/SimulationMetricCard";
@@ -25,17 +27,21 @@ import { LeadActionButton } from "./LeadActionButton";
 export function LeadDetailDrawer({
   leadId,
   members,
+  canManage,
   onClose,
   onChanged,
 }: {
   leadId: string;
   members: WorkspaceMemberOption[];
+  canManage: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
   const [lead, setLead] = useState<MiniAppLeadDetail | null>(null);
   const [miniApp, setMiniApp] = useState<MiniAppDetail | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     getMiniAppLeadDetailAction(leadId).then(setLead);
@@ -98,6 +104,23 @@ export function LeadDetailDrawer({
         refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo iniciar la conversación.");
+      }
+    });
+  }
+
+  function handleDelete() {
+    setIsDeleting(true);
+    startTransition(async () => {
+      try {
+        await deleteMiniAppLead(leadId);
+        toast.success("Lead eliminado.");
+        setConfirmingDelete(false);
+        onClose();
+        onChanged();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo eliminar el lead.");
+      } finally {
+        setIsDeleting(false);
       }
     });
   }
@@ -180,9 +203,29 @@ export function LeadDetailDrawer({
             <Link href="/inbox" className="text-center text-xs text-accent-600 hover:text-accent-700 hover:underline">
               Ver en el Inbox →
             </Link>
+
+            {canManage && (
+              <>
+                <div className="my-1 h-px bg-border-default" />
+                <LeadActionButton variant="danger" icon={<Trash2 className="size-4" aria-hidden="true" />} onClick={() => setConfirmingDelete(true)}>
+                  Eliminar lead
+                </LeadActionButton>
+              </>
+            )}
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="¿Eliminar este lead?"
+        description="Se borra de la bandeja de la mini app y no se puede deshacer. Si ya lo convertiste a Contacto u Oportunidad, esos registros del CRM no se ven afectados."
+        confirmLabel="Eliminar lead"
+        danger
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmingDelete(false)}
+      />
     </Sheet>
   );
 }
