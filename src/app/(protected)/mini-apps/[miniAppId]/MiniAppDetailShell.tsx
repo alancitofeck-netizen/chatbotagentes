@@ -37,6 +37,10 @@ export function MiniAppDetailShell({
 }) {
   const searchParams = useSearchParams();
   const [leads, setLeads] = useState(initialLeads);
+  // Bumping esto remonta ConfiguracionTab desde cero — así "Descartar" no
+  // tiene que resetear a mano cada uno de sus ~60 campos de estado, vuelve
+  // a montar con los mismos valores iniciales de `miniApp` (que no cambió).
+  const [configResetKey, setConfigResetKey] = useState(0);
 
   const isContentCalendar = miniApp.templateKey === "content_calendar";
   const TABS: { key: View; label: string }[] = [
@@ -79,7 +83,15 @@ export function MiniAppDetailShell({
         {view === "simulaciones" && (
           <SimulacionesTab miniApp={miniApp} leads={leads} members={members} canManage={canManage} ownMemberId={ownMemberId} onChanged={refetchLeads} />
         )}
-        {view === "configuracion" && <ConfiguracionTab miniApp={miniApp} members={members} canManage={canManage} />}
+        {view === "configuracion" && (
+          <ConfiguracionTab
+            key={configResetKey}
+            miniApp={miniApp}
+            members={members}
+            canManage={canManage}
+            onDiscard={() => setConfigResetKey((k) => k + 1)}
+          />
+        )}
         {view === "analiticas" && <AnaliticasTab miniAppId={miniApp.id} leads={leads} />}
         {view === "acceso" && <AccesoTab miniAppId={miniApp.id} members={members} />}
         {view === "contenido" && contentCalendar && <ContentCalendarTab initialData={contentCalendar} canEdit={canEditContent} />}

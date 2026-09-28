@@ -16,6 +16,7 @@ import { isValidHexColor } from "@/lib/miniApps/paletteEngine";
 import { DEFAULT_ANNUAL_RETURN_RATE_PCT } from "@/lib/miniApps/financialEngine";
 import { LogoCropDialog } from "../LogoCropDialog";
 import { MiniAppPalettePreview } from "../MiniAppPalettePreview";
+import { MiniAppConfigPreview } from "../MiniAppConfigPreview";
 import { LINKED_APP_TYPE_OPTIONS, LINKED_APP_ICON_OPTIONS, DEFAULT_LINKED_APP_ICON, type LinkedAppType } from "@/lib/miniApps/linkedAppOptions";
 import {
   DEFAULT_DIAGNOSTICO_AGENTE,
@@ -86,10 +87,17 @@ export function ConfiguracionTab({
   miniApp,
   members,
   canManage,
+  onDiscard,
 }: {
   miniApp: MiniAppDetail;
   members: WorkspaceMemberOption[];
   canManage: boolean;
+  /** Descartar = remontar este componente desde cero (ver el `key` que le
+   * pasa MiniAppDetailShell) — mucho más simple y confiable que resetear a
+   * mano cada uno de los ~60 campos de estado de las 12 plantillas: todos
+   * sus `useState(miniApp.…)` ya vuelven a leer el valor original solo con
+   * volver a montar. */
+  onDiscard: () => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState(miniApp.name);
@@ -332,17 +340,11 @@ export function ConfiguracionTab({
   const sdkSnippet = `<script src="${sdkOrigin}/api/public/sdk.js"></script>\n<script>\n  GrowthLink.init({\n    appId: "${miniApp.slug}",\n    apiKey: "<tu-api-key>",\n  });\n</script>`;
   const advancedSdkSnippet = `<!-- Uso avanzado (opcional) — por defecto cualquier <form> o botón\n     "Guardar/Continuar/Enviar/Calcular/Finalizar/..." ya sincroniza solo. -->\n<script>\n  // Capturar un formulario/contenedor puntual a mano:\n  GrowthLink.captureForm(document.querySelector("#miFormulario"));\n\n  // O enviar un lead con forma fija:\n  GrowthLink.captureLead({\n    name: "Juan Pérez",\n    phone: "5215512345678",\n    email: "juan@ejemplo.com",\n    company: "Acme",\n    notes: "Interesado en el plan premium",\n  });\n</script>`;
 
-  function handleSave() {
-    startTransition(async () => {
-      try {
-        await updateMiniApp(miniApp.id, {
-          name,
-          description,
-          assignedAgentId: assignedAgentId || null,
-          allowedOrigins: allowedOrigins.split(/[\n,]/).map((o) => o.trim()).filter(Boolean),
-          externalUrl,
-          status,
-          config: isSimulador
+  /** Extraído del cuerpo de handleSave para poder llamarlo también desde el
+   * chequeo de "cambios sin guardar" (ver isDirty más abajo) sin duplicar
+   * este ternario de 200 líneas. */
+  function buildConfig() {
+    return isSimulador
             ? {
                 annualReturnRatePct,
                 showIngresoActual,
@@ -513,8 +515,55 @@ export function ConfiguracionTab({
                                       anio: cfAnio,
                                     },
                                   }
-                                : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge },
-        });
+                                : { whatsappAsesor, avisoPrivacidadUrl, licenseBadge };
+  }
+
+  function buildTopLevel() {
+    return {
+      name,
+      description,
+      assignedAgentId: assignedAgentId || null,
+      allowedOrigins: allowedOrigins.split(/[\n,]/).map((o) => o.trim()).filter(Boolean),
+      externalUrl,
+      status,
+    };
+  }
+
+  // "Sin guardar" (barra inferior) — comparado contra una foto tomada una
+  // sola vez al montar (con los valores iniciales, que vienen de miniApp),
+  // no contra miniApp.config directo: así no importa en qué orden Postgres
+  // devuelva las claves del jsonb, ambos lados de la comparación pasan por
+  // el mismo builder.
+  const [initialSnapshot] = useState(() => JSON.stringify({ topLevel: buildTopLevel(), config: buildConfig() }));
+  const isDirty = JSON.stringify({ topLevel: buildTopLevel(), config: buildConfig() }) !== initialSnapshot;
+
+  // Título de bienvenida "principal" según la plantilla, para la vista
+  // previa — cada plantilla llama distinto a su propio título, así que no
+  // hay un campo único genérico; se cae a `name` para las que no tienen uno.
+  const configPreviewTitle = isDiagnostico
+    ? diagTitulo
+    : isRetiro
+      ? retiroHeroPregunta
+      : isSolidez
+        ? solidezTitle
+        : isMetaUniversitaria
+          ? metaUniTitle
+          : isKitEmergencia
+            ? kitTitle
+            : isTestEmergencia
+              ? testTitle
+              : isDiagnosticoSalud
+                ? saludTitle
+                : isAhorroFiscal
+                  ? afTitle
+                  : isControlFinanciero
+                    ? cfTitle
+                    : name;
+
+  function handleSave() {
+    startTransition(async () => {
+      try {
+        await updateMiniApp(miniApp.id, { ...buildTopLevel(), config: buildConfig() });
         toast.success("Configuración guardada.");
         router.refresh();
       } catch (err) {
@@ -582,51 +631,76 @@ export function ConfiguracionTab({
     });
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader title="Datos generales" />
-        <div className="flex flex-col gap-4">
-          <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} />
-          <div className="grid grid-cols-2 gap-3">
-            <Select label="Agente asignado" value={assignedAgentId} onChange={(e) => setAssignedAgentId(e.target.value)}>
-              <option value="">Sin asignar</option>
-              {members.map((m) => (
-                <option key={m.memberId} value={m.memberId}>
-                  {m.fullName}
-                </option>
-              ))}
-            </Select>
-            <Select label="Estado" value={status} onChange={(e) => setStatus(e.target.value as "active" | "inactive")}>
-              <option value="active">Activa</option>
-              <option value="inactive">Inactiva</option>
-            </Select>
-          </div>
-          {!isUploadedApp && (
-            <Input
-              label={isLinkedApp ? "URL de la aplicación externa" : "URL donde vive la mini app"}
-              value={externalUrl}
-              onChange={(e) => setExternalUrl(e.target.value)}
-            />
-          )}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS)</label>
-            <textarea
-              value={allowedOrigins}
-              onChange={(e) => setAllowedOrigins(e.target.value)}
-              rows={3}
-              className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
-            />
-          </div>
-          <Button onClick={handleSave} loading={isPending} className="self-start">
-            Guardar cambios
-          </Button>
-        </div>
-      </Card>
+  const SECTIONS = [
+    { key: "general" as const, label: "Datos generales" },
+    { key: "marca" as const, label: "Marca y motor financiero" },
+    { key: "publicacion" as const, label: "Publicación e integraciones" },
+    ...(canManage ? [{ key: "riesgo" as const, label: "Zona de riesgo" }] : []),
+  ];
+  const [activeSection, setActiveSection] = useState<(typeof SECTIONS)[number]["key"]>("general");
 
-      <Card>
-        <CardHeader title="Marca y motor financiero" />
+  return (
+    <div className="flex flex-col gap-4 pb-20">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <nav className="flex shrink-0 flex-row gap-1 overflow-x-auto lg:w-52 lg:flex-col lg:overflow-visible">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setActiveSection(s.key)}
+              className={`shrink-0 rounded-lg px-3 py-2 text-left text-sm font-medium whitespace-nowrap ${
+                activeSection === s.key ? "bg-accent-500/15 text-accent-700" : "text-neutral-500 hover:bg-surface-2"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          {activeSection === "general" && (
+            <Card>
+              <CardHeader title="Datos generales" />
+              <div className="flex flex-col gap-4">
+                <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Select label="Agente asignado" value={assignedAgentId} onChange={(e) => setAssignedAgentId(e.target.value)}>
+                    <option value="">Sin asignar</option>
+                    {members.map((m) => (
+                      <option key={m.memberId} value={m.memberId}>
+                        {m.fullName}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select label="Estado" value={status} onChange={(e) => setStatus(e.target.value as "active" | "inactive")}>
+                    <option value="active">Activa</option>
+                    <option value="inactive">Inactiva</option>
+                  </Select>
+                </div>
+                {!isUploadedApp && (
+                  <Input
+                    label={isLinkedApp ? "URL de la aplicación externa" : "URL donde vive la mini app"}
+                    value={externalUrl}
+                    onChange={(e) => setExternalUrl(e.target.value)}
+                  />
+                )}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">Dominios permitidos (CORS)</label>
+                  <textarea
+                    value={allowedOrigins}
+                    onChange={(e) => setAllowedOrigins(e.target.value)}
+                    rows={3}
+                    className="rounded-md border border-border-default bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500"
+                  />
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {activeSection === "marca" && (
+          <Card>
+            <CardHeader title="Marca y motor financiero" />
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-foreground">Logo</label>
@@ -1291,36 +1365,39 @@ export function ConfiguracionTab({
             </>
           )}
           <p className="text-xs text-neutral-500">
-            Los cambios de esta sección (excepto logo y color, que se guardan al instante) se aplican al tocar &quot;Guardar cambios&quot; en Datos generales.
+            Los cambios de esta sección (excepto logo y color, que se guardan al instante) se aplican al tocar &quot;Guardar cambios&quot;, abajo.
           </p>
         </div>
       </Card>
+          )}
 
-      <Card>
-        <CardHeader title="Página pública" />
-        <div className="flex flex-col gap-3">
-          <CopyableLine value={publicUrl} />
-          <p className="text-xs text-neutral-500">Esta es la URL que le compartís a tus prospectos.</p>
-        </div>
-      </Card>
+          {activeSection === "publicacion" && (
+            <>
+          <Card>
+            <CardHeader title="Página pública" />
+            <div className="flex flex-col gap-3">
+              <CopyableLine value={publicUrl} />
+              <p className="text-xs text-neutral-500">Esta es la URL que le compartís a tus prospectos.</p>
+            </div>
+          </Card>
 
-      {isUploadedApp && (
-        <Card>
-          <CardHeader title="Aplicación alojada" />
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-foreground">
-              Versión actual: <strong>v{miniApp.config.bundleVersion ?? 0}</strong> — archivo principal: {miniApp.config.indexPath}
-            </p>
-            <p className="text-xs text-neutral-500">
-              Subí un nuevo .html o .zip para reemplazar la versión publicada — la URL pública, los leads y las estadísticas se mantienen intactos.
-              Cada archivo que subís (este o el de arriba) se publica con el snippet del SDK ya insertado automáticamente y una API Key nueva — no
-              hace falta que edites tu HTML a mano. Si esta app nunca capturó leads correctamente, alcanza con volver a subir el mismo archivo, o con
-              &ldquo;Regenerar API Key&rdquo; más abajo, para repararla.
-            </p>
-            <BundleDropzone ensureMiniAppId={async () => miniApp.id} onUploaded={() => { toast.success("Nueva versión publicada."); router.refresh(); }} onPreview={setPreviewUrl} />
-          </div>
-        </Card>
-      )}
+          {isUploadedApp && (
+            <Card>
+              <CardHeader title="Aplicación alojada" />
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-foreground">
+                  Versión actual: <strong>v{miniApp.config.bundleVersion ?? 0}</strong> — archivo principal: {miniApp.config.indexPath}
+                </p>
+                <p className="text-xs text-neutral-500">
+                  Subí un nuevo .html o .zip para reemplazar la versión publicada — la URL pública, los leads y las estadísticas se mantienen intactos.
+                  Cada archivo que subís (este o el de arriba) se publica con el snippet del SDK ya insertado automáticamente y una API Key nueva — no
+                  hace falta que edites tu HTML a mano. Si esta app nunca capturó leads correctamente, alcanza con volver a subir el mismo archivo, o con
+                  &ldquo;Regenerar API Key&rdquo; más abajo, para repararla.
+                </p>
+                <BundleDropzone ensureMiniAppId={async () => miniApp.id} onUploaded={() => { toast.success("Nueva versión publicada."); router.refresh(); }} onPreview={setPreviewUrl} />
+              </div>
+            </Card>
+          )}
 
       <Card>
         <CardHeader title="Endpoint (integraciones externas avanzadas)" />
@@ -1358,6 +1435,35 @@ export function ConfiguracionTab({
           </details>
         </div>
       </Card>
+            </>
+          )}
+
+          {/* Owner/admin only — mirrors the sitewide "el botón ni siquiera debe
+           * renderizarse" rule for manager-gated actions (same pattern
+           * CrmAtsTabStrip.tsx uses for "Agentes"/ATS), rather than letting an
+           * agent hit requireManagerRole's thrown error, which reaches el
+           * cliente redactado en producción (ver la nota de memoria sobre
+           * Server Action error redaction). */}
+          {activeSection === "riesgo" && canManage && (
+            <Card>
+              <CardHeader title="Zona de riesgo" />
+              <Button variant="destructive" onClick={handleDelete} loading={isPending}>
+                Eliminar mini app
+              </Button>
+            </Card>
+          )}
+        </div>
+
+        <aside className="w-full shrink-0 lg:w-72">
+          <MiniAppConfigPreview
+            name={name}
+            logoUrl={logoUrl}
+            primaryColor={primaryColor}
+            secondaryColor={secondaryColor}
+            welcomeTitle={configPreviewTitle}
+          />
+        </aside>
+      </div>
 
       {previewUrl && <BundlePreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />}
 
@@ -1372,19 +1478,18 @@ export function ConfiguracionTab({
         />
       )}
 
-      {/* Owner/admin only — mirrors the sitewide "el botón ni siquiera debe
-       * renderizarse" rule for manager-gated actions (same pattern
-       * CrmAtsTabStrip.tsx uses for "Agentes"/ATS), rather than letting an
-       * agent hit requireManagerRole's thrown error, which reaches the
-       * client redacted in production (see the memory note on Server Action
-       * error redaction). */}
-      {canManage && (
-        <Card>
-          <CardHeader title="Zona de riesgo" />
-          <Button variant="destructive" onClick={handleDelete} loading={isPending}>
-            Eliminar mini app
-          </Button>
-        </Card>
+      {isDirty && (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-border-default bg-surface-1 px-4 py-3 shadow-[var(--elevation-lg)] sm:px-6 lg:px-8">
+          <p className="text-sm text-neutral-500">Tenés cambios sin guardar.</p>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onDiscard}>
+              Descartar
+            </Button>
+            <Button onClick={handleSave} loading={isPending}>
+              Guardar cambios
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

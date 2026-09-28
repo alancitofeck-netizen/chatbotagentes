@@ -35,7 +35,7 @@ export function getResultFieldSpec(templateKey: MiniAppTemplateKey): ResultField
   return RESULT_FIELD_BY_TEMPLATE[templateKey] ?? null;
 }
 
-/** Mismo formateo usado por ResumenTab/MiniAppLeadKanbanCard/SimulacionesTab
+/** Mismo formateo usado por ResumenTab/LeadsTab/LeadQuickView/SimulacionesTab
  * — un solo lugar para currency (siempre MXN, motores fiscales/de retiro
  * mexicanos) vs. percent (scores 0-100 de los diagnósticos). */
 export function formatResultValue(value: number, format: ResultFieldFormat): string {
