@@ -825,6 +825,196 @@ export async function getMiniAppResumen(workspaceId: string, miniAppId: string, 
   };
 }
 
+// ---------------------------------------------------------------------------
+// Analíticas (Fase 4) — comparativas de período, tasas, y el embudo de pasos
+// real de mini_app_events (hoy solo instrumentado para Ahorro Fiscal, ver
+// ahorroFiscalTemplate.ts). El "leads por origen" ya vive en Resumen
+// (getMiniAppResumen) — no se repite acá. El mapa de calor y la distribución
+// por rango de resultado se calculan en el cliente (Simulaciones ya hace lo
+// mismo) a partir del array de leads que la página ya tiene cargado, sin
+// consulta propia.
+// ---------------------------------------------------------------------------
+
+async function getVisitsByDay(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  miniAppId: string,
+  rangeStartISO: string,
+  rangeEndISO: string,
+): Promise<{ date: string; count: number }[]> {
+  const { data } = await supabase
+    .from("mini_app_visits")
+    .select("created_at")
+    .eq("mini_app_id", miniAppId)
+    .gte("created_at", rangeStartISO)
+    .lte("created_at", rangeEndISO);
+
+  const countsByDay = new Map<string, number>();
+  for (const row of data ?? []) {
+    const day = (row.created_at as string).slice(0, 10);
+    countsByDay.set(day, (countsByDay.get(day) ?? 0) + 1);
+  }
+  return [...countsByDay.entries()].map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export interface MiniAppAnalyticsPoint {
+  date: string;
+  visits: number;
+  leads: number;
+  /** Alineado por posición dentro del período (día 1 con día 1, no por fecha
+   * calendario real) — así se puede dibujar como línea punteada superpuesta
+   * sobre el mismo eje, igual que el mockup. `null` cuando no se pidió
+   * comparar o el período anterior tiene menos días que el actual. */
+  prevVisits: number | null;
+  prevLeads: number | null;
+}
+
+export interface MiniAppAnalyticsData {
+  series: MiniAppAnalyticsPoint[];
+  rates: {
+    completionPct: number | null;
+    visitToLeadPct: number | null;
+    leadToClientPct: number | null;
+    avgDurationSeconds: number | null;
+  };
+  hasStepTracking: boolean;
+  abandonment: { step: number; label: string; count: number }[];
+}
+
+export async function getMiniAppAnalytics(
+  workspaceId: string,
+  miniAppId: string,
+  rangeStartISO: string,
+  rangeEndISO: string,
+  comparePrevious: boolean,
+): Promise<MiniAppAnalyticsData> {
+  const supabase = await createClient();
+
+  const [
+    visitsSeries,
+    leadsSeries,
+    { count: visitsCount },
+    { data: leadsRows },
+    { count: convertedCount },
+    { data: durationRows },
+    { data: stepRows },
+    { count: totalEventsCount },
+    { data: completedRows },
+  ] = await Promise.all([
+    getVisitsByDay(supabase, miniAppId, rangeStartISO, rangeEndISO),
+    getMiniAppLeadsByDay(workspaceId, miniAppId, rangeStartISO, rangeEndISO),
+    supabase.from("mini_app_visits").select("id", { count: "exact", head: true }).eq("mini_app_id", miniAppId).gte("created_at", rangeStartISO).lte("created_at", rangeEndISO),
+    supabase.from("mini_app_leads").select("id", { count: "exact" }).eq("workspace_id", workspaceId).eq("mini_app_id", miniAppId).gte("fecha", rangeStartISO).lte("fecha", rangeEndISO),
+    supabase
+      .from("mini_app_leads")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("mini_app_id", miniAppId)
+      .eq("status", "converted")
+      .gte("fecha", rangeStartISO)
+      .lte("fecha", rangeEndISO),
+    supabase
+      .from("mini_app_leads")
+      .select("duration_seconds")
+      .eq("workspace_id", workspaceId)
+      .eq("mini_app_id", miniAppId)
+      .gte("fecha", rangeStartISO)
+      .lte("fecha", rangeEndISO)
+      .not("duration_seconds", "is", null),
+    supabase
+      .from("mini_app_events")
+      .select("step, session_id, meta")
+      .eq("mini_app_id", miniAppId)
+      .eq("event_type", "step_viewed")
+      .gte("created_at", rangeStartISO)
+      .lte("created_at", rangeEndISO),
+    supabase.from("mini_app_events").select("id", { count: "exact", head: true }).eq("mini_app_id", miniAppId),
+    supabase
+      .from("mini_app_events")
+      .select("session_id")
+      .eq("mini_app_id", miniAppId)
+      .eq("event_type", "simulation_completed")
+      .gte("created_at", rangeStartISO)
+      .lte("created_at", rangeEndISO),
+  ]);
+
+  let previousVisitsSeries: { date: string; count: number }[] = [];
+  let previousLeadsSeries: { date: string; count: number }[] = [];
+  let previousDays: string[] = [];
+  if (comparePrevious) {
+    const spanMs = new Date(rangeEndISO).getTime() - new Date(rangeStartISO).getTime();
+    const prevEnd = new Date(new Date(rangeStartISO).getTime() - 1).toISOString();
+    const prevStart = new Date(new Date(rangeStartISO).getTime() - spanMs).toISOString();
+    previousDays = enumerateDays(prevStart, prevEnd);
+    [previousVisitsSeries, previousLeadsSeries] = await Promise.all([
+      getVisitsByDay(supabase, miniAppId, prevStart, prevEnd),
+      getMiniAppLeadsByDay(workspaceId, miniAppId, prevStart, prevEnd),
+    ]);
+  }
+
+  const days = enumerateDays(rangeStartISO, rangeEndISO);
+  const visitsMap = new Map(visitsSeries.map((r) => [r.date, r.count]));
+  const leadsMap = new Map(leadsSeries.map((r) => [r.date, r.count]));
+  const prevVisitsMap = new Map(previousVisitsSeries.map((r) => [r.date, r.count]));
+  const prevLeadsMap = new Map(previousLeadsSeries.map((r) => [r.date, r.count]));
+  const series: MiniAppAnalyticsPoint[] = days.map((date, i) => ({
+    date,
+    visits: visitsMap.get(date) ?? 0,
+    leads: leadsMap.get(date) ?? 0,
+    prevVisits: previousDays[i] !== undefined ? (prevVisitsMap.get(previousDays[i]) ?? 0) : null,
+    prevLeads: previousDays[i] !== undefined ? (prevLeadsMap.get(previousDays[i]) ?? 0) : null,
+  }));
+
+  const leadsCount = leadsRows?.length ?? 0;
+  const hasStepTracking = (totalEventsCount ?? 0) > 0;
+
+  const completedSessions = new Set((completedRows ?? []).map((r) => r.session_id as string));
+  const completionPct = hasStepTracking && (visitsCount ?? 0) > 0 ? (completedSessions.size / (visitsCount ?? 1)) * 100 : null;
+  const visitToLeadPct = (visitsCount ?? 0) > 0 ? (leadsCount / (visitsCount ?? 1)) * 100 : null;
+  const leadToClientPct = leadsCount > 0 ? ((convertedCount ?? 0) / leadsCount) * 100 : null;
+  const durations = (durationRows ?? []).map((r) => r.duration_seconds as number).filter((d): d is number => typeof d === "number");
+  const avgDurationSeconds = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
+
+  const stepBuckets = new Map<number, { sessions: Set<string>; label: string | null }>();
+  for (const row of stepRows ?? []) {
+    const step = row.step as number | null;
+    if (step === null) continue;
+    const bucket = stepBuckets.get(step) ?? { sessions: new Set<string>(), label: null };
+    bucket.sessions.add(row.session_id as string);
+    const meta = row.meta as { data?: { step?: unknown } } | null;
+    const stepLabel = typeof meta?.data?.step === "string" ? meta.data.step : null;
+    if (stepLabel && !bucket.label) bucket.label = stepLabel;
+    stepBuckets.set(step, bucket);
+  }
+  const abandonment = [...stepBuckets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([step, bucket]) => ({ step, label: bucket.label ? cap(bucket.label) : step === 0 ? "Abrieron la calculadora" : `Paso ${step}`, count: bucket.sessions.size }));
+
+  return {
+    series,
+    rates: { completionPct, visitToLeadPct, leadToClientPct, avgDurationSeconds },
+    hasStepTracking,
+    abandonment,
+  };
+}
+
+function enumerateDays(startISO: string, endISO: string): string[] {
+  const days: string[] = [];
+  const start = new Date(startISO);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(endISO);
+  end.setHours(0, 0, 0, 0);
+  // Tope defensivo (3 años) — un rango personalizado mal armado (fechas
+  // invertidas, etc.) no debe generar un array gigante/loop largo.
+  for (let d = new Date(start), guard = 0; d <= end && guard < 1100; d.setDate(d.getDate() + 1), guard++) {
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export interface MiniAppBranding {
   logoUrl: string | null;
   primaryColor: string;

@@ -80,7 +80,7 @@ export function MiniAppDetailShell({
           <SimulacionesTab miniApp={miniApp} leads={leads} members={members} canManage={canManage} ownMemberId={ownMemberId} onChanged={refetchLeads} />
         )}
         {view === "configuracion" && <ConfiguracionTab miniApp={miniApp} members={members} canManage={canManage} />}
-        {view === "analiticas" && <AnaliticasTab miniAppId={miniApp.id} />}
+        {view === "analiticas" && <AnaliticasTab miniAppId={miniApp.id} leads={leads} />}
         {view === "acceso" && <AccesoTab miniAppId={miniApp.id} members={members} />}
         {view === "contenido" && contentCalendar && <ContentCalendarTab initialData={contentCalendar} canEdit={canEditContent} />}
       </div>

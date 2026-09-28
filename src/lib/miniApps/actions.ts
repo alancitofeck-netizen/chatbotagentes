@@ -22,6 +22,7 @@ import {
   getMiniAppLeadsByDay,
   getMiniAppVisitsCount,
   getMiniAppResumen,
+  getMiniAppAnalytics,
   getMiniAppLeadActivity,
   getContactMiniAppOrigins,
   type MiniAppLeadFilters,
@@ -97,6 +98,18 @@ export async function getMiniAppLeadsByDayAction(miniAppId: string, preset: Date
   const { workspaceId } = await requireActiveWorkspace();
   const range = resolveDateRange(preset, customStart, customEnd);
   return getMiniAppLeadsByDay(workspaceId, miniAppId, range.start, range.end);
+}
+
+export async function getMiniAppAnalyticsAction(
+  miniAppId: string,
+  preset: DateRangePreset,
+  customStart: string | undefined,
+  customEnd: string | undefined,
+  comparePrevious: boolean,
+) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const range = resolveDateRange(preset, customStart, customEnd);
+  return getMiniAppAnalytics(workspaceId, miniAppId, range.start, range.end, comparePrevious);
 }
 
 function revalidateMiniAppsPaths(miniAppId?: string) {
