@@ -5,8 +5,7 @@ import { KanbanBoard as GenericKanbanBoard } from "@/components/kanban/KanbanBoa
 import { toast } from "@/components/toast/toast";
 import { updateMiniAppLeadStatus } from "@/lib/miniApps/actions";
 import type { MiniAppLeadRow, MiniAppLeadStatus, MiniAppTemplateKey } from "@/lib/miniApps/queries";
-import { getLeadResultValue } from "@/lib/miniApps/resultField";
-import { formatCurrency } from "@/lib/utils/format";
+import { getLeadResultValue, getResultFieldSpec, formatResultValue } from "@/lib/miniApps/resultField";
 import { MINI_APP_LEAD_VISIBLE_STAGES, MINI_APP_LEAD_DISCARDED_STAGE } from "./leadStatus";
 import { MiniAppLeadKanbanCard, type MiniAppLeadKanbanCardData } from "./MiniAppLeadKanbanCard";
 
@@ -54,8 +53,9 @@ export function MiniAppLeadsKanban({
         onOpenCard={(card) => onOpen(card.id)}
         onMove={handleMove}
         columnValueLabel={(cards) => {
+          if (getResultFieldSpec(templateKey)?.format !== "currency") return undefined;
           const total = cards.reduce((sum, c) => sum + (getLeadResultValue(templateKey, c.data) ?? 0), 0);
-          return total > 0 ? formatCurrency(total, "MXN") : undefined;
+          return total > 0 ? formatResultValue(total, "currency") : undefined;
         }}
         orientation="rows"
         cardWidth="w-[260px]"

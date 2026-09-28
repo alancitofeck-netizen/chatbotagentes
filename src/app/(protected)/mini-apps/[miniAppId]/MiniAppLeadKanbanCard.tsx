@@ -6,14 +6,10 @@ import { MessageCircle } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import type { KanbanCardBase } from "@/components/kanban/KanbanBoard";
 import type { MiniAppLeadRow, MiniAppTemplateKey } from "@/lib/miniApps/queries";
-import { getLeadResultValue, getResultFieldSpec } from "@/lib/miniApps/resultField";
-import { formatCurrency, formatRelativeTime } from "@/lib/utils/format";
+import { getLeadResultValue, getResultFieldSpec, formatResultValue } from "@/lib/miniApps/resultField";
+import { formatRelativeTime } from "@/lib/utils/format";
 
 export interface MiniAppLeadKanbanCardData extends MiniAppLeadRow, KanbanCardBase {}
-
-function formatResult(value: number, format: "currency" | "percent") {
-  return format === "currency" ? formatCurrency(value, "MXN") : `${Math.round(value)}%`;
-}
 
 export function MiniAppLeadKanbanCard({ card, templateKey, onOpen }: { card: MiniAppLeadKanbanCardData; templateKey: MiniAppTemplateKey; onOpen: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.pipelineItemId });
@@ -39,7 +35,7 @@ export function MiniAppLeadKanbanCard({ card, templateKey, onOpen }: { card: Min
 
       <div className="flex items-center justify-between gap-2">
         {spec && resultValue !== null ? (
-          <p className="font-mono text-sm font-semibold text-foreground">{formatResult(resultValue, spec.format)}</p>
+          <p className="font-mono text-sm font-semibold text-foreground">{formatResultValue(resultValue, spec.format)}</p>
         ) : (
           <span className="text-xs text-neutral-400">{card.origenApp}</span>
         )}

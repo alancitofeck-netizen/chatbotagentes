@@ -7,8 +7,7 @@ import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { MetricCard } from "@/components/responseSummary/MetricCard";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { StatusBadge } from "@/components/responseSummary/StatusBadge";
-import { formatCurrency } from "@/lib/utils/format";
-import { getLeadResultValue } from "@/lib/miniApps/resultField";
+import { getLeadResultValue, getResultFieldSpec, formatResultValue } from "@/lib/miniApps/resultField";
 import { LeadDetailDrawer } from "./LeadDetailDrawer";
 import { MiniAppLeadsKanban } from "./MiniAppLeadsKanban";
 import { MiniAppLeadFormSheet } from "./MiniAppLeadFormSheet";
@@ -51,16 +50,22 @@ export function LeadsTab({
     });
   }, [leads, search, statusFilter, originFilter, agentFilter]);
 
+  const resultSpec = getResultFieldSpec(miniApp.templateKey);
+
   const metrics = useMemo(() => {
     const total = leads.length;
     const sinContactar = leads.filter((l) => l.status === "new").length;
     const conCita = leads.filter((l) => l.status === "cita_agendada").length;
     const convertidos = leads.filter((l) => l.status === "converted").length;
-    const ahorroPipeline = leads
-      .filter((l) => l.status !== "converted" && l.status !== "discarded")
-      .reduce((sum, l) => sum + (getLeadResultValue(miniApp.templateKey, l.data) ?? 0), 0);
-    return { total, sinContactar, conCita, convertidos, ahorroPipeline };
-  }, [leads, miniApp.templateKey]);
+    // Solo tiene sentido sumar cuando el resultado es un monto (currency) —
+    // sumar puntajes (%) de distintos leads y mostrarlo como plata sería un
+    // número inventado, así que directamente no se calcula para esos casos.
+    const enPipeline =
+      resultSpec?.format === "currency"
+        ? leads.filter((l) => l.status !== "converted" && l.status !== "discarded").reduce((sum, l) => sum + (getLeadResultValue(miniApp.templateKey, l.data) ?? 0), 0)
+        : null;
+    return { total, sinContactar, conCita, convertidos, enPipeline };
+  }, [leads, miniApp.templateKey, resultSpec?.format]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -69,7 +74,7 @@ export function LeadsTab({
         <MetricCard icon={UserPlus} label="Sin contactar" value={String(metrics.sinContactar)} />
         <MetricCard icon={CalendarClock} label="Con cita" value={String(metrics.conCita)} />
         <MetricCard icon={UserCheck} label="Convertidos" value={String(metrics.convertidos)} />
-        {metrics.ahorroPipeline > 0 && <MetricCard icon={Wallet} label="En pipeline" value={formatCurrency(metrics.ahorroPipeline, "MXN")} />}
+        {metrics.enPipeline !== null && metrics.enPipeline > 0 && <MetricCard icon={Wallet} label="En pipeline" value={formatResultValue(metrics.enPipeline, "currency")} />}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

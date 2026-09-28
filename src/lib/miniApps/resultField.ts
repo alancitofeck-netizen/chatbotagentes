@@ -1,4 +1,5 @@
 import type { MiniAppTemplateKey } from "@/lib/miniApps/queries";
+import { formatCurrency } from "@/lib/utils/format";
 
 export type ResultFieldFormat = "currency" | "percent";
 
@@ -32,6 +33,13 @@ const RESULT_FIELD_BY_TEMPLATE: Partial<Record<MiniAppTemplateKey, ResultFieldSp
 
 export function getResultFieldSpec(templateKey: MiniAppTemplateKey): ResultFieldSpec | null {
   return RESULT_FIELD_BY_TEMPLATE[templateKey] ?? null;
+}
+
+/** Mismo formateo usado por ResumenTab/MiniAppLeadKanbanCard/SimulacionesTab
+ * — un solo lugar para currency (siempre MXN, motores fiscales/de retiro
+ * mexicanos) vs. percent (scores 0-100 de los diagnósticos). */
+export function formatResultValue(value: number, format: ResultFieldFormat): string {
+  return format === "currency" ? formatCurrency(value, "MXN") : `${Math.round(value)}%`;
 }
 
 function toFiniteNumber(value: unknown): number | null {

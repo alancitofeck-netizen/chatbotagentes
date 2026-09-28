@@ -10,12 +10,13 @@ import type { ContentCalendarData } from "@/lib/miniApps/contentCalendar";
 import { getMiniAppLeadsAction } from "@/lib/miniApps/actions";
 import { ResumenTab } from "./ResumenTab";
 import { LeadsTab } from "./LeadsTab";
+import { SimulacionesTab } from "./SimulacionesTab";
 import { ConfiguracionTab } from "./ConfiguracionTab";
 import { AnaliticasTab } from "./AnaliticasTab";
 import { AccesoTab } from "./AccesoTab";
 import { ContentCalendarTab } from "./ContentCalendarTab";
 
-type View = "resumen" | "leads" | "configuracion" | "analiticas" | "acceso" | "contenido";
+type View = "resumen" | "leads" | "simulaciones" | "configuracion" | "analiticas" | "acceso" | "contenido";
 
 export function MiniAppDetailShell({
   miniApp,
@@ -41,6 +42,7 @@ export function MiniAppDetailShell({
   const TABS: { key: View; label: string }[] = [
     ...(isContentCalendar ? [{ key: "contenido" as const, label: "Contenido" }] : [{ key: "resumen" as const, label: "Resumen" }]),
     ...(isContentCalendar ? [] : [{ key: "leads" as const, label: "Leads" }]),
+    ...(isContentCalendar ? [] : [{ key: "simulaciones" as const, label: "Simulaciones" }]),
     ...(isContentCalendar ? [] : [{ key: "analiticas" as const, label: "Analíticas" }]),
     { key: "configuracion", label: "Configuración" },
     ...(canManage && miniApp.isPrivate ? [{ key: "acceso" as const, label: "Acceso" }] : []),
@@ -73,6 +75,9 @@ export function MiniAppDetailShell({
         {view === "resumen" && <ResumenTab miniApp={miniApp} />}
         {view === "leads" && (
           <LeadsTab miniApp={miniApp} leads={leads} members={members} canManage={canManage} ownMemberId={ownMemberId} onChanged={refetchLeads} />
+        )}
+        {view === "simulaciones" && (
+          <SimulacionesTab miniApp={miniApp} leads={leads} members={members} canManage={canManage} ownMemberId={ownMemberId} onChanged={refetchLeads} />
         )}
         {view === "configuracion" && <ConfiguracionTab miniApp={miniApp} members={members} canManage={canManage} />}
         {view === "analiticas" && <AnaliticasTab miniAppId={miniApp.id} />}

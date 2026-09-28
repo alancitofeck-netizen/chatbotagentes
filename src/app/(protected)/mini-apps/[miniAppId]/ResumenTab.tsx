@@ -6,9 +6,9 @@ import { TrendingUp, TrendingDown, UserPlus, MessageCircle } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/responseSummary/StatusBadge";
-import { formatCurrency, formatRelativeTime } from "@/lib/utils/format";
+import { formatRelativeTime } from "@/lib/utils/format";
 import { getMiniAppResumenAction } from "@/lib/miniApps/actions";
-import { getLeadResultValue } from "@/lib/miniApps/resultField";
+import { getLeadResultValue, formatResultValue } from "@/lib/miniApps/resultField";
 import { SDK_VERSION } from "@/lib/miniApps/linkedAppOptions";
 import type { MiniAppDetail, MiniAppResumenData, MiniAppResumenPeriod } from "@/lib/miniApps/queries";
 import { LEAD_STATUS_LABEL, LEAD_STATUS_VARIANT } from "./leadStatus";
@@ -19,10 +19,6 @@ const PERIODS: { value: MiniAppResumenPeriod; label: string }[] = [
   { value: 30, label: "30 días" },
   { value: 90, label: "90 días" },
 ];
-
-function formatResult(value: number, format: "currency" | "percent") {
-  return format === "currency" ? formatCurrency(value, "MXN") : `${Math.round(value)}%`;
-}
 
 function pctChange(current: number, previous: number): number | null {
   if (previous === 0) return null; // evita "+∞%" cuando no había nada en el período anterior
@@ -161,7 +157,7 @@ export function ResumenTab({ miniApp }: { miniApp: MiniAppDetail }) {
         {data.resultField && (
           <KpiCard
             label={`${data.resultField.label} (promedio)`}
-            value={data.resultField.current !== null ? formatResult(data.resultField.current, data.resultField.format) : "—"}
+            value={data.resultField.current !== null ? formatResultValue(data.resultField.current, data.resultField.format) : "—"}
             current={data.resultField.current ?? 0}
             previous={data.resultField.previous ?? 0}
           />
@@ -237,7 +233,7 @@ export function ResumenTab({ miniApp }: { miniApp: MiniAppDetail }) {
                       <td className="py-2.5 font-medium text-foreground">{lead.nombre}</td>
                       <td className="py-2.5 text-neutral-500">{lead.origenApp}</td>
                       <td className="py-2.5 text-neutral-500">
-                        {resultValue !== null && data.resultField ? formatResult(resultValue, data.resultField.format) : "—"}
+                        {resultValue !== null && data.resultField ? formatResultValue(resultValue, data.resultField.format) : "—"}
                       </td>
                       <td className="py-2.5">
                         <StatusBadge variant={LEAD_STATUS_VARIANT[lead.status]}>{LEAD_STATUS_LABEL[lead.status]}</StatusBadge>
