@@ -47,6 +47,7 @@ import { DEFAULT_TEST_EMERGENCIA_BRAND, type TestEmergenciaBrand } from "@/lib/m
 import { DEFAULT_DIAGNOSTICO_SALUD_BRAND, type DiagnosticoSaludBrand } from "@/lib/miniApps/diagnosticoSaludDefaults";
 import { DEFAULT_AHORRO_FISCAL_BRAND, type AhorroFiscalBrand } from "@/lib/miniApps/ahorroFiscalDefaults";
 import { DEFAULT_CONTROL_FINANCIERO_BRAND, type ControlFinancieroBrand } from "@/lib/miniApps/controlFinancieroDefaults";
+import { getResultFieldSpec, averageResultValue, type ResultFieldFormat } from "@/lib/miniApps/resultField";
 
 export type MiniAppTemplateKey =
   | "simulador_retiro"
@@ -63,7 +64,7 @@ export type MiniAppTemplateKey =
   | "control_financiero_base_cero"
   | "content_calendar";
 export type MiniAppStatus = "active" | "inactive";
-export type MiniAppLeadStatus = "new" | "contacted" | "converted" | "discarded";
+export type MiniAppLeadStatus = "new" | "contacted" | "cita_agendada" | "propuesta_enviada" | "converted" | "discarded";
 
 export interface MiniAppListItem {
   id: string;
@@ -627,6 +628,197 @@ export async function getMiniAppVisitsCount(workspaceId: string, miniAppId: stri
     .eq("workspace_id", workspaceId)
     .eq("mini_app_id", miniAppId);
   return count ?? 0;
+}
+
+// ---------------------------------------------------------------------------
+// Resumen (Fase 1 del rediseño) — KPIs comparados contra el período anterior,
+// embudo, pendientes de hoy y desgloses. Todo en una sola función para que la
+// pestaña haga un solo round-trip, mismo criterio que getPolicyBoardAction.
+// ---------------------------------------------------------------------------
+
+export type MiniAppResumenPeriod = 1 | 7 | 30 | 90;
+
+interface PeriodBounds {
+  currentStart: string;
+  end: string;
+  previousStart: string;
+}
+
+/** `days=1` ("Hoy") es el día calendario en curso, no las últimas 24h
+ * rolling — coherente con cómo se lee "Hoy" en el resto de la app. Para el
+ * resto, ventana rolling de `days` días terminando ahora, comparada contra
+ * la ventana de igual longitud inmediatamente anterior. */
+function getPeriodBounds(days: MiniAppResumenPeriod): PeriodBounds {
+  const now = new Date();
+  if (days === 1) {
+    const currentStart = new Date(now);
+    currentStart.setHours(0, 0, 0, 0);
+    const previousStart = new Date(currentStart);
+    previousStart.setDate(previousStart.getDate() - 1);
+    return { currentStart: currentStart.toISOString(), end: now.toISOString(), previousStart: previousStart.toISOString() };
+  }
+  const dayMs = 24 * 60 * 60 * 1000;
+  const currentStart = new Date(now.getTime() - days * dayMs);
+  const previousStart = new Date(currentStart.getTime() - days * dayMs);
+  return { currentStart: currentStart.toISOString(), end: now.toISOString(), previousStart: previousStart.toISOString() };
+}
+
+export interface MiniAppResumenData {
+  days: MiniAppResumenPeriod;
+  visits: { current: number; previous: number };
+  leads: { current: number; previous: number };
+  /** "Convertidos" cuenta, de los leads que ENTRARON en cada período, cuántos
+   * tienen status "converted" HOY — no la fecha en la que se convirtieron
+   * (esa fecha no se guarda todavía). Es una aproximación, igual que ya hacía
+   * DashboardTab.tsx antes de este cambio (que ni siquiera filtraba por
+   * período), pero declarada explícitamente acá. */
+  converted: { current: number; previous: number };
+  resultField: { label: string; format: ResultFieldFormat; current: number | null; previous: number | null } | null;
+  /** true si esta Mini App ya tiene AL MENOS UN evento registrado alguna vez
+   * (no solo en el período) — antes de eso, "Inició cálculo"/"Completó" se
+   * muestran como "sin instrumentar todavía" (null) en vez de 0, para no dar
+   * a entender que nadie avanza cuando en realidad la plantilla todavía no
+   * manda esos eventos (ver ahorroFiscalTemplate.ts para el primer caso
+   * instrumentado). */
+  hasStepTracking: boolean;
+  funnel: { key: string; label: string; count: number | null }[];
+  pending: { uncontactedCount: number; oldestUncontactedAt: string | null };
+  recentLeads: MiniAppLeadRow[];
+  leadsByDay: { date: string; count: number }[];
+  leadsByOrigin: { origin: string; count: number; converted: number }[];
+}
+
+export async function getMiniAppResumen(workspaceId: string, miniAppId: string, days: MiniAppResumenPeriod): Promise<MiniAppResumenData> {
+  const supabase = await createClient();
+  const { data: app } = await supabase.from("mini_apps").select("template_key").eq("id", miniAppId).eq("workspace_id", workspaceId).maybeSingle();
+  const templateKey = (app?.template_key as MiniAppTemplateKey | undefined) ?? "simulador_retiro";
+  const resultSpec = getResultFieldSpec(templateKey);
+  const { currentStart, end, previousStart } = getPeriodBounds(days);
+
+  const [
+    { count: visitsCurrent },
+    { count: visitsPrevious },
+    { data: leadsInRange },
+    { data: funnelSessions },
+    { data: pendingLeads },
+    { count: uncontactedCount },
+    { data: recentRows },
+    leadsByDay,
+    { count: totalEventsCount },
+  ] = await Promise.all([
+    supabase.from("mini_app_visits").select("id", { count: "exact", head: true }).eq("mini_app_id", miniAppId).gte("created_at", currentStart).lte("created_at", end),
+    supabase.from("mini_app_visits").select("id", { count: "exact", head: true }).eq("mini_app_id", miniAppId).gte("created_at", previousStart).lt("created_at", currentStart),
+    supabase
+      .from("mini_app_leads")
+      .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, data, received_at")
+      .eq("workspace_id", workspaceId)
+      .eq("mini_app_id", miniAppId)
+      .gte("fecha", previousStart)
+      .lte("fecha", end),
+    supabase
+      .from("mini_app_events")
+      .select("event_type, session_id")
+      .eq("mini_app_id", miniAppId)
+      .in("event_type", ["step_viewed", "simulation_completed"])
+      .gte("created_at", currentStart)
+      .lte("created_at", end),
+    supabase
+      .from("mini_app_leads")
+      .select("received_at")
+      .eq("workspace_id", workspaceId)
+      .eq("mini_app_id", miniAppId)
+      .eq("status", "new")
+      .order("received_at", { ascending: true })
+      .limit(1),
+    supabase.from("mini_app_leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("mini_app_id", miniAppId).eq("status", "new"),
+    supabase
+      .from("mini_app_leads")
+      .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, data")
+      .eq("workspace_id", workspaceId)
+      .eq("mini_app_id", miniAppId)
+      .gte("fecha", currentStart)
+      .lte("fecha", end)
+      .order("received_at", { ascending: false })
+      .limit(8),
+    getMiniAppLeadsByDay(workspaceId, miniAppId, currentStart, end),
+    supabase.from("mini_app_events").select("id", { count: "exact", head: true }).eq("mini_app_id", miniAppId),
+  ]);
+
+  const allLeadsInRange = (leadsInRange ?? []).map((r) => ({
+    id: r.id as string,
+    origenApp: r.origen_app as string,
+    agente: r.agente as string | null,
+    nombre: r.nombre as string,
+    whatsapp: r.whatsapp as string,
+    fecha: r.fecha as string,
+    status: r.status as MiniAppLeadStatus,
+    contactId: r.contact_id as string | null,
+    opportunityId: r.opportunity_id as string | null,
+    data: (r.data as Record<string, unknown>) ?? {},
+    receivedAt: r.received_at as string,
+  }));
+  const currentLeads = allLeadsInRange.filter((l) => l.fecha >= currentStart);
+  const previousLeads = allLeadsInRange.filter((l) => l.fecha < currentStart);
+
+  const stepSessions = new Set<string>();
+  const completedSessions = new Set<string>();
+  for (const row of funnelSessions ?? []) {
+    if (row.event_type === "step_viewed") stepSessions.add(row.session_id as string);
+    if (row.event_type === "simulation_completed") completedSessions.add(row.session_id as string);
+  }
+  const hasStepTracking = (totalEventsCount ?? 0) > 0;
+
+  const originMap = new Map<string, { count: number; converted: number }>();
+  for (const l of currentLeads) {
+    const current = originMap.get(l.origenApp) ?? { count: 0, converted: 0 };
+    current.count += 1;
+    if (l.status === "converted") current.converted += 1;
+    originMap.set(l.origenApp, current);
+  }
+
+  return {
+    days,
+    visits: { current: visitsCurrent ?? 0, previous: visitsPrevious ?? 0 },
+    leads: { current: currentLeads.length, previous: previousLeads.length },
+    converted: {
+      current: currentLeads.filter((l) => l.status === "converted").length,
+      previous: previousLeads.filter((l) => l.status === "converted").length,
+    },
+    resultField: resultSpec
+      ? {
+          label: resultSpec.label,
+          format: resultSpec.format,
+          current: averageResultValue(templateKey, currentLeads),
+          previous: averageResultValue(templateKey, previousLeads),
+        }
+      : null,
+    hasStepTracking,
+    funnel: [
+      { key: "visited", label: "Visitaron la app", count: visitsCurrent ?? 0 },
+      { key: "started", label: "Iniciaron el cálculo", count: hasStepTracking ? stepSessions.size : null },
+      { key: "completed", label: "Completaron el cálculo", count: hasStepTracking ? completedSessions.size : null },
+      { key: "submitted", label: "Dejaron sus datos", count: currentLeads.length },
+      { key: "converted", label: "Contrataron", count: currentLeads.filter((l) => l.status === "converted").length },
+    ],
+    pending: {
+      uncontactedCount: uncontactedCount ?? 0,
+      oldestUncontactedAt: (pendingLeads?.[0]?.received_at as string | undefined) ?? null,
+    },
+    recentLeads: (recentRows ?? []).map((r) => ({
+      id: r.id as string,
+      origenApp: r.origen_app as string,
+      agente: r.agente as string | null,
+      nombre: r.nombre as string,
+      whatsapp: r.whatsapp as string,
+      fecha: r.fecha as string,
+      status: r.status as MiniAppLeadStatus,
+      contactId: r.contact_id as string | null,
+      opportunityId: r.opportunity_id as string | null,
+      data: (r.data as Record<string, unknown>) ?? {},
+    })),
+    leadsByDay,
+    leadsByOrigin: [...originMap.entries()].map(([origin, v]) => ({ origin, ...v })).sort((a, b) => b.count - a.count),
+  };
 }
 
 export interface MiniAppBranding {

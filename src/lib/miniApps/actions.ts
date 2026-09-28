@@ -19,8 +19,10 @@ import {
   getMiniAppLeads,
   getMiniAppLeadsByDay,
   getMiniAppVisitsCount,
+  getMiniAppResumen,
   getContactMiniAppOrigins,
   type MiniAppLeadFilters,
+  type MiniAppResumenPeriod,
   type MiniAppBranding,
   type MiniAppFieldConfig,
   type CalculadoraBrechaConfig,
@@ -79,6 +81,11 @@ export async function getContactMiniAppOriginsAction(contactId: string) {
 export async function getMiniAppVisitsCountAction(miniAppId: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getMiniAppVisitsCount(workspaceId, miniAppId);
+}
+
+export async function getMiniAppResumenAction(miniAppId: string, days: MiniAppResumenPeriod) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getMiniAppResumen(workspaceId, miniAppId, days);
 }
 
 /** Reuses CRM Analytics' exact date-range resolution (src/lib/crm/analyticsRange.ts)

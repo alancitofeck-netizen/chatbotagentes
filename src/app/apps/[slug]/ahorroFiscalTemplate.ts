@@ -645,6 +645,7 @@ export const AHORRO_FISCAL_LOGIC_JS = `
 const AF_DATA = window.__AHORRO_FISCAL_DATA__ || {};
 const AF_BRAND = AF_DATA.brand || {};
 const AF_SLUG = AF_DATA.slug || "";
+const AF_SESSION = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : (String(Date.now())+'-'+Math.random().toString(36).slice(2));
 fetch('/api/public/mini-apps/'+AF_SLUG+'/visit', { method: 'POST', keepalive: true }).catch(function(){});
 const CONFIG = {
   agente:      AF_BRAND.advisorName || "Tu asesor",
@@ -813,7 +814,17 @@ var S = {
 function $(id){ return document.getElementById(id); }
 function num(v){ v=parseFloat(v); return isFinite(v)?v:0; }
 function fmt(v){ v=Math.round(v); return "$"+v.toLocaleString('es-MX'); }
-function trackEvent(ev,data){ try{ console.log("[trackEvent]",ev,data||""); }catch(e){} }
+function trackEvent(ev,data){
+  try{ console.log("[trackEvent]",ev,data||""); }catch(e){}
+  try{
+    var mappedType = null, step = null;
+    if(ev==='tax_calculator_started'){ mappedType='step_viewed'; step=0; }
+    else if(ev==='section_view'){ mappedType='step_viewed'; step = (data && typeof STEPS!=="undefined") ? STEPS.indexOf(data.step)+1 : null; }
+    else if(ev==='tax_result_viewed'){ mappedType='simulation_completed'; }
+    if(!mappedType) return;
+    fetch('/api/public/mini-apps/'+AF_SLUG+'/track', { method:'POST', keepalive:true, headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sessionId: AF_SESSION, eventType: mappedType, step: step, meta: { name: ev, data: data||null } }) }).catch(function(){});
+  }catch(e){}
+}
 var toastT; function toast(msg){ var el=$("toast"); if(msg)el.textContent=msg; el.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(function(){el.classList.remove("on")},1400); }
 
 /* ==================== Catálogos ==================== */

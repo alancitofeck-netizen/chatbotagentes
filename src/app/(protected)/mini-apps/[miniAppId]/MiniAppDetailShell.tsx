@@ -8,20 +8,19 @@ import type { MiniAppDetail, MiniAppLeadRow } from "@/lib/miniApps/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import type { ContentCalendarData } from "@/lib/miniApps/contentCalendar";
 import { getMiniAppLeadsAction } from "@/lib/miniApps/actions";
-import { DashboardTab } from "./DashboardTab";
+import { ResumenTab } from "./ResumenTab";
 import { LeadsTab } from "./LeadsTab";
 import { ConfiguracionTab } from "./ConfiguracionTab";
 import { AnaliticasTab } from "./AnaliticasTab";
 import { AccesoTab } from "./AccesoTab";
 import { ContentCalendarTab } from "./ContentCalendarTab";
 
-type View = "dashboard" | "leads" | "configuracion" | "analiticas" | "acceso" | "contenido";
+type View = "resumen" | "leads" | "configuracion" | "analiticas" | "acceso" | "contenido";
 
 export function MiniAppDetailShell({
   miniApp,
   initialLeads,
   members,
-  visitsCount,
   canManage,
   contentCalendar,
   canEditContent,
@@ -29,7 +28,6 @@ export function MiniAppDetailShell({
   miniApp: MiniAppDetail;
   initialLeads: MiniAppLeadRow[];
   members: WorkspaceMemberOption[];
-  visitsCount: number;
   canManage: boolean;
   contentCalendar: ContentCalendarData | null;
   canEditContent: boolean;
@@ -39,14 +37,14 @@ export function MiniAppDetailShell({
 
   const isContentCalendar = miniApp.templateKey === "content_calendar";
   const TABS: { key: View; label: string }[] = [
-    ...(isContentCalendar ? [{ key: "contenido" as const, label: "Contenido" }] : [{ key: "dashboard" as const, label: "Dashboard" }]),
+    ...(isContentCalendar ? [{ key: "contenido" as const, label: "Contenido" }] : [{ key: "resumen" as const, label: "Resumen" }]),
     ...(isContentCalendar ? [] : [{ key: "leads" as const, label: "Leads" }]),
-    { key: "configuracion", label: "Configuración" },
     ...(isContentCalendar ? [] : [{ key: "analiticas" as const, label: "Analíticas" }]),
+    { key: "configuracion", label: "Configuración" },
     ...(canManage && miniApp.isPrivate ? [{ key: "acceso" as const, label: "Acceso" }] : []),
   ];
   const requestedTab = searchParams.get("tab");
-  const defaultTab: View = isContentCalendar ? "contenido" : "dashboard";
+  const defaultTab: View = isContentCalendar ? "contenido" : "resumen";
   const view: View = (TABS.some((t) => t.key === requestedTab) ? requestedTab : defaultTab) as View;
 
   async function refetchLeads() {
@@ -70,7 +68,7 @@ export function MiniAppDetailShell({
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8">
-        {view === "dashboard" && <DashboardTab leads={leads} visitsCount={visitsCount} templateKey={miniApp.templateKey} />}
+        {view === "resumen" && <ResumenTab miniApp={miniApp} />}
         {view === "leads" && <LeadsTab miniApp={miniApp} leads={leads} members={members} canManage={canManage} onChanged={refetchLeads} />}
         {view === "configuracion" && <ConfiguracionTab miniApp={miniApp} members={members} canManage={canManage} />}
         {view === "analiticas" && <AnaliticasTab miniAppId={miniApp.id} />}

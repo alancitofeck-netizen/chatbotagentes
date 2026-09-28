@@ -51,6 +51,7 @@ const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "consentimiento",
   "consentimiento_fecha",
   "duration_seconds",
+  "session_id",
 ]);
 
 /** Single unified contact record per the "Contactos de Apps" design — a
@@ -636,6 +637,19 @@ async function processLeadSubmission(
 
   if (insertedLead) {
     const leadId = insertedLead.id as string;
+    // Autoritativo, server-side — a diferencia de step_viewed/simulation_completed
+    // (que dependen del beacon del navegador en cada plantilla, ver
+    // /api/public/mini-apps/[slug]/track), este paso del embudo ("Dejó sus
+    // datos") nunca puede perderse: se registra acá mismo, una sola vez, para
+    // las 11 plantillas a la vez, sin tocar el JS de ninguna.
+    const rawSessionId = typeof body.session_id === "string" ? body.session_id : null;
+    await supabase.from("mini_app_events").insert({
+      workspace_id: app.workspace_id,
+      mini_app_id: app.id,
+      session_id: rawSessionId ?? leadId,
+      event_type: "lead_submitted",
+      meta: { leadId },
+    });
     const contactId = await linkLeadToContact(supabase, app.workspace_id, nombre, whatsapp, leadId);
     if (contactId) {
       await syncInsuranceProspect(supabase, app.workspace_id, contactId, app.id, app.name, leadId, data);
