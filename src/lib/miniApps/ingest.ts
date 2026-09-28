@@ -41,6 +41,7 @@ import {
 } from "@/lib/miniApps/qualificationOptions";
 import { extractInsuranceProspectFields } from "@/lib/insuranceProspects/fieldDictionary";
 import { createReferralFromMiniAppLeadIfEligible } from "@/lib/miniApps/referralFromLead";
+import { logActivity } from "@/lib/activity/log";
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "fecha",
@@ -650,6 +651,11 @@ async function processLeadSubmission(
       event_type: "lead_submitted",
       meta: { leadId },
     });
+    // Punto de partida del timeline "Actividad" del lead (LeadDetailDrawer,
+    // Fase 2) — sin actor (es un visitante anónimo, no un miembro del
+    // workspace), la UI ya muestra "Sistema" para actor_id null (mismo
+    // criterio que el timeline de Pólizas/Oportunidades).
+    await logActivity(supabase, app.workspace_id, null, "mini_app_lead", leadId, "lead_received", { origenApp: typeof body.origen_app === "string" ? body.origen_app : app.name });
     const contactId = await linkLeadToContact(supabase, app.workspace_id, nombre, whatsapp, leadId);
     if (contactId) {
       await syncInsuranceProspect(supabase, app.workspace_id, contactId, app.id, app.name, leadId, data);

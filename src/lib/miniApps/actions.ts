@@ -12,6 +12,8 @@ import { generateApiKey, hashApiKey, lastFour, slugify } from "@/lib/miniApps/ap
 import { injectSdkSnippet } from "@/lib/miniApps/sdkInjection";
 import { injectCalendlySnippet } from "@/lib/miniApps/calendlyInjection";
 import { createOpportunity, bulkAssignOwner } from "@/lib/crm/actions";
+import { createPolicyAction, type PolicyFormInput } from "@/lib/policies/actions";
+import { logActivity } from "@/lib/activity/log";
 import {
   getMiniAppLeadDetail,
   getMiniAppsList,
@@ -20,6 +22,7 @@ import {
   getMiniAppLeadsByDay,
   getMiniAppVisitsCount,
   getMiniAppResumen,
+  getMiniAppLeadActivity,
   getContactMiniAppOrigins,
   type MiniAppLeadFilters,
   type MiniAppResumenPeriod,
@@ -377,6 +380,7 @@ export async function updateMiniAppLeadStatus(leadId: string, status: MiniAppLea
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "mini_apps");
   const supabase = await createClient();
+  const memberId = await getCurrentMemberId(workspaceId);
 
   const { data } = await supabase
     .from("mini_app_leads")
@@ -386,8 +390,22 @@ export async function updateMiniAppLeadStatus(leadId: string, status: MiniAppLea
     .select("mini_app_id")
     .single();
 
+  await logActivity(supabase, workspaceId, memberId, "mini_app_lead", leadId, "stage_changed", { stage: LEAD_STATUS_LABEL_ES[status] ?? status });
   revalidateMiniAppsPaths(data?.mini_app_id as string | undefined);
 }
+
+/** Mismas etiquetas que leadStatus.ts (LEAD_STATUS_LABEL) — duplicado acá a
+ * propósito: ese archivo vive bajo el route segment (protected)/mini-apps y
+ * es "use client", así que no se puede importar desde un módulo "use server"
+ * como este. Mantener ambos en 6 valores si se agrega una etapa más. */
+const LEAD_STATUS_LABEL_ES: Record<MiniAppLeadStatus, string> = {
+  new: "Nuevo",
+  contacted: "Contactado",
+  cita_agendada: "Cita agendada",
+  propuesta_enviada: "Propuesta enviada",
+  converted: "Convertido",
+  discarded: "Descartado",
+};
 
 /** Borra un lead de la bandeja de una mini app — irreversible, por eso
  * mismo gate (owner/admin) que deleteMiniApp/regenerateApiKey, reforzado
@@ -415,6 +433,27 @@ export async function deleteMiniAppLead(leadId: string): Promise<void> {
   revalidateMiniAppsPaths(data?.mini_app_id as string | undefined);
 }
 
+/** Orden de las 6 etapas del kanban (Fase 2) — usado por las acciones de
+ * abajo para AVANZAR la etapa de un lead sin nunca hacerla retroceder ni
+ * sacarlo de "Descartado" (mismo rango que "Convertido", así que solo un
+ * drag manual en el kanban lo saca de ahí). Antes de esto, convertir a
+ * Contacto o mover al Pipeline marcaban el lead como "converted" directo —
+ * ya no tiene sentido con 6 etapas reales: "Convertido" (Cliente) ahora lo
+ * marca únicamente convertMiniAppLeadToPolicy, la única acción que
+ * realmente significa "se volvió cliente". */
+const LEAD_STATUS_RANK: Record<MiniAppLeadStatus, number> = {
+  new: 0,
+  contacted: 1,
+  cita_agendada: 2,
+  propuesta_enviada: 3,
+  converted: 4,
+  discarded: 4,
+};
+
+function advancedStatus(current: MiniAppLeadStatus, atLeast: MiniAppLeadStatus): MiniAppLeadStatus {
+  return LEAD_STATUS_RANK[atLeast] > LEAD_STATUS_RANK[current] ? atLeast : current;
+}
+
 /** Contact-only conversion — deliberately does NOT create an opportunity
  * (that's the separate "Mover a Pipeline" action below). Mirrors the same
  * upsert-by-phone shape createOpportunity uses for its own contact step
@@ -423,6 +462,7 @@ export async function convertMiniAppLeadToContact(leadId: string): Promise<{ con
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "mini_apps");
   const supabase = await createClient();
+  const memberId = await getCurrentMemberId(workspaceId);
 
   const lead = await getMiniAppLeadDetail(workspaceId, leadId);
   if (!lead) throw new Error("Lead no encontrado.");
@@ -446,10 +486,11 @@ export async function convertMiniAppLeadToContact(leadId: string): Promise<{ con
 
   await supabase
     .from("mini_app_leads")
-    .update({ contact_id: contact.id, status: "converted" })
+    .update({ contact_id: contact.id, status: advancedStatus(lead.status, "contacted") })
     .eq("id", leadId)
     .eq("workspace_id", workspaceId);
 
+  await logActivity(supabase, workspaceId, memberId, "mini_app_lead", leadId, "contact_created", {});
   revalidateMiniAppsPaths(lead.miniAppId);
   return { contactId: contact.id as string };
 }
@@ -460,6 +501,7 @@ export async function moveMiniAppLeadToPipeline(leadId: string, stageId?: string
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "mini_apps");
   const supabase = await createClient();
+  const memberId = await getCurrentMemberId(workspaceId);
 
   const lead = await getMiniAppLeadDetail(workspaceId, leadId);
   if (!lead) throw new Error("Lead no encontrado.");
@@ -492,12 +534,71 @@ export async function moveMiniAppLeadToPipeline(leadId: string, stageId?: string
 
   await supabase
     .from("mini_app_leads")
-    .update({ opportunity_id: opportunityId, status: "converted" })
+    .update({ opportunity_id: opportunityId, status: advancedStatus(lead.status, "propuesta_enviada") })
     .eq("id", leadId)
     .eq("workspace_id", workspaceId);
 
+  await logActivity(supabase, workspaceId, memberId, "mini_app_lead", leadId, "moved_to_pipeline", {});
   revalidateMiniAppsPaths(lead.miniAppId);
   return { opportunityId };
+}
+
+/** Análogo a moveMiniAppLeadToPipeline pero contra el pipeline de Pólizas
+ * (createPolicyAction, src/lib/policies/actions.ts) — la única acción que
+ * marca a un lead como "Convertido" de verdad (se volvió cliente), a
+ * diferencia de convertMiniAppLeadToContact/moveMiniAppLeadToPipeline que
+ * solo avanzan etapas intermedias. Requiere el módulo "policies" habilitado
+ * — el botón que la llama (LeadDetailDrawer) ya la oculta si no lo está,
+ * pero se revalida acá también por si el workspace lo desactivó justo
+ * después de cargar la pantalla. */
+export async function convertMiniAppLeadToPolicy(leadId: string, input: PolicyFormInput): Promise<{ id: string; contactId: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "mini_apps");
+  await assertModuleEnabled(workspaceId, "policies");
+  const supabase = await createClient();
+  const memberId = await getCurrentMemberId(workspaceId);
+
+  const lead = await getMiniAppLeadDetail(workspaceId, leadId);
+  if (!lead) throw new Error("Lead no encontrado.");
+  if (lead.policyId) throw new Error("Este lead ya tiene una póliza.");
+
+  const result = await createPolicyAction(input);
+  await supabase.from("policies").update({ source: "mini_app" }).eq("id", result.id);
+  await supabase
+    .from("mini_app_leads")
+    .update({ policy_id: result.id, contact_id: lead.contactId ?? result.contactId, status: "converted" })
+    .eq("id", leadId)
+    .eq("workspace_id", workspaceId);
+
+  await logActivity(supabase, workspaceId, memberId, "mini_app_lead", leadId, "policy_created", { company: input.company });
+  revalidateMiniAppsPaths(lead.miniAppId);
+  revalidatePath("/polizas");
+  return result;
+}
+
+/** Se llama recién cuando "Agendar cita" (LeadDetailDrawer) efectivamente
+ * guardó un evento en el Calendario — no al abrir el formulario, para no
+ * marcar "Cita agendada" si el asesor lo cancela sin guardar nada. Antes de
+ * esto, el asesor ya tiene que haber llamado a convertMiniAppLeadToContact
+ * (mismo patrón que startMiniAppLeadConversation: EventFormSheet necesita un
+ * contactId real para precargar el contacto). */
+export async function markMiniAppLeadScheduled(leadId: string): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "mini_apps");
+  const supabase = await createClient();
+  const memberId = await getCurrentMemberId(workspaceId);
+
+  const lead = await getMiniAppLeadDetail(workspaceId, leadId);
+  if (!lead) throw new Error("Lead no encontrado.");
+
+  await supabase
+    .from("mini_app_leads")
+    .update({ status: advancedStatus(lead.status, "cita_agendada") })
+    .eq("id", leadId)
+    .eq("workspace_id", workspaceId);
+
+  await logActivity(supabase, workspaceId, memberId, "mini_app_lead", leadId, "scheduling_started", {});
+  revalidateMiniAppsPaths(lead.miniAppId);
 }
 
 /** Requires the lead to already be converted to an Opportunity — avoids
@@ -558,8 +659,82 @@ export async function startMiniAppLeadConversation(leadId: string): Promise<{ co
     .eq("workspace_id", workspaceId)
     .eq("status", "new");
 
+  await logActivity(supabase, workspaceId, memberId, "mini_app_lead", leadId, "conversation_started", {});
   revalidateMiniAppsPaths(lead.miniAppId);
   return { conversationId };
+}
+
+export async function getMiniAppLeadActivityAction(leadId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  return getMiniAppLeadActivity(workspaceId, leadId);
+}
+
+/** Mismo patrón que getPolicyNotesAction (src/lib/policies/actions.ts) —
+ * tabla `notes` genérica (notable_type/notable_id), filtrada acá por
+ * "mini_app_lead" en vez de "policy". */
+export async function getMiniAppLeadNotesAction(leadId: string) {
+  const { workspaceId } = await requireActiveWorkspace();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("notes")
+    .select("id, body, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("notable_type", "mini_app_lead")
+    .eq("notable_id", leadId)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((n) => ({ id: n.id as string, body: n.body as string, createdAt: n.created_at as string }));
+}
+
+export async function addMiniAppLeadNoteAction(leadId: string, body: string): Promise<void> {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (!body.trim()) return;
+  await assertModuleEnabled(workspaceId, "mini_apps");
+  const supabase = await createClient();
+  await supabase.from("notes").insert({ workspace_id: workspaceId, notable_type: "mini_app_lead", notable_id: leadId, body: body.trim() });
+}
+
+export interface MiniAppLeadManualInput {
+  nombre: string;
+  whatsapp: string;
+  agente: string | null;
+  contenido: string;
+}
+
+/** "Agregar lead manual" — no existía ningún camino para esto (los leads
+ * siempre llegaban por processLeadSubmission, público/anónimo). Un lead
+ * manual entra directo con `consentimiento: true` (lo carga el propio
+ * asesor, no un visitante anónimo) y `origen_app: "Manual"` para distinguirlo
+ * en los desgloses por origen del Resumen/Analíticas. */
+export async function createMiniAppLeadManualAction(miniAppId: string, input: MiniAppLeadManualInput): Promise<{ id: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "mini_apps");
+  if (!input.nombre.trim()) throw new Error("El nombre es obligatorio.");
+  if (!input.whatsapp.trim()) throw new Error("El WhatsApp es obligatorio.");
+  const supabase = await createClient();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const now = new Date().toISOString();
+
+  const { data: lead, error } = await supabase
+    .from("mini_app_leads")
+    .insert({
+      workspace_id: workspaceId,
+      mini_app_id: miniAppId,
+      origen_app: "Manual",
+      agente: input.agente,
+      nombre: input.nombre.trim(),
+      whatsapp: input.whatsapp.trim(),
+      consentimiento: true,
+      consentimiento_fecha: now,
+      fecha: now,
+      data: input.contenido.trim() ? { contenido: input.contenido.trim() } : {},
+    })
+    .select("id")
+    .single();
+  if (error || !lead) throw new Error("No se pudo crear el lead.");
+
+  await logActivity(supabase, workspaceId, memberId, "mini_app_lead", lead.id as string, "lead_received", { origenApp: "Manual" });
+  revalidateMiniAppsPaths(miniAppId);
+  return { id: lead.id as string };
 }
 
 /** Submission path for the Growth-Link-hosted public page

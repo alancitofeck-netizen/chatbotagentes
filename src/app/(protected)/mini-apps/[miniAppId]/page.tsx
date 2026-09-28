@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { requireActiveWorkspace } from "@/lib/auth/session";
+import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getMiniAppDetail, getMiniAppLeads } from "@/lib/miniApps/queries";
 import { getContentCalendarData } from "@/lib/miniApps/contentCalendar";
@@ -20,11 +20,12 @@ export default async function MiniAppDetailPage({ params }: { params: Promise<{ 
   const miniApp = await getMiniAppDetail(workspaceId, miniAppId);
   if (!miniApp) notFound();
 
-  const [leads, members, contentCalendar, ownAccessRole] = await Promise.all([
+  const [leads, members, contentCalendar, ownAccessRole, ownMemberId] = await Promise.all([
     getMiniAppLeads(workspaceId, miniAppId),
     getWorkspaceMembers(workspaceId),
     miniApp.templateKey === "content_calendar" ? getContentCalendarData(miniAppId) : Promise.resolve(null),
     miniApp.isPrivate ? getOwnMiniAppAccessRole(miniAppId) : Promise.resolve(null),
+    getCurrentMemberId(workspaceId),
   ]);
   const canEditContent = canManage || ownAccessRole === "editor";
 
@@ -49,6 +50,7 @@ export default async function MiniAppDetailPage({ params }: { params: Promise<{ 
         canManage={canManage}
         contentCalendar={contentCalendar}
         canEditContent={canEditContent}
+        ownMemberId={ownMemberId}
       />
     </div>
   );

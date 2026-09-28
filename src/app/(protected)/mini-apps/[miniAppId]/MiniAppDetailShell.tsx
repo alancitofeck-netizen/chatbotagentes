@@ -24,6 +24,7 @@ export function MiniAppDetailShell({
   canManage,
   contentCalendar,
   canEditContent,
+  ownMemberId,
 }: {
   miniApp: MiniAppDetail;
   initialLeads: MiniAppLeadRow[];
@@ -31,6 +32,7 @@ export function MiniAppDetailShell({
   canManage: boolean;
   contentCalendar: ContentCalendarData | null;
   canEditContent: boolean;
+  ownMemberId: string | null;
 }) {
   const searchParams = useSearchParams();
   const [leads, setLeads] = useState(initialLeads);
@@ -69,7 +71,9 @@ export function MiniAppDetailShell({
 
       <div className="px-4 sm:px-6 lg:px-8">
         {view === "resumen" && <ResumenTab miniApp={miniApp} />}
-        {view === "leads" && <LeadsTab miniApp={miniApp} leads={leads} members={members} canManage={canManage} onChanged={refetchLeads} />}
+        {view === "leads" && (
+          <LeadsTab miniApp={miniApp} leads={leads} members={members} canManage={canManage} ownMemberId={ownMemberId} onChanged={refetchLeads} />
+        )}
         {view === "configuracion" && <ConfiguracionTab miniApp={miniApp} members={members} canManage={canManage} />}
         {view === "analiticas" && <AnaliticasTab miniAppId={miniApp.id} />}
         {view === "acceso" && <AccesoTab miniAppId={miniApp.id} members={members} />}

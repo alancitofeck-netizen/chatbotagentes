@@ -293,6 +293,7 @@ export interface MiniAppLeadRow {
   status: MiniAppLeadStatus;
   contactId: string | null;
   opportunityId: string | null;
+  policyId: string | null;
   /** Mismo bucket jsonb que ya usa MiniAppLeadDetail — se suma acá también
    * para poder mostrar métricas reales (score/perfil) en la tarjeta de la
    * lista sin una segunda consulta por lead (ver responseSummary/). */
@@ -540,7 +541,7 @@ export async function getMiniAppLeads(
   const supabase = await createClient();
   let query = supabase
     .from("mini_app_leads")
-    .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, data")
+    .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, policy_id, data")
     .eq("workspace_id", workspaceId)
     .eq("mini_app_id", miniAppId)
     .order("received_at", { ascending: false });
@@ -561,6 +562,7 @@ export async function getMiniAppLeads(
     status: r.status as MiniAppLeadStatus,
     contactId: r.contact_id as string | null,
     opportunityId: r.opportunity_id as string | null,
+    policyId: r.policy_id as string | null,
     data: (r.data as Record<string, unknown>) ?? {},
   }));
 }
@@ -570,7 +572,7 @@ export async function getMiniAppLeadDetail(workspaceId: string, leadId: string):
   const { data } = await supabase
     .from("mini_app_leads")
     .select(
-      "id, mini_app_id, origen_app, agente, nombre, whatsapp, fecha, consentimiento, consentimiento_fecha, received_at, data, status, contact_id, opportunity_id",
+      "id, mini_app_id, origen_app, agente, nombre, whatsapp, fecha, consentimiento, consentimiento_fecha, received_at, data, status, contact_id, opportunity_id, policy_id",
     )
     .eq("workspace_id", workspaceId)
     .eq("id", leadId)
@@ -592,6 +594,7 @@ export async function getMiniAppLeadDetail(workspaceId: string, leadId: string):
     status: data.status as MiniAppLeadStatus,
     contactId: data.contact_id as string | null,
     opportunityId: data.opportunity_id as string | null,
+    policyId: data.policy_id as string | null,
   };
 }
 
@@ -710,7 +713,7 @@ export async function getMiniAppResumen(workspaceId: string, miniAppId: string, 
     supabase.from("mini_app_visits").select("id", { count: "exact", head: true }).eq("mini_app_id", miniAppId).gte("created_at", previousStart).lt("created_at", currentStart),
     supabase
       .from("mini_app_leads")
-      .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, data, received_at")
+      .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, policy_id, data, received_at")
       .eq("workspace_id", workspaceId)
       .eq("mini_app_id", miniAppId)
       .gte("fecha", previousStart)
@@ -733,7 +736,7 @@ export async function getMiniAppResumen(workspaceId: string, miniAppId: string, 
     supabase.from("mini_app_leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("mini_app_id", miniAppId).eq("status", "new"),
     supabase
       .from("mini_app_leads")
-      .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, data")
+      .select("id, origen_app, agente, nombre, whatsapp, fecha, status, contact_id, opportunity_id, policy_id, data")
       .eq("workspace_id", workspaceId)
       .eq("mini_app_id", miniAppId)
       .gte("fecha", currentStart)
@@ -814,6 +817,7 @@ export async function getMiniAppResumen(workspaceId: string, miniAppId: string, 
       status: r.status as MiniAppLeadStatus,
       contactId: r.contact_id as string | null,
       opportunityId: r.opportunity_id as string | null,
+      policyId: r.policy_id as string | null,
       data: (r.data as Record<string, unknown>) ?? {},
     })),
     leadsByDay,
@@ -983,4 +987,55 @@ export async function getContactMiniAppOrigins(workspaceId: string, contactId: s
       durationSeconds: (r.duration_seconds as number | null) ?? null,
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Actividad de un lead (Fase 2) — mismo patrón que getPolicyActivity/
+// getOpportunityActivity: lee audit_log filtrado por entity_type/entity_id,
+// resuelve nombres de actor por separado. Las notas manuales van aparte (ver
+// getMiniAppLeadNotesAction en actions.ts, mismo patrón que las de Pólizas)
+// porque son dos fuentes distintas, no una sola — igual que en Pólizas/CRM.
+// ---------------------------------------------------------------------------
+
+export interface MiniAppLeadActivityEntry {
+  id: string;
+  action: string;
+  actorName: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+const MINI_APP_LEAD_ACTION_LABEL: Record<string, string> = {
+  lead_received: "Llegó el lead",
+  stage_changed: "Cambió de etapa",
+  contact_created: "Convertido a Contacto",
+  moved_to_pipeline: "Movido al Pipeline",
+  conversation_started: "Se inició una conversación",
+  policy_created: "Póliza creada",
+  scheduling_started: "Agendó una cita",
+};
+
+export async function getMiniAppLeadActivity(workspaceId: string, leadId: string): Promise<MiniAppLeadActivityEntry[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("audit_log")
+    .select("id, action, actor_id, metadata, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("entity_type", "mini_app_lead")
+    .eq("entity_id", leadId)
+    .order("created_at", { ascending: false });
+
+  const actorIds = Array.from(new Set((data ?? []).map((r) => r.actor_id as string | null).filter((id): id is string => Boolean(id))));
+  const { data: names } = actorIds.length
+    ? await supabase.rpc("workspace_member_names", { ws_id: workspaceId })
+    : { data: [] as { member_id: string; full_name: string }[] };
+  const nameByMember = new Map(((names ?? []) as { member_id: string; full_name: string }[]).map((n) => [n.member_id, n.full_name]));
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    action: MINI_APP_LEAD_ACTION_LABEL[r.action as string] ?? (r.action as string),
+    actorName: r.actor_id ? (nameByMember.get(r.actor_id as string) ?? null) : null,
+    metadata: (r.metadata as Record<string, unknown>) ?? {},
+    createdAt: r.created_at as string,
+  }));
 }

@@ -40,6 +40,7 @@ export function PolicyFormSheet({
   members,
   onClose,
   onSaved,
+  onCreate,
 }: {
   policy: PolicyDetail | null;
   /** Prellena el cliente cuando se llega desde el deep-link del Inbox
@@ -53,6 +54,12 @@ export function PolicyFormSheet({
   members: WorkspaceMemberOption[];
   onClose: () => void;
   onSaved: () => void;
+  /** Reemplaza a createPolicyAction para el alta — usado por "Convertir en
+   * cliente y crear póliza" de Mini Apps (convertMiniAppLeadToPolicy), que
+   * necesita además marcar `source: "mini_app"` y guardar el vínculo en el
+   * lead de origen. El resto del formulario (edición, validaciones) no
+   * cambia — solo qué función crea la póliza nueva. */
+  onCreate?: (input: PolicyFormInput) => Promise<{ id: string; contactId: string }>;
 }) {
   const isEdit = policy !== null;
   const [contactName, setContactName] = useState(policy?.contactName ?? defaultContact?.name ?? "");
@@ -114,6 +121,8 @@ export function PolicyFormSheet({
       try {
         if (isEdit && policy) {
           await updatePolicyAction(policy.id, input);
+        } else if (onCreate) {
+          await onCreate(input);
         } else {
           await createPolicyAction(input);
         }
