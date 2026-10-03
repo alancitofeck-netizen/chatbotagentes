@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/toast/toast";
 import { parseImportFile, importContactsFromRows, type ContactColumnMapping, type ParsedImportFile } from "@/lib/documents/import";
+import { ScrollableTable } from "@/components/ui/ScrollableTable";
 
 const CONTACT_FIELDS: { key: keyof ContactColumnMapping; label: string; required?: boolean }[] = [
   { key: "name", label: "Nombre", required: true },
@@ -115,7 +116,7 @@ export function ImportWizard({ onClose, onImported }: { onClose: () => void; onI
             </div>
 
             <div className="max-h-48 overflow-y-auto rounded-md border border-border-default">
-              <table className="w-full text-xs">
+              <ScrollableTable><table className="w-full text-xs">
                 <thead className="bg-surface-2 text-neutral-500">
                   <tr>
                     {CONTACT_FIELDS.map((f) => (
@@ -136,7 +137,7 @@ export function ImportWizard({ onClose, onImported }: { onClose: () => void; onI
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></ScrollableTable>
             </div>
 
             <div className="flex justify-end gap-2">

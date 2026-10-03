@@ -59,7 +59,7 @@ export async function Navbar({ workspaceName, enabledModules, memberId, userName
             title="Notificaciones no disponibles en Modo Supervisor"
             aria-label="Notificaciones"
             disabled
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-300 dark:text-neutral-600"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-300 dark:text-neutral-600 max-md:size-11"
           >
             <Bell size={17} aria-hidden="true" />
           </button>

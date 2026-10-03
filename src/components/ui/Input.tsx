@@ -53,7 +53,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               "placeholder:text-neutral-400",
               "hover:border-border-strong focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100",
               "disabled:cursor-not-allowed disabled:opacity-40",
-              isLg ? "h-[50px] rounded-md text-[15px]" : "rounded-sm px-3 py-2 text-sm",
+              isLg ? "h-[50px] rounded-md text-base md:text-[15px]" : "rounded-sm px-3 py-2 text-base md:text-sm",
               isLg && (Icon ? "pl-10 pr-3.5" : "px-3.5"),
               error ? "border-error" : "border-border-strong",
               className,

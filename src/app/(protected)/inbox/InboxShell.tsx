@@ -127,6 +127,14 @@ export function InboxShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
+  useEffect(() => {
+    if (!selectedId) return;
+    document.body.dataset.inboxThread = "open";
+    return () => {
+      delete document.body.dataset.inboxThread;
+    };
+  }, [selectedId]);
+
   return (
     <div className="flex h-full bg-surface-2">
       <ConversationList

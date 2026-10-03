@@ -82,7 +82,7 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
           // `w-full` + a phone-width viewport already keeps this narrower
           // than any typical `max-w-*` a caller passes, so that constraint
           // only actually bites at `sm:` and up, unprefixed on purpose.
-          "relative flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-surface-1 shadow-[var(--elevation-lg)] transition-transform duration-[220ms] ease-[var(--ease-out)] sm:h-full sm:max-h-full sm:rounded-none",
+          "relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0 bg-surface-1 shadow-[var(--elevation-lg)] transition-transform duration-[220ms] ease-[var(--ease-out)] sm:h-full sm:max-h-full sm:rounded-none",
           isVisible ? "translate-y-0 sm:translate-x-0" : "translate-y-full sm:translate-y-0 sm:translate-x-full",
           className ?? "max-w-md",
         )}

@@ -427,3 +427,23 @@ body {
     opacity: 1;
   }
 }
+
+/* iOS hace zoom al enfocar un campo con letra < 16px. Esto cubre los campos
+ * escritos a mano en las páginas; los componentes ui/ ya usan text-base debajo
+ * de md. Sin capa de Tailwind a propósito: tiene que ganarle a las utilidades
+ * text-sm de los campos existentes, y solo aplica debajo de md. */
+@media (max-width: 767.98px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Con una conversación abierta en el inbox (móvil), el compositor va al pie:
+ * la barra inferior fija lo taparía, así que se oculta mientras dure esa vista. */
+@media (max-width: 767.98px) {
+  body[data-inbox-thread="open"] [data-mobile-bottom-nav] {
+    display: none;
+  }
+}

@@ -18,6 +18,7 @@ import {
   deleteClientContractPaymentAction,
 } from "@/lib/clients/actions";
 import type { ClientContractPayment } from "@/lib/clients/queries";
+import { ScrollableTable } from "@/components/ui/ScrollableTable";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
@@ -145,7 +146,7 @@ export function ContractPaymentsPanel({ contractId, clientId, currency, initialP
         {payments.length === 0 ? (
           <p className="text-sm text-neutral-500">Sin pagos cargados.</p>
         ) : (
-          <table className="w-full text-left text-sm">
+          <ScrollableTable><table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border-default text-xs text-neutral-500">
                 <th className="py-2 font-medium">#</th>
@@ -211,7 +212,7 @@ export function ContractPaymentsPanel({ contractId, clientId, currency, initialP
                 );
               })}
             </tbody>
-          </table>
+          </table></ScrollableTable>
         )}
       </div>
     </Card>

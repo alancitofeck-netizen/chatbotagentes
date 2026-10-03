@@ -13,7 +13,7 @@ export function HelpCenterButton() {
       onClick={openHelpCenter}
       title="Ayuda"
       aria-label="Ayuda"
-      className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+      className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:size-11"
     >
       <Sparkles size={17} aria-hidden="true" />
     </button>

@@ -9,11 +9,18 @@ import { Badge } from "@/components/ui/Badge";
 import { ThemeToggle } from "@/lib/theme/ThemeToggle";
 import { cn } from "@/lib/utils/cn";
 import { getSidebarNavItems, groupNavItems, isNavItemActive } from "@/lib/navigation/sidebarConfig";
+import { MOBILE_NAV_OPEN_EVENT } from "./mobileNavEvent";
 
 export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const groups = groupNavItems(getSidebarNavItems(new Set(enabledModules)));
+
+  useEffect(() => {
+    const openDrawer = () => setOpen(true);
+    window.addEventListener(MOBILE_NAV_OPEN_EVENT, openDrawer);
+    return () => window.removeEventListener(MOBILE_NAV_OPEN_EVENT, openDrawer);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -30,7 +37,7 @@ export function MobileNav({ enabledModules }: { enabledModules: string[] }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Abrir menú"
-        className="flex size-9 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+        className="flex size-9 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:size-11"
       >
         <Menu className="size-5" aria-hidden="true" />
       </button>

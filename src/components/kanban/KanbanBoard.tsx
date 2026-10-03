@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   DndContext,
@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import { Sheet } from "@/components/ui/Sheet";
 
 export interface KanbanStage {
   id: string;
@@ -44,6 +45,7 @@ function Column<T extends KanbanCardBase>({
   onOpenCard,
   footer,
   width,
+  onRequestMove,
 }: {
   stageId: string;
   name: string;
@@ -55,12 +57,13 @@ function Column<T extends KanbanCardBase>({
   onOpenCard: (card: T) => void;
   footer?: ReactNode;
   width?: string;
+  onRequestMove?: (card: T) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stageId });
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className={`flex ${width ?? "w-[280px]"} min-h-0 shrink-0 flex-col gap-3`}>
+    <div className={`flex ${width ?? "w-[280px]"} min-h-0 shrink-0 flex-col gap-3 max-md:w-[86vw] max-md:snap-start`}>
       <div className="flex shrink-0 items-center justify-between px-1">
         <div className="flex min-w-0 items-center gap-2">
           <span
@@ -91,7 +94,18 @@ function Column<T extends KanbanCardBase>({
           <SortableContext items={cards.map((c) => c.pipelineItemId)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-2">
               {cards.map((card) => (
-                <div key={card.pipelineItemId}>{renderCard(card, () => onOpenCard(card))}</div>
+                <div key={card.pipelineItemId}>
+                  {renderCard(card, () => onOpenCard(card))}
+                  {onRequestMove && (
+                    <button
+                      type="button"
+                      onClick={() => onRequestMove(card)}
+                      className="mt-1 flex min-h-11 w-full items-center justify-center rounded-md text-xs font-medium text-accent-700 hover:bg-surface-3 md:hidden"
+                    >
+                      Mover a etapa…
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </SortableContext>
@@ -183,6 +197,22 @@ function Row<T extends KanbanCardBase>({
  * la UI del ATS es el mismo componente que el tablero del CRM"). Callers own
  * card rendering (and each card's own useSortable wiring) via `renderCard`,
  * and own error handling for `onMove` (fire-and-forget; catch + toast there). */
+function moveCardInState<T extends KanbanCardBase>(cols: Record<string, T[]>, pipelineItemId: string, toStage: string): Record<string, T[]> {
+  let moved: T | undefined;
+  const next: Record<string, T[]> = {};
+  for (const [key, list] of Object.entries(cols)) {
+    next[key] = list.filter((c) => {
+      if (c.pipelineItemId === pipelineItemId) {
+        moved = c;
+        return false;
+      }
+      return true;
+    });
+  }
+  if (moved) next[toStage] = [moved, ...(next[toStage] ?? [])];
+  return next;
+}
+
 export function KanbanBoard<T extends KanbanCardBase>({
   stages,
   initialCardsByStage,
@@ -212,6 +242,27 @@ export function KanbanBoard<T extends KanbanCardBase>({
 }) {
   const [columns, setColumns] = useState(initialCardsByStage);
   const [activeCard, setActiveCard] = useState<T | null>(null);
+  const [movingCard, setMovingCard] = useState<T | null>(null);
+  const [activeStageIndex, setActiveStageIndex] = useState(0);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  function findStageId(pipelineItemId: string): string | undefined {
+    return stages.find((st) => (columns[st.id] ?? []).some((c) => c.pipelineItemId === pipelineItemId))?.id;
+  }
+
+  function handleBoardScroll() {
+    const el = boardRef.current;
+    const first = el?.firstElementChild as HTMLElement | null | undefined;
+    if (!el || !first) return;
+    const step = first.offsetWidth + 16;
+    setActiveStageIndex(Math.min(stages.length - 1, Math.max(0, Math.round(el.scrollLeft / step))));
+  }
+
+  function scrollToStage(index: number) {
+    const el = boardRef.current;
+    const child = el?.children[index] as HTMLElement | undefined;
+    el?.scrollTo({ left: child?.offsetLeft ?? 0, behavior: "smooth" });
+  }
 
   // MouseSensor (not the previous PointerSensor) + a dedicated TouchSensor —
   // mixing PointerSensor with TouchSensor is a known dnd-kit footgun (both
@@ -320,25 +371,73 @@ export function KanbanBoard<T extends KanbanCardBase>({
           ))}
         </div>
       ) : (
-        <div className="flex h-full min-h-0 flex-1 gap-4 overflow-x-auto px-4 pb-4 sm:px-6 lg:px-8">
-          {stages.map((stage) => (
-            <Column
-              key={stage.id}
-              stageId={stage.id}
-              name={stage.name}
-              cards={columns[stage.id] ?? []}
-              isWon={stage.isWon}
-              isLost={stage.isLost}
-              renderCard={renderCard}
-              onOpenCard={onOpenCard}
-              footer={columnFooter?.(columns[stage.id] ?? [])}
-              valueLabel={columnValueLabel?.(columns[stage.id] ?? [])}
-              width={columnWidth}
-            />
-          ))}
+        <div className="flex h-full min-h-0 flex-1 flex-col">
+          {stages.length > 1 && (
+            <div className="flex shrink-0 items-center gap-3 px-4 pb-2 md:hidden">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+                {stages.map((stage, i) => (
+                  <button
+                    key={stage.id}
+                    type="button"
+                    aria-label={`Ir a ${stage.name}`}
+                    onClick={() => scrollToStage(i)}
+                    className={`h-1.5 rounded-full transition-all ${i === activeStageIndex ? "w-6 bg-accent-500" : "w-1.5 bg-neutral-300"}`}
+                  />
+                ))}
+              </div>
+              <span className="shrink-0 truncate text-xs font-medium text-neutral-500">
+                {activeStageIndex + 1} de {stages.length} · {stages[activeStageIndex]?.name}
+              </span>
+            </div>
+          )}
+          <div
+            ref={boardRef}
+            onScroll={handleBoardScroll}
+            className="flex min-h-0 flex-1 gap-4 overflow-x-auto px-4 pb-4 max-md:snap-x max-md:snap-mandatory sm:px-6 lg:px-8"
+          >
+            {stages.map((stage) => (
+              <Column
+                key={stage.id}
+                stageId={stage.id}
+                name={stage.name}
+                cards={columns[stage.id] ?? []}
+                isWon={stage.isWon}
+                isLost={stage.isLost}
+                renderCard={renderCard}
+                onOpenCard={onOpenCard}
+                footer={columnFooter?.(columns[stage.id] ?? [])}
+                valueLabel={columnValueLabel?.(columns[stage.id] ?? [])}
+                width={columnWidth}
+                onRequestMove={(card) => setMovingCard(card)}
+              />
+            ))}
+          </div>
         </div>
       )}
       <DragOverlay>{activeCard && renderCard(activeCard, () => {})}</DragOverlay>
+      {movingCard && (
+        <Sheet open onClose={() => setMovingCard(null)} title="Mover a etapa" className="max-w-md">
+          <div className="flex flex-col gap-1 p-3">
+            {stages
+              .filter((stage) => stage.id !== findStageId(movingCard.pipelineItemId))
+              .map((stage) => (
+                <button
+                  key={stage.id}
+                  type="button"
+                  onClick={() => {
+                    onMove(movingCard.pipelineItemId, stage.id, 0);
+                    setColumns((prev) => moveCardInState(prev, movingCard.pipelineItemId, stage.id));
+                    setMovingCard(null);
+                  }}
+                  className="flex min-h-11 items-center justify-between rounded-md px-3 text-left text-sm font-medium text-foreground hover:bg-surface-2"
+                >
+                  {stage.name}
+                  <ChevronRight className="size-4 text-neutral-400" aria-hidden="true" />
+                </button>
+              ))}
+          </div>
+        </Sheet>
+      )}
     </DndContext>
   );
 }

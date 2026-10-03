@@ -5,6 +5,7 @@ import { isPlatformAdmin as checkIsPlatformAdmin } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { PresenceHeartbeat } from "@/components/presence/PresenceHeartbeat";
 import { SupervisorModeBanner } from "@/components/platform/SupervisorModeBanner";
 import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
@@ -46,7 +47,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
 
   return (
     <OnboardingProvider initialState={onboardingState}>
-      <div className="flex h-screen overflow-hidden bg-surface-2" data-workspace-theme={activeWorkspace.theme}>
+      <div className="flex h-screen max-md:h-dvh overflow-hidden bg-surface-2" data-workspace-theme={activeWorkspace.theme}>
         <Sidebar
           enabledModules={enabledModules}
           workspaceName={activeWorkspace.name}
@@ -69,7 +70,8 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
             isPlatformAdmin={isPlatformAdmin}
             hasMultipleWorkspaces={hasMultipleWorkspaces}
           />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]">{children}</main>
+          <MobileBottomNav enabledModules={enabledModules} />
         </div>
         {!activeWorkspace.isSupervising && (
           <PresenceHeartbeat workspaceId={activeWorkspace.workspaceId} memberId={memberId} />

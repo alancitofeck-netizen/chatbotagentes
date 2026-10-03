@@ -63,7 +63,7 @@ export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", is
         <Link
           href="/profile"
           onClick={closeMenu}
-          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm max-md:min-h-11 text-foreground hover:bg-surface-2"
         >
           <UserCircle className="size-4" aria-hidden="true" />
           Mi perfil
@@ -71,7 +71,7 @@ export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", is
         <Link
           href="/profile?tab=account"
           onClick={closeMenu}
-          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm max-md:min-h-11 text-foreground hover:bg-surface-2"
         >
           <Settings className="size-4" aria-hidden="true" />
           Configuración de cuenta
@@ -80,7 +80,7 @@ export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", is
           type="button"
           disabled
           title="Próximamente"
-          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-neutral-400 disabled:cursor-not-allowed"
+          className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm max-md:min-h-11 text-neutral-400 disabled:cursor-not-allowed"
         >
           <HelpCircle className="size-4" aria-hidden="true" />
           Ayuda
@@ -92,7 +92,7 @@ export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", is
             <Link
               href="/select-workspace"
               onClick={closeMenu}
-              className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+              className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm max-md:min-h-11 text-foreground hover:bg-surface-2"
             >
               <Repeat className="size-4" aria-hidden="true" />
               Cambiar de workspace
@@ -106,7 +106,7 @@ export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", is
             <Link
               href="/crm?tab=agents"
               onClick={closeMenu}
-              className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+              className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm max-md:min-h-11 text-foreground hover:bg-surface-2"
             >
               <ShieldCheck className="size-4" aria-hidden="true" />
               Workspaces de clientes
@@ -118,7 +118,7 @@ export function UserMenu({ name, email, avatarUrl = null, variant = "navbar", is
         <form action={signOut}>
           <button
             type="submit"
-            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm text-foreground hover:bg-surface-2"
+            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm max-md:min-h-11 text-foreground hover:bg-surface-2"
           >
             <LogOut className="size-4" aria-hidden="true" />
             Cerrar sesión
