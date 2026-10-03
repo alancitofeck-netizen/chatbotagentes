@@ -3,7 +3,7 @@
 // fit here; a plain static file in public/ needs zero bundler plugin at
 // all). See optimización mobile Fase 5 plan for the reasoning.
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 
 // Deliberately small and hand-picked — NOT an aggressive full-app precache.
@@ -12,7 +12,7 @@ const STATIC_CACHE = `static-${CACHE_VERSION}`;
 // a stale chunk under a name that still matches. Everything else (pages,
 // API responses) stays network-first below, so a logged-in user is never
 // served a stale/cached copy of an authenticated page as the default path.
-const PRECACHE_URLS = ["/icon.svg", "/favicon.ico", "/manifest.webmanifest"];
+const PRECACHE_URLS = ["/icon.svg", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/apple-touch-icon.png", "/favicon.ico", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

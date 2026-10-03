@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     description: "Inbox conversacional, CRM y ATS con IA sobre WhatsApp.",
     images: ["/growth_businesss_logo.jpg"],
   },
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Growth Link" },
 };
 

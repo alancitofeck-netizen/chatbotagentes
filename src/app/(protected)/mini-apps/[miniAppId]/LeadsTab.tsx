@@ -188,11 +188,12 @@ export function LeadsTab({
         <div className="ml-auto flex items-center gap-2">
           <DropdownMenu
             trigger={
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-1 px-3.5 py-2 text-[13px] font-medium text-foreground hover:bg-surface-2">
+              <span className="inline-flex items-center gap-1.5">
                 <Download size={14} aria-hidden="true" />
                 Exportar
               </span>
             }
+            triggerClassName="inline-flex items-center gap-1.5 rounded-full border border-border-default bg-surface-1 px-3.5 py-2 text-[13px] font-medium text-foreground hover:bg-surface-2"
             items={[
               { label: "CSV", onSelect: () => window.open(`/api/mini-apps/${miniApp.id}/leads/export?format=csv`, "_blank") },
               { label: "Excel", onSelect: () => window.open(`/api/mini-apps/${miniApp.id}/leads/export?format=xlsx`, "_blank") },
