@@ -54,7 +54,7 @@ export function TasksModuleShell({
             onClick={() => setMobileSidebarOpen(true)}
             title="Grupos"
             aria-label="Abrir grupos de tareas"
-            className="flex size-9 items-center justify-center rounded-md border border-border-strong text-neutral-500 hover:bg-surface-2 hover:text-foreground lg:hidden"
+            className="flex size-9 items-center justify-center rounded-md border border-border-strong text-neutral-500 hover:bg-surface-2 hover:text-foreground lg:hidden max-lg:size-11"
           >
             <PanelLeft size={16} aria-hidden="true" />
           </button>
@@ -65,7 +65,7 @@ export function TasksModuleShell({
               type="button"
               onClick={() => setAiPanelOpen((v) => !v)}
               title="Asistente IA"
-              className="flex size-9 items-center justify-center rounded-md border border-border-strong text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+              className="flex size-9 items-center justify-center rounded-md border border-border-strong text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:size-11"
             >
               <Sparkles size={16} aria-hidden="true" />
             </button>

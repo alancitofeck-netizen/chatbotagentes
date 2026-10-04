@@ -298,3 +298,13 @@ Hallazgos y correcciones:
 - Hscroll de página: 0 en ambas vistas.
 
 Lo que sigue sin datos: asesores (la cuenta admin QA tiene acceso restringido).
+
+## Targets táctiles (pasada final)
+
+Auditoría 390x844 (admin, 45 rutas): 0 errores, 0 rutas con scroll horizontal, targets menores a 44px 446 (fase 2) -> 277 (fase 4) -> 234.
+
+Corregido en esta pasada: botón "¿Qué hago acá?" (24 rutas), ítems del sidebar de Tareas (grupos), links de exportar CSV/Excel, botones de cabecera de Tareas ("Nuevo", abrir grupos, IA). Todo con `max-md:`/`max-lg:`, desktop sin cambios.
+
+Escritorio 1440: 37 idénticas, 22 diferencias. Las de datos QA (pólizas y cobranza ahora tienen datos; antes estaban vacías) y las de hora/estado ya documentadas. Pólizas revisada a mano en desktop: tabla igual.
+
+Pendiente de targets: badges "Activo/Inactivo" de agentes IA (son badges dentro de cards, no botones), y los triggers "Más acciones" de DropdownMenu en tablas (28px).

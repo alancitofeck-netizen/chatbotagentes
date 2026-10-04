@@ -42,7 +42,7 @@ export function ModuleHelp({ description, tourKey }: { description: string; tour
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded-full border border-border-default px-2.5 py-1 text-xs font-medium text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+        className="flex items-center gap-1 rounded-full border border-border-default px-2.5 py-1 text-xs font-medium text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:min-h-11 max-md:px-4"
       >
         <HelpCircle size={13} aria-hidden="true" />
         ¿Qué hago acá?

@@ -43,7 +43,7 @@ function GroupRow({ group, active, onNavigate }: { group: TaskGroup; active: boo
         href={`/tasks/groups/${group.id}`}
         onClick={onNavigate}
         className={cn(
-          "flex flex-1 items-center gap-2 truncate rounded-md px-2.5 py-1.5 text-[13px] font-medium",
+          "flex flex-1 items-center gap-2 truncate rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11",
           active ? "bg-accent-100 text-accent-700" : "text-foreground hover:bg-surface-3",
           group.isDefault && "ml-[17px]",
         )}
@@ -84,7 +84,7 @@ function SidebarContent({
           href="/tasks"
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium",
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11",
             pathname === "/tasks" ? "bg-accent-100 text-accent-700" : "text-foreground hover:bg-surface-3",
           )}
         >
@@ -95,7 +95,7 @@ function SidebarContent({
           href="/tasks/favorites"
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium",
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11",
             pathname === "/tasks/favorites" ? "bg-accent-100 text-accent-700" : "text-foreground hover:bg-surface-3",
           )}
         >
@@ -106,7 +106,7 @@ function SidebarContent({
           href="/tasks/agenda?range=today"
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium",
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11",
             pathname === "/tasks/agenda" ? "bg-accent-100 text-accent-700" : "text-foreground hover:bg-surface-3",
           )}
         >
@@ -117,7 +117,7 @@ function SidebarContent({
           href="/tasks/agenda?range=week"
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-3",
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11 text-foreground hover:bg-surface-3",
           )}
         >
           <CalendarDays size={14} aria-hidden="true" />
