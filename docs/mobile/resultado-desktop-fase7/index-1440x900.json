@@ -1,0 +1,292 @@
+[
+  {
+    "route": "/advisors",
+    "landed": "/advisors",
+    "file": "advisors-1440x900.png"
+  },
+  {
+    "route": "/advisors/import",
+    "landed": "/advisors/import",
+    "file": "advisors_import-1440x900.png"
+  },
+  {
+    "route": "/agenda",
+    "landed": "/agenda",
+    "file": "agenda-1440x900.png"
+  },
+  {
+    "route": "/agentes-ia",
+    "landed": "/agentes-ia",
+    "file": "agentes-ia-1440x900.png"
+  },
+  {
+    "route": "/agentes-ia/nuevo",
+    "landed": "/agentes-ia/nuevo",
+    "file": "agentes-ia_nuevo-1440x900.png"
+  },
+  {
+    "route": "/analizador-cartera",
+    "landed": "/analizador-cartera",
+    "file": "analizador-cartera-1440x900.png"
+  },
+  {
+    "route": "/aseguradoras",
+    "landed": "/aseguradoras",
+    "file": "aseguradoras-1440x900.png"
+  },
+  {
+    "route": "/asesores",
+    "landed": "/asesores",
+    "file": "asesores-1440x900.png"
+  },
+  {
+    "route": "/asesores/agendas",
+    "landed": "/asesores/agendas",
+    "file": "asesores_agendas-1440x900.png"
+  },
+  {
+    "route": "/asesores/operaciones",
+    "landed": "/asesores/operaciones",
+    "file": "asesores_operaciones-1440x900.png"
+  },
+  {
+    "route": "/asesores/performance",
+    "landed": "/asesores/performance",
+    "file": "asesores_performance-1440x900.png"
+  },
+  {
+    "route": "/asesorias",
+    "landed": "/asesorias",
+    "file": "asesorias-1440x900.png"
+  },
+  {
+    "route": "/asesorias/cierre",
+    "landed": "/asesorias/cierre",
+    "file": "asesorias_cierre-1440x900.png"
+  },
+  {
+    "route": "/asesorias/presentacion",
+    "landed": "/asesorias/presentacion",
+    "file": "asesorias_presentacion-1440x900.png"
+  },
+  {
+    "route": "/asesorias/referidos",
+    "landed": "/asesorias/referidos",
+    "file": "asesorias_referidos-1440x900.png"
+  },
+  {
+    "route": "/asistente",
+    "landed": "/asistente",
+    "file": "asistente-1440x900.png"
+  },
+  {
+    "route": "/ats",
+    "landed": "/ats",
+    "file": "ats-1440x900.png"
+  },
+  {
+    "route": "/automations",
+    "landed": "/profile",
+    "file": "automations-1440x900.png"
+  },
+  {
+    "route": "/automatizaciones",
+    "landed": "/automatizaciones",
+    "file": "automatizaciones-1440x900.png"
+  },
+  {
+    "route": "/calendar",
+    "landed": "/calendar",
+    "file": "calendar-1440x900.png"
+  },
+  {
+    "route": "/classroom",
+    "landed": "/classroom",
+    "file": "classroom-1440x900.png"
+  },
+  {
+    "route": "/classroom/admin",
+    "landed": "/classroom/admin",
+    "file": "classroom_admin-1440x900.png"
+  },
+  {
+    "route": "/cobranza",
+    "landed": "/cobranza",
+    "file": "cobranza-1440x900.png"
+  },
+  {
+    "route": "/crm",
+    "landed": "/crm",
+    "file": "crm-1440x900.png"
+  },
+  {
+    "route": "/dashboard",
+    "landed": "/dashboard",
+    "file": "dashboard-1440x900.png"
+  },
+  {
+    "route": "/documents",
+    "landed": "/documents",
+    "file": "documents-1440x900.png"
+  },
+  {
+    "route": "/extraccion-polizas",
+    "landed": "/extraccion-polizas",
+    "file": "extraccion-polizas-1440x900.png"
+  },
+  {
+    "route": "/importar-exportar",
+    "landed": "/importar-exportar",
+    "file": "importar-exportar-1440x900.png"
+  },
+  {
+    "route": "/inbox",
+    "landed": "/inbox",
+    "file": "inbox-1440x900.png"
+  },
+  {
+    "route": "/inbox/contactos",
+    "landed": "/inbox/contactos",
+    "file": "inbox_contactos-1440x900.png"
+  },
+  {
+    "route": "/inbox/etiquetas",
+    "landed": "/inbox/etiquetas",
+    "file": "inbox_etiquetas-1440x900.png"
+  },
+  {
+    "route": "/inbox/plantillas",
+    "landed": "/inbox/plantillas",
+    "file": "inbox_plantillas-1440x900.png"
+  },
+  {
+    "route": "/kpis",
+    "landed": "/kpis",
+    "file": "kpis-1440x900.png"
+  },
+  {
+    "route": "/metas",
+    "landed": "/metas",
+    "file": "metas-1440x900.png"
+  },
+  {
+    "route": "/mini-apps",
+    "landed": "/mini-apps",
+    "file": "mini-apps-1440x900.png"
+  },
+  {
+    "route": "/operaciones",
+    "landed": "/operaciones",
+    "file": "operaciones-1440x900.png"
+  },
+  {
+    "route": "/polizas",
+    "landed": "/polizas",
+    "file": "polizas-1440x900.png"
+  },
+  {
+    "route": "/polizas/posibles-polizas",
+    "landed": "/polizas/posibles-polizas",
+    "file": "polizas_posibles-polizas-1440x900.png"
+  },
+  {
+    "route": "/presentaciones",
+    "landed": "/presentaciones",
+    "file": "presentaciones-1440x900.png"
+  },
+  {
+    "route": "/profile",
+    "landed": "/profile",
+    "file": "profile-1440x900.png"
+  },
+  {
+    "route": "/settings",
+    "landed": "/profile",
+    "file": "settings-1440x900.png"
+  },
+  {
+    "route": "/tasks",
+    "landed": "/tasks",
+    "file": "tasks-1440x900.png"
+  },
+  {
+    "route": "/tasks/agenda",
+    "landed": "/tasks/agenda",
+    "file": "tasks_agenda-1440x900.png"
+  },
+  {
+    "route": "/tasks/archived",
+    "landed": "/tasks/archived",
+    "file": "tasks_archived-1440x900.png"
+  },
+  {
+    "route": "/tasks/favorites",
+    "landed": "/tasks/favorites",
+    "file": "tasks_favorites-1440x900.png"
+  },
+  {
+    "route": "/crm/agents/8fbb3aec-c256-4661-b4d2-a15159054f70",
+    "landed": "/crm/agents/8fbb3aec-c256-4661-b4d2-a15159054f70",
+    "file": "crm_agents_8fbb3aec-c256-4661-b4d2-a15159054f70-1440x900.png"
+  },
+  {
+    "route": "/tasks/f3048840-104d-42b1-9411-5dc12bb044c8",
+    "landed": "/tasks/f3048840-104d-42b1-9411-5dc12bb044c8",
+    "file": "tasks_f3048840-104d-42b1-9411-5dc12bb044c8-1440x900.png"
+  },
+  {
+    "route": "/classroom/cursos/como-crear-la-app-para-gancho",
+    "landed": "/classroom/cursos/como-crear-la-app-para-gancho",
+    "file": "classroom_cursos_como-crear-la-app-para-gancho-1440x900.png"
+  },
+  {
+    "route": "/classroom/cursos/como-crear-la-app-para-gancho/29cc51c9-4c94-406c-b75e-afe46bcfa046",
+    "landed": "/classroom/cursos/como-crear-la-app-para-gancho/29cc51c9-4c94-406c-b75e-afe46bcfa046",
+    "file": "classroom_cursos_como-crear-la-app-para-gancho_29cc51c9-4c94-406c-b75e-afe46bcfa046-1440x900.png"
+  },
+  {
+    "route": "/presentaciones/9ed887d5-9433-4186-81b5-2ca62c3c79b8",
+    "landed": "/presentaciones/9ed887d5-9433-4186-81b5-2ca62c3c79b8",
+    "file": "presentaciones_9ed887d5-9433-4186-81b5-2ca62c3c79b8-1440x900.png"
+  },
+  {
+    "route": "/login",
+    "landed": "/login",
+    "file": "login-1440x900.png"
+  },
+  {
+    "route": "/register",
+    "landed": "/register",
+    "file": "register-1440x900.png"
+  },
+  {
+    "route": "/forgot-password",
+    "landed": "/forgot-password",
+    "file": "forgot-password-1440x900.png"
+  },
+  {
+    "route": "/reset-password",
+    "landed": "/forgot-password",
+    "file": "reset-password-1440x900.png"
+  },
+  {
+    "route": "/confirm-email?email=qa@example.com",
+    "landed": "/confirm-email",
+    "file": "confirm-email-1440x900.png"
+  },
+  {
+    "route": "/access-denied",
+    "landed": "/access-denied",
+    "file": "access-denied-1440x900.png"
+  },
+  {
+    "route": "/apps/caballo-de-troya-7f3ca2",
+    "landed": "/apps/caballo-de-troya-7f3ca2",
+    "file": "apps_caballo-de-troya-7f3ca2-1440x900.png"
+  },
+  {
+    "route": "/apps/cotizador-gmm-luis-morelos-94f13b",
+    "landed": "/apps/cotizador-gmm-luis-morelos-94f13b",
+    "file": "apps_cotizador-gmm-luis-morelos-94f13b-1440x900.png"
+  }
+]

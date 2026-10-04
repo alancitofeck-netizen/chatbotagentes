@@ -341,3 +341,27 @@ Después de la corrección: 169 targets, 0 errores, 0 rutas con scroll horizonta
 Ocultos por hover: 0 en esta corrida. Grip de redimensionar eventos del calendario: es un div con cursor, no un botón, así que no entra en el audit por construcción.
 
 Pendiente: pills y chips de 32-34px (90) y los íconos de 28px (18), en inbox, agenda, automatizaciones, calendario, dashboard, documentos, configuración y clases.
+
+## Estado de la ronda: branch QA, diagnóstico, Tomar, targets, escritorio
+
+Punto 1, branch QA: no creado. `create_branch` requiere `confirm_cost_id` (confirmación de costo) y no hay herramienta para obtenerlo desde esta sesión. Pendiente de aprobación de costo. Asesores, tourWalk completo, seed versionado y flujo crítico sobre el branch quedan pendientes hasta que exista.
+
+Punto 2, diagnóstico de `MIGRATIONS_FAILED` (solo lectura, sin cambios en el branch `main` ni en producción):
+- Esquema: las tablas que crean las migraciones existen en producción, salvo 8 que otras migraciones eliminan después (renombradas a `advisor_*` / `lead_*`). Funciones: sólo faltan dos (`claim_pending_lead_sheet_syncs`, `claim_pending_appointment_sheet_syncs`), eliminadas a propósito en la 0145. Extensiones (`pg_cron`, `pg_net`, `vector`) presentes. Cron jobs y triggers presentes.
+- Registro: 82 migraciones del repo no tienen una entrada con el mismo nombre en el registro de producción. Eso es sólo diferencia de nombres; el esquema coincide.
+- Causa probable: `0182_seed_sujey_content_calendar.sql` tiene un workspace UUID fijo (el de producción) y lo inserta en `mini_apps`, que tiene FK a `workspaces`. En una base vacía (branch) la inserción viola la FK y la migración falla. Es un dato, no esquema.
+- Limitación: no se pudieron leer los logs del branch con las herramientas disponibles. La causa es una hipótesis fuerte, no confirmada.
+- Arreglo propuesto (no aplicado): envolver el insert de 0182 con `if not exists (select 1 from public.workspaces where id = v_workspace_id) then raise notice ...; return; end if;`, igual que el seed. No hace falta una migración de baseline, porque el esquema ya coincide. Requiere tu aprobación antes de tocar la migración.
+
+Punto 3, "Tomar": el toast de éxito y el banner salen en el clic (commit `47c1cb2`). Si la action falla, se revierte el banner y se muestra un toast de error. La lógica sigue en la server action.
+
+Punto 4, targets: ver la sección de desglose. 205 -> 169 en la base actual, 0 errores, 0 rutas con scroll horizontal. Commit `6913baa`.
+
+Punto 5, escritorio 1440 contra la línea base: 42 de 58 capturas idénticas. Las 16 diferencias son de estado de datos: el borrado de datos QA cambió CRM, Inbox, tareas, dashboard, calendario, asesores (ahora "Prospectos" vacío) y el detalle de una tarea que ya no existe. No es una verificación limpia; para tenerla hace falta resembrar sobre el branch QA. Tests (141/141), lint y build pasan.
+
+Checklist para dispositivo real (a cargo de quien tiene el teléfono):
+1. Login OAuth y logout dentro de la PWA instalada (iOS y Android). La sesión de la PWA es separada de Safari: confirmar que no pide login dos veces y que el logout limpia la sesión.
+2. Links con `target="_blank"` en modo standalone (iOS): abrir WhatsApp (wa.me), email y un link externo desde la app instalada.
+3. Descargas en iOS: exportar CSV y Excel de CRM y pólizas, y verificar que el archivo se guarda o se comparte.
+4. Gesto de volver: el botón atrás del sistema dentro de un hilo del Inbox, en un sheet y en una tab, sin salir de la app ni romper el estado.
+5. Safe-area: la cabecera no queda bajo la status bar ni el notch en modo standalone.
