@@ -258,3 +258,14 @@ No verificado (requiere iPhone o Android instalado):
 - Links `target="_blank"` en standalone (en iOS pueden abrir en otra vista).
 - Descargas (exceljs, pdfkit, jszip): verificar en iOS; Web Share API como alternativa no implementada.
 - Recorte de imágenes (react-easy-crop) y editor TipTap: gestos y teclado virtual.
+
+## Pasada final: escritorio 1440 y handoff
+
+Escritorio (1440x900), comparación contra la línea base `docs/mobile/antes-desktop`, capturas nuevas en `docs/mobile/resultado-desktop-fase5`:
+- 47 de 59 rutas idénticas píxel a píxel.
+- 12 rutas con diferencias, todas de estado o de hora, no de código. Revisadas a mano en CRM y tareas. CRM: leads QA movidos de etapa por las pruebas. Tareas: saludo "Buenas tardes" vs "Buenos días". Dashboard, Inbox, Classroom, Operaciones y Presentaciones: datos QA y timestamps, mismo layout.
+
+Handoff en Inbox:
+- En mobile el panel de contacto de desktop ya no se monta (sólo en lg+, `useMediaQuery`). Al abrir un hilo ya no se disparan las acciones de CRM ni de pólizas, que hacían cola delante de "Tomar". Desktop verificado: el panel sigue montado y visible en 1440.
+- La escritura de "Tomar" se confirma en base (verificado: `human`). El banner se oculta al instante; el toast de confirmación llega en unos segundos porque la action espera detrás de `markRead` y de la insight de IA, que se disparan al abrir el hilo.
+- Pendiente: la insight de IA al abrir el hilo es una llamada encolada; sólo lee caché, pero sigue en la cola.

@@ -11,6 +11,7 @@ import { ConversationList, type InboxTab } from "./ConversationList";
 import { ConversationThread } from "./ConversationThread";
 import { ContactInfoPanel } from "./ContactInfoPanel";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
+import { useMediaQuery } from "@/lib/ui/useMediaQuery";
 
 export function InboxShell({
   workspaceId,
@@ -28,6 +29,7 @@ export function InboxShell({
   approvedTemplates: WhatsAppTemplate[];
 }) {
   useAutoStartTour("inbox-intro");
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [conversations, setConversations] = useState(initialConversations);
   // Tabs (Todas/No leídas/Mis conversaciones/Sin asignar/Cerradas) are filtered client-side over
   // the same fetched list — only the text search still round-trips to the
@@ -177,9 +179,13 @@ export function InboxShell({
         />
       </div>
 
-      <div className="hidden w-[340px] shrink-0 border-l border-border-default lg:block">
-        <ContactInfoPanel detail={detail} loading={detailLoading} members={members} tags={tags} onChanged={refetchDetail} />
-      </div>
+      {/* Sólo se monta en lg+: en mobile el panel no está visible y sus
+       * acciones (CRM, pólizas) se encolan delante de "Tomar" y de la carga del hilo. */}
+      {isDesktop && (
+        <div className="hidden w-[340px] shrink-0 border-l border-border-default lg:block">
+          <ContactInfoPanel detail={detail} loading={detailLoading} members={members} tags={tags} onChanged={refetchDetail} />
+        </div>
+      )}
 
       <Sheet open={infoSheetOpen} onClose={() => setInfoSheetOpen(false)} title="Detalles" className="max-w-sm">
         <ContactInfoPanel detail={detail} loading={detailLoading} members={members} tags={tags} onChanged={refetchDetail} />
