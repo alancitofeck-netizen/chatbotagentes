@@ -131,7 +131,7 @@ export function OpportunityCardView({
               onClick={(e) => e.stopPropagation()}
               title="WhatsApp"
               aria-label="Enviar WhatsApp"
-              className="flex size-6 items-center justify-center rounded-md text-neutral-400 hover:bg-success-bg hover:text-success-strong"
+              className="flex size-6 items-center justify-center rounded-md text-neutral-400 hover:bg-success-bg hover:text-success-strong max-md:size-11"
             >
               <MessageCircle className="size-3.5" aria-hidden="true" />
             </a>
@@ -142,7 +142,7 @@ export function OpportunityCardView({
               onClick={(e) => e.stopPropagation()}
               title="Llamar"
               aria-label="Llamar"
-              className="flex size-6 items-center justify-center rounded-md text-neutral-400 hover:bg-accent-100 hover:text-accent-700"
+              className="flex size-6 items-center justify-center rounded-md text-neutral-400 hover:bg-accent-100 hover:text-accent-700 max-md:size-11"
             >
               <Phone className="size-3.5" aria-hidden="true" />
             </a>
@@ -155,17 +155,17 @@ export function OpportunityCardView({
             }}
             title="Crear tarea"
             aria-label="Crear tarea"
-            className="flex size-6 items-center justify-center rounded-md text-neutral-400 hover:bg-accent-100 hover:text-accent-700"
+            className="flex size-6 items-center justify-center rounded-md text-neutral-400 hover:bg-accent-100 hover:text-accent-700 max-md:size-11"
           >
             <ListTodo className="size-3.5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <div className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100">
           <DropdownMenu
             trigger={<MoreHorizontal className="size-3.5" aria-hidden="true" />}
             triggerLabel="Más acciones"
-            triggerClassName="flex size-6 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-3 hover:text-foreground"
+            triggerClassName="flex size-6 items-center justify-center rounded-md text-neutral-400 hover:bg-surface-3 hover:text-foreground max-md:size-11"
             items={[
               { label: "Ver lead", icon: <Eye size={14} aria-hidden="true" />, onSelect: onOpen },
               { label: "Editar", icon: <Pencil size={14} aria-hidden="true" />, onSelect: onEdit },

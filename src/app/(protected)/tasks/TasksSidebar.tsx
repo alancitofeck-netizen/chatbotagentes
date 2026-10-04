@@ -34,7 +34,7 @@ function GroupRow({ group, active, onNavigate }: { group: TaskGroup; active: boo
           {...listeners}
           type="button"
           aria-label="Reordenar grupo"
-          className="cursor-grab text-neutral-300 opacity-0 hover:text-neutral-500 focus-visible:opacity-100 group-hover/row:opacity-100 active:cursor-grabbing"
+          className="cursor-grab text-neutral-300 opacity-0 hover:text-neutral-500 focus-visible:opacity-100 group-hover/row:opacity-100 max-lg:opacity-100 active:cursor-grabbing"
         >
           <GripVertical size={13} aria-hidden="true" />
         </button>
@@ -222,11 +222,12 @@ export function TasksSidebar({
       <div
         inert={!mobileOpen}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col gap-5 overflow-y-auto bg-surface-1 p-4 shadow-[var(--elevation-lg)] lg:hidden",
+          "fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col gap-5 overflow-y-auto rounded-t-2xl bg-surface-1 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[var(--elevation-lg)] lg:hidden",
           "transition-transform duration-300 ease-[var(--ease-out)]",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          mobileOpen ? "translate-y-0" : "translate-y-full",
         )}
       >
+        <div aria-hidden="true" className="mx-auto -mt-1 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300" />
         <SidebarContent
           pathname={pathname}
           groups={groups}

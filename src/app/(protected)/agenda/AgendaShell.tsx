@@ -247,7 +247,28 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-2">
+          {granularity === "dia" && (
+            <div role="group" aria-label="Elegir día" className="grid grid-cols-7 gap-1.5 md:hidden">
+              {Array.from({ length: 7 }, (_, i) => addDays(selectedDate, i - 3)).map((day) => {
+                const active = isSameDay(day, selectedDate);
+                return (
+                  <button
+                    key={day.toISOString()}
+                    type="button"
+                    onClick={() => setSelectedDate(day)}
+                    aria-pressed={active}
+                    className={`flex min-h-14 flex-col items-center justify-center rounded-xl border text-xs ${
+                      active ? "border-accent-500 bg-accent-500 text-white" : "border-border-default bg-surface-1 text-neutral-500"
+                    }`}
+                  >
+                    <span className="text-[11px] capitalize">{day.toLocaleDateString("es-MX", { weekday: "short" }).replace(".", "")}</span>
+                    <span className="text-base font-semibold">{day.getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2.5">
               <h2 className="text-[17px] font-semibold text-foreground">{dateHeaderLabel(granularity, selectedDate)}</h2>
               {granularity === "dia" && (

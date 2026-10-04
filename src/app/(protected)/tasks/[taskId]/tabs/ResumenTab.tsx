@@ -149,7 +149,7 @@ export function ResumenTab({
                   type="button"
                   onClick={() => handleDeleteChecklistItem(item.id)}
                   aria-label="Eliminar ítem"
-                  className="opacity-0 transition-opacity group-hover:opacity-100"
+                  className="opacity-0 transition-opacity group-hover:opacity-100 max-md:size-11 max-md:opacity-100 max-md:flex max-md:items-center max-md:justify-center"
                 >
                   <Trash2 size={13} className="text-neutral-400 hover:text-error-strong" aria-hidden="true" />
                 </button>

@@ -37,6 +37,7 @@ import { LeadsBySourceChart } from "./LeadsBySourceChart";
 import { TopDeals } from "./TopDeals";
 import { ExecutiveSummary } from "./ExecutiveSummary";
 import { PriorityInsights } from "./PriorityInsights";
+import { UnansweredLeadsCard } from "./UnansweredLeadsCard";
 import { RecommendedActions } from "./RecommendedActions";
 import { Trends } from "./Trends";
 import { AdvisorPerformance } from "./AdvisorPerformance";
@@ -147,6 +148,8 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
       <ExecutiveSummary greetingName={firstName} bullets={bullets} health={health} />
+
+      <UnansweredLeadsCard conversations={unansweredConversations} />
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2">

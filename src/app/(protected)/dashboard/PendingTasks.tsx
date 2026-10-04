@@ -126,7 +126,7 @@ export function PendingTasks({
                   aria-label={`Editar "${task.title}"`}
                   disabled={editLoadingId === task.id}
                   className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity",
+                    "flex size-7 shrink-0 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity max-md:size-11 max-md:opacity-100",
                     "hover:bg-surface-3 hover:text-foreground group-hover:opacity-100 disabled:opacity-50",
                   )}
                 >

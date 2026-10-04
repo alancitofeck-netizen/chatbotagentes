@@ -204,3 +204,18 @@ Pendiente:
 - Resultados del buscador en móvil: el panel sale algo corrido a la izquierda.
 - Tablas: ResponsiveTable creado, aplicado en Fase 4.
 - Modales distintos de Sheet: sin revisar.
+
+## Estado Fase 3 (módulos: Inbox, CRM, Dashboard, Agenda, Tareas)
+
+Hecho:
+- Inbox: "Tomar" persiste el handoff (actualización optimista; la action se encola detrás de las del panel, ver ConversationThread). `updateConversationMode` ya no ignora el error. Realtime y refresco al volver de segundo plano. Check `flujo-critico.mjs` 9/9.
+- CRM: acciones de la card (WhatsApp, llamar, tarea, más) visibles en mobile y de 44px (antes solo al hover, 24px).
+- Dashboard: tarjeta destacada "leads sin responder" arriba (solo mobile; en desktop lo cubre Insights prioritarios). Acción de editar tarea visible y de 44px.
+- Agenda (/agenda): tira de 7 días en vista día (solo mobile) y encabezado en columna.
+- Tareas: sidebar de grupos como bottom sheet en mobile (antes drawer lateral); handle de arrastre y eliminar ítem de checklist visibles sin hover.
+
+Verificación: capturas en docs/mobile/resultado-mobile/fase3-*-390x844.png; `scripts/mobile-qa/fase3-shots*.mjs`; `vitest` de UnansweredLeadsCard (4/4); hscroll 0 en CRM, Dashboard, Agenda, Calendario y Tareas.
+
+Pendiente / conocido:
+- Calendario (/calendar): agenda por defecto en mobile OK; el handle de redimensionar evento en TimeGrid sigue oculto hasta hover (es un control de arrastre, no una acción).
+- Escritorio: no se recapturó 1440 en esta fase; los cambios en desktop son nulos salvo `max-md:`/`md:hidden` (verificar en la próxima pasada de paridad).
