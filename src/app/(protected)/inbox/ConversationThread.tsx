@@ -187,10 +187,12 @@ export function ConversationThread({
   const [takeoverSnapshot, setTakeoverSnapshot] = useState<ConversationDetail | null>(null);
   async function takeOverConversation() {
     if (!detail) return;
+    // Feedback inmediato: el banner y el toast salen en el clic. Si la action
+    // falla (se encola detrás de otras y puede tardar), se revierte el banner.
     setTakeoverSnapshot(detail);
+    toast.success("Tomaste la conversación.");
     try {
       await updateConversationMode(detail.id, "human");
-      toast.success("Tomaste la conversación.");
       onDetailChanged?.();
     } catch (err) {
       setTakeoverSnapshot(null);
