@@ -308,3 +308,14 @@ Corregido en esta pasada: botón "¿Qué hago acá?" (24 rutas), ítems del side
 Escritorio 1440: 37 idénticas, 22 diferencias. Las de datos QA (pólizas y cobranza ahora tienen datos; antes estaban vacías) y las de hora/estado ya documentadas. Pólizas revisada a mano en desktop: tabla igual.
 
 Pendiente de targets: badges "Activo/Inactivo" de agentes IA (son badges dentro de cards, no botones), y los triggers "Más acciones" de DropdownMenu en tablas (28px).
+
+## Limpieza de datos QA
+
+Borrado en una sola transacción, sólo en el workspace QA (`e7c8ae59…`) y sólo filas sembradas: 3 pólizas `QA-POL-*` con sus ítems de pipeline, 2 cobros `Cobro QA (mobile)`, 8 oportunidades con sus ítems, 4 bookings, 6 mensajes, 3 conversaciones, 6 tareas `[QA]` y 10 contactos `[QA]`. Antes se confirmó que no había contactos ni conversaciones sin prefijo en ese workspace. Verificado: en cero.
+
+Consecuencias:
+- Las cuentas QA (`qa-mobile@` y `qa-mobile-admin@`) se conservan, para que los scripts sigan entrando.
+- `flujo-critico.mjs` y `tourWalk.mjs` dependen de datos `[QA]` (conversación "[QA] Contacto 1", etc.). Para volver a correrlos hay que resembrar.
+- Desktop: las capturas de pólizas, cobranza, inbox y CRM cambian por el borrado; no es una regresión de código.
+
+Triggers de DropdownMenu por defecto: 44px en mobile (antes 28px).
