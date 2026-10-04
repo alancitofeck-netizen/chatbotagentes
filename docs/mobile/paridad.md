@@ -285,3 +285,16 @@ Recorrido automático de los pasos por módulo (`scripts/mobile-qa/tourWalk.mjs`
 - Perfil: sin botón de ayuda en el encabezado.
 
 Cambio en `floatingPosition.ts`: en mobile (< 768px) un tooltip sin lado libre cae arriba o abajo, y el ancho se limita al viewport. En desktop el comportamiento de flip queda igual.
+
+## Pólizas y cobranza con datos QA (verificación en vivo)
+
+Se sembraron datos en el workspace QA (autorizado): 3 pólizas `QA-POL-001..003` con su ítem de pipeline, y 2 cobros pendientes (`policy_payments`, uno vencido). Todas las filas se identifican por el prefijo `QA-POL` o la nota "Cobro QA (mobile)" para poder borrarlas.
+
+Hallazgos y correcciones:
+- Pólizas en mobile: la lista de tarjetas funciona (nombre, estado, póliza, prima, vencimiento, acciones).
+- Cobranza, vista calendario: la grilla de 7 columnas no se podía leer en 390px. En mobile ahora es una lista de los días del mes con cobros (cada cobro, botón de 44px). La grilla queda solo para md+.
+- Cobranza, vista tabla: lista de tarjetas (ya implementada) verificada en vivo.
+- Cobranza: los 4 íconos de cambio de vista pasan a 44px en mobile.
+- Hscroll de página: 0 en ambas vistas.
+
+Lo que sigue sin datos: asesores (la cuenta admin QA tiene acceso restringido).

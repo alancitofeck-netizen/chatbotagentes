@@ -29,7 +29,7 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function EntryChip({ item, onOpen }: { item: CollectionItem; onOpen: (item: CollectionItem) => void }) {
+function EntryChip({ item, onOpen, className }: { item: CollectionItem; onOpen: (item: CollectionItem) => void; className?: string }) {
   const bucket = deriveCollectionBucket(item.status, item.dueDate);
   const variant = COLLECTION_BUCKET_VARIANT[bucket];
   const classes = CHIP_CLASSES[variant] ?? CHIP_CLASSES.neutral;
@@ -44,6 +44,7 @@ function EntryChip({ item, onOpen }: { item: CollectionItem; onOpen: (item: Coll
         classes.border,
         classes.bg,
         classes.text,
+        className,
       )}
     >
       <span className="truncate text-[10.5px] font-semibold leading-tight">{item.contactName}</span>
@@ -169,6 +170,10 @@ export function CollectionsCalendarView({ items, onOpen }: { items: CollectionIt
     return <EmptyState icon={CalendarDays} title="Sin fechas para mostrar" description="Ninguno de los cobros visibles tiene vencimiento cargado." />;
   }
 
+  // En mobile la grilla de 7 columnas no entra: se muestra la lista de días
+  // del mes que tienen cobros, con cada cobro como botón de 44px.
+  const monthDaysWithEntries = days.filter((d) => d.getMonth() === monthDate.getMonth() && entriesByDay.has(dayKey(d)));
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -186,7 +191,31 @@ export function CollectionsCalendarView({ items, onOpen }: { items: CollectionIt
         </div>
       </div>
 
-      <div className="grid grid-cols-7 overflow-hidden rounded-lg border-t border-r border-border-default bg-surface-1 shadow-[var(--elevation-sm)]">
+      <div className="flex flex-col gap-4 md:hidden">
+        {monthDaysWithEntries.length === 0 ? (
+          <p className="py-6 text-center text-sm text-neutral-500">No hay cobros con vencimiento en este mes.</p>
+        ) : (
+          monthDaysWithEntries.map((day) => {
+            const list = entriesByDay.get(dayKey(day)) ?? [];
+            return (
+              <section key={dayKey(day)} className="flex flex-col gap-1.5">
+                <h4 className="text-xs font-semibold capitalize text-neutral-500">
+                  {day.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "short" })}
+                </h4>
+                <ul className="flex flex-col gap-1.5">
+                  {list.map((item) => (
+                    <li key={item.id}>
+                      <EntryChip item={item} onOpen={onOpen} className="min-h-11 justify-center" />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden grid-cols-7 overflow-hidden rounded-lg border-t border-r border-border-default bg-surface-1 shadow-[var(--elevation-sm)] md:grid">
         {WEEKDAY_LABELS.map((label) => (
           <div key={label} className="border-l border-border-default bg-surface-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
             {label}

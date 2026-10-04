@@ -47,7 +47,7 @@ export function CollectionsActionBar({
           data-tour="collections.table-view"
           onClick={() => onViewChange("table")}
           title="Tabla"
-          className={`flex size-8 items-center justify-center rounded ${view === "table" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
+          className={`flex size-8 items-center justify-center rounded max-md:size-11 ${view === "table" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
         >
           <TableIcon className="size-4" aria-hidden="true" />
         </button>
@@ -55,7 +55,7 @@ export function CollectionsActionBar({
           type="button"
           onClick={() => onViewChange("kanban")}
           title="Kanban"
-          className={`flex size-8 items-center justify-center rounded ${view === "kanban" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
+          className={`flex size-8 items-center justify-center rounded max-md:size-11 ${view === "kanban" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
         >
           <KanbanSquare className="size-4" aria-hidden="true" />
         </button>
@@ -63,7 +63,7 @@ export function CollectionsActionBar({
           type="button"
           onClick={() => onViewChange("calendar")}
           title="Calendario"
-          className={`flex size-8 items-center justify-center rounded ${view === "calendar" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
+          className={`flex size-8 items-center justify-center rounded max-md:size-11 ${view === "calendar" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
         >
           <CalendarDays className="size-4" aria-hidden="true" />
         </button>
@@ -72,7 +72,7 @@ export function CollectionsActionBar({
           data-tour="collections.priority-view"
           onClick={() => onViewChange("priority")}
           title="Prioridad (IA)"
-          className={`flex size-8 items-center justify-center rounded ${view === "priority" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
+          className={`flex size-8 items-center justify-center rounded max-md:size-11 ${view === "priority" ? "bg-accent-100 text-accent-700" : "text-neutral-400 hover:text-foreground"}`}
         >
           <Sparkles className="size-4" aria-hidden="true" />
         </button>
