@@ -139,7 +139,7 @@ function SidebarContent({
         <button
           type="button"
           onClick={onNewGroup}
-          className="mt-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] font-medium text-neutral-500 hover:bg-surface-3 hover:text-foreground"
+          className="mt-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] font-medium text-neutral-500 hover:bg-surface-3 hover:text-foreground max-lg:min-h-11"
         >
           <Plus size={14} aria-hidden="true" />
           Nuevo grupo
@@ -147,7 +147,7 @@ function SidebarContent({
         <Link
           href="/tasks/archived"
           onClick={onNavigate}
-          className="px-2.5 py-1 text-[11px] text-neutral-400 hover:text-neutral-600 hover:underline"
+          className="px-2.5 py-1 text-[11px] text-neutral-400 hover:text-neutral-600 hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center"
         >
           Ver archivados
         </Link>

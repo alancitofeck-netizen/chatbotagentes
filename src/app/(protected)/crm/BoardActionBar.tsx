@@ -196,7 +196,7 @@ export function BoardActionBar({
                 title={label}
                 aria-label={label}
                 aria-pressed={view === key}
-                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12.5px] font-medium ${
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[12.5px] font-medium max-md:min-h-11 ${
                   view === key ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:text-foreground"
                 }`}
               >

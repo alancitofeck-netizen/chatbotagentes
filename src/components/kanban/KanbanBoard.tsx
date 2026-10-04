@@ -75,7 +75,7 @@ function Column<T extends KanbanCardBase>({
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="shrink-0 text-neutral-400 hover:text-foreground"
+          className="shrink-0 text-neutral-400 hover:text-foreground max-md:flex max-md:size-11 max-md:items-center max-md:justify-center"
           title={collapsed ? "Expandir" : "Contraer"}
         >
           {collapsed ? <ChevronRight className="size-3.5" aria-hidden="true" /> : <ChevronDown className="size-3.5" aria-hidden="true" />}
@@ -162,7 +162,7 @@ function Row<T extends KanbanCardBase>({
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="shrink-0 text-neutral-400 hover:text-foreground"
+          className="shrink-0 text-neutral-400 hover:text-foreground max-md:flex max-md:size-11 max-md:items-center max-md:justify-center"
           title={collapsed ? "Expandir" : "Contraer"}
         >
           {collapsed ? <ChevronDown className="size-3.5" aria-hidden="true" /> : <ChevronUp className="size-3.5" aria-hidden="true" />}
@@ -381,7 +381,7 @@ export function KanbanBoard<T extends KanbanCardBase>({
                     type="button"
                     aria-label={`Ir a ${stage.name}`}
                     onClick={() => scrollToStage(i)}
-                    className={`h-1.5 rounded-full transition-all ${i === activeStageIndex ? "w-6 bg-accent-500" : "w-1.5 bg-neutral-300"}`}
+                    className={`relative h-1.5 rounded-full transition-all before:absolute before:-inset-[19px] before:content-[''] ${i === activeStageIndex ? "w-6 bg-accent-500" : "w-1.5 bg-neutral-300"}`}
                   />
                 ))}
               </div>

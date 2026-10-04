@@ -38,7 +38,12 @@ const MEASURE = `(() => {
   document.querySelectorAll("button, a[href], [role=button], input[type=checkbox], input[type=radio], [role=tab]").forEach((el) => {
     if (!visible(el)) return;
     const r = el.getBoundingClientRect();
-    if (r.width < 44 || r.height < 44) smallTargets.push({ tag: el.tagName, label: label(el), w: Math.round(r.width), h: Math.round(r.height) });
+    if (r.width < 44 || r.height < 44) {
+      let op = 1, hiddenAria = false, anc = el;
+      while (anc && anc !== document.body) { op *= parseFloat(getComputedStyle(anc).opacity); if (anc.getAttribute("aria-hidden") === "true") hiddenAria = true; anc = anc.parentElement; }
+      const name = (el.getAttribute("aria-label") || el.getAttribute("title") || el.textContent || "").trim();
+      smallTargets.push({ tag: el.tagName, role: el.getAttribute("role"), label: label(el), name, w: Math.round(r.width), h: Math.round(r.height), op: Math.round(op * 100) / 100, hiddenAria, cls: (el.getAttribute("class") || "").slice(0, 160), cursor: getComputedStyle(el).cursor, inCalendar: !!el.closest('[class*=calendar]') });
+    }
   });
   const smallInputs = [];
   document.querySelectorAll("input, select, textarea").forEach((el) => {
@@ -68,7 +73,7 @@ const MEASURE = `(() => {
     if (m && Number(m[1]) > vw - 16) fixedPx.push({ tag: el.tagName, label: label(el), width: Number(m[1]) });
   });
   return { vw, doc, overflowing: overflowing.slice(0, 15), overflowCount: overflowing.length,
-    smallTargets: smallTargets.slice(0, 25), smallTargetCount: smallTargets.length,
+    smallTargets, smallTargetCount: smallTargets.length,
     smallInputs: smallInputs.slice(0, 15), smallInputCount: smallInputs.length,
     wideTables: wideTables.length, hoverOnlyCount: hoverOnly.length, hoverOnly: hoverOnly.slice(0, 10),
     fixedPx: fixedPx.slice(0, 10) };
@@ -95,7 +100,7 @@ try {
       entry.error = e.message.slice(0, 200);
     }
     results.push(entry);
-    console.log(route, entry.error ? "ERROR" : `scrollW=${entry.measure.doc.scrollWidth}/${entry.measure.vw} overflow=${entry.measure.overflowCount} smallTargets=${entry.measure.smallTargetCount} smallInputs=${entry.measure.smallInputCount} hoverOnly=${entry.measure.hoverOnlyCount} tables=${entry.measure.wideTables}`);
+    console.log(route, entry.error ? "ERROR " + entry.error : `scrollW=${entry.measure.doc.scrollWidth}/${entry.measure.vw} overflow=${entry.measure.overflowCount} smallTargets=${entry.measure.smallTargetCount} smallInputs=${entry.measure.smallInputCount} hoverOnly=${entry.measure.hoverOnlyCount} tables=${entry.measure.wideTables}`);
   }
 } finally {
   fs.writeFileSync(path.join(outDir, `audit-${width}-${account}.json`), JSON.stringify(results, null, 2));

@@ -319,3 +319,25 @@ Consecuencias:
 - Desktop: las capturas de pólizas, cobranza, inbox y CRM cambian por el borrado; no es una regresión de código.
 
 Triggers de DropdownMenu por defecto: 44px en mobile (antes 28px).
+
+## Targets táctiles: desglose y criterio
+
+Criterio (`scripts/mobile-qa/classifyTargets.mjs`, `audit.mjs`): el audit cuenta sólo elementos interactivos (botón, link, `role=button/tab`, checkbox y radio) visibles y menores a 44px en alguna dimensión. Los badges y textos no interactivos no entran por construcción. Los elementos ocultos por hover no se cuentan (opacidad 0 en el elemento o un ancestro) y se reportan aparte.
+
+Desglose antes de la corrección (205 targets, base de datos actual):
+- 90 pills, chips o tabs de texto de 32-34px de alto (filtros de Inbox, agenda, automatizaciones, calendario, dashboard).
+- 31 días del mini calendario de agenda: corregidos.
+- 32 otros controles.
+- 18 íconos de 28px con nombre (Más acciones, quitar miembro, anterior/siguiente).
+- 15 switches de automatizaciones: corregidos (área de toque de 10px arriba y abajo en mobile).
+- 12 links de texto inline.
+- 7 puntos indicadores de etapa del kanban: corregidos (área de toque de 44px sin cambiar el punto).
+- 14 colapsables "Contraer" del kanban: corregidos (44px en mobile).
+- Toggles de módulos (botón con badge): corregidos. Toggles de CRM (Kanban/Tabla/Lista): corregidos.
+- Sidebar de Tareas ("Nuevo grupo", "Ver archivados"): corregidos.
+
+Después de la corrección: 169 targets, 0 errores, 0 rutas con scroll horizontal (390x844, admin).
+
+Ocultos por hover: 0 en esta corrida. Grip de redimensionar eventos del calendario: es un div con cursor, no un botón, así que no entra en el audit por construcción.
+
+Pendiente: pills y chips de 32-34px (90) y los íconos de 28px (18), en inbox, agenda, automatizaciones, calendario, dashboard, documentos, configuración y clases.
