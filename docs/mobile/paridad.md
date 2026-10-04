@@ -269,3 +269,19 @@ Handoff en Inbox:
 - En mobile el panel de contacto de desktop ya no se monta (sólo en lg+, `useMediaQuery`). Al abrir un hilo ya no se disparan las acciones de CRM ni de pólizas, que hacían cola delante de "Tomar". Desktop verificado: el panel sigue montado y visible en 1440.
 - La escritura de "Tomar" se confirma en base (verificado: `human`). El banner se oculta al instante; el toast de confirmación llega en unos segundos porque la action espera detrás de `markRead` y de la insight de IA, que se disparan al abrir el hilo.
 - Pendiente: la insight de IA al abrir el hilo es una llamada encolada; sólo lee caché, pero sigue en la cola.
+
+## Tours de onboarding en mobile
+
+Recorrido automático de los pasos por módulo (`scripts/mobile-qa/tourWalk.mjs`, 390x844, admin):
+- Inbox: 2 pasos. El paso 2 ("Abrí una conversación") se salía del viewport por la derecha. Corregido.
+- Dashboard: 3 pasos, todos dentro de pantalla.
+- Agenda: 3 pasos, dentro de pantalla.
+- Asesorías: 3 pasos, dentro de pantalla.
+- Documentos: 2 pasos, dentro de pantalla.
+- Calendario: 4 pasos, dentro de pantalla.
+- Tareas: 1 paso; el resto empieza con un clic en "Nuevo" (visible en mobile).
+- CRM: 1 paso; el primero pide clic en "Nuevo lead". El wizard completo se recorrió a mano (`tourCrmWizard.mjs`): los destinos de los pasos 1 a 3 existen y son visibles; no se guardó nada.
+- Pólizas y cobranza: sin botón de ayuda ni tour en el workspace QA.
+- Perfil: sin botón de ayuda en el encabezado.
+
+Cambio en `floatingPosition.ts`: en mobile (< 768px) un tooltip sin lado libre cae arriba o abajo, y el ancho se limita al viewport. En desktop el comportamiento de flip queda igual.
