@@ -149,7 +149,7 @@ export function NotificationPanel({
                     <p className="text-[12.5px] text-neutral-500">{n.message}</p>
                     <p className="mt-0.5 text-[11px] text-neutral-400">{formatRelativeTime(n.createdAt)}</p>
                   </button>
-                  <div className="flex shrink-0 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex shrink-0 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
                     {!n.read && (
                       <button
                         type="button"

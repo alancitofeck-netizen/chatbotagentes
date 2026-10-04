@@ -160,7 +160,7 @@ export function ProfileShell({
                 type="button"
                 onClick={() => selectTab(t.key)}
                 className={cn(
-                  "flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
+                  "flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors max-lg:min-h-11",
                   active ? "bg-accent-100 text-accent-700" : "text-neutral-600 hover:bg-surface-2",
                 )}
               >

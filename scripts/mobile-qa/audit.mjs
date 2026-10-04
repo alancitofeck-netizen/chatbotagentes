@@ -56,7 +56,9 @@ const MEASURE = `(() => {
   });
   const hoverOnly = [];
   document.querySelectorAll("[class*='group-hover:opacity-0'], [class*='group-hover:flex'], [class*='group-hover:block'], [class*='hover:opacity-100']").forEach((el) => {
-    if (visible(el)) hoverOnly.push({ tag: el.tagName, label: label(el) });
+    // Solo cuenta si está oculto en este viewport (opacidad computada 0): las clases max-md:opacity-100 lo dejan visible.
+    let o = el; let op = 1; while (o && o !== document.body) { op *= parseFloat(getComputedStyle(o).opacity); o = o.parentElement; }
+    if (visible(el) && op === 0) hoverOnly.push({ tag: el.tagName, label: label(el) });
   });
   const fixedPx = [];
   document.querySelectorAll("body *").forEach((el) => {

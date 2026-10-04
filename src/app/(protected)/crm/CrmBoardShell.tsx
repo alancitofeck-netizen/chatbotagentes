@@ -356,7 +356,7 @@ export function CrmBoardShell({
               <button
                 type="button"
                 onClick={handleCreateNewPipeline}
-                className="text-xs font-medium text-accent-600 hover:underline"
+                className="text-xs font-medium text-accent-600 hover:underline max-md:inline-flex max-md:min-h-11 max-md:items-center"
               >
                 + Nuevo pipeline
               </button>

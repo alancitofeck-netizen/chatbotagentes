@@ -110,8 +110,8 @@ export function FotosStep({
           <div key={photo.id} className="group relative aspect-[4/5] overflow-hidden rounded-lg border border-border-default bg-surface-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={publicUrl(photo.selectedPath)} alt="" className="size-full object-cover" />
-            <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-              <button type="button" title="Recortar/rotar/zoom" onClick={() => handleRecortar(photo)} className="flex size-8 items-center justify-center rounded-full bg-white/90 text-neutral-700 hover:bg-white">
+            <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 max-md:inset-x-0 max-md:top-auto max-md:items-end max-md:bg-transparent max-md:pb-2 max-md:opacity-100">
+              <button type="button" title="Recortar/rotar/zoom" onClick={() => handleRecortar(photo)} className="flex size-8 items-center justify-center rounded-full bg-white/90 text-neutral-700 hover:bg-white max-md:size-11">
                 <Crop className="size-4" aria-hidden="true" />
               </button>
               <button
@@ -121,11 +121,11 @@ export function FotosStep({
                   setReplacingPhotoId(photo.id);
                   inputRef.current?.click();
                 }}
-                className="flex size-8 items-center justify-center rounded-full bg-white/90 text-neutral-700 hover:bg-white"
+                className="flex size-8 items-center justify-center rounded-full bg-white/90 text-neutral-700 hover:bg-white max-md:size-11"
               >
                 <RefreshCw className="size-4" aria-hidden="true" />
               </button>
-              <button type="button" title="Eliminar" onClick={() => handleDelete(photo)} className="flex size-8 items-center justify-center rounded-full bg-white/90 text-error-strong hover:bg-white">
+              <button type="button" title="Eliminar" onClick={() => handleDelete(photo)} className="flex size-8 items-center justify-center rounded-full bg-white/90 text-error-strong hover:bg-white max-md:size-11">
                 <X className="size-4" aria-hidden="true" />
               </button>
             </div>

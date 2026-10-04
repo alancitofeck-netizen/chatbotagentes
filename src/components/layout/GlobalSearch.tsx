@@ -263,7 +263,7 @@ export function GlobalSearch() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute left-0 top-full z-50 mt-2 w-[26rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-default bg-surface-1 shadow-[var(--elevation-lg)]"
+            className="absolute left-0 top-full z-50 mt-2 w-[26rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl max-md:left-3 max-md:right-3 max-md:w-auto max-md:max-w-none border border-border-default bg-surface-1 shadow-[var(--elevation-lg)]"
           >
             <div id={listboxId} role="listbox" className="max-h-[26rem] overflow-y-auto p-2">
               {!showingResults && (

@@ -33,7 +33,41 @@ export function TaskTableView({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)]">
+    <>
+      <ul className="flex flex-col gap-2 md:hidden">
+        {tasks.map((task) => (
+          <li key={task.id} className="flex items-start gap-3 rounded-2xl border border-border-default bg-surface-1 p-3">
+            {selectionMode && (
+              <input
+                type="checkbox"
+                aria-label={`Seleccionar ${task.title}`}
+                checked={selectedIds.has(task.id)}
+                onChange={() => onToggleSelect(task.id)}
+                className="mt-1 size-5 shrink-0 rounded border-border-strong accent-[var(--color-accent-500)]"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => onOpen(task)}
+                className={`block w-full truncate text-left text-sm font-semibold hover:text-accent-700 ${task.status === "completed" ? "text-neutral-400 line-through" : "text-foreground"}`}
+              >
+                {task.title}
+              </button>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <Badge variant={STATUS_META[task.status].badgeVariant}>{STATUS_META[task.status].label}</Badge>
+                <Badge variant={PRIORITY_META[task.priority].badgeVariant}>{PRIORITY_META[task.priority].label}</Badge>
+                <span className="text-xs text-neutral-500">{formatDueDate(task.dueAt)}</span>
+              </div>
+              <p className="mt-1.5 truncate text-xs text-neutral-500">
+                {task.assignedTo ? task.assignedTo.fullName : "Sin asignar"}
+                {task.relatedLabel ? ` · ${task.relatedLabel}` : ""}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="hidden overflow-x-auto rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)] md:block">
       <table className="w-full min-w-[1100px] text-left text-sm">
         <thead>
           <tr className="border-b border-border-default text-xs text-neutral-500">
@@ -127,6 +161,7 @@ export function TaskTableView({
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }

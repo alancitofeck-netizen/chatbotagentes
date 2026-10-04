@@ -1,0 +1,5765 @@
+[
+  {
+    "route": "/advisors",
+    "landed": "/advisors",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/advisors/import",
+    "landed": "/advisors/import",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [],
+      "smallTargetCount": 0,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/agenda",
+    "landed": "/agenda",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Hoy",
+          "w": 52,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Mañana",
+          "w": 76,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Semana",
+          "w": 78,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Mes",
+          "w": 54,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nueva cita",
+          "w": 113,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 32,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Filtros",
+          "w": 84,
+          "h": 34
+        },
+        {
+          "tag": "A",
+          "label": "A",
+          "w": 32,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Todas",
+          "w": 59,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Agendadas",
+          "w": 90,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Confirmadas",
+          "w": 99,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Realizadas",
+          "w": 88,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "No Show",
+          "w": 77,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Canceladas",
+          "w": 93,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ventas",
+          "w": 65,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Mes anterior",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Mes siguiente",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "1",
+          "w": 42,
+          "h": 30
+        },
+        {
+          "tag": "BUTTON",
+          "label": "2",
+          "w": 42,
+          "h": 30
+        },
+        {
+          "tag": "BUTTON",
+          "label": "3",
+          "w": 42,
+          "h": 30
+        },
+        {
+          "tag": "BUTTON",
+          "label": "4",
+          "w": 42,
+          "h": 30
+        },
+        {
+          "tag": "BUTTON",
+          "label": "5",
+          "w": 42,
+          "h": 30
+        },
+        {
+          "tag": "BUTTON",
+          "label": "6",
+          "w": 42,
+          "h": 30
+        },
+        {
+          "tag": "BUTTON",
+          "label": "7",
+          "w": 42,
+          "h": 30
+        }
+      ],
+      "smallTargetCount": 49,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/agentes-ia",
+    "landed": "/agentes-ia",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Crear agente ATS (formulario simple)",
+          "w": 200,
+          "h": 16
+        }
+      ],
+      "smallTargetCount": 2,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/agentes-ia/nuevo",
+    "landed": "/agentes-ia/nuevo",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Agentes IA",
+          "w": 69,
+          "h": 20
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/analizador-cartera",
+    "landed": "/analizador-cartera",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 24,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Conectar portal",
+          "w": 149,
+          "h": 40
+        },
+        {
+          "tag": "A",
+          "label": "Ir a Aseguradoras →",
+          "w": 133,
+          "h": 18
+        },
+        {
+          "tag": "A",
+          "label": "Ver cartera completa",
+          "w": 318,
+          "h": 36
+        },
+        {
+          "tag": "A",
+          "label": "Gestionar conexiones",
+          "w": 318,
+          "h": 36
+        }
+      ],
+      "smallTargetCount": 4,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/aseguradoras",
+    "landed": "/aseguradoras",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 112,
+          "h": 42
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asesores",
+    "landed": "/asesores",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asesores/agendas",
+    "landed": "/asesores/agendas",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asesores/operaciones",
+    "landed": "/asesores/operaciones",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asesores/performance",
+    "landed": "/asesores/performance",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asesorias",
+    "landed": "/asesorias",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "Ver detalles",
+          "w": 130,
+          "h": 38
+        },
+        {
+          "tag": "A",
+          "label": "Crear Asesoría",
+          "w": 146,
+          "h": 36
+        },
+        {
+          "tag": "A",
+          "label": "Ver detalles",
+          "w": 130,
+          "h": 38
+        }
+      ],
+      "smallTargetCount": 4,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asesorias/cierre",
+    "landed": "/asesorias/cierre",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Volver a Asesorías",
+          "w": 137,
+          "h": 20
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asesorias/presentacion",
+    "landed": "/asesorias/presentacion",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 72,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Volver a Asesorías",
+          "w": 137,
+          "h": 20
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asesorias/referidos",
+    "landed": "/asesorias/referidos",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Volver a Presentación",
+          "w": 159,
+          "h": 20
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/asistente",
+    "landed": "/asistente",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Enviar",
+          "w": 40,
+          "h": 40
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Generar recomendaciones",
+          "w": 194,
+          "h": 20
+        }
+      ],
+      "smallTargetCount": 3,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/ats",
+    "landed": "/ats",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "ATS",
+          "w": 29,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 2,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/automations",
+    "landed": "/profile",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 51,
+      "smallTargets": [],
+      "smallTargetCount": 0,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/automatizaciones",
+    "landed": "/automatizaciones",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Todas",
+          "w": 60,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Clientes",
+          "w": 74,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ventas",
+          "w": 66,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Cobranza",
+          "w": 82,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Pólizas",
+          "w": 68,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Agenda",
+          "w": 70,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "IA",
+          "w": 36,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Marketing",
+          "w": 86,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Cumpleaños",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Aniversario de póliza",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Recordatorio de cobranza",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Solicitud de documentación",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Renovación de póliza",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Confirmación de cita",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Recordatorio de cita",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Bienvenida",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Seguimiento post venta",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Solicitud de reseña",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Recontacto de prospectos",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Lead sin responder",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Seguimiento de oportunidad",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Pago recibido",
+          "w": 44,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activar Pago vencido",
+          "w": 44,
+          "h": 24
+        }
+      ],
+      "smallTargetCount": 24,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/calendar",
+    "landed": "/calendar",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Acciones masivas",
+          "w": 157,
+          "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo evento",
+          "w": 129,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Anterior",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Hoy",
+          "w": 46,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Siguiente",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Día",
+          "w": 48,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Semana",
+          "w": 78,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Mes",
+          "w": 54,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Agenda",
+          "w": 74,
+          "h": 32
+        }
+      ],
+      "smallTargetCount": 10,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/classroom",
+    "landed": "/classroom",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 3,
+      "hoverOnly": [
+        {
+          "tag": "DIV",
+          "label": "4 clasesEntrar"
+        },
+        {
+          "tag": "DIV",
+          "label": "2 clasesEntrar"
+        },
+        {
+          "tag": "DIV",
+          "label": "4 clasesEntrar"
+        }
+      ],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/classroom/admin",
+    "landed": "/classroom/admin",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "Más acciones",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Más acciones",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Más acciones",
+          "w": 28,
+          "h": 28
+        }
+      ],
+      "smallTargetCount": 3,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 3,
+      "hoverOnly": [
+        {
+          "tag": "DIV",
+          "label": "4 clasesEntrar"
+        },
+        {
+          "tag": "DIV",
+          "label": "2 clasesEntrar"
+        },
+        {
+          "tag": "DIV",
+          "label": "4 clasesEntrar"
+        }
+      ],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/cobranza",
+    "landed": "/cobranza",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo cobro",
+          "w": 114,
+          "h": 36
+        }
+      ],
+      "smallTargetCount": 2,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/crm",
+    "landed": "/crm",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 378,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "ATS",
+          "w": 29,
+          "h": 44
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Conectar canal",
+          "w": 103,
+          "h": 16
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Filtros",
+          "w": 104,
+          "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Importar",
+          "w": 98,
+          "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Exportar",
+          "w": 98,
+          "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Acciones masivas",
+          "w": 155,
+          "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Kanban",
+          "w": 34,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Tabla",
+          "w": 34,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Lista",
+          "w": 34,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ir a Nuevo",
+          "w": 24,
+          "h": 6
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ir a Contactado",
+          "w": 6,
+          "h": 6
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ir a Calificado",
+          "w": 6,
+          "h": 6
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ir a Propuesta",
+          "w": 6,
+          "h": 6
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ir a Negociación",
+          "w": 6,
+          "h": 6
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ir a Ganado",
+          "w": 6,
+          "h": 6
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Ir a Perdido",
+          "w": 6,
+          "h": 6
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "BUTTON",
+          "label": "[C[QA] Contacto 1",
+          "w": 231,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 14,
+          "h": 14
+        },
+        {
+          "tag": "BUTTON",
+          "label": "[C[QA] Contacto 6",
+          "w": 231,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "[C[QA] Contacto 5",
+          "w": 231,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "[C[QA] Contacto 7",
+          "w": 231,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "[C[QA] Contacto 2",
+          "w": 231,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 14,
+          "h": 14
+        }
+      ],
+      "smallTargetCount": 31,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/dashboard",
+    "landed": "/dashboard",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Día",
+          "w": 44,
+          "h": 44
+        },
+        {
+          "tag": "A",
+          "label": "Ver todas",
+          "w": 54,
+          "h": 16
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Marcar \"[QA] Llamar a Contacto 1\" como completada",
+          "w": 16,
+          "h": 16
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Marcar \"[QA] Enviar propuesta\" como completada",
+          "w": 16,
+          "h": 16
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Marcar \"[QA] Revisar póliza\" como completada",
+          "w": 16,
+          "h": 16
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Marcar \"[QA] Confirmar cita\" como completada",
+          "w": 16,
+          "h": 16
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Marcar \"[QA] Actualizar datos\" como completada",
+          "w": 16,
+          "h": 16
+        },
+        {
+          "tag": "A",
+          "label": "Ver todas las tareas",
+          "w": 318,
+          "h": 20
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Hoy",
+          "w": 46,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "7 días",
+          "w": 56,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "30 días",
+          "w": 66,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "90 días",
+          "w": 66,
+          "h": 28
+        }
+      ],
+      "smallTargetCount": 13,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/documents",
+    "landed": "/documents",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "Vista de cuadrícula",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Vista de lista",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Todos los documentos",
+          "w": 133,
+          "h": 20
+        }
+      ],
+      "smallTargetCount": 3,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/extraccion-polizas",
+    "landed": "/extraccion-polizas",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 106,
+          "h": 42
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/importar-exportar",
+    "landed": "/importar-exportar",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "CSV",
+          "w": 50,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "Excel",
+          "w": 56,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "CSV",
+          "w": 50,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "Excel",
+          "w": 56,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "CSV",
+          "w": 50,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "Excel",
+          "w": 56,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "PDF",
+          "w": 49,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "CSV",
+          "w": 50,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "Excel",
+          "w": 56,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "ICS",
+          "w": 46,
+          "h": 26
+        },
+        {
+          "tag": "A",
+          "label": "CSV",
+          "w": 50,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 12,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/inbox",
+    "landed": "/inbox",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 26,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Inbox",
+          "w": 36,
+          "h": 20
+        },
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nueva conversación",
+          "w": 32,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Todos",
+          "w": 60,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "IA",
+          "w": 36,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Humano",
+          "w": 75,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Todos3",
+          "w": 85,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "WhatsApp3",
+          "w": 111,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "🟣 Instagram",
+          "w": 107,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Todas3",
+          "w": 84,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "No leídas2",
+          "w": 105,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Mis conversaciones",
+          "w": 144,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Sin asignar3",
+          "w": 116,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Cerradas",
+          "w": 79,
+          "h": 32
+        }
+      ],
+      "smallTargetCount": 14,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/inbox/contactos",
+    "landed": "/inbox/contactos",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 24,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Inbox",
+          "w": 36,
+          "h": 20
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Todos",
+          "w": 57,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Suscrito",
+          "w": 71,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "No suscrito",
+          "w": 88,
+          "h": 24
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Desconocido",
+          "w": 97,
+          "h": 24
+        }
+      ],
+      "smallTargetCount": 5,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/inbox/etiquetas",
+    "landed": "/inbox/etiquetas",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Inbox",
+          "w": 36,
+          "h": 20
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Gris",
+          "w": 42,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Azul",
+          "w": 45,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Verde",
+          "w": 53,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Amarillo",
+          "w": 66,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Rojo",
+          "w": 45,
+          "h": 21
+        }
+      ],
+      "smallTargetCount": 6,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/inbox/plantillas",
+    "landed": "/inbox/plantillas",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Inbox",
+          "w": 36,
+          "h": 20
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/kpis",
+    "landed": "/kpis",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/metas",
+    "landed": "/metas",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 107,
+          "h": 42
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/mini-apps",
+    "landed": "/mini-apps",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/operaciones",
+    "landed": "/operaciones",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [],
+      "overflowCount": 0,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "Reload",
+          "w": 67,
+          "h": 32
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/polizas",
+    "landed": "/polizas",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/polizas/posibles-polizas",
+    "landed": "/polizas/posibles-polizas",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [],
+      "smallTargetCount": 0,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/presentaciones",
+    "landed": "/presentaciones",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [],
+      "overflowCount": 0,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "Reload",
+          "w": 67,
+          "h": 32
+        }
+      ],
+      "smallTargetCount": 1,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/profile",
+    "landed": "/profile",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 51,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "Cambiar foto",
+          "w": 90,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Agregar una foto de perfil",
+          "w": 132,
+          "h": 20
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nombre completoQA Mobile Admin",
+          "w": 234,
+          "h": 40
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nombre de usuarioAgregar",
+          "w": 234,
+          "h": 40
+        },
+        {
+          "tag": "BUTTON",
+          "label": "TeléfonoAgregar",
+          "w": 234,
+          "h": 40
+        },
+        {
+          "tag": "BUTTON",
+          "label": "CargoAgregar",
+          "w": 234,
+          "h": 40
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Sobre vosAgregar",
+          "w": 234,
+          "h": 40
+        }
+      ],
+      "smallTargetCount": 7,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/settings",
+    "landed": "/profile",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 51,
+      "smallTargets": [
+        {
+          "tag": "BUTTON",
+          "label": "Cambiar logo (próximamente)",
+          "w": 165,
+          "h": 16
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inactivo",
+          "w": 65,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inactivo",
+          "w": 65,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inactivo",
+          "w": 65,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Activo",
+          "w": 56,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inactivo",
+          "w": 65,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Inactivo",
+          "w": 65,
+          "h": 21
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Quitar miembro",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Quitar miembro",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "tag": "A",
+          "label": "Abrir",
+          "w": 50,
+          "h": 20
+        }
+      ],
+      "smallTargetCount": 23,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/tasks",
+    "landed": "/tasks",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Inicio",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Favoritos",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Hoy",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Esta semana",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo grupo",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Ver archivados",
+          "w": 358,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Abrir grupos de tareas",
+          "w": 36,
+          "h": 36
+        },
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo",
+          "w": 111,
+          "h": 36
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "smallTargetCount": 10,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/tasks/agenda",
+    "landed": "/tasks/agenda",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Inicio",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Favoritos",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Hoy",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Esta semana",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo grupo",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Ver archivados",
+          "w": 358,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Abrir grupos de tareas",
+          "w": 36,
+          "h": 36
+        },
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo",
+          "w": 111,
+          "h": 36
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 36,
+          "h": 36
+        },
+        {
+          "tag": "INPUT",
+          "label": "Marcar como completada",
+          "w": 16,
+          "h": 16
+        }
+      ],
+      "smallTargetCount": 11,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/tasks/archived",
+    "landed": "/tasks/archived",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Inicio",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Favoritos",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Hoy",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Esta semana",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo grupo",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Ver archivados",
+          "w": 358,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Abrir grupos de tareas",
+          "w": 36,
+          "h": 36
+        },
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo",
+          "w": 111,
+          "h": 36
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "smallTargetCount": 10,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  },
+  {
+    "route": "/tasks/favorites",
+    "landed": "/tasks/favorites",
+    "measure": {
+      "vw": 390,
+      "doc": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "overflowing": [
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 507
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 407
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Notificaciones",
+          "right": 407
+        },
+        {
+          "tag": "svg",
+          "label": "svg",
+          "right": 393
+        },
+        {
+          "tag": "path",
+          "label": "path",
+          "right": 391
+        },
+        {
+          "tag": "DIV",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "DETAILS",
+          "label": "QMQA Mobile Adminqa-mobile-admin@example.comMi perfilConfigu",
+          "right": 451
+        },
+        {
+          "tag": "SUMMARY",
+          "label": "Menú de perfil",
+          "right": 451
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.comMi perfilConfigura",
+          "right": 451
+        },
+        {
+          "tag": "DIV",
+          "label": "QA Mobile Adminqa-mobile-admin@example.com",
+          "right": 444
+        },
+        {
+          "tag": "SPAN",
+          "label": "QA Mobile Admin",
+          "right": 434
+        },
+        {
+          "tag": "SPAN",
+          "label": "qa-mobile-admin@example.com",
+          "right": 434
+        },
+        {
+          "tag": "DIV",
+          "label": "DIV",
+          "right": 444
+        },
+        {
+          "tag": "A",
+          "label": "Mi perfil",
+          "right": 444
+        }
+      ],
+      "overflowCount": 23,
+      "smallTargets": [
+        {
+          "tag": "A",
+          "label": "Inicio",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Favoritos",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Hoy",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Esta semana",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo grupo",
+          "w": 358,
+          "h": 32
+        },
+        {
+          "tag": "A",
+          "label": "Ver archivados",
+          "w": 358,
+          "h": 28
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Abrir grupos de tareas",
+          "w": 36,
+          "h": 36
+        },
+        {
+          "tag": "BUTTON",
+          "label": "¿Qué hago acá?",
+          "w": 129,
+          "h": 26
+        },
+        {
+          "tag": "BUTTON",
+          "label": "Nuevo",
+          "w": 111,
+          "h": 36
+        },
+        {
+          "tag": "BUTTON",
+          "label": "BUTTON",
+          "w": 36,
+          "h": 36
+        }
+      ],
+      "smallTargetCount": 10,
+      "smallInputs": [],
+      "smallInputCount": 0,
+      "wideTables": 0,
+      "hoverOnlyCount": 0,
+      "hoverOnly": [],
+      "fixedPx": []
+    }
+  }
+]

@@ -38,7 +38,7 @@ export function ChannelFilterBar({
       <button
         type="button"
         onClick={() => onChange("")}
-        className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${
+        className={`rounded-full px-3 py-1.5 text-[13px] font-medium max-md:min-h-11 ${
           value === "" ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:bg-surface-2"
         }`}
       >
@@ -54,7 +54,7 @@ export function ChannelFilterBar({
             type="button"
             onClick={() => onChange(active ? "" : channel)}
             title={won > 0 ? `${won} ganado(s) en este canal` : undefined}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium ${
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium max-md:min-h-11 ${
               active
                 ? "border-accent-500 bg-accent-50 text-accent-700"
                 : "border-border-default bg-surface-1 text-foreground hover:border-border-strong"

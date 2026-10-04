@@ -154,7 +154,7 @@ export function NotificationBell({
         title="Notificaciones"
         aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ""}`}
         onClick={() => setOpen((v) => !v)}
-        className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 transition-colors duration-[var(--duration-fast)] hover:bg-surface-2 hover:text-foreground"
+        className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 transition-colors duration-[var(--duration-fast)] hover:bg-surface-2 hover:text-foreground max-md:size-11"
       >
         <Bell size={17} aria-hidden="true" />
         {unreadCount > 0 && (

@@ -219,3 +219,27 @@ Verificación: capturas en docs/mobile/resultado-mobile/fase3-*-390x844.png; `sc
 Pendiente / conocido:
 - Calendario (/calendar): agenda por defecto en mobile OK; el handle de redimensionar evento en TimeGrid sigue oculto hasta hover (es un control de arrastre, no una acción).
 - Escritorio: no se recapturó 1440 en esta fase; los cambios en desktop son nulos salvo `max-md:`/`md:hidden` (verificar en la próxima pasada de paridad).
+
+## Estado Fase 4 (resto de módulos, hover, tablas, tabs)
+
+Hecho:
+- Hover-only: acciones visibles en mobile (`max-md:opacity-100`) en CRM, dashboard, tareas, fotos de presentaciones, documentos, perfil, notificaciones, asesorías, cursos admin y progreso de aprendizaje. Botones de 44px donde eran acciones.
+- Tablas: lista de tarjetas debajo de md (desktop igual) en Pólizas, Cobranza, CRM (vista tabla), Tareas (vista tabla), ranking de Performance y agendas por setter. `ResponsiveTable` queda como componente para las tablas que falten.
+- Kanbans (CRM, pólizas, cobranza, tareas, ATS, advisors): todos usan el board genérico con columna de una a la vez en mobile.
+- Tabs: `tabItemClassName` con 44px de alto en mobile (todas las tabs compartidas).
+- Navegación: campana de notificaciones 44px; pestañas de perfil/configuración 44px; chips de canal y período del dashboard 44px.
+- Buscador: el panel de resultados se alinea con el campo en mobile (antes salía corrido a la izquierda).
+- Modales: revisados por código (ConfirmDialog, Wizard, Avatar, Recorte): centrados con `p-4` y `w-full`, sin ancho fijo en mobile.
+
+Verificación:
+- Auditoría 390x844 y 360x780 (admin, 45 rutas): 0 errores, 0 rutas con scroll horizontal de página. Targets menores a 44px: 446 (fase 2) -> 277. Hover-only oculto: 6, todos en el overlay decorativo de CourseCard (la card entera es un link).
+- Flujo crítico 9/9. Vitest 141/141. Lint sin errores.
+- Tests de render (`responsiveTables.test.ts`) para las 6 tablas: confirman la lista mobile y la tabla desktop.
+
+No verificado en vivo (sin datos QA):
+- Pólizas, cobranza y tablas de asesores: el workspace QA no tiene pólizas ni cobros, y la cuenta admin QA tiene "Acceso restringido" en Asesores. Se verificó por render, no por captura.
+- Wizards multi-paso (mini apps, importar): revisados por código, sin captura en mobile.
+
+Decisión pendiente (no resuelta por código):
+- Subida de póliza por cámara: el backend extrae texto de PDFs y rechaza escaneos sin texto. Con cámara (foto) o escaneo a PDF como imagen haría falta OCR o un modelo de visión. Hoy iOS "Escanear documentos" produce PDF, pero si no tiene capa de texto la extracción falla.
+- Tours de onboarding en móvil: sin adaptar.

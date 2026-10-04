@@ -239,7 +239,7 @@ function LearningRow({ icon: Icon, label, description, status, onOpen }: Omit<Le
             <Badge variant={meta.badgeVariant} dot>
               {meta.label}
             </Badge>
-            <span className="text-xs font-medium whitespace-nowrap text-accent-600 opacity-0 transition-opacity duration-[var(--duration-fast)] group-hover:opacity-100 group-focus-visible:opacity-100">
+            <span className="text-xs font-medium whitespace-nowrap text-accent-600 opacity-0 transition-opacity duration-[var(--duration-fast)] group-hover:opacity-100 group-focus-visible:opacity-100 max-md:opacity-100">
               {meta.cta}
             </span>
           </div>
