@@ -37,7 +37,7 @@ export default async function ManychatPage() {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: "#F4F6FB" }}>
+    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", background: "#F4F6FB" }}>
       <iframe
         src="/api/manychat/frame"
         title="ManyChat — Growth Link"

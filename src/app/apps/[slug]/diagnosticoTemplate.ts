@@ -55,11 +55,11 @@ export const DIAGNOSTICO_CSS = `
     color:var(--ink);
     background:var(--bg);
     -webkit-font-smoothing:antialiased;
-    min-height:100vh;
+    min-height:100vh;min-height:100dvh;
   }
   /* fondo con grilla sutil + halo verde */
   .stage{
-    min-height:100vh;
+    min-height:100vh;min-height:100dvh;
     position:relative;
     overflow:hidden;
     display:flex;

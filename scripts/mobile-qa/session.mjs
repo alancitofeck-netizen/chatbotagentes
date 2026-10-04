@@ -28,5 +28,6 @@ export async function loginIn(context, account = "agent") {
   if (new URL(page.url()).pathname.startsWith("/select-workspace")) {
     await page.waitForURL((url) => !url.pathname.startsWith("/select-workspace"), { timeout: 60000 }).catch(() => {});
   }
+  await page.goto(`${BASE_URL}/dashboard`, { waitUntil: "networkidle", timeout: 90000 });
   return page;
 }

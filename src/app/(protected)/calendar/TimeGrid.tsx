@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { cn } from "@/lib/utils/cn";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import { EVENT_TYPE_META } from "@/components/calendar/eventTypeMeta";
@@ -271,7 +271,7 @@ export function TimeGrid({
   // Events spec, suppresses the browser's compatibility `click` event
   // entirely, even for a stationary click. A small movement threshold lets
   // a plain click (opening the detail drawer) coexist with drag-to-move.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 4 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   function handleDragEnd(dragEvent: DragEndEvent) {
     const eventId = dragEvent.active.id as string;

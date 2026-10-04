@@ -66,7 +66,7 @@ export const CONTROL_FINANCIERO_CSS = `
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
-  body{font-family:var(--f);color:var(--ink);line-height:1.5;min-height:100vh;background:var(--bg);
+  body{font-family:var(--f);color:var(--ink);line-height:1.5;min-height:100vh;min-height:100dvh;background:var(--bg);
     padding-bottom:calc(20px + env(safe-area-inset-bottom))}
   .num{font-family:var(--f-n);font-feature-settings:"tnum" 1;font-variant-numeric:tabular-nums}
 

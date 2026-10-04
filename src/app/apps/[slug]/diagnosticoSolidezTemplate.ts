@@ -45,7 +45,7 @@ export const DIAGNOSTICO_SOLIDEZ_CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{
-    font-family:var(--f-body);color:var(--ink);line-height:1.5;min-height:100vh;
+    font-family:var(--f-body);color:var(--ink);line-height:1.5;min-height:100vh;min-height:100dvh;
     display:flex;flex-direction:column;align-items:center;
     padding:20px 16px calc(20px + env(safe-area-inset-bottom));
     background:

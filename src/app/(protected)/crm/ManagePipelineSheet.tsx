@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor, TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -95,7 +95,7 @@ export function ManagePipelineSheet({
   const [editIsLost, setEditIsLost] = useState(false);
   const [newStageName, setNewStageName] = useState("");
   const [isPending, startTransition] = useTransition();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   function handleRename() {
     if (!name.trim() || name.trim() === pipelineName) return;

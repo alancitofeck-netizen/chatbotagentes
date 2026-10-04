@@ -123,11 +123,12 @@ export async function updateConversationMode(conversationId: string, mode: strin
   const { workspaceId } = await requireActiveWorkspace();
   const supabase = await createClient();
 
-  await supabase
+  const { error } = await supabase
     .from("conversations")
     .update({ mode })
     .eq("id", conversationId)
     .eq("workspace_id", workspaceId);
+  if (error) throw new Error(`No se pudo cambiar el modo de la conversación: ${error.message}`);
 
   // Fase 4 (Agentes IA de Referidos, punto 7): "cancelación cuando el
   // asesor toma la conversación" / "cuando el bot es pausado" — no-op
@@ -354,4 +355,11 @@ export async function deleteWorkspaceTag(tagId: string) {
   revalidatePath("/inbox/contactos");
   revalidatePath("/inbox/etiquetas");
   revalidatePath("/crm");
+}
+
+export async function getInboxUnreadTotalAction(): Promise<number> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const memberId = await getCurrentMemberId(workspaceId);
+  const list = await getConversationList(workspaceId, {}, memberId);
+  return list.reduce((sum, c) => sum + c.unreadCount, 0);
 }

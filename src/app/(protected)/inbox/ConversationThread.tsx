@@ -21,6 +21,8 @@ import {
   BrainCircuit,
   ClipboardList,
   RefreshCw,
+  Bot,
+  Camera,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -28,7 +30,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/toast/toast";
 import type { ConversationDetail, MessageItem } from "@/lib/inbox/queries";
-import { approveDraftMessage, editDraftMessage, rejectDraftMessage } from "@/lib/inbox/actions";
+import { approveDraftMessage, editDraftMessage, rejectDraftMessage, updateConversationMode } from "@/lib/inbox/actions";
 import { createTask } from "@/lib/tasks/actions";
 import type { WhatsAppTemplate } from "@/lib/templates/queries";
 import {
@@ -155,6 +157,46 @@ export function ConversationThread({
   const [liveMessages, setLiveMessages] = useState<MessageItem[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
+
+  const threadRef = useRef<HTMLDivElement>(null);
+  // iOS/Android no achican dvh cuando aparece el teclado: el compositor queda
+  // tapado. visualViewport da el alto real visible y se usa como padding inferior.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      if (threadRef.current) threadRef.current.style.paddingBottom = keyboard > 0 ? `${keyboard}px` : "";
+    };
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    };
+  }, []);
+
+  // Server Actions se ejecutan en cola: la escritura de modo espera detrás de
+  // las acciones que el panel lanza al abrir la conversación (insight de IA,
+  // CRM, pólizas), así que el banner se oculta al instante y se revierte sólo
+  // si la acción falla.
+  // Guarda el objeto `detail` del momento del clic: el override aplica sólo
+  // mientras ese mismo objeto siga en pantalla; al llegar un detalle refrescado
+  // vuelve a mandar el modo real (así no tapa un cambio posterior hecho desde
+  // el panel lateral).
+  const [takeoverSnapshot, setTakeoverSnapshot] = useState<ConversationDetail | null>(null);
+  async function takeOverConversation() {
+    if (!detail) return;
+    setTakeoverSnapshot(detail);
+    try {
+      await updateConversationMode(detail.id, "human");
+      toast.success("Tomaste la conversación.");
+      onDetailChanged?.();
+    } catch (err) {
+      setTakeoverSnapshot(null);
+      toast.error(err instanceof Error ? err.message : "No se pudo tomar la conversación.");
+    }
+  }
   const [isSending, setIsSending] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -168,6 +210,7 @@ export function ConversationThread({
   const templatesRef = useRef<HTMLDivElement>(null);
   const aiPopoverRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   // A ref counter (not Date.now()/Math.random()) for temp-id generation —
   // those are impure calls the react-hooks/purity rule flags even inside an
   // event handler defined in the component body.
@@ -566,7 +609,7 @@ export function ConversationThread({
   const isInstagram = detail.channel === "instagram";
 
   return (
-    <div className="flex h-full flex-1 flex-col bg-surface-2">
+    <div ref={threadRef} className="flex h-full min-w-0 flex-1 flex-col bg-surface-2">
       <div className="flex items-center justify-between gap-3 border-b border-border-default bg-surface-1 px-5 py-3.5">
         <div className="flex items-center gap-3">
           <button
@@ -809,6 +852,16 @@ export function ConversationThread({
         )}
       </div>
 
+      {detail && detail !== takeoverSnapshot && (detail.mode === "ai" || detail.mode === "pending_human") && (
+        <div className="flex items-center gap-2 border-t border-border-default bg-violet-50 px-3 py-2 text-[13px] text-violet-800 md:hidden">
+          <Bot size={16} className="shrink-0" aria-hidden="true" />
+          <span className="flex-1">La IA está atendiendo. Tomá el control para responder vos.</span>
+          <button type="button" onClick={takeOverConversation} className="h-9 shrink-0 rounded-md bg-foreground px-3 text-sm font-medium text-surface-1">
+            Tomar
+          </button>
+        </div>
+      )}
+
       <div className="border-t border-border-default bg-surface-1 p-3">
         {pendingAttachment && (
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-border-default bg-surface-2 px-3 py-2 text-[13px]">
@@ -823,15 +876,25 @@ export function ConversationThread({
           {!isInstagram && (
             <>
               <input ref={fileInputRef} type="file" onChange={handleFileSelected} className="hidden" />
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelected} className="hidden" />
               <button
                 type="button"
                 disabled={uploadingAttachment}
                 onClick={() => fileInputRef.current?.click()}
                 title="Adjuntar archivo"
                 aria-label="Adjuntar archivo"
-                className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50 max-md:size-11"
               >
                 <Paperclip size={17} />
+              </button>
+              <button
+                type="button"
+                disabled={uploadingAttachment}
+                onClick={() => cameraInputRef.current?.click()}
+                aria-label="Sacar foto"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50 md:hidden"
+              >
+                <Camera size={17} />
               </button>
             </>
           )}

@@ -40,7 +40,7 @@ export async function Navbar({ workspaceName, enabledModules, memberId, userName
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 px-4 sm:px-6 md:h-16">
       <div className="flex items-center gap-3">
-        <MobileNav enabledModules={enabledModules} />
+        <MobileNav enabledModules={enabledModules} userName={userName} workspaceName={workspaceName} />
         <span className="truncate text-sm font-medium text-neutral-500">{workspaceName}</span>
       </div>
       <div className="flex flex-1 items-center justify-end gap-3">

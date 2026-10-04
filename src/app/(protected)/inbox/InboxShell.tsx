@@ -127,6 +127,20 @@ export function InboxShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
+  // Al volver de segundo plano (iOS/Android suspenden el socket y los eventos
+  // perdidos no se reenvían): reconecta Realtime y refresca lista y detalle.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      createClient().realtime.connect();
+      refetchList();
+      if (selectedId) getConversationDetailAction(selectedId).then(setDetail);
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
   useEffect(() => {
     if (!selectedId) return;
     document.body.dataset.inboxThread = "open";
@@ -151,7 +165,7 @@ export function InboxShell({
         className={selectedId ? "hidden w-full border-r lg:flex lg:w-[360px]" : "flex w-full border-r lg:w-[360px]"}
       />
 
-      <div className={selectedId ? "flex flex-1" : "hidden flex-1 lg:flex"}>
+      <div className={selectedId ? "flex min-w-0 flex-1" : "hidden min-w-0 flex-1 lg:flex"}>
         <ConversationThread
           key={selectedId ?? "empty"}
           detail={detail}

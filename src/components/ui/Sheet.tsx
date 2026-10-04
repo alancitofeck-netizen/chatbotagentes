@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -56,6 +56,24 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
+  const [dragY, setDragY] = useState(0);
+  const dragStart = useRef<number | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (!window.matchMedia("(max-width: 639.98px)").matches) return;
+    dragStart.current = e.touches[0].clientY;
+  }
+  function handleTouchMove(e: React.TouchEvent) {
+    if (dragStart.current === null) return;
+    setDragY(Math.max(0, e.touches[0].clientY - dragStart.current));
+  }
+  function handleTouchEnd() {
+    if (dragStart.current === null) return;
+    dragStart.current = null;
+    if (dragY > 120) onClose();
+    setDragY(0);
+  }
+
   if (!isRendered) return null;
 
   return (
@@ -87,6 +105,14 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
           className ?? "max-w-md",
         )}
       >
+        <div
+          className="flex flex-col"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={dragY > 0 ? { transform: `translateY(${dragY}px)`, transition: "none" } : undefined}
+        >
+          <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-neutral-300 sm:hidden" aria-hidden="true" />
         <div className="flex items-center justify-between border-b border-border-default px-5 py-4">
           <div className="text-[15px] font-semibold text-foreground">{title}</div>
           <button
@@ -97,6 +123,7 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
           >
             <X className="size-4" aria-hidden="true" />
           </button>
+        </div>
         </div>
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>

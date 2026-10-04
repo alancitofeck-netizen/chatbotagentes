@@ -1,6 +1,6 @@
 "use client";
 
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { cn } from "@/lib/utils/cn";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import { EVENT_TYPE_META } from "@/components/calendar/eventTypeMeta";
@@ -169,7 +169,7 @@ export function MonthView({
 
   // See TimeGrid.tsx: without this, PointerSensor's preventDefault() on
   // pointerdown suppresses the click event a plain (non-drag) tap relies on.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 4 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   function handleDragEnd(dragEvent: DragEndEvent) {
     const eventId = dragEvent.active.id as string;

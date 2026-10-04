@@ -23,6 +23,8 @@ export interface ConversationListItem {
   /** "whatsapp" | "instagram" (0161_instagram_channel.sql) — default
    * 'whatsapp' para toda conversación preexistente. */
   channel: string;
+  /** ai | human | paused | pending_human — el handoff real (updateConversationMode). */
+  mode: string;
   instagramUsername: string | null;
   /** Count of inbound messages after this agent's own last_read_at
    * (conversation_reads, supabase/migrations/0014_conversation_reads.sql) —
@@ -70,7 +72,7 @@ export async function getConversationList(
   let query = supabase
     .from("conversations")
     .select(
-      "id, status, channel, last_message_at, assigned_user_id, contact_id, contacts(id, name, phone, company, avatar_url, instagram_username), messages(direction, content, created_at, type)",
+      "id, status, mode, channel, last_message_at, assigned_user_id, contact_id, contacts(id, name, phone, company, avatar_url, instagram_username), messages(direction, content, created_at, type)",
     )
     .eq("workspace_id", workspaceId)
     .order("last_message_at", { ascending: false, nullsFirst: false });
@@ -136,6 +138,7 @@ export async function getConversationList(
       tags: tagsByContact.get(row.contact_id as string) ?? [],
       unreadCount,
       channel: row.channel as string,
+      mode: row.mode as string,
       instagramUsername: (contact?.instagram_username as string | undefined) ?? null,
     };
   });

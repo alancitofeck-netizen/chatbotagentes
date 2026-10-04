@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, ChevronRight, GripVertical, Plus, Pencil, Trash2, MoreVertical, PlayCircle, FolderInput } from "lucide-react";
@@ -107,7 +107,7 @@ function ChapterCard({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: chapter.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
   const otherChapters = allChapters.filter((c) => c.id !== chapter.id);
 
   function handleLessonDragEnd(event: DragEndEvent) {
@@ -208,7 +208,7 @@ export function AdminChapterLessonTree({ courseId, initialChapters }: { courseId
   const [confirmDeleteChapter, setConfirmDeleteChapter] = useState<ClassroomChapter | null>(null);
   const [confirmDeleteLesson, setConfirmDeleteLesson] = useState<ClassroomLesson | null>(null);
   const [isPending, startTransition] = useTransition();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   function refetch() {
     return getChapterTreeAction(courseId).then(setChapters);

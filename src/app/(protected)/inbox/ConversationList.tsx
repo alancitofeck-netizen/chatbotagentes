@@ -98,6 +98,7 @@ export function ConversationList({
   const memberById = useMemo(() => new Map(members.map((m) => [m.memberId, m])), [members]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
+  const [modeFilter, setModeFilter] = useState<"all" | "ai" | "human">("all");
 
   const channelCounts = useMemo(() => {
     const result: Record<ChannelFilter, number> = { all: conversations.length, whatsapp: 0, instagram: 0 };
@@ -126,9 +127,10 @@ export function ConversationList({
   const filtered = useMemo(() => {
     let list = conversations.filter((c) => matchesTab(c, activeTab, currentMemberId));
     if (channelFilter !== "all") list = list.filter((c) => c.channel === channelFilter);
+    if (modeFilter !== "all") list = list.filter((c) => (modeFilter === "ai" ? c.mode === "ai" : c.mode === "human"));
     if (activeCategory) list = list.filter((c) => c.tags.some((t) => t.name.trim().toLowerCase() === activeCategory));
     return list;
-  }, [conversations, activeTab, currentMemberId, activeCategory, channelFilter]);
+  }, [conversations, activeTab, currentMemberId, activeCategory, channelFilter, modeFilter]);
 
   return (
     <div className={cn("h-full flex-col bg-surface-1", className)}>
@@ -154,6 +156,18 @@ export function ConversationList({
             placeholder="Buscar contacto, empresa…"
             className="w-full rounded-full border border-border-strong bg-surface-2 py-2 pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-blue-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-blue-100"
           />
+        </div>
+        <div className="flex gap-1 overflow-x-auto md:hidden">
+          {([["all", "Todos"], ["ai", "IA"], ["human", "Humano"]] as const).map(([k, l]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setModeFilter(k)}
+              className={cn("shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium", modeFilter === k ? "bg-foreground text-surface-1" : "text-neutral-600")}
+            >
+              {l}
+            </button>
+          ))}
         </div>
         <div className="flex gap-1 overflow-x-auto">
           {CHANNEL_TABS.map((t) => (

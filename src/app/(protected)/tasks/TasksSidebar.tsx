@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor, TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -181,7 +181,7 @@ export function TasksSidebar({
 }) {
   const pathname = usePathname();
   const [groups, setGroups] = useState(initialGroups);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   const activeGroupId = pathname.match(/^\/tasks\/groups\/([^/?]+)/)?.[1];
 
