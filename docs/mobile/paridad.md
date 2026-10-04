@@ -243,3 +243,18 @@ No verificado en vivo (sin datos QA):
 Decisión pendiente (no resuelta por código):
 - Subida de póliza por cámara: el backend extrae texto de PDFs y rechaza escaneos sin texto. Con cámara (foto) o escaneo a PDF como imagen haría falta OCR o un modelo de visión. Hoy iOS "Escanear documentos" produce PDF, pero si no tiene capa de texto la extracción falla.
 - Tours de onboarding en móvil: sin adaptar.
+
+## Estado Fase 5 (PWA, inputs, dark mode, carga)
+
+Hecho:
+- Barra superior con safe-area (`env(safe-area-inset-top)`) solo en mobile: en iPhone instalado como app, la cabecera ya no queda bajo la status bar ni el notch.
+- `inputMode="tel"` en los 4 campos de teléfono (asesorías y apps). OTP ya tenía `inputMode="numeric"` y `autoComplete="one-time-code"`.
+- Estados de carga: `(protected)/loading.tsx` cubre las transiciones de todo el módulo (la navegación ya no queda en blanco).
+- Dark mode: capturas en 390 de dashboard, CRM, Inbox, agenda y tareas (`docs/mobile/resultado-mobile/fase5-dark-*.png`). Superficies, texto y chips legibles; sin bloques claros inesperados.
+- Manifest: `display: standalone`, `start_url: /dashboard`, `scope: /`, `viewportFit: cover`, `appleWebApp` capable.
+
+No verificado (requiere iPhone o Android instalado):
+- Login OAuth y logout dentro de la PWA instalada (la sesión de la PWA es separada de Safari).
+- Links `target="_blank"` en standalone (en iOS pueden abrir en otra vista).
+- Descargas (exceljs, pdfkit, jszip): verificar en iOS; Web Share API como alternativa no implementada.
+- Recorte de imágenes (react-easy-crop) y editor TipTap: gestos y teclado virtual.
