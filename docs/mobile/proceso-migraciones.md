@@ -53,3 +53,7 @@ Las migraciones sin entrada con el mismo nombre en el registro original, que esc
 - 186 versiones reparadas corresponden a los 186 archivos locales (0001–0188 con 2 huecos: 0048 y 0164; sin duplicados). Con 0189, el repo tiene 187 archivos.
 - Los huecos son archivos que nunca existieron en el repo, no archivos borrados por el repair.
 - **Hallazgo:** el registro original tenía además 6 entradas sin archivo local: `0012b`, `0012c` y `0050b`–`0050e` (fixes aplicados directamente con sufijo). El repair las marcó como `reverted` y el backup guardó sólo su md5, no el texto. Los efectos siguen en producción (por ejemplo `upsert_whatsapp_integration`, `provision_whatsapp_web_session`), pero el repo no tiene su SQL. Recuperarlo implica exportar las definiciones actuales de esas funciones y revisarlas antes de commitear.
+
+## Regla para operaciones que borran filas del registro (2026-10-05)
+
+Antes de ejecutar `supabase migration repair --status reverted` (que borra filas de `supabase_migrations.schema_migrations`), hay que **guardar el texto completo de los statements** de cada fila afectada, no sólo su md5. El md5 permite verificar, pero no restaurar: en el repair original se perdieron así los statements de `0012b`, `0012c` y `0050b`–`0050e`, que no tienen archivo en el repo. El backup debe incluir `version`, `name` y `statements` completos (por ejemplo con `string_agg` a un archivo versionado, o con `pg_dump` si hay Docker disponible), y el archivo se commitea antes de ejecutar el repair.

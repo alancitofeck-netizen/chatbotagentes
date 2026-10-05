@@ -59,3 +59,40 @@ Criterio pedido: un branch no debe poder llamar a producción aunque alguien car
 Ninguna opción depende de algo que se pueda copiar con los datos. Si necesitás una garantía criptográfica, la alternativa es que los endpoints de producción rechacen cualquier request que no provenga de su propio pg_cron, lo cual no es posible con pg_net.
 
 Recomendación: C, junto con no copiar secrets de producción a ningún branch.
+
+## Opción C bis: tabla de configuración en lugar de `app.environment` (2026-10-05)
+
+**Motivo del cambio:** `alter database postgres set app.environment = 'production'` falló en producción con `ERROR: 42501: permission denied to set parameter app.environment`. El rol `postgres` de Supabase no es superusuario y no puede definir ese parámetro.
+
+**Qué cambia:** las 19 llamadas a `cron.schedule` de 16 migraciones programan el job sólo si existe la fila `('environment', 'production')` en `private.app_config`. La tabla la crea la migración `0190_private_app_config.sql` (esquema `private`, no expuesto por la API, sin grants a `anon` ni `authenticated`, RLS activo sin policies, sin filas). La fila de producción **no** la inserta la migración: la carga un operador a mano.
+
+**Efecto:**
+- Producción: las migraciones de cron ya están aplicadas y no vuelven a correr. Los 13 jobs no cambian. La fila sólo importa para migraciones que se ejecuten de nuevo.
+- Un branch: la tabla queda vacía, así que no se programa ningún job de cron de las migraciones.
+
+**SQL para ejecutar en el SQL editor de producción (lo ejecuta el operador, no el asistente):**
+
+```sql
+create schema if not exists private;
+
+revoke all on schema private from public, anon, authenticated;
+
+create table if not exists private.app_config (
+  key text primary key,
+  value text not null,
+  created_at timestamptz not null default now()
+);
+
+revoke all on table private.app_config from public, anon, authenticated;
+alter table private.app_config enable row level security;
+
+insert into private.app_config (key, value)
+values ('environment', 'production')
+on conflict (key) do nothing;
+```
+
+**Verificación esperada en producción después de ejecutarlo:** `select key, value from private.app_config;` devuelve `environment | production`, y `select count(*) from cron.job;` sigue dando 13.
+
+**Verificación en `qa-mobile`:** tras la sincronización que aplica `0190`, `private.app_config` existe y está vacía, y ninguno de los 9 jobs que llamaban a producción está programado (se desprogramaron antes). Los 4 jobs de notificaciones que quedaron en el branch son locales a su base y no llaman a producción.
+
+**Límite declarado:** el gate evita el riesgo accidental y el de cargar el Vault. No es una barrera frente a un operador con rol `postgres` en el branch, que podría insertar la misma fila.
