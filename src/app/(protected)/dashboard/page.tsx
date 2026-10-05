@@ -38,6 +38,8 @@ import { TopDeals } from "./TopDeals";
 import { ExecutiveSummary } from "./ExecutiveSummary";
 import { PriorityInsights } from "./PriorityInsights";
 import { LeadDeck } from "./LeadDeck";
+import { FunnelCard, MiniAppsRankingCard, TeamTodayCard } from "./HomeBlocks";
+import { getMiniAppsList } from "@/lib/miniApps/queries";
 import { RecommendedActions } from "./RecommendedActions";
 import { Trends } from "./Trends";
 import { AdvisorPerformance } from "./AdvisorPerformance";
@@ -82,6 +84,7 @@ export default async function DashboardPage() {
     uncontactedLeads,
     linkedinConnected,
     agentList,
+    miniApps,
   ] = await Promise.all([
     getDashboardKpis(workspaceId),
     getActivitySeries(workspaceId, "7d"),
@@ -110,6 +113,7 @@ export default async function DashboardPage() {
     hasLinkedInConnection(workspaceId),
     // Only Owners see Rendimiento de Asesores — skip this heavier query otherwise.
     isOwner ? getAgentList(workspaceId) : Promise.resolve([]),
+    getMiniAppsList(workspaceId),
   ]);
   const firstName = primaryUserName.split(" ")[0];
   // "Semana" es el tab default (mismo criterio que la referencia) — el resto
@@ -163,6 +167,12 @@ export default async function DashboardPage() {
         <h2 className="text-[15px] font-semibold text-foreground">De dónde llegan</h2>
         <LeadsBySourceChart sources={leadsBySource} />
       </section>
+
+      <MiniAppsRankingCard apps={miniApps} />
+
+      <FunnelCard board={crmBoard} />
+
+      {isOwner && <TeamTodayCard advisors={advisors} />}
 
       <DashboardLearningCard />
 

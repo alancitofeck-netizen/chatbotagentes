@@ -71,7 +71,7 @@ export interface SidebarModuleConfig {
 }
 
 export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
-  { id: "dashboard", name: "Dashboard", icon: LayoutDashboard, route: "/dashboard", section: "Principal", order: 0, shortcut: "d" },
+  { id: "dashboard", name: "Inicio", icon: LayoutDashboard, route: "/dashboard", section: "Principal", order: 0, shortcut: "d" },
   { id: "inbox", name: "Inbox", icon: Inbox, route: "/inbox", section: "Principal", order: 1, shortcut: "i" },
 
   { id: "crm", name: "CRM", icon: Kanban, route: "/crm", section: "Clientes", moduleKey: "crm", order: 0, shortcut: "c" },
