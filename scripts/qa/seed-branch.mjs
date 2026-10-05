@@ -17,6 +17,8 @@ export const BRANCH_REF = "evoanshcejupacdtruev";
 export const BRANCH_WORKSPACE_ID = "5b1c0e7a-0000-4000-8000-000000000001";
 export const QA_EMAIL = "qa-mobile@example.com";
 export const QA_ADMIN_EMAIL = "qa-mobile-admin@example.com";
+// Autor de classroom SIN nombre: la UI debe mostrar el fallback "Usuario" (0191).
+export const QA_NONAME_EMAIL = "qa-mobile-sin-nombre@example.com";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -42,11 +44,26 @@ async function ensureUser(email, name) {
   const found = list.users.find((u) => u.email === email);
   if (found) return found.id;
   const password = crypto.randomBytes(18).toString("base64url") + "Aa1!"; // descartada: las pruebas rotan la contraseña
+  // name null = cuenta sin full_name (sólo para probar el fallback de classroom).
   const created = must(
-    await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: name } }),
+    await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: name ? { full_name: name } : {} }),
     `createUser ${email}`,
   );
   return created.user.id;
+}
+
+/** Borra sólo lo que sembró este script en classroom (slugs qa-mobile-*). */
+async function resetClassroom() {
+  const courses = must(await db.from("classroom_courses").select("id").like("slug", "qa-mobile-%"), "classroom courses");
+  const courseIds = courses.map((c) => c.id);
+  if (courseIds.length) {
+    const lessons = must(await db.from("classroom_lessons").select("id").in("course_id", courseIds), "classroom lessons");
+    if (lessons.length) must(await db.from("classroom_comments").delete().in("lesson_id", lessons.map((l) => l.id)), "del comments");
+    must(await db.from("classroom_lessons").delete().in("course_id", courseIds), "del lessons");
+    must(await db.from("classroom_chapters").delete().in("course_id", courseIds), "del chapters");
+    must(await db.from("classroom_courses").delete().in("id", courseIds), "del courses");
+  }
+  must(await db.from("classroom_categories").delete().like("slug", "qa-mobile-%"), "del categories");
 }
 
 async function resetWorkspace() {
@@ -70,6 +87,7 @@ async function resetWorkspace() {
   }
   must(await db.from("pipelines").delete().eq("workspace_id", ws), "del pipelines");
   must(await db.from("contacts").delete().eq("workspace_id", ws), "del contacts");
+  await resetClassroom();
   must(await db.from("workspace_modules").delete().eq("workspace_id", ws), "del modules");
   must(await db.from("workspace_members").delete().eq("workspace_id", ws), "del members");
   must(await db.from("workspaces").delete().eq("id", ws), "del workspace");
@@ -87,6 +105,7 @@ async function main() {
 
   const adminId = await ensureUser(QA_ADMIN_EMAIL, "QA Mobile Admin");
   const agentId = await ensureUser(QA_EMAIL, "QA Mobile");
+  const noNameId = await ensureUser(QA_NONAME_EMAIL, null);
 
   must(await db.from("workspaces").insert({ id: BRANCH_WORKSPACE_ID, name: "Workspace de qa-mobile", slug: "qa-mobile-branch", status: "active", plan: "pro" }), "workspace");
   must(
@@ -99,7 +118,8 @@ async function main() {
   // Ancla de agencia: core.agency_workspace_id() toma el admin de plataforma más antiguo.
   must(await db.from("platform_admins").upsert({ user_id: adminId }), "platform_admins");
 
-  const modules = ["advisors", "agenda", "ai_assistant", "asesorias", "collections", "crm", "data_transfer", "goals", "insurance_prospects", "insurance_providers", "mini_apps", "policies", "policy_extraction", "tasks"];
+  // operaciones y presentations activos: el comparativo de escritorio necesita sus rutas reales.
+  const modules = ["advisors", "agenda", "ai_assistant", "asesorias", "collections", "crm", "data_transfer", "goals", "insurance_prospects", "insurance_providers", "mini_apps", "operaciones", "policies", "policy_extraction", "presentations", "tasks"];
   must(await db.from("workspace_modules").insert(modules.map((m) => ({ workspace_id: BRANCH_WORKSPACE_ID, module_key: m, enabled: true }))), "modules");
 
   // Pipelines y etapas (mismos nombres que el workspace QA de producción).
@@ -234,7 +254,41 @@ async function main() {
     }
   }
 
-  console.log("Seed QA listo en el branch: workspace, 2 cuentas, módulos, pipelines, 10 contactos, 8 oportunidades, 3 conversaciones, 4 reservas, 6 tareas, 3 pólizas, 2 cobros.");
+  // Classroom (no está atado a un workspace): un curso del admin y dos comentarios,
+  // uno de la cuenta con nombre y otro de la cuenta sin nombre (debe verse "Usuario").
+  const cat = must(
+    await db.from("classroom_categories").insert({ slug: "qa-mobile-categoria", name: "QA Mobile", icon: "book", color: "neutral", position: 0, is_visible: true }).select("id").single(),
+    "classroom category",
+  );
+  const course = must(
+    await db.from("classroom_courses").insert({
+      category_id: cat.id,
+      title: "[QA] Curso de prueba",
+      slug: "qa-mobile-curso",
+      objectives: ["Verificar nombres de autores"],
+      color: "neutral",
+      level: "beginner",
+      status: "published",
+      is_featured: false,
+      position: 0,
+      created_by: adminId,
+    }).select("id").single(),
+    "classroom course",
+  );
+  const chapter = must(await db.from("classroom_chapters").insert({ course_id: course.id, title: "[QA] Capítulo 1", position: 0 }).select("id").single(), "classroom chapter");
+  const lesson = must(
+    await db.from("classroom_lessons").insert({ course_id: course.id, chapter_id: chapter.id, title: "[QA] Lección 1", position: 0 }).select("id").single(),
+    "classroom lesson",
+  );
+  must(
+    await db.from("classroom_comments").insert([
+      { lesson_id: lesson.id, user_id: agentId, body: "[QA] Comentario de cuenta con nombre" },
+      { lesson_id: lesson.id, user_id: noNameId, body: "[QA] Comentario de cuenta sin nombre" },
+    ]),
+    "classroom comments",
+  );
+
+  console.log("Seed QA listo en el branch: workspace, 3 cuentas (una sin nombre), módulos, pipelines, 10 contactos, 8 oportunidades, 3 conversaciones, 4 reservas, 6 tareas, 3 pólizas, 2 cobros, 1 curso con 2 comentarios.");
 }
 
 main().catch((e) => {
