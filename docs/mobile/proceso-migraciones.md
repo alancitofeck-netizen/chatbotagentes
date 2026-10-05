@@ -97,3 +97,15 @@ Clasificación de los 6 afectados (lectura en producción):
 - **Tenants reales, activos:** Workspace de pjaikc (agente, 7 contactos, última actividad 18-sep: falta sólo presentations) y Workspace de leonardomaganah (agente, activo al 3-oct: faltan asesores, presentations, advisory_sessions, referrals).
 
 El backfill para los dos tenants reales queda como decisión de producto.
+
+## Backfill de módulos de workspace (2026-10-05, ejecutado por el usuario en producción)
+
+Alcance: sólo `presentations` y `asesores` según el catálogo (`src/lib/modules/catalog.ts`). **`advisory_sessions` y `referrals` quedaron fuera del catálogo y del backfill:**
+- `advisory_sessions`: clave legacy obsoleta. Ningún código la lee.
+- `referrals`: es una clave de tipo de agente de IA, no un módulo de workspace.
+
+Se identifica el workspace por `workspace_id`, no por nombre. La primera versión del SQL usaba el nombre y el usuario la ejecutó: insertó `presentations` en pjaikc, y `presentations`, `asesores`, `advisory_sessions` y `referrals` en leonardomaganah (2026-10-05 02:22:30 UTC). Después el usuario quitó `advisory_sessions` y `referrals` de leonardomaganah. La segunda versión, por id, no insertó nada.
+
+Estado verificado en producción con lectura (2026-10-05):
+- Workspace de leonardomaganah: incluye `asesores` y `presentations`. No tiene `advisory_sessions` ni `referrals`.
+- Workspace de pjaikc: incluye `presentations`. Además tiene `advisory_sessions` y `referrals`, que ya estaban antes del backfill y no se tocaron.
