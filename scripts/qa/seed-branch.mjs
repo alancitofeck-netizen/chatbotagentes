@@ -260,9 +260,9 @@ async function main() {
   // los KPIs y los filtros de la pantalla de Mini Apps.
   const apps = must(
     await db.from("mini_apps").insert([
-      { workspace_id: BRANCH_WORKSPACE_ID, name: "[QA] Simulador de retiro", slug: "qa-mobile-retiro", description: "Dato de prueba QA", template_key: "simulador_retiro", status: "active", api_key_hash: "qa-hash-retiro", api_key_last4: "qa01", config: {}, allowed_origins: [] },
+      { workspace_id: BRANCH_WORKSPACE_ID, name: "[QA] Simulador de retiro", slug: "qa-mobile-retiro", description: "Dato de prueba QA", template_key: "calculadora_brecha_retiro", status: "active", api_key_hash: "qa-hash-retiro", api_key_last4: "qa01", config: {}, allowed_origins: [] },
       { workspace_id: BRANCH_WORKSPACE_ID, name: "[QA] Calculadora de brecha", slug: "qa-mobile-brecha", description: "Dato de prueba QA", template_key: "calculadora_brecha_retiro", status: "active", api_key_hash: "qa-hash-brecha", api_key_last4: "qa02", config: {}, allowed_origins: [] },
-      { workspace_id: BRANCH_WORKSPACE_ID, name: "[QA] App sin uso", slug: "qa-mobile-sin-uso", description: "Dato de prueba QA", template_key: "simulador_retiro", status: "inactive", api_key_hash: "qa-hash-sin-uso", api_key_last4: "qa03", config: {}, allowed_origins: [] },
+      { workspace_id: BRANCH_WORKSPACE_ID, name: "[QA] App sin uso", slug: "qa-mobile-sin-uso", description: "Dato de prueba QA", template_key: "calculadora_brecha_retiro", status: "inactive", api_key_hash: "qa-hash-sin-uso", api_key_last4: "qa03", config: {}, allowed_origins: [] },
     ]).select("id, name"),
     "mini apps",
   );

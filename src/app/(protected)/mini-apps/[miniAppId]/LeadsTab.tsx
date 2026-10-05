@@ -291,6 +291,7 @@ export function LeadsTab({
       {validSelectedLeadId && showFullDrawer && (
         <LeadDetailDrawer
           leadId={validSelectedLeadId}
+          miniAppName={miniApp.name}
           members={members}
           canManage={canManage}
           ownMemberId={ownMemberId}

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowLeftRight, MessageCircle, Trash2, ShieldPlus, StickyNote, CalendarPlus } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
+import { LeadMessageBox } from "./LeadMessageBox";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/components/toast/toast";
 import type { MiniAppLeadDetail, MiniAppDetail, MiniAppLeadActivityEntry } from "@/lib/miniApps/queries";
@@ -39,6 +40,7 @@ function formatDateTime(iso: string) {
 
 export function LeadDetailDrawer({
   leadId,
+  miniAppName,
   members,
   canManage,
   ownMemberId,
@@ -46,6 +48,7 @@ export function LeadDetailDrawer({
   onChanged,
 }: {
   leadId: string;
+  miniAppName?: string;
   members: WorkspaceMemberOption[];
   canManage: boolean;
   ownMemberId: string | null;
@@ -208,6 +211,8 @@ export function LeadDetailDrawer({
           <LeadHeader nombre={lead.nombre} status={lead.status} origenApp={lead.origenApp} />
 
           <LeadContactCard whatsapp={lead.whatsapp} fecha={lead.fecha} agente={lead.agente} />
+
+          <LeadMessageBox key={`${lead.id}-${miniAppName ?? ""}`} nombre={lead.nombre} whatsapp={lead.whatsapp} appName={miniAppName ?? miniApp?.name ?? null} />
 
           <ConsentStatus accepted={lead.consentimiento} fecha={lead.consentimientoFecha} />
 
