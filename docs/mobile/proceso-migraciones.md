@@ -57,3 +57,16 @@ Las migraciones sin entrada con el mismo nombre en el registro original, que esc
 ## Regla para operaciones que borran filas del registro (2026-10-05)
 
 Antes de ejecutar `supabase migration repair --status reverted` (que borra filas de `supabase_migrations.schema_migrations`), hay que **guardar el texto completo de los statements** de cada fila afectada, no sólo su md5. El md5 permite verificar, pero no restaurar: en el repair original se perdieron así los statements de `0012b`, `0012c` y `0050b`–`0050e`, que no tienen archivo en el repo. El backup debe incluir `version`, `name` y `statements` completos (por ejemplo con `string_agg` a un archivo versionado, o con `pg_dump` si hay Docker disponible), y el archivo se commitea antes de ejecutar el repair.
+
+## Módulos de workspace: faltantes y causa (2026-10-05, sólo lectura en producción)
+
+Los backfills de `workspace_modules` (0065, 0066, 0102, 0103, 0116, 0124, 0167) se aplicaron a los workspaces que existían en su momento. Los workspaces creados después no reciben los módulos que el backfill agregó, porque `src/lib/auth/provision-workspace.ts` asigna una lista fija de 14 módulos que quedó desactualizada.
+
+- **Workspaces creados antes de cada backfill** (7-jul a 24-jul): tienen todos los módulos.
+- **Creados después** (4-ago a 3-oct): faltan `presentations`, `referrals`, `advisory_sessions` y `asesores`, según el caso.
+- **Impacto:** `asesores` controla la entrada de Asesores en el sidebar, y `presentations` la de Presentaciones. Un workspace nuevo no ve esas entradas. El acceso directo por URL no cambia.
+- **Workspaces afectados:** Polizas Cal (4-ago), Verify Test Emergencia ×2 (12-ago), leonardomaganah (12-sep), Workspace de qa-mobile (3-oct), y pjaikc (7-ago, sólo `presentations`).
+
+Fix propuesto (no aplicado, requiere decisión de producto):
+1. Actualizar la lista de `provision-workspace.ts` para incluir `asesores`, `presentations`, `referrals` y `advisory_sessions`.
+2. Backfill para los workspaces existentes que faltan: habilitar esos módulos. Es una decisión de producto, porque cambia lo que ve un tenant que ya existe. Mismo criterio que usaron los backfills anteriores.

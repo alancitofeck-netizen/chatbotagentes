@@ -31,3 +31,13 @@ export async function loginIn(context, account = "agent") {
   await page.goto(`${BASE_URL}/dashboard`, { waitUntil: "networkidle", timeout: 90000 });
   return page;
 }
+
+/** Omite el tutorial de primera visita si aparece (en un branch nuevo se muestra en cada módulo). */
+export async function skipTours(page) {
+  for (let i = 0; i < 3; i++) {
+    const omit = page.getByRole("button", { name: "Omitir tutorial" });
+    if (!(await omit.isVisible().catch(() => false))) return;
+    await omit.click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
+}

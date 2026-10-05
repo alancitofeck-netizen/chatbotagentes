@@ -1,5 +1,5 @@
 import path from "node:path";
-import { launch, loginIn, BASE_URL } from "./session.mjs";
+import { launch, loginIn, BASE_URL, skipTours } from "./session.mjs";
 
 // Flujo crítico en mobile. No envía mensajes de WhatsApp: los contactos QA
 // tienen números con formato real y un envío saldría de verdad.
@@ -16,6 +16,8 @@ try {
   check("login llega a la app", !new URL(page.url()).pathname.startsWith("/login"), page.url());
 
   await page.goto(`${BASE_URL}/inbox`, { waitUntil: "networkidle", timeout: 90000 });
+
+  await skipTours(page);
   const firstConv = page.locator("button").filter({ hasText: "[QA] Contacto 1" }).first();
   check("lista de conversaciones visible", await firstConv.isVisible().catch(() => false));
 
@@ -41,6 +43,8 @@ try {
   check("volver regresa a la lista", await page.locator("button").filter({ hasText: "[QA] Contacto 1" }).first().isVisible().catch(() => false));
 
   await page.goto(`${BASE_URL}/crm`, { waitUntil: "networkidle", timeout: 90000 });
+
+  await skipTours(page);
   await page.waitForTimeout(800);
   const moveBtn = page.getByRole("button", { name: "Mover a etapa…" }).first();
   check("CRM: botón Mover a etapa visible en móvil", await moveBtn.isVisible().catch(() => false));

@@ -1,4 +1,4 @@
-import { launch, loginIn, BASE_URL } from "./session.mjs";
+import { launch, loginIn, BASE_URL, skipTours } from "./session.mjs";
 const routes = { inbox: "/inbox", crm: "/crm", dashboard: "/dashboard", agenda: "/agenda", tasks: "/tasks", calendar: "/calendar", polizas: "/polizas", cobranza: "/cobranza", asesorias: "/asesorias", documents: "/documents", profile: "/profile" };
 const only = process.argv.slice(2);
 const names = only.length ? only : Object.keys(routes);
@@ -9,9 +9,13 @@ try {
   for (const name of names) {
     await page.goto(`${BASE_URL}${routes[name]}`, { waitUntil: "networkidle", timeout: 90000 });
     await page.waitForTimeout(800);
+    await skipTours(page);
+    await page.keyboard.press("Escape").catch(() => {});
+    await page.waitForTimeout(300);
     const helpBtn = page.getByRole("button", { name: /Qué hago/ }).first();
     if (!(await helpBtn.isVisible().catch(() => false))) { report[name] = "sin ayuda"; continue; }
-    await helpBtn.click();
+    const opened = await helpBtn.click({ timeout: 5000 }).then(() => true, () => false);
+    if (!opened) { report[name] = "bloqueado: el botón de ayuda no es clicable (overlay)"; continue; }
     await page.waitForTimeout(500);
     const again = page.getByRole("button", { name: "Volver a ver tutorial" });
     if (!(await again.isVisible().catch(() => false))) { report[name] = "sin tour"; continue; }
@@ -37,7 +41,8 @@ try {
       if (!(await next.isVisible().catch(() => false))) break;
       const label = (await next.innerText().catch(() => "")).trim();
       if (/Finalizar|Entendido|Listo/.test(label)) { steps.push({ end: label }); break; }
-      await next.click();
+      const clicked = await next.click({ timeout: 4000 }).then(() => true, () => false);
+      if (!clicked) { steps.push({ text: "BOTON SIGUIENTE FUERA DE PANTALLA", offscreen: true, rect: [], spot: false }); break; }
     }
     report[name] = steps;
     await page.keyboard.press("Escape").catch(() => {});
