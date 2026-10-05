@@ -70,3 +70,30 @@ Los backfills de `workspace_modules` (0065, 0066, 0102, 0103, 0116, 0124, 0167) 
 Fix propuesto (no aplicado, requiere decisión de producto):
 1. Actualizar la lista de `provision-workspace.ts` para incluir `asesores`, `presentations`, `referrals` y `advisory_sessions`.
 2. Backfill para los workspaces existentes que faltan: habilitar esos módulos. Es una decisión de producto, porque cambia lo que ve un tenant que ya existe. Mismo criterio que usaron los backfills anteriores.
+
+## Permisos EXECUTE de funciones de public (2026-10-05, verificado en producción y qa-mobile)
+
+Producción tiene 39 funciones propias de `public`. Las ejecutables por `anon` o `PUBLIC` son 13. Evaluación:
+
+| Función | anon/public | Uso en la app | Evaluación |
+|---|---|---|---|
+| get_user_id_by_email(text) | anon, public | Sólo service_role (otp-service.ts) | Enumeración de cuentas. **Cerrada** (0191). |
+| provision_whatsapp_web_session(uuid,uuid) | anon | Server action con sesión de usuario | No la necesita anon. **Cerrada** (0191). |
+| classroom_user_names(uuid[]) | anon, public | Classroom, con sesión | No verifica membresía: devuelve nombre o email de cualquier usuario. **Alta**. Recomendado: revocar y agregar chequeo. |
+| notifications_check_* (4) | anon, authenticated | Sólo pg_cron (postgres) | Cualquiera dispara notificaciones para todos los workspaces. **Media-alta**. Recomendado: revocar anon y authenticated. |
+| workspace_member_names(uuid) | anon, public | Muchas consultas con sesión | Verifica membresía (anon recibe vacío). Grant innecesario. **Baja**. |
+| am_i_platform_admin(), touch_last_active(uuid) | anon, public | Middleware y sesión con sesión | Sin datos sensibles (anon recibe false / no-op). **Baja**. |
+| current_user_agency_role(), agency_workspace_id(), workspace_has_platform_admin_member(uuid) | anon | Roles con sesión | Revelan rol o id de la agencia a anon. **Baja-media**. |
+
+Decisión pendiente: revocar anon y authenticated en `notifications_check_*`, y revocar anon en `classroom_user_names` y los de la fila baja-media.
+
+## Módulos de workspace: fix aplicado
+
+La provisión y los ajustes ya leen `src/lib/modules/catalog.ts`. Los workspaces afectados no dependen del plan: todos son `Free`, y ningún código habilita módulos según `plan`.
+
+Clasificación de los 6 afectados (lectura en producción):
+- **Prueba, sin uso:** Polizas Cal 3aqlj2 (0 miembros, 0 contactos), Verify Test Emergencia ×2 (owner, 0 contactos). No requieren backfill.
+- **QA:** Workspace de qa-mobile (3-oct, usado para pruebas).
+- **Tenants reales, activos:** Workspace de pjaikc (agente, 7 contactos, última actividad 18-sep: falta sólo presentations) y Workspace de leonardomaganah (agente, activo al 3-oct: faltan asesores, presentations, advisory_sessions, referrals).
+
+El backfill para los dos tenants reales queda como decisión de producto.
