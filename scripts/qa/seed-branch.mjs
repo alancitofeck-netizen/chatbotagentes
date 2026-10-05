@@ -49,11 +49,40 @@ async function ensureUser(email, name) {
   return created.user.id;
 }
 
+async function resetWorkspace() {
+  const ws = BRANCH_WORKSPACE_ID;
+  const pipes = must(await db.from("pipelines").select("id").eq("workspace_id", ws), "pipes");
+  const pipeIds = pipes.map((p) => p.id);
+  const contacts = must(await db.from("contacts").select("id").eq("workspace_id", ws), "contacts ids");
+  const convs = must(await db.from("conversations").select("id").eq("workspace_id", ws), "convs");
+  const pols = must(await db.from("policies").select("id").eq("workspace_id", ws), "pols");
+  const polIds = pols.map((p) => p.id);
+  if (polIds.length) must(await db.from("policy_payments").delete().in("policy_id", polIds), "del payments");
+  if (convs.length) must(await db.from("messages").delete().in("conversation_id", convs.map((c) => c.id)), "del messages");
+  must(await db.from("policies").delete().eq("workspace_id", ws), "del policies");
+  must(await db.from("opportunities").delete().eq("workspace_id", ws), "del opps");
+  must(await db.from("bookings").delete().eq("workspace_id", ws), "del bookings");
+  must(await db.from("conversations").delete().eq("workspace_id", ws), "del convs");
+  must(await db.from("tasks").delete().eq("workspace_id", ws), "del tasks");
+  if (pipeIds.length) {
+    must(await db.from("pipeline_items").delete().in("pipeline_id", pipeIds), "del items");
+    must(await db.from("pipeline_stages").delete().in("pipeline_id", pipeIds), "del stages");
+  }
+  must(await db.from("pipelines").delete().eq("workspace_id", ws), "del pipelines");
+  must(await db.from("contacts").delete().eq("workspace_id", ws), "del contacts");
+  must(await db.from("workspace_modules").delete().eq("workspace_id", ws), "del modules");
+  must(await db.from("workspace_members").delete().eq("workspace_id", ws), "del members");
+  must(await db.from("workspaces").delete().eq("id", ws), "del workspace");
+  void contacts;
+  console.log("Workspace QA del branch limpiado; se vuelve a sembrar.");
+}
+
 async function main() {
+  // Re-ejecutable: si el workspace del branch ya existe (corrida anterior, quizá
+  // interrumpida), borra sólo sus filas y vuelve a sembrar. No toca otros workspaces.
   const existing = must(await db.from("workspaces").select("id").eq("id", BRANCH_WORKSPACE_ID).maybeSingle(), "check ws");
   if (existing) {
-    console.log("El workspace del branch ya existe: no se vuelve a sembrar.");
-    return;
+    await resetWorkspace();
   }
 
   const adminId = await ensureUser(QA_ADMIN_EMAIL, "QA Mobile Admin");
@@ -147,7 +176,7 @@ async function main() {
         subject: `[QA] Cita con Contacto ${i + 1}`,
         event_type: "meeting",
         timezone: "America/Argentina/Buenos_Aires",
-        fuente: "QA",
+        fuente: "otro",
       }),
       "booking",
     );
@@ -163,8 +192,8 @@ async function main() {
         priority: i % 3 === 0 ? "high" : "medium",
         due_at: day(i - 2).toISOString(),
         assigned_to: null,
-        created_by: adminId,
-        owner_side: "agency",
+        created_by: null,
+        owner_side: "growth_link",
       }),
       "task",
     );
