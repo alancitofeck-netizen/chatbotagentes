@@ -37,37 +37,34 @@ export default async function ManychatPage() {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", background: "#F4F6FB" }}>
+    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", background: "#EEF9FA", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", paddingTop: "calc(10px + env(safe-area-inset-top, 0px))", background: "#EEF9FA" }}>
+        <Link
+          href="/dashboard"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            height: 34,
+            padding: "0 12px",
+            borderRadius: 12,
+            background: "#0E1630",
+            color: "#EEF3FB",
+            fontSize: 13,
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          <ArrowLeft size={14} aria-hidden="true" />
+          Volver
+        </Link>
+      </div>
       <iframe
         src="/api/manychat/frame"
         title="ManyChat — Growth Link"
         allow="clipboard-write"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+        style={{ flex: 1, width: "100%", minHeight: 0, border: "none" }}
       />
-      <Link
-        href="/dashboard"
-        style={{
-          position: "fixed",
-          top: 14,
-          left: 16,
-          zIndex: 999,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "7px 12px",
-          borderRadius: 10,
-          background: "rgba(20,23,53,0.85)",
-          border: "1px solid rgba(94,100,132,0.32)",
-          color: "#F4F6FB",
-          fontSize: 12,
-          fontWeight: 600,
-          textDecoration: "none",
-          backdropFilter: "blur(6px)",
-        }}
-      >
-        <ArrowLeft size={13} aria-hidden="true" />
-        Volver
-      </Link>
     </div>
   );
 }
