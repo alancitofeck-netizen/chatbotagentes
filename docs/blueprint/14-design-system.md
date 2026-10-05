@@ -8,6 +8,15 @@
 >
 > **Actualización de color (2026-07-09)**: la nota anterior fijaba "el color no cambia, solo la forma". El usuario volvió con una tercera referencia (dashboard SaaS con sidebar negro de íconos circulares, KPI cards con mini-gráfico) pidiendo explícitamente adoptar **violeta `#6C63FF`** como nuevo color de acción, reemplazando el azul brillante — esta vez el color sí cambia, a pedido explícito. `primary` (el azul profundo de navegación) no cambia — el sidebar oscuro de la referencia ya se logra con `neutral-950`, no con un tono "primary" nuevo. Ver §2 actualizado abajo y `src/app/globals.css` para los valores reales.
 
+> **Decisión de rediseño visual (2026-10-05, aprobada por el usuario)** — rama `rediseno-visual`, referencia en `docs/diseno/growth-link-app.html`:
+> - **Tipografía:** Geist para toda la UI y Bricolage Grotesque sólo para títulos de página, encabezados de hero y números destacados (`font-display`). Pesos: 600 como máximo (sin `font-bold`).
+> - **Color de acción:** teal de marca (escala `accent` redefinida desde `#13A9BD`). El botón primario usa `accent-600` (`#0B7C8A`) para mantener contraste AA con texto blanco; `accent-500` queda para indicadores y foco. En modo oscuro la acción pasa a `accent-600` = `#13A9BD` con texto oscuro (`--on-accent`).
+> - **Superficies:** fondo claro `#EEF9FA`, rail y heros en navy `#0E1630` (`--color-navy`, clase `.navy-card`). Modo oscuro según el prototipo (`#0A1024` / `#131B36`).
+> - **Escritorio:** sidebar actual, reestilizado. El riel del prototipo no se adopta.
+> - **Breakpoint:** 768 px (`md`), igual que mobile-paridad.
+> - **Animaciones:** hasta 300 ms; respetan `prefers-reduced-motion`.
+> - **Barra inferior móvil:** Inbox, CRM, Inicio (orbe central), Agenda y Más.
+
 ## 1. Principios
 
 La interfaz debe transmitir tecnología, IA, profesionalismo, SaaS enterprise, simplicidad, rapidez y confianza — sin ser colorida ni sobrecargada. Referencias de comportamiento (no de apariencia literal): Intercom, Linear, Notion, Stripe Dashboard, Vercel Dashboard, Missive.

@@ -27,16 +27,16 @@
      accent at the user's explicit request, superseding the earlier decision
      recorded in docs/blueprint/14-design-system.md §2 to keep blue and only
      change shape). Derived from #6C63FF at 500. */
-  --color-accent-50: #f1f0ff;
-  --color-accent-100: #e4e2ff;
-  --color-accent-200: #cbc7ff;
-  --color-accent-300: #ada5ff;
-  --color-accent-400: #8d82ff;
-  --color-accent-500: #6c63ff;
-  --color-accent-600: #574dde;
-  --color-accent-700: #453db3;
-  --color-accent-800: #363089;
-  --color-accent-900: #2b2870;
+  --color-accent-50: #eef9fa;
+  --color-accent-100: #ddf5f8;
+  --color-accent-200: #b5e8ef;
+  --color-accent-300: #7fd6e2;
+  --color-accent-400: #3fbfd0;
+  --color-accent-500: #13a9bd;
+  --color-accent-600: #0b7c8a;
+  --color-accent-700: #09626d;
+  --color-accent-800: #074a53;
+  --color-accent-900: #053840;
 
   /* Neutral — cool modern gray */
   --color-neutral-0: #ffffff;
@@ -51,6 +51,9 @@
   --color-neutral-800: #1d2939;
   --color-neutral-900: #101828;
   --color-neutral-950: #0b0f19;
+
+  /* Navy de marca (rail, heros y tarjetas de contraste) — prototipo Growth Link */
+  --color-navy: #0e1630;
 
   /* Semantic — discreet, desaturated (never the saturated defaults) */
   --color-success-bg: #ecf9f2;
@@ -91,13 +94,13 @@
 
 :root {
   /* Surfaces (light mode) — plain names, aliased below so dark mode can override them */
-  --background: var(--color-neutral-0);
-  --foreground: var(--color-neutral-900);
-  --surface-1: var(--color-neutral-0);
-  --surface-2: var(--color-neutral-50);
-  --surface-3: var(--color-neutral-100);
-  --border-default: var(--color-neutral-200);
-  --border-strong: var(--color-neutral-300);
+  --background: #eef9fa;
+  --foreground: #0f2a3d;
+  --surface-1: #ffffff;
+  --surface-2: #f4fbfc;
+  --surface-3: #e2f3f5;
+  --border-default: #d6eef1;
+  --border-strong: #b9dfe6;
 
   /* Fondos degradados sutiles para cards de "etapa" (AsesoriaStageOverview.tsx)
      — usan estos tokens en vez de accent-50/blue-50 directo porque esos son
@@ -112,7 +115,7 @@
      original "muy pocas sombras" brief: still restrained/premium, just no
      longer border-only — cards default to shadow-sm now. */
   --elevation-xs: 0 1px 2px rgba(16, 24, 40, 0.03);
-  --elevation-sm: 0 4px 16px rgba(16, 24, 40, 0.06);
+  --elevation-sm: 0 1px 2px rgba(15, 42, 61, 0.03), 0 2px 6px rgba(15, 42, 61, 0.04), 0 14px 34px -14px rgba(15, 42, 61, 0.14);
   --elevation-md: 0 8px 24px rgba(16, 24, 40, 0.08);
   --elevation-lg: 0 20px 48px rgba(16, 24, 40, 0.14);
 
@@ -126,7 +129,7 @@
   /* Sidebar — el rail queda siempre oscuro sin importar el modo claro/oscuro
      del sitio (decisión ya existente), pero SÍ cambia entre los 4 temas de
      marca (Configuración → Apariencia, data-workspace-theme). */
-  --sidebar-bg: var(--color-neutral-950);
+  --sidebar-bg: #0e1630;
   --sidebar-accent: var(--color-accent-500);
   /* Tokens secundarios del rail (sidebar-premium-v2 port) — a diferencia de
      --sidebar-bg/--sidebar-accent, estos NO varían por [data-workspace-theme]
@@ -173,6 +176,7 @@
   --shadow-glow-accent: var(--elevation-glow-accent);
 
   --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-bricolage), var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -181,16 +185,22 @@
    a manual toggle component is built (not yet implemented — see 14-design-system.md). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: var(--color-neutral-950);
-    --foreground: var(--color-neutral-100);
-    --surface-1: var(--color-neutral-950);
-    --surface-2: var(--color-neutral-900);
-    --surface-3: var(--color-neutral-800);
-    --border-default: var(--color-neutral-800);
-    --border-strong: var(--color-neutral-700);
-    --tint-violet-subtle: var(--color-accent-900);
+    --background: #0a1024;
+    --foreground: #eaf1f7;
+    --surface-1: #131b36;
+    --surface-2: #18213f;
+    --surface-3: #1e2a4d;
+    --border-default: #232e50;
+    --border-strong: #33406b;
+    --tint-violet-subtle: #123547;
     --tint-blue-subtle: #1e3a5f;
-
+    --color-accent-50: #0f1f33;
+    --color-accent-100: #123547;
+    --color-accent-200: #1a4d63;
+    --color-accent-500: #22bfd3;
+    --color-accent-600: #13a9bd;
+    --color-accent-700: #6fdae8;
+    --on-accent: #0a1024;
     --elevation-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
     --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.34);
     --elevation-md: 0 8px 24px rgba(0, 0, 0, 0.42);
@@ -199,16 +209,22 @@
 }
 
 :root[data-theme="dark"] {
-  --background: var(--color-neutral-950);
-  --foreground: var(--color-neutral-100);
-  --surface-1: var(--color-neutral-950);
-  --surface-2: var(--color-neutral-900);
-  --surface-3: var(--color-neutral-800);
-  --border-default: var(--color-neutral-800);
-  --border-strong: var(--color-neutral-700);
-  --tint-violet-subtle: var(--color-accent-900);
+  --background: #0a1024;
+  --foreground: #eaf1f7;
+  --surface-1: #131b36;
+  --surface-2: #18213f;
+  --surface-3: #1e2a4d;
+  --border-default: #232e50;
+  --border-strong: #33406b;
+  --tint-violet-subtle: #123547;
   --tint-blue-subtle: #1e3a5f;
-
+  --color-accent-50: #0f1f33;
+  --color-accent-100: #123547;
+  --color-accent-200: #1a4d63;
+  --color-accent-500: #22bfd3;
+  --color-accent-600: #13a9bd;
+  --color-accent-700: #6fdae8;
+  --on-accent: #0a1024;
   --elevation-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --elevation-sm: 0 4px 16px rgba(0, 0, 0, 0.34);
   --elevation-md: 0 8px 24px rgba(0, 0, 0, 0.42);
@@ -465,4 +481,26 @@ body {
   .touch-hit-10::before {
     inset: -10px;
   }
+}
+
+/* Tarjeta navy (heros, mazo de contacto): fondo de marca con un halo teal sutil. */
+.navy-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--color-navy);
+  color: #eef3fb;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: var(--elevation-md);
+}
+.navy-card::before {
+  content: "";
+  position: absolute;
+  inset: -40% -30% auto auto;
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(19, 169, 189, 0.32), transparent);
+  z-index: -1;
+  pointer-events: none;
 }

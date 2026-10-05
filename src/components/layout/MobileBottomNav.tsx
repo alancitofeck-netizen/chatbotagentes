@@ -20,7 +20,7 @@ interface BottomItem {
 const PRIMARY: BottomItem[] = [
   { key: "inbox", label: "Inbox", href: "/inbox", icon: Inbox },
   { key: "crm", label: "CRM", href: "/crm", icon: Kanban, moduleKey: "crm" },
-  { key: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { key: "dashboard", label: "Inicio", href: "/dashboard", icon: LayoutDashboard },
   { key: "agenda", label: "Agenda", href: "/agenda", icon: CalendarClock, moduleKey: "agenda" },
 ];
 
@@ -85,6 +85,31 @@ export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }
         {items.map((item) => {
           const active = isNavItemActive(pathname, item.href);
           const Icon = item.icon;
+          if (item.key === "dashboard") {
+            // Inicio es el orbe central del prototipo: sobresale de la barra.
+            return (
+              <li key={item.key} className="relative">
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex h-full flex-col items-center justify-end gap-0.5 pb-2 text-[11px] font-semibold",
+                    active ? "text-accent-600" : "text-neutral-500",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "-mt-7 flex size-16 items-center justify-center rounded-full border-[5px] border-background shadow-[0_10px_24px_-6px_rgba(14,22,48,0.45)] transition-colors",
+                      active ? "bg-accent-600 text-[var(--on-accent)]" : "bg-navy text-white",
+                    )}
+                  >
+                    <Icon className="size-6" aria-hidden="true" />
+                  </span>
+                  {item.label}
+                </Link>
+              </li>
+            );
+          }
           return (
             <li key={item.key}>
               <Link
@@ -98,7 +123,7 @@ export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }
                 <Icon className="size-5" aria-hidden="true" />
                 {item.label}
                 {item.key === "inbox" && unread > 0 && (
-                  <span className="absolute top-1.5 left-1/2 ml-2.5 min-w-4 rounded-full bg-accent-500 px-1 text-center text-[10px] leading-4 font-semibold text-white">
+                  <span className="absolute top-1.5 left-1/2 ml-2.5 min-w-4 rounded-full bg-accent-600 px-1 text-center text-[10px] leading-4 font-semibold text-[var(--on-accent)]">
                     {unread > 99 ? "99+" : unread}
                   </span>
                 )}

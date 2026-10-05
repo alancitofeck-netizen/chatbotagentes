@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { themeInitScript } from "@/lib/theme/script";
 import { sidebarPinInitScript } from "@/components/layout/sidebarPinScript";
@@ -10,6 +10,12 @@ import "./globals.css";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+});
+
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  weight: ["600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -60,7 +66,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

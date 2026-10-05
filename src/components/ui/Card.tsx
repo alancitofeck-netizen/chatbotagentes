@@ -8,8 +8,8 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantClasses: Record<CardVariant, string> = {
-  default: "rounded-lg bg-surface-1 shadow-[var(--elevation-sm)]",
-  contrast: "rounded-xl bg-primary-950 text-white shadow-[var(--elevation-lg)]",
+  default: "rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)]",
+  contrast: "navy-card rounded-xl text-white",
 };
 
 export function Card({ className, variant = "default", ...props }: CardProps) {
