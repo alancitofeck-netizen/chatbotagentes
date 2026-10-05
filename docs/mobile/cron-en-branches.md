@@ -35,3 +35,27 @@ En los dos casos: `0034` y las demás ya aplicadas en producción no se modifica
 - Acción en el branch (no en producción): desprogramados los 9 jobs que llaman a producción: flush-conversation-buffers, sync-kpi-sheets, sync-google-calendar, process-cartera-imports, policy-automations-check, collection-automations-check, run-automations-check, sync-advisor-sheets, referral-followups-check.
 - Quedan 4 jobs de notificaciones (`notifications-*`), que llaman a funciones locales de la base y no salen del branch.
 - Reprogramar cualquiera de los 9 en el branch requiere resolver la opción A o B de arriba.
+
+## Opciones para que un branch no pueda llamar a producción (revisión 2026-10-05)
+
+Criterio pedido: un branch no debe poder llamar a producción aunque alguien cargue el Vault.
+
+**Opción A: secret de Vault `environment=production`.** La migración programa los jobs sólo si ese secret existe.
+- Pros: simple; no cambia los jobs en sí.
+- Contras: **no cumple el criterio**. Quien carga el Vault en un branch puede cargar también ese secret. El guard depende del contenido del Vault.
+
+**Opción B: URL base desde un secret `app_base_url`.** Los jobs leen la URL del Vault.
+- Pros: un branch sin el secret no llama a ningún lado; sirve para más entornos.
+- Contras: **tampoco cumple el criterio**: cargar el Vault con la URL de producción reactiva los jobs. Además exige reescribir todas las migraciones de cron.
+
+**Opción C (propuesta): setting de base de datos por entorno, fuera del Vault y fuera de las migraciones.**
+1. En producción, un operador ejecuta una vez `alter database postgres set app.environment = 'production'`. Es una configuración de la base, no un dato: un branch es una base nueva y no hereda ese setting.
+2. Las migraciones de cron programan los jobs sólo si `current_setting('app.environment', true) = 'production'`. Un branch no lo tiene, así que no programa ninguno, aunque alguien cargue el Vault.
+3. Las migraciones de cron nunca tocan ese setting; sólo lo leen.
+- Pros: cumple el criterio en el uso normal. Cargar el Vault no alcanza. Es una decisión explícita que hay que tomar a propósito en la base.
+- Contras: no es una barrera criptográfica: quien tenga rol `postgres` en el branch puede ejecutar el mismo `alter database`. Lo declaro así: el guard evita el riesgo accidental y el de cargar el Vault, no a un operador malintencionado.
+- Acción en producción: requiere tu aprobación (el `alter database` es una escritura en producción).
+
+Ninguna opción depende de algo que se pueda copiar con los datos. Si necesitás una garantía criptográfica, la alternativa es que los endpoints de producción rechacen cualquier request que no provenga de su propio pg_cron, lo cual no es posible con pg_net.
+
+Recomendación: C, junto con no copiar secrets de producción a ningún branch.
