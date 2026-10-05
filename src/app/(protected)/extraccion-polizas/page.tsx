@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { PolicyExtractionShell } from "./PolicyExtractionShell";
 
 export const metadata: Metadata = {
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 export default async function PolicyExtractionPage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "policy_extraction");
+  if (!(await isModuleEnabled(workspaceId, "policy_extraction"))) return <ModuleDisabledState moduleName="Extracción de pólizas" />;
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">

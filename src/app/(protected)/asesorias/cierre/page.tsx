@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { CitaDeCierrePanel } from "../CitaDeCierrePanel";
 
 export const metadata: Metadata = {
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function AsesoriasCierrePage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "asesorias");
+  if (!(await isModuleEnabled(workspaceId, "asesorias"))) return <ModuleDisabledState moduleName="Asesorías" />;
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">

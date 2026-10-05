@@ -1,12 +1,13 @@
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getInsuranceProvidersBoard, summarizeInsuranceProviders } from "@/lib/insuranceProviders/queries";
 import { AseguradorasShell } from "./AseguradorasShell";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
 export default async function AseguradorasPage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "insurance_providers");
+  if (!(await isModuleEnabled(workspaceId, "insurance_providers"))) return <ModuleDisabledState moduleName="Aseguradoras" />;
 
   const providers = await getInsuranceProvidersBoard(workspaceId);
   const summary = summarizeInsuranceProviders(providers);

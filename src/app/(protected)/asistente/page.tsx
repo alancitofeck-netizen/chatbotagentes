@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getOrCreateActiveConversationAction, getConversationMessagesAction, getAssistantDashboardAction } from "@/lib/assistant/actions";
 import { AssistantShell } from "./AssistantShell";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function AssistantPage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "ai_assistant");
+  if (!(await isModuleEnabled(workspaceId, "ai_assistant"))) return <ModuleDisabledState moduleName="Asistente IA" />;
 
   const { id: conversationId } = await getOrCreateActiveConversationAction();
   const [messages, dashboard] = await Promise.all([getConversationMessagesAction(conversationId), getAssistantDashboardAction()]);

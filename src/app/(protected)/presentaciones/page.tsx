@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getPresentationListAction, getPresentationsKpisAction } from "@/lib/presentations/actions";
 import { PresentationsShell } from "./PresentationsShell";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function PresentationsPage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "presentations");
+  if (!(await isModuleEnabled(workspaceId, "presentations"))) return <ModuleDisabledState moduleName="Presentaciones" />;
 
   const [items, kpis] = await Promise.all([getPresentationListAction(), getPresentationsKpisAction()]);
 

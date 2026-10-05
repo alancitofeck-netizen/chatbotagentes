@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { forbidden } from "next/navigation";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 
 /** Gate de todo el módulo Operaciones — mismo patrón que
  * classroom/admin/layout.tsx: solo owner/admin (o un platform admin
@@ -10,6 +11,6 @@ import { assertModuleEnabled } from "@/lib/settings/queries";
 export default async function OperacionesLayout({ children }: { children: ReactNode }) {
   const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
   if (role !== "owner" && role !== "admin" && !isSupervising) forbidden();
-  await assertModuleEnabled(workspaceId, "operaciones");
+  if (!(await isModuleEnabled(workspaceId, "operaciones"))) return <ModuleDisabledState moduleName="Operaciones" />;
   return children;
 }

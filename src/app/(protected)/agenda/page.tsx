@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { AgendaShell } from "./AgendaShell";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
  * branching vive server-side en getAgendaAppointments, no acá. */
 export default async function AgendaPage() {
   const { workspaceId, role } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "agenda");
+  if (!(await isModuleEnabled(workspaceId, "agenda"))) return <ModuleDisabledState moduleName="Agenda" />;
   const isManager = role === "owner" || role === "admin";
 
   return (

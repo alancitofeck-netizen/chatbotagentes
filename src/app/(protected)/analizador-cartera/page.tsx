@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Bot, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getInsuranceProvidersBoard } from "@/lib/insuranceProviders/queries";
 import { getCarteraSummary, getCarteraDetailSummary } from "@/lib/portfolioAgent/queries";
 import { PortfolioAgentShell } from "./PortfolioAgentShell";
@@ -17,7 +18,7 @@ import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
  * PortfolioAgentShell). */
 export default async function PortfolioAgentPage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "insurance_providers");
+  if (!(await isModuleEnabled(workspaceId, "insurance_providers"))) return <ModuleDisabledState moduleName="Aseguradoras" />;
 
   const [providers, summary, detailSummary] = await Promise.all([
     getInsuranceProvidersBoard(workspaceId),

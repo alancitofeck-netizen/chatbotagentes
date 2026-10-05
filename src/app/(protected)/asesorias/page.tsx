@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireUser, requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getAsesoriaListAction, getAsesoriaReferralActivityAction } from "@/lib/asesorias/actions";
 import { AsesoriaStageOverview } from "./AsesoriaStageOverview";
 import { RealtimeRefresh } from "./RealtimeRefresh";
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default async function AsesoriasPage() {
   const user = await requireUser();
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "asesorias");
+  if (!(await isModuleEnabled(workspaceId, "asesorias"))) return <ModuleDisabledState moduleName="Asesorías" />;
 
   const [asesorias, referralActivity] = await Promise.all([getAsesoriaListAction(), getAsesoriaReferralActivityAction()]);
   const lastActivityAt = asesorias.reduce<string | null>((latest, a) => {

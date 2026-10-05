@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getPolicyBoardAction } from "@/lib/policies/actions";
 import { PoliciesBoardShell } from "./PoliciesBoardShell";
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function PoliciesPage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "policies");
+  if (!(await isModuleEnabled(workspaceId, "policies"))) return <ModuleDisabledState moduleName="Pólizas" />;
 
   const [board, members] = await Promise.all([getPolicyBoardAction(), getWorkspaceMembers(workspaceId)]);
 
