@@ -3,8 +3,8 @@ import { getUser, getActiveWorkspaceForUser } from "@/lib/auth/session";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { MANYCHAT_DASHBOARD_HTML } from "@/lib/manychat/dashboardTemplate";
 
-/** Sirve el dashboard de leads de ManyChat (verbatim, sin tocar ni un byte
- * — ver el comentario al inicio de dashboardTemplate.ts), cargado dentro
+/** Sirve el dashboard de leads de ManyChat (restilizado al sistema de diseño;
+ * la lógica no cambió — ver el comentario al inicio de dashboardTemplate.ts), cargado dentro
  * de un <iframe> mismo-origen por src/app/manychat/page.tsx — mismo motivo
  * que Asesorías/Meeting OS y Operaciones/Herramienta 1: aislar el `window`
  * del archivo para que sus decenas de funciones/variables globales (sin
