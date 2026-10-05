@@ -93,7 +93,7 @@ export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-full flex-col items-center justify-end gap-0.5 pb-2 text-[11px] font-semibold",
+                    "flex h-full flex-col items-center justify-end gap-0.5 pb-1 text-[11px] font-semibold",
                     active ? "text-accent-600" : "text-neutral-500",
                   )}
                 >
