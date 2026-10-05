@@ -447,3 +447,22 @@ body {
     display: none;
   }
 }
+
+/* Área de toque ampliada en mobile para íconos chicos (sin cambiar el tamaño
+ * visual): el ::before transparente completa 44px alrededor del control.
+ * touch-hit-8 = control de 28px; touch-hit-10 = control de 24px. */
+@media (max-width: 767.98px) {
+  .touch-hit-8,
+  .touch-hit-10 {
+    position: relative;
+  }
+  .touch-hit-8::before,
+  .touch-hit-10::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
+  .touch-hit-10::before {
+    inset: -10px;
+  }
+}

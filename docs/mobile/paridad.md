@@ -365,3 +365,9 @@ Checklist para dispositivo real (a cargo de quien tiene el teléfono):
 3. Descargas en iOS: exportar CSV y Excel de CRM y pólizas, y verificar que el archivo se guarda o se comparte.
 4. Gesto de volver: el botón atrás del sistema dentro de un hilo del Inbox, en un sheet y en una tab, sin salir de la app ni romper el estado.
 5. Safe-area: la cabecera no queda bajo la status bar ni el notch en modo standalone.
+
+## Decisiones de targets (ronda de branch QA)
+
+- Pills, chips y tabs de texto de 32-34px de alto: se dejan como están. Cumplen WCAG 2.2 AA (criterio 2.5.8, Target Size Minimum, 24x24 px CSS), y su alto de 32px es el del sistema de diseño. Decisión documentada, no pendiente.
+- Íconos de 28px (botones de sólo ícono): se amplía el área de toque a 44px sin cambiar el tamaño visual, con las clases `touch-hit-8` (28px) y `touch-hit-10` (24px) definidas en `globals.css` (sólo mobile). Se aplicó a: navegación de mes del mini calendario de agenda, "Más acciones" del listado de módulo classroom, "Quitar miembro", y los cambios de vista de documentos.
+- El clasificador (`classifyTargets.mjs`) cuenta el área efectiva de esos controles: el audit mide el rectángulo del elemento, no el `::before`.

@@ -347,7 +347,7 @@ export function DocumentsShell({
                     aria-label="Vista de cuadrícula"
                     aria-pressed={layout === "grid"}
                     onClick={() => setLayout("grid")}
-                    className={cn("flex size-7 items-center justify-center rounded-full", layout === "grid" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
+                    className={cn("touch-hit-8 flex size-7 items-center justify-center rounded-full", layout === "grid" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
                   >
                     <LayoutGrid size={14} aria-hidden="true" />
                   </button>
@@ -356,7 +356,7 @@ export function DocumentsShell({
                     aria-label="Vista de lista"
                     aria-pressed={layout === "list"}
                     onClick={() => setLayout("list")}
-                    className={cn("flex size-7 items-center justify-center rounded-full", layout === "list" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
+                    className={cn("touch-hit-8 flex size-7 items-center justify-center rounded-full", layout === "list" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
                   >
                     <ListIcon size={14} aria-hidden="true" />
                   </button>

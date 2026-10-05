@@ -65,7 +65,7 @@ function LessonRow({
       <DropdownMenu
         trigger={<MoreVertical size={14} aria-hidden="true" />}
         triggerLabel="Más acciones"
-        triggerClassName="flex size-6 items-center justify-center rounded text-neutral-400 opacity-0 group-hover/lesson:opacity-100 max-md:size-11 max-md:opacity-100 hover:bg-surface-3 hover:text-foreground"
+        triggerClassName="flex size-6 items-center justify-center rounded text-neutral-400 opacity-0 group-hover/lesson:opacity-100 touch-hit-10 max-md:opacity-100 hover:bg-surface-3 hover:text-foreground"
         items={[
           { label: "Editar", icon: <Pencil size={13} aria-hidden="true" />, onSelect: onEdit },
           ...otherChapters.map((c) => ({

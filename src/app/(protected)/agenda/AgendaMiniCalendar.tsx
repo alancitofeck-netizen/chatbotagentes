@@ -54,7 +54,7 @@ export function AgendaMiniCalendar({
               type="button"
               aria-label="Mes anterior"
               onClick={() => onMonthChange(new Date(year, monthIdx - 1, 1))}
-              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:size-11"
+              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground touch-hit-8"
             >
               <ChevronLeft size={16} aria-hidden="true" />
             </button>
@@ -62,7 +62,7 @@ export function AgendaMiniCalendar({
               type="button"
               aria-label="Mes siguiente"
               onClick={() => onMonthChange(new Date(year, monthIdx + 1, 1))}
-              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:size-11"
+              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground touch-hit-8"
             >
               <ChevronRight size={16} aria-hidden="true" />
             </button>
