@@ -33,7 +33,7 @@ import { RecentConversations } from "./RecentConversations";
 import { PendingTasks } from "./PendingTasks";
 import { UpcomingMeetings } from "./UpcomingMeetings";
 import { AgendaSummary } from "./AgendaSummary";
-import { LeadsBySourceChart } from "./LeadsBySourceChart";
+import { LeadsBySourcePanel } from "./LeadsBySourcePanel";
 import { TopDeals } from "./TopDeals";
 import { ExecutiveSummary } from "./ExecutiveSummary";
 import { PriorityInsights } from "./PriorityInsights";
@@ -165,7 +165,7 @@ export default async function DashboardPage() {
 
       <section className="flex flex-col gap-4">
         <h2 className="text-[15px] font-semibold text-foreground">De dónde llegan</h2>
-        <LeadsBySourceChart sources={leadsBySource} />
+        <LeadsBySourcePanel initialSources={leadsBySource} />
       </section>
 
       <MiniAppsRankingCard apps={miniApps} />

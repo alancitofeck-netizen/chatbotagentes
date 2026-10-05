@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu, Settings, UserCircle, X } from "lucide-react";
+import { ChevronRight, Menu, Search, Settings, UserCircle, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { signOut } from "@/app/(protected)/actions";
 import { ThemeToggle } from "@/lib/theme/ThemeToggle";
@@ -33,6 +33,11 @@ export function MobileNav({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const groups = groupNavItems(getSidebarNavItems(new Set(enabledModules)));
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shownGroups = q
+    ? groups.map((g) => ({ ...g, items: g.items.filter((i) => i.label.toLowerCase().includes(q)) })).filter((g) => g.items.length > 0)
+    : groups;
 
   useEffect(() => {
     const openDrawer = () => setOpen(true);
@@ -82,21 +87,32 @@ export function MobileNav({
           </button>
         </div>
 
-        <div className="mx-4 flex items-center gap-3 rounded-2xl border border-border-default p-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-500 text-sm font-semibold text-white">
+        <div className="navy-card mx-4 flex shrink-0 items-center gap-3 rounded-lg p-3 text-white">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-600 text-sm font-semibold text-[var(--on-accent)]">
             {initials(userName || workspaceName)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-foreground">{userName || "Tu cuenta"}</p>
-            <p className="truncate text-xs text-neutral-500">{workspaceName}</p>
+            <p className="truncate text-sm font-semibold text-white">{userName || "Tu cuenta"}</p>
+            <p className="truncate text-xs text-white/60">{workspaceName}</p>
           </div>
-          <Link href="/select-workspace" onClick={() => setOpen(false)} className="min-h-11 shrink-0 px-2 text-sm font-medium text-accent-600">
+          <Link href="/select-workspace" onClick={() => setOpen(false)} className="flex min-h-10 shrink-0 items-center rounded-md border border-white/20 px-3 text-sm font-medium text-white hover:bg-white/10">
             Cambiar
           </Link>
         </div>
 
+        <div className="relative mx-4 mt-4 shrink-0">
+          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar sección"
+            aria-label="Buscar sección"
+            className="w-full rounded-full border border-border-default bg-surface-1 py-2.5 pr-3 pl-9 text-sm text-foreground placeholder:text-neutral-400 outline-none focus:border-accent-500"
+          />
+        </div>
+
         <nav className="flex flex-col px-4">
-          {groups.map((group) => (
+          {shownGroups.map((group) => (
             <div key={group.category} className="flex flex-col">
               <p role="presentation" className="pb-2 pt-5 text-[13px] font-medium text-neutral-500">
                 {group.category}
@@ -142,6 +158,7 @@ export function MobileNav({
               </div>
             </div>
           ))}
+          {shownGroups.length === 0 && <p className="py-6 text-center text-sm text-neutral-500">No encontramos esa sección.</p>}
         </nav>
 
         <div className="mt-6 flex flex-col border-t border-border-default px-4 pt-2">
