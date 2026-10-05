@@ -9,32 +9,40 @@
 do $gate$
 begin
   -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
-  if current_setting('app.environment', true) = 'production' then
+  if to_regclass('private.app_config') is not null then
+  if exists (select 1 from private.app_config where key = 'environment' and value = 'production') then
     perform cron.schedule('notifications-meeting-reminders', '* * * * *', $$select public.notifications_check_meeting_reminders();$$);
   end if;
+  end if;
 end
 $gate$;
 do $gate$
 begin
   -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
-  if current_setting('app.environment', true) = 'production' then
+  if to_regclass('private.app_config') is not null then
+  if exists (select 1 from private.app_config where key = 'environment' and value = 'production') then
     perform cron.schedule('notifications-meeting-started', '* * * * *', $$select public.notifications_check_meeting_started();$$);
   end if;
-end
-$gate$;
-do $gate$
-begin
-  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
-  if current_setting('app.environment', true) = 'production' then
-    perform cron.schedule('notifications-unanswered-conversations', '*/5 * * * *', $$select public.notifications_check_unanswered_conversations();$$);
   end if;
 end
 $gate$;
 do $gate$
 begin
   -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
-  if current_setting('app.environment', true) = 'production' then
+  if to_regclass('private.app_config') is not null then
+  if exists (select 1 from private.app_config where key = 'environment' and value = 'production') then
+    perform cron.schedule('notifications-unanswered-conversations', '*/5 * * * *', $$select public.notifications_check_unanswered_conversations();$$);
+  end if;
+  end if;
+end
+$gate$;
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if to_regclass('private.app_config') is not null then
+  if exists (select 1 from private.app_config where key = 'environment' and value = 'production') then
     perform cron.schedule('notifications-stale-leads', '*/30 * * * *', $$select public.notifications_check_stale_leads();$$);
+  end if;
   end if;
 end
 $gate$;

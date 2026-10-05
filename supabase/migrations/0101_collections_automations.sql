@@ -18,7 +18,8 @@ alter table public.notification_preferences add constraint notification_preferen
 do $gate$
 begin
   -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
-  if current_setting('app.environment', true) = 'production' then
+  if to_regclass('private.app_config') is not null then
+  if exists (select 1 from private.app_config where key = 'environment' and value = 'production') then
     perform cron.schedule(
   'collection-automations-check',
   '15 * * * *',
@@ -32,6 +33,7 @@ begin
   );
   $$
 );
+  end if;
   end if;
 end
 $gate$;
