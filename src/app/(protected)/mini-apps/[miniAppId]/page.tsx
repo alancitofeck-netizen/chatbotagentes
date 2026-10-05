@@ -34,7 +34,7 @@ export default async function MiniAppDetailPage({ params }: { params: Promise<{ 
       <div className="flex flex-col gap-3 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <h1 className="flex items-center gap-2 text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">
+            <h1 className="flex items-center gap-2 font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">
               {miniApp.isPrivate && <span title="Mini App privada">🔒</span>}
               {miniApp.name}
             </h1>

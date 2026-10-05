@@ -13,7 +13,7 @@ export default function NotFound() {
       <Logo />
       <Compass className="size-10 text-neutral-400" strokeWidth={1.5} aria-hidden="true" />
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">
+        <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">
           Página no encontrada
         </h1>
         <p className="max-w-sm text-sm text-neutral-500">

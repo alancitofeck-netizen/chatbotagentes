@@ -21,7 +21,7 @@ export default async function PresentationsPage() {
       <div className="flex flex-col gap-1 px-4 sm:px-6 lg:px-8">
         <p className="text-xs font-semibold uppercase tracking-wide text-accent-600">✨ Potenciado con IA</p>
         <div className="flex items-center gap-2">
-          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Crear mi Presentación</h1>
+          <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Crear mi Presentación</h1>
           <ModuleHelp description="Creá tu presentación profesional paso a paso — información, fotos, servicios, y la IA arma el contenido por vos." tourKey="presentations-intro" />
         </div>
         <p className="text-sm text-neutral-500">Generá presentaciones profesionales potenciadas con IA para mostrar a tus clientes.</p>

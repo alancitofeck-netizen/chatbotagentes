@@ -37,7 +37,7 @@ export default async function AtsPage() {
       <div className="flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">ATS</h1>
+            <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">ATS</h1>
             <ModuleHelp description="Gestioná tus vacantes abiertas y el tablero de candidatos de cada una." tourKey="ats-intro" />
           </div>
           <p className="text-sm text-neutral-500">Vacantes abiertas y su tablero de candidatos.</p>

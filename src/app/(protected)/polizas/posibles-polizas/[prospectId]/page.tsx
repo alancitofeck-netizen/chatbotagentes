@@ -27,7 +27,7 @@ export default async function ProspectDetailPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <div className="flex flex-col gap-1 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">{prospect.contactName}</h1>
+        <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">{prospect.contactName}</h1>
         <p className="text-sm text-neutral-500">
           {prospect.origenAppNombre ? `Origen: ${prospect.origenAppNombre}` : "Posible póliza"}
         </p>

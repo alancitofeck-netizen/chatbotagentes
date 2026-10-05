@@ -25,7 +25,7 @@ export default async function KpisPage({ searchParams }: { searchParams: Promise
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <div className="flex flex-col gap-1 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
-          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">KPIs</h1>
+          <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">KPIs</h1>
           <ModuleHelp description="Los KPIs te muestran cómo está funcionando tu actividad — leads, contactos, citas y calificadas, sin abrir tu hoja." tourKey="kpis-intro" />
         </div>
         <p className="text-sm text-neutral-500">

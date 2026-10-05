@@ -26,7 +26,7 @@ export default async function AsesoriasPresentacionPage() {
           <ArrowLeft className="size-3.5" aria-hidden="true" />
           Volver a Asesorías
         </Link>
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Presentación</h1>
+        <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Presentación</h1>
         <p className="text-sm text-neutral-500">Cita Inicial — primera reunión guiada con el prospecto, se guarda sola mientras avanzás.</p>
       </div>
       <div className="px-4 sm:px-6 lg:px-8">

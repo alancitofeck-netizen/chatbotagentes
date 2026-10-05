@@ -27,7 +27,7 @@ export default async function ReferidosPage() {
           <ArrowLeft className="size-3.5" aria-hidden="true" />
           Volver a Presentación
         </Link>
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Referidos</h1>
+        <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Referidos</h1>
         <p className="text-sm text-neutral-500">Personas referidas por los prospectos durante las asesorías.</p>
       </div>
       <div className="px-4 sm:px-6 lg:px-8">

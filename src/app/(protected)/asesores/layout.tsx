@@ -19,12 +19,12 @@ export default async function AsesoresLayout({ children }: { children: ReactNode
 
   const header = (
     <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8">
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-primary-600 text-white">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy text-white">
         <Users className="size-5" aria-hidden="true" />
       </div>
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Asesores</h1>
+          <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Asesores</h1>
           <ModuleHelp description="Desde acá podés administrar los asesores de tu agencia — su listado, perfil y actividad." tourKey="advisors-admin-intro" />
         </div>
         <p className="text-sm text-neutral-500">Gestioná y monitoreá las cuentas de asesores de Growth Link.</p>

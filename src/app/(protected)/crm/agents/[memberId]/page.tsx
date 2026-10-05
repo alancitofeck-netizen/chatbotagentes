@@ -33,7 +33,7 @@ export default async function AgentProfilePage({ params }: { params: Promise<{ m
         <Link href="/crm" className="flex w-fit items-center gap-1 text-xs text-neutral-500 hover:text-foreground">
           <ArrowLeft size={13} /> CRM
         </Link>
-        <h1 className="mt-1 text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">
+        <h1 className="mt-1 font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">
           {agent.fullName}
         </h1>
         <p className="text-sm text-neutral-500">{agent.title || "Sin cargo"}</p>

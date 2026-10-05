@@ -27,7 +27,7 @@ export default async function AgentesIaPage() {
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Agentes IA</h1>
+          <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Agentes IA</h1>
           <ModuleHelp description="Los Agentes IA son asistentes especializados: reciben información, la procesan, ejecutan una tarea y te devuelven un resultado." tourKey="ai-agents-intro" />
         </div>
         <p className="text-sm text-neutral-500">Creá, configurá y supervisá agentes inteligentes que trabajan dentro de Growth Link.</p>
