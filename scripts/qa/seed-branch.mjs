@@ -119,7 +119,7 @@ async function main() {
   must(await db.from("platform_admins").upsert({ user_id: adminId }), "platform_admins");
 
   // operaciones y presentations activos: el comparativo de escritorio necesita sus rutas reales.
-  const modules = ["advisors", "agenda", "ai_assistant", "asesorias", "collections", "crm", "data_transfer", "goals", "insurance_prospects", "insurance_providers", "mini_apps", "operaciones", "policies", "policy_extraction", "presentations", "tasks"];
+  const modules = ["advisors", "agenda", "ai_assistant", "asesorias", "collections", "crm", "data_transfer", "goals", "insurance_prospects", "insurance_providers", "manychat", "mini_apps", "operaciones", "policies", "policy_extraction", "presentations", "tasks"];
   must(await db.from("workspace_modules").insert(modules.map((m) => ({ workspace_id: BRANCH_WORKSPACE_ID, module_key: m, enabled: true }))), "modules");
 
   // Pipelines y etapas (mismos nombres que el workspace QA de producción).
