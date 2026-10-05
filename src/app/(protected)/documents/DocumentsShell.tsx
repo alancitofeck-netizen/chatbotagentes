@@ -365,7 +365,7 @@ export function DocumentsShell({
             </div>
 
             <div className="flex items-center gap-1 px-6 pt-3 text-[13px] text-neutral-500">
-              <button type="button" onClick={() => setUrl(view === "all" ? "all" : view, null)} className="hover:text-foreground hover:underline">
+              <button type="button" onClick={() => setUrl(view === "all" ? "all" : view, null)} className="hover:text-foreground hover:underline max-md:inline-flex max-md:min-h-6 max-md:items-center">
                 {VIEW_LABELS[view]}
               </button>
               {breadcrumbs.map((f) => (

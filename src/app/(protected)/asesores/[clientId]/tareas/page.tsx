@@ -152,7 +152,7 @@ export default async function ClientTareasPage({ params }: { params: Promise<{ c
                 })}
               </ul>
             )}
-            <a href="#tareas-table" className="mt-3 inline-block text-[13px] font-medium text-accent-600 hover:underline">
+            <a href="#tareas-table" className="mt-3 inline-block text-[13px] font-medium text-accent-600 hover:underline max-md:min-h-6">
               Ver todas las tareas →
             </a>
           </Card>

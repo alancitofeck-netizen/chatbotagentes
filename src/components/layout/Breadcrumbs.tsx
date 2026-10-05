@@ -18,7 +18,7 @@ export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
           <span key={`${item.label}-${i}`} className="flex items-center gap-1.5">
             {i > 0 && <ChevronRight className="size-3.5 text-neutral-400" aria-hidden="true" />}
             {item.href && !isLast ? (
-              <Link href={item.href} className="text-neutral-500 hover:text-foreground">
+              <Link href={item.href} className="text-neutral-500 hover:text-foreground max-md:inline-flex max-md:min-h-6 max-md:items-center">
                 {item.label}
               </Link>
             ) : (

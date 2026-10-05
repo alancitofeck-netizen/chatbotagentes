@@ -31,7 +31,7 @@ function ColorPicker({ value, onChange }: { value: BadgeVariant; onChange: (v: B
           aria-pressed={value === color}
           title={COLOR_LABELS[color]}
           className={cn(
-            "rounded-full transition-shadow duration-[var(--duration-fast)]",
+            "rounded-full transition-shadow duration-[var(--duration-fast)] max-md:inline-flex max-md:min-h-6 max-md:items-center",
             value === color ? "ring-2 ring-accent-500 ring-offset-2" : "",
           )}
         >

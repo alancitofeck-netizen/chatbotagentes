@@ -32,3 +32,24 @@ Si una migración ya aplicada necesita un cambio, se escribe otra migración; no
 ## Cambios de esta ronda en el repo
 
 - `0182_seed_sujey_content_calendar.sql`: guard para no insertar si el workspace no existe. En producción no cambia nada, porque la migración ya estaba aplicada.
+
+## Verificación de efectos de las migraciones sin correspondencia (2026-10-05)
+
+Las migraciones sin entrada con el mismo nombre en el registro original, que escriben datos a nivel de sentencia (no dentro de funciones). Verificadas en producción en sólo lectura:
+
+| Migración | Escritura | Efecto en producción |
+|---|---|---|
+| 0007 | insert tools | Presente: 8 claves de tools (las de 0007 y 0167). |
+| 0022 | update tools.json_schema | Presente: 4 tools con json_schema no nulo. |
+| 0024 | insert ai_agents, update ai_prompts, agent_tools | Presente: 3 agentes; 0 prompts y 0 agent_tools sin agente. |
+| 0039 | insert platform_admins | Presente (el admin de plataforma existe). Ver guard en el repo. |
+| 0049, 0052, 0056, 0067, 0102, 0158 | insert storage.buckets | Presentes: avatars, whatsapp-web-sessions, cartera_imports, task-group-covers, presentation-assets, whatsapp-media. |
+| 0065, 0066, 0102, 0103, 0116, 0124, 0167 | insert workspace_modules (backfill) | Presente en la mayoría de los workspaces. Faltan en 1-5 workspaces (los creados después del backfill se aprovisionan desde la app). **0124** insertó la clave `clientes`, renombrada a `asesores` por 0129; `asesores` existe en producción. |
+| 0142 | delete appointment_sheet_rows; update appointment_sheet_connections | Tablas renombradas por 0145 y datos re-sincronizados: el efecto transitorio no es verificable. |
+| 0029, 0030, 0034, 0036, 0057, 0059, 0141, 0168 (cron) | cron.schedule / unschedule | Presentes los 13 jobs de producción con sus schedules. `sync-appointment-sheets` (0141) ausente, desprogramado por 0145. |
+
+## Numeración de las migraciones
+
+- 186 versiones reparadas corresponden a los 186 archivos locales (0001–0188 con 2 huecos: 0048 y 0164; sin duplicados). Con 0189, el repo tiene 187 archivos.
+- Los huecos son archivos que nunca existieron en el repo, no archivos borrados por el repair.
+- **Hallazgo:** el registro original tenía además 6 entradas sin archivo local: `0012b`, `0012c` y `0050b`–`0050e` (fixes aplicados directamente con sufijo). El repair las marcó como `reverted` y el backup guardó sólo su md5, no el texto. Los efectos siguen en producción (por ejemplo `upsert_whatsapp_integration`, `provision_whatsapp_web_session`), pero el repo no tiene su SQL. Recuperarlo implica exportar las definiciones actuales de esas funciones y revisarlas antes de commitear.

@@ -106,7 +106,7 @@ export function CourseCard({
           <DropdownMenu
             trigger={<MoreVertical size={16} aria-hidden="true" />}
             triggerLabel="Más acciones"
-            triggerClassName="flex size-7 items-center justify-center rounded-full bg-neutral-950/50 text-white hover:bg-neutral-950/70"
+            triggerClassName="touch-hit-8 flex size-7 items-center justify-center rounded-full bg-neutral-950/50 text-white hover:bg-neutral-950/70"
             items={adminActions}
           />
         </div>

@@ -140,7 +140,7 @@ export function PendingTasks({
 
       <Link
         href="/crm?tab=tasks"
-        className="mt-3 block text-center text-[13px] font-medium text-accent-600 hover:underline"
+        className="mt-3 block text-center text-[13px] font-medium text-accent-600 hover:underline max-md:min-h-6"
       >
         Ver todas las tareas
       </Link>

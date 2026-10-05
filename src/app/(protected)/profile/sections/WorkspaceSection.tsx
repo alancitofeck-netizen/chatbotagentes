@@ -66,7 +66,7 @@ export function WorkspaceSection({
               type="button"
               disabled
               title="Próximamente — requiere Supabase Storage"
-              className="text-xs font-medium text-neutral-400 disabled:cursor-not-allowed"
+              className="text-xs font-medium text-neutral-400 disabled:cursor-not-allowed max-md:inline-flex max-md:min-h-6 max-md:items-center"
             >
               Cambiar logo (próximamente)
             </button>
@@ -127,7 +127,7 @@ export function WorkspaceSection({
           </div>
           <Link
             href="/agentes-ia"
-            className="flex items-center gap-1 text-sm font-medium text-accent-600 hover:underline"
+            className="flex items-center gap-1 text-sm font-medium text-accent-600 hover:underline max-md:min-h-6"
           >
             Abrir <ArrowRight className="size-3.5" aria-hidden="true" />
           </Link>

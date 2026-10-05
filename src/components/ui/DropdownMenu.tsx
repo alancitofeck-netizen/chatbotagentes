@@ -99,7 +99,7 @@ export function DropdownMenu({
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        className={triggerClassName ?? "flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground max-md:size-11"}
+        className={triggerClassName ?? "flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-3 hover:text-foreground touch-hit-8"}
       >
         {trigger}
       </button>

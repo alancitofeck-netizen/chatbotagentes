@@ -121,7 +121,7 @@ export function AgentWizardShell({ workspaceName, tools, referralCount }: { work
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
       <div>
         <div className="flex items-center gap-1 text-sm text-neutral-500">
-          <Link href="/agentes-ia" className="hover:text-foreground">
+          <Link href="/agentes-ia" className="hover:text-foreground max-md:inline-flex max-md:min-h-6 max-md:items-center">
             Agentes IA
           </Link>
           <ChevronRight size={14} aria-hidden="true" />

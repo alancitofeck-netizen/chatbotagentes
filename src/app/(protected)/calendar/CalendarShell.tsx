@@ -350,7 +350,7 @@ export function CalendarShell({
                   type="button"
                   aria-label="Anterior"
                   onClick={() => step(-1)}
-                  className="flex size-7 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+                  className="touch-hit-8 flex size-7 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
                 >
                   <ChevronLeft size={16} aria-hidden="true" />
                 </button>
@@ -365,7 +365,7 @@ export function CalendarShell({
                   type="button"
                   aria-label="Siguiente"
                   onClick={() => step(1)}
-                  className="flex size-7 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+                  className="touch-hit-8 flex size-7 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
                 >
                   <ChevronRight size={16} aria-hidden="true" />
                 </button>

@@ -329,7 +329,7 @@ export function MyProfileSection({ profile, onChanged }: { profile: MyProfile; o
               <span className="absolute text-[13px] font-semibold text-foreground">{percent}%</span>
             </div>
             {nextStep ? (
-              <button type="button" onClick={nextStep.act} className="text-right text-[11px] font-medium text-accent-600 hover:underline">
+              <button type="button" onClick={nextStep.act} className="text-right text-[11px] font-medium text-accent-600 hover:underline max-md:min-h-6">
                 Agregar {nextStep.label}
               </button>
             ) : (
