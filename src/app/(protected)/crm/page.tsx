@@ -12,6 +12,8 @@ import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { getWhatsAppIntegration } from "@/lib/integrations/queries";
 import { getInstagramStatus } from "@/lib/integrations/instagram";
 import { getManychatStatus } from "@/lib/integrations/manychat";
+import { Kanban } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { CrmPageShell } from "./CrmPageShell";
 
 export const metadata: Metadata = {
@@ -110,9 +112,8 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
-      <div className="flex flex-col gap-1 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">CRM</h1>
-        <p className="text-sm text-neutral-500">Arrastra las tarjetas para mover una oportunidad de etapa.</p>
+      <div className="px-4 sm:px-6 lg:px-8">
+        <PageHeader icon={Kanban} title="CRM" description="Arrastra las tarjetas para mover una oportunidad de etapa." />
       </div>
       <CrmPageShell
         workspaceId={workspaceId}
