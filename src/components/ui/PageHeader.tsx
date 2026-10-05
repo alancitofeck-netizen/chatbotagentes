@@ -24,7 +24,7 @@ export function PageHeader({
           <Icon className="size-6" aria-hidden="true" />
         </span>
       )}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[12rem] flex-1">
         <h1 className="font-display text-[28px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground sm:text-[32px]">
           {title}
         </h1>

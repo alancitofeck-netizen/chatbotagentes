@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Clock, ListTodo } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { TaskGroup, GroupStats } from "@/lib/tasks/groups/queries";
 import { GROUP_COLOR_META } from "@/components/tasks/groupColorMeta";
 
@@ -13,7 +14,7 @@ export interface TasksHomeStats {
 
 function StatChip({ icon: Icon, label, value, tone }: { icon: typeof ListTodo; label: string; value: number; tone: "critical" | "neutral" }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-xs)]">
+    <div className="flex items-center gap-3 rounded-lg border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-sm)]">
       <span
         className={
           tone === "critical"
@@ -24,7 +25,7 @@ function StatChip({ icon: Icon, label, value, tone }: { icon: typeof ListTodo; l
         <Icon size={17} aria-hidden="true" />
       </span>
       <div>
-        <p className="text-lg font-semibold text-foreground">{value}</p>
+        <p className="font-display text-[22px] font-semibold tracking-[-0.02em] tabular-nums text-foreground">{value}</p>
         <p className="text-xs text-neutral-500">{label}</p>
       </div>
     </div>
@@ -72,12 +73,7 @@ export function TasksWorkspaceHome({
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <div>
-        <h1 className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-          {greeting}, {stats.greetingName} 👋
-        </h1>
-        <p className="mt-1 text-sm text-neutral-500">Esto es lo que tenés pendiente en tu Workspace.</p>
-      </div>
+      <PageHeader icon={ListTodo} title={`${greeting}, ${stats.greetingName} 👋`} description="Esto es lo que tenés pendiente en tu Workspace." />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatChip icon={ListTodo} label="Tareas pendientes" value={stats.pending} tone="neutral" />

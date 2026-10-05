@@ -8,7 +8,10 @@ import { skipTours } from "./session.mjs";
 
 const BASE = process.env.QA_BASE_URL ?? "http://localhost:3001";
 const outDir = path.resolve(process.argv[2] ?? "docs/mobile/rediseno");
-const routes = process.argv.slice(3).length ? process.argv.slice(3) : [["inicio", "/dashboard"], ["crm", "/crm"]];
+// Rutas como "nombre=/ruta"; sin argumentos, Inicio y CRM.
+const routes = process.argv.slice(3).length
+  ? process.argv.slice(3).map((r) => r.split("="))
+  : [["inicio", "/dashboard"], ["crm", "/crm"]];
 fs.mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -26,8 +29,14 @@ for (const scheme of ["light", "dark"]) {
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 60000 }).catch(() => {});
+    // El login redirige a /dashboard después de salir de /login: esperamos a que termine
+    // antes de la primera navegación, si no esa redirección pisa la ruta pedida.
+    await page.waitForLoadState("networkidle").catch(() => {});
     for (const [name, route] of routes) {
       await page.goto(`${BASE}${route}`, { waitUntil: "networkidle", timeout: 90000 });
+      if (new URL(page.url()).pathname !== route) {
+        await page.goto(`${BASE}${route}`, { waitUntil: "networkidle", timeout: 90000 });
+      }
       await skipTours(page);
       const ahoraNo = page.getByRole("button", { name: "Ahora no" });
       if (await ahoraNo.isVisible().catch(() => false)) await ahoraNo.click().catch(() => {});
@@ -38,7 +47,7 @@ for (const scheme of ["light", "dark"]) {
       await page.waitForTimeout(600);
       const hscroll = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       await page.screenshot({ path: path.join(outDir, `${name}-${w}-${scheme}.png`), fullPage: true });
-      console.log(name, w, scheme, "hscroll px:", hscroll);
+      console.log(name, w, scheme, "hscroll px:", hscroll, "url:", new URL(page.url()).pathname);
     }
     await ctx.close();
   }
