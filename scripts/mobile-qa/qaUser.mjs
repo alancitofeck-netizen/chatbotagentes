@@ -4,9 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 
 export const QA_EMAIL = "qa-mobile@example.com";
 export const QA_ADMIN_EMAIL = "qa-mobile-admin@example.com";
-export const QA_WORKSPACE_ID = "e7c8ae59-c10b-462f-87cf-bd69d44b32fd";
+// Modo branch (QA_TARGET=branch, ver scripts/qa/branch.mjs): mismo usuario, workspace del branch.
+const BRANCH = process.env.QA_TARGET === "branch";
+export const QA_WORKSPACE_ID = BRANCH ? "5b1c0e7a-0000-4000-8000-000000000001" : "e7c8ae59-c10b-462f-87cf-bd69d44b32fd";
 
 function readEnv() {
+  if (BRANCH) return { url: process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY };
   const env = fs.readFileSync(new URL("../../.env.local", import.meta.url), "utf8");
   const get = (key) => {
     const m = env.match(new RegExp(`^${key}=(.*)$`, "m"));
