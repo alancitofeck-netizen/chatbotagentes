@@ -71,7 +71,7 @@ Fix propuesto (no aplicado, requiere decisión de producto):
 1. Actualizar la lista de `provision-workspace.ts` para incluir `asesores`, `presentations`, `referrals` y `advisory_sessions`.
 2. Backfill para los workspaces existentes que faltan: habilitar esos módulos. Es una decisión de producto, porque cambia lo que ve un tenant que ya existe. Mismo criterio que usaron los backfills anteriores.
 
-## Permisos EXECUTE de funciones de public (2026-10-05, verificado en producción y qa-mobile)
+## Permisos EXECUTE de funciones de public: evaluación inicial (2026-10-05, antes de los grants manuales)
 
 Producción tiene 39 funciones propias de `public`. Las ejecutables por `anon` o `PUBLIC` son 13. Evaluación:
 
@@ -85,7 +85,7 @@ Producción tiene 39 funciones propias de `public`. Las ejecutables por `anon` o
 | am_i_platform_admin(), touch_last_active(uuid) | anon, public | Middleware y sesión con sesión | Sin datos sensibles (anon recibe false / no-op). **Baja**. |
 | current_user_agency_role(), agency_workspace_id(), workspace_has_platform_admin_member(uuid) | anon | Roles con sesión | Revelan rol o id de la agencia a anon. **Baja-media**. |
 
-Decisión pendiente: revocar anon y authenticated en `notifications_check_*`, y revocar anon en `classroom_user_names` y los de la fila baja-media.
+Esta tabla es la evaluación previa. El estado actual está en la sección siguiente.
 
 ## Módulos de workspace: fix aplicado
 
@@ -109,3 +109,18 @@ Se identifica el workspace por `workspace_id`, no por nombre. La primera versió
 Estado verificado en producción con lectura (2026-10-05):
 - Workspace de leonardomaganah: incluye `asesores` y `presentations`. No tiene `advisory_sessions` ni `referrals`.
 - Workspace de pjaikc: incluye `presentations`. Además tiene `advisory_sessions` y `referrals`, que ya estaban antes del backfill y no se tocaron.
+
+## Estado real de permisos EXECUTE (2026-10-05, verificado en producción y qa-mobile)
+
+Qué se aplicó y cómo:
+- **Producción:** los grants de las 39 funciones propias de `public` se aplicaron a mano (no se corrió 0191 completa). Sin `anon` ni `PUBLIC` en ninguna función: la consulta de exposición devuelve 0 filas.
+- **Default privileges de `postgres` en `public`:** en producción siguen dando `anon` a las funciones nuevas (`anon=X/postgres`). Lo cierra la parte `alter default privileges` de 0191, que queda para el merge.
+- **qa-mobile:** 0191 registrada en `supabase_migrations.schema_migrations`. Sin `anon` ni `PUBLIC`. Default privileges sin `anon`.
+
+Comparación rama contra producción:
+- Mismas 39 funciones. Hash normalizado de privilegios (roles ordenados): `3051aeea10ac175f69ff68ca0eac9770` en ambos lados. El hash del texto de ACL difiere sólo por el orden de las entradas.
+- `classroom_user_names`: mismo cuerpo SQL. Producción tiene fin de línea CRLF y la rama LF; no cambia el comportamiento.
+
+Idempotencia de 0191: se ejecutó completa sobre la rama, que ya tiene 0191 aplicada, dentro de una transacción con `ROLLBACK`. Corre sin errores y no altera los grants.
+
+Pendiente: aplicar 0191 en producción (vía el merge). Recién ahí se cierran los default privileges para funciones nuevas.
