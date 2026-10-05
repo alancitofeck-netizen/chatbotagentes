@@ -6,6 +6,7 @@ import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getMiniAppsList } from "@/lib/miniApps/queries";
 import { MiniAppsListShell } from "./MiniAppsListShell";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export const metadata: Metadata = {
   title: "Mini Apps — Growth Link",
@@ -23,17 +24,13 @@ export default async function MiniAppsPage() {
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
-      <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy text-white">
-          <AppWindow className="size-5" aria-hidden="true" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Mini Apps</h1>
-            <ModuleHelp description="Creá simuladores y formularios públicos que capturan leads directo para tu CRM." tourKey="mini-apps-intro" />
-          </div>
-          <p className="text-sm text-neutral-500">Simuladores y formularios públicos que capturan leads para el CRM.</p>
-        </div>
+      <div className="px-4 sm:px-6 lg:px-8">
+        <PageHeader
+          icon={AppWindow}
+          title="Mini Apps"
+          description="Simuladores y formularios públicos que capturan leads para el CRM."
+          actions={<ModuleHelp description="Creá simuladores y formularios públicos que capturan leads directo para tu CRM." tourKey="mini-apps-intro" />}
+        />
       </div>
       <div className="px-4 sm:px-6 lg:px-8">
         <MiniAppsListShell initialMiniApps={miniApps} members={members} moduleEnabled={enabled} canManage={canManage} />

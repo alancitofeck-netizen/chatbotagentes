@@ -87,6 +87,8 @@ async function resetWorkspace() {
   }
   must(await db.from("pipelines").delete().eq("workspace_id", ws), "del pipelines");
   must(await db.from("contacts").delete().eq("workspace_id", ws), "del contacts");
+  must(await db.from("mini_app_leads").delete().eq("workspace_id", ws), "del mini app leads");
+  must(await db.from("mini_apps").delete().eq("workspace_id", ws), "del mini apps");
   await resetClassroom();
   must(await db.from("workspace_modules").delete().eq("workspace_id", ws), "del modules");
   must(await db.from("workspace_members").delete().eq("workspace_id", ws), "del members");
@@ -254,6 +256,23 @@ async function main() {
     }
   }
 
+  // Mini apps con leads (3 apps, leads con y sin conversión): alimentan el hero,
+  // los KPIs y los filtros de la pantalla de Mini Apps.
+  const apps = must(
+    await db.from("mini_apps").insert([
+      { workspace_id: BRANCH_WORKSPACE_ID, name: "[QA] Simulador de retiro", slug: "qa-mobile-retiro", description: "Dato de prueba QA", template_key: "simulador_retiro", status: "active", api_key_hash: "qa-hash-retiro", api_key_last4: "qa01", config: {}, allowed_origins: [] },
+      { workspace_id: BRANCH_WORKSPACE_ID, name: "[QA] Calculadora de brecha", slug: "qa-mobile-brecha", description: "Dato de prueba QA", template_key: "calculadora_brecha_retiro", status: "active", api_key_hash: "qa-hash-brecha", api_key_last4: "qa02", config: {}, allowed_origins: [] },
+      { workspace_id: BRANCH_WORKSPACE_ID, name: "[QA] App sin uso", slug: "qa-mobile-sin-uso", description: "Dato de prueba QA", template_key: "simulador_retiro", status: "inactive", api_key_hash: "qa-hash-sin-uso", api_key_last4: "qa03", config: {}, allowed_origins: [] },
+    ]).select("id, name"),
+    "mini apps",
+  );
+  const [retiro, brecha] = apps;
+  const leadRows = [
+    ...Array.from({ length: 5 }, (_, i) => ({ mini_app_id: retiro.id, status: i < 2 ? "converted" : "new", origen_app: "simulador_retiro", nombre: `[QA] Lead retiro ${i + 1}`, whatsapp: `+5215500009${String(i).padStart(3, "0")}`, consentimiento: true, consentimiento_fecha: day(-i).toISOString(), fecha: dateOnly(-i) })),
+    ...Array.from({ length: 2 }, (_, i) => ({ mini_app_id: brecha.id, status: i === 0 ? "converted" : "new", origen_app: "calculadora_brecha_retiro", nombre: `[QA] Lead brecha ${i + 1}`, whatsapp: `+5215500008${String(i).padStart(3, "0")}`, consentimiento: true, consentimiento_fecha: day(-i).toISOString(), fecha: dateOnly(-i) })),
+  ].map((r) => ({ ...r, workspace_id: BRANCH_WORKSPACE_ID, data: {} }));
+  must(await db.from("mini_app_leads").insert(leadRows), "mini app leads");
+
   // Classroom (no está atado a un workspace): un curso del admin y dos comentarios,
   // uno de la cuenta con nombre y otro de la cuenta sin nombre (debe verse "Usuario").
   const cat = must(
@@ -288,7 +307,7 @@ async function main() {
     "classroom comments",
   );
 
-  console.log("Seed QA listo en el branch: workspace, 3 cuentas (una sin nombre), módulos, pipelines, 10 contactos, 8 oportunidades, 3 conversaciones, 4 reservas, 6 tareas, 3 pólizas, 2 cobros, 1 curso con 2 comentarios.");
+  console.log("Seed QA listo en el branch: 3 mini apps con 7 leads, workspace, 3 cuentas (una sin nombre), módulos, pipelines, 10 contactos, 8 oportunidades, 3 conversaciones, 4 reservas, 6 tareas, 3 pólizas, 2 cobros, 1 curso con 2 comentarios.");
 }
 
 main().catch((e) => {
