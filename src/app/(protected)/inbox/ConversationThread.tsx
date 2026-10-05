@@ -97,7 +97,7 @@ const QUICK_REPLIES = [
  * — no new status values, just WhatsApp-style tick icons for outbound messages. */
 function MessageStatusIcon({ status, sending }: { status: string | null; sending: boolean }) {
   if (sending) return <Clock className="size-3" aria-hidden="true" />;
-  if (status === "read") return <CheckCheck className="size-3.5 text-blue-200" aria-hidden="true" />;
+  if (status === "read") return <CheckCheck className="size-3.5 text-accent-200" aria-hidden="true" />;
   if (status === "delivered") return <CheckCheck className="size-3.5" aria-hidden="true" />;
   if (status === "sent" || status === "accepted") return <Check className="size-3.5" aria-hidden="true" />;
   return null;
@@ -679,13 +679,13 @@ export function ConversationThread({
             onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCreateTaskFromConversation()}
             placeholder="Título de la tarea…"
-            className="flex-1 rounded-sm border border-border-strong bg-surface-1 px-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-100"
+            className="flex-1 rounded-sm border border-border-strong bg-surface-1 px-3 py-1.5 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
           />
           <button
             type="button"
             disabled={creatingTask || !newTaskTitle.trim()}
             onClick={handleCreateTaskFromConversation}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+            className="rounded-md bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-40"
           >
             Crear
           </button>
@@ -799,14 +799,14 @@ export function ConversationThread({
                         className={cn(
                           "px-3.5 py-2 text-sm shadow-[var(--elevation-xs)]",
                           outbound
-                            ? "rounded-2xl rounded-br-md bg-blue-600 text-white"
+                            ? "rounded-2xl rounded-br-md bg-accent-600 text-[var(--on-accent)]"
                             : "rounded-2xl rounded-bl-md bg-surface-1 text-foreground",
                           m.localStatus === "sending" && "opacity-60",
                           failed && "bg-red-50 text-red-600",
                         )}
                       >
                         {m.quotedMessage && (
-                          <div className={cn("mb-1.5 rounded-md border-l-2 px-2 py-1 text-[12px]", outbound ? "border-white/40 bg-white/10 text-white/85" : "border-blue-400 bg-surface-2 text-neutral-600")}>
+                          <div className={cn("mb-1.5 rounded-md border-l-2 px-2 py-1 text-[12px]", outbound ? "border-white/40 bg-white/10 text-white/85" : "border-accent-400 bg-surface-2 text-neutral-600")}>
                             <p className="truncate">{m.quotedMessage.body || "Mensaje"}</p>
                           </div>
                         )}
@@ -946,7 +946,7 @@ export function ConversationThread({
                 title="Plantillas"
                 className={cn(
                   "flex size-9 items-center justify-center rounded-full transition-colors",
-                  templatesOpen ? "bg-blue-100 text-blue-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+                  templatesOpen ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
                 )}
               >
                 <FileText size={17} />
@@ -1075,14 +1075,14 @@ export function ConversationThread({
             }}
             placeholder="Escribí un mensaje…"
             rows={1}
-            className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-blue-100"
+            className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
           />
           <button
             type="button"
             onClick={handleSubmit}
             disabled={(!messageInput.trim() && !pendingAttachment) || isSending}
             aria-label="Enviar mensaje"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-600 text-[var(--on-accent)] transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send className="size-4" aria-hidden="true" />
           </button>

@@ -97,7 +97,7 @@ function formatDateShort(iso: string) {
 function tabButtonClass(active: boolean) {
   return [
     "shrink-0 border-b-2 px-0.5 py-2.5 text-sm font-medium transition-colors duration-150",
-    active ? `border-blue-600 text-foreground` : "border-transparent text-neutral-500 hover:text-foreground",
+    active ? `border-accent-600 text-foreground` : "border-transparent text-neutral-500 hover:text-foreground",
   ].join(" ");
 }
 
@@ -416,7 +416,7 @@ export function ContactInfoPanel({
                       }
                     }}
                     placeholder="Escribí una nota…"
-                    className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3 py-1.5 text-[13px] outline-none focus:border-blue-500 focus:bg-surface-1"
+                    className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3 py-1.5 text-[13px] outline-none focus:border-accent-500 focus:bg-surface-1"
                   />
                   <button
                     type="button"
@@ -446,7 +446,7 @@ export function ContactInfoPanel({
               onChange={(e) => setNewTaskTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreateTask()}
               placeholder="Título de la tarea…"
-              className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3 py-1.5 text-[13px] outline-none focus:border-blue-500 focus:bg-surface-1"
+              className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3 py-1.5 text-[13px] outline-none focus:border-accent-500 focus:bg-surface-1"
             />
             <button
               type="button"
@@ -483,7 +483,7 @@ export function ContactInfoPanel({
                 {detail.contact.email && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <Mail size={15} className="shrink-0 text-neutral-400" />
-                    <a href={`mailto:${detail.contact.email}`} className="truncate text-foreground hover:text-blue-600 hover:underline">
+                    <a href={`mailto:${detail.contact.email}`} className="truncate text-foreground hover:text-accent-600 hover:underline">
                       {detail.contact.email}
                     </a>
                   </div>
@@ -491,7 +491,7 @@ export function ContactInfoPanel({
                 {detail.contact.phone && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <Phone size={15} className="shrink-0 text-neutral-400" />
-                    <a href={`tel:${detail.contact.phone}`} className="text-foreground hover:text-blue-600 hover:underline">
+                    <a href={`tel:${detail.contact.phone}`} className="text-foreground hover:text-accent-600 hover:underline">
                       {detail.contact.phone}
                     </a>
                   </div>
@@ -515,7 +515,7 @@ export function ContactInfoPanel({
                       href={`https://instagram.com/${detail.contact.instagramUsername}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="truncate text-foreground hover:text-blue-600 hover:underline"
+                      className="truncate text-foreground hover:text-accent-600 hover:underline"
                     >
                       @{detail.contact.instagramUsername}
                     </a>
@@ -708,7 +708,7 @@ export function ContactInfoPanel({
                 ) : (
                   <p className="text-[13px] text-neutral-500">Sin tareas pendientes.</p>
                 )}
-                <Link href="/tasks" className="flex items-center gap-1 text-[12px] font-medium text-blue-600 hover:underline">
+                <Link href="/tasks" className="flex items-center gap-1 text-[12px] font-medium text-accent-600 hover:underline">
                   Ver todas en Tareas <ExternalLink size={11} />
                 </Link>
               </section>
@@ -770,7 +770,7 @@ export function ContactInfoPanel({
                   onChange={(e) => setNoteBody(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
                   placeholder="Agregar una nota…"
-                  className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3.5 py-2 text-sm outline-none focus:border-blue-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-blue-100"
+                  className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3.5 py-2 text-sm outline-none focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
                 />
                 <button type="button" onClick={handleAddNote} disabled={isPending} className={`${INBOX_PRIMARY.bg} ${INBOX_PRIMARY.bgHover} shrink-0 rounded-full px-3.5 py-2 text-sm font-medium text-white disabled:opacity-40`}>
                   <Plus size={15} />

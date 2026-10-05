@@ -97,7 +97,7 @@ export function MergeContactDialog({
               setSelected(null);
             }}
             placeholder="Buscar por nombre, teléfono o email…"
-            className="w-full rounded-full border border-border-strong bg-surface-2 py-2 pl-8 pr-3 text-sm outline-none focus:border-blue-500 focus:bg-surface-1"
+            className="w-full rounded-full border border-border-strong bg-surface-2 py-2 pl-8 pr-3 text-sm outline-none focus:border-accent-500 focus:bg-surface-1"
           />
         </div>
         {candidates.length > 0 && !selected && (
