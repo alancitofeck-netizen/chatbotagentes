@@ -37,7 +37,7 @@ import { LeadsBySourceChart } from "./LeadsBySourceChart";
 import { TopDeals } from "./TopDeals";
 import { ExecutiveSummary } from "./ExecutiveSummary";
 import { PriorityInsights } from "./PriorityInsights";
-import { UnansweredLeadsCard } from "./UnansweredLeadsCard";
+import { LeadDeck } from "./LeadDeck";
 import { RecommendedActions } from "./RecommendedActions";
 import { Trends } from "./Trends";
 import { AdvisorPerformance } from "./AdvisorPerformance";
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
       <ExecutiveSummary greetingName={firstName} bullets={bullets} health={health} />
 
-      <UnansweredLeadsCard conversations={unansweredConversations} />
+      <LeadDeck conversations={unansweredConversations} />
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
@@ -157,6 +157,11 @@ export default async function DashboardPage() {
           <ModuleHelp description="Tu resumen del día — insights, tendencias, tareas pendientes y actividad reciente, todo en un solo lugar." tourKey="dashboard-intro" />
         </div>
         <PriorityInsights insights={insights} />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-[15px] font-semibold text-foreground">De dónde llegan</h2>
+        <LeadsBySourceChart sources={leadsBySource} />
       </section>
 
       <DashboardLearningCard />
@@ -192,10 +197,7 @@ export default async function DashboardPage() {
         <TopDeals deals={topDeals} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ActivityChart initialData={activity} />
-        <LeadsBySourceChart sources={leadsBySource} />
-      </div>
+      <ActivityChart initialData={activity} />
     </div>
   );
 }
