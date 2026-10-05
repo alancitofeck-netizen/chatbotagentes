@@ -12,7 +12,11 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if current_setting('app.environment', true) = 'production' then
+    perform cron.schedule(
   'sync-google-calendar',
   '*/3 * * * *',
   $$
@@ -25,3 +29,6 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+end
+$gate$;

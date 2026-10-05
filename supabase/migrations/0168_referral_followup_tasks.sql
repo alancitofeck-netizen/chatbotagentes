@@ -23,7 +23,11 @@ alter table public.ai_agents add column if not exists referral_followup_mode tex
 -- mecanismo y mismo secreto de Vault ya reusado por policy-automations
 -- (0094) — cada intento programado (referral_followups.scheduled_at) es
 -- del orden de días, así que una corrida por hora da margen de sobra.
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if current_setting('app.environment', true) = 'production' then
+    perform cron.schedule(
   'referral-followups-check',
   '0 * * * *',
   $$
@@ -36,3 +40,6 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+end
+$gate$;

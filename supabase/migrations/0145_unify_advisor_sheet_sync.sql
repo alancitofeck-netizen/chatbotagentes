@@ -158,7 +158,11 @@ grant execute on function public.claim_pending_advisor_sheet_syncs(int) to servi
 select cron.unschedule('sync-lead-sheets');
 select cron.unschedule('sync-appointment-sheets');
 
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if current_setting('app.environment', true) = 'production' then
+    perform cron.schedule(
   'sync-advisor-sheets',
   '*/2 * * * *',
   $$
@@ -171,6 +175,9 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+end
+$gate$;
 
 -- Baja de las tablas/funciones viejas — 0 filas reales verificadas antes de
 -- este drop (lead_sheet_connections, lead_sheet_rows, appointment_sheet_connections,

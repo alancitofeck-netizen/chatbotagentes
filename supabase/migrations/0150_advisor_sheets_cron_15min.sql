@@ -6,7 +6,11 @@
 -- consumo.
 select cron.unschedule('sync-advisor-sheets');
 
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if current_setting('app.environment', true) = 'production' then
+    perform cron.schedule(
   'sync-advisor-sheets',
   '*/15 * * * *',
   $$
@@ -19,3 +23,6 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+end
+$gate$;

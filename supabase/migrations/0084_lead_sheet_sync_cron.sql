@@ -7,7 +7,11 @@
 -- El secreto NO se define acá (mismo convenio que el resto del proyecto) —
 -- se inserta directo en Vault, fuera de banda, bajo el nombre
 -- 'cron_sync_lead_sheets_bearer', con el mismo valor que CRON_SECRET.
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if current_setting('app.environment', true) = 'production' then
+    perform cron.schedule(
   'sync-lead-sheets',
   '*/2 * * * *',
   $$
@@ -20,3 +24,6 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+end
+$gate$;

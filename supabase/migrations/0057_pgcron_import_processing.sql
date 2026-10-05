@@ -19,7 +19,11 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if current_setting('app.environment', true) = 'production' then
+    perform cron.schedule(
   'process-cartera-imports',
   '10 seconds',
   $$
@@ -32,3 +36,6 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+end
+$gate$;

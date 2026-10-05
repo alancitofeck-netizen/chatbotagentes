@@ -11,7 +11,11 @@
 -- secreto por endpoint es solo una convención de nombre, no aislamiento real
 -- — reusar evita pedirle al usuario que inserte un secreto nuevo en Vault
 -- para esto.
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if current_setting('app.environment', true) = 'production' then
+    perform cron.schedule(
   'policy-automations-check',
   '0 * * * *',
   $$
@@ -24,3 +28,6 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+end
+$gate$;

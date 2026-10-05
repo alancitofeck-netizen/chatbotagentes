@@ -15,7 +15,11 @@ alter table public.notification_preferences add constraint notification_preferen
 -- Programa /api/cron/collection-automations vía pg_cron + pg_net, mismo
 -- mecanismo horario que policy-automations (0094) — la granularidad del
 -- trigger es "días", una corrida por hora da margen de sobra.
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if current_setting('app.environment', true) = 'production' then
+    perform cron.schedule(
   'collection-automations-check',
   '15 * * * *',
   $$
@@ -28,3 +32,6 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+end
+$gate$;
