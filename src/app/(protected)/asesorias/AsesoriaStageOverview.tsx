@@ -61,17 +61,17 @@ function StageCard({
   const isTeal = accent === "teal";
   return (
     <Card variant="default" className={`relative flex flex-col gap-5 overflow-hidden border-l-4 ${isTeal ? "border-l-accent-500" : "border-l-navy"}`}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${isTeal ? "bg-accent-600" : "bg-navy"}`}>
             {number}
           </span>
-          <span className={`flex size-12 shrink-0 items-center justify-center rounded-full ${isTeal ? "bg-surface-3 text-accent-700" : "bg-surface-2 text-navy"}`}>
+          <span className={`flex size-12 shrink-0 items-center justify-center rounded-full max-sm:hidden ${isTeal ? "bg-surface-3 text-accent-700" : "bg-surface-2 text-navy"}`}>
             {icon}
           </span>
           <div>
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide ${isTeal ? "bg-surface-3 text-accent-700" : "bg-surface-2 text-navy"}`}
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide ${isTeal ? "bg-surface-3 text-accent-700" : "bg-surface-2 text-navy"}`}
             >
               <span className={`size-1.5 rounded-full ${isTeal ? "bg-accent-500" : "bg-navy"}`} aria-hidden="true" />
               {sessionLabel}
