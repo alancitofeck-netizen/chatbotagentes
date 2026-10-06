@@ -12,7 +12,7 @@ export function Fab({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElem
     <button
       type="button"
       className={cn(
-        "fixed bottom-5 right-5 z-40 flex size-14 items-center justify-center rounded-full",
+        "fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 z-40 flex size-14 items-center justify-center rounded-full md:bottom-5",
         "bg-accent-500 text-white shadow-[var(--elevation-lg)] transition-transform duration-[var(--duration-fast)]",
         "hover:bg-accent-600 active:scale-95 md:hidden",
         className,

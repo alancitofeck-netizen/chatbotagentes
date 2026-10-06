@@ -12,6 +12,7 @@ import {
 } from "@/lib/notifications/actions";
 import { NotificationPanel } from "@/components/layout/NotificationPanel";
 import { showBrowserNotification } from "@/lib/notifications/browserPush";
+import { toast } from "@/components/toast/toast";
 import type { NotificationCategory } from "@/lib/notifications/catalog";
 import type { NotificationRow, NotificationPreference } from "@/lib/notifications/types";
 
@@ -82,6 +83,11 @@ export function NotificationBell({
           };
           setNotifications((prev) => [next, ...prev].slice(0, MAX_LIST));
           setUnreadCount((prev) => prev + 1);
+
+          // Banner en vivo de lead nuevo (prototipo): aviso con botón "Ver" en cualquier pantalla.
+          if (/lead/i.test(next.eventType) || /lead/i.test(next.title)) {
+            toast.lead(next.title, next.message, next.actionUrl);
+          }
 
           if (preferencesRef.current?.[next.category]?.push) {
             showBrowserNotification(next.title, next.message, next.actionUrl);
@@ -154,7 +160,7 @@ export function NotificationBell({
         title="Notificaciones"
         aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ""}`}
         onClick={() => setOpen((v) => !v)}
-        className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 transition-colors duration-[var(--duration-fast)] hover:bg-surface-2 hover:text-foreground"
+        className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 transition-colors duration-[var(--duration-fast)] hover:bg-surface-2 hover:text-foreground max-md:size-11"
       >
         <Bell size={17} aria-hidden="true" />
         {unreadCount > 0 && (

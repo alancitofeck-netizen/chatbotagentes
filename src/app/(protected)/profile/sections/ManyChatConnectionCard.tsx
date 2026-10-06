@@ -83,7 +83,7 @@ export function ManyChatConnectionCard({ canManage }: { canManage: boolean }) {
     <Card>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+          <span className="flex size-8 items-center justify-center rounded-full bg-accent-100 text-accent-700">
             <Bot className="size-4" aria-hidden="true" />
           </span>
           <h3 className="text-[15px] font-medium text-foreground">ManyChat</h3>

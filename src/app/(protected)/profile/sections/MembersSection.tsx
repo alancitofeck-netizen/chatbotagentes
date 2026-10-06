@@ -115,7 +115,7 @@ export function MembersSection({
                 aria-label="Quitar miembro"
                 disabled={isPending}
                 onClick={() => handleRemove(m)}
-                className="flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-error-bg hover:text-error-strong disabled:opacity-50"
+                className="touch-hit-8 flex size-7 items-center justify-center rounded-md text-neutral-400 hover:bg-error-bg hover:text-error-strong disabled:opacity-50"
               >
                 <Trash2 size={15} aria-hidden="true" />
               </button>

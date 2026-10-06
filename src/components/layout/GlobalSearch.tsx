@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
+  X,
   Loader2,
   SearchX,
   User,
@@ -83,6 +84,7 @@ export function GlobalSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   // Lazy initializer instead of an effect — runs once on mount (client-only:
   // loadRecentSearches() itself guards on `typeof window`, so it's a no-op
@@ -225,8 +227,18 @@ export function GlobalSearch() {
   }
 
   return (
-    <div ref={containerRef} className="relative hidden w-full max-w-xs md:block">
-      <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+    <div ref={containerRef} className={mobileOpen ? "fixed inset-x-0 top-0 z-50 bg-surface-1 p-3 pt-[calc(env(safe-area-inset-top)+12px)]" : "relative w-auto md:block md:w-full md:max-w-xs"}>
+      {!mobileOpen && (
+        <button type="button" aria-label="Buscar" onClick={() => { setMobileOpen(true); setTimeout(() => inputRef.current?.focus(), 60); }} className="flex size-11 items-center justify-center rounded-full text-neutral-500 md:hidden">
+          <Search size={18} aria-hidden="true" />
+        </button>
+      )}
+      {mobileOpen && (
+        <button type="button" aria-label="Cerrar búsqueda" onClick={() => { setMobileOpen(false); setIsOpen(false); }} className="absolute right-4 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-neutral-500 md:hidden">
+          <X size={16} aria-hidden="true" />
+        </button>
+      )}
+      <Search size={15} className={cn("pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400", !mobileOpen && "max-md:hidden")} />
       <input
         ref={inputRef}
         id="global-search-input"
@@ -240,9 +252,9 @@ export function GlobalSearch() {
         aria-expanded={isOpen}
         aria-autocomplete="list"
         aria-controls={listboxId}
-        className="w-full rounded-full border border-border-default bg-surface-2 py-2 pl-9 pr-4 text-sm outline-none transition-colors duration-[var(--duration-fast)] focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+        className={cn("w-full rounded-full border border-border-default bg-surface-2 py-2 pl-9 pr-4 text-sm outline-none transition-colors duration-[var(--duration-fast)] focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100", !mobileOpen && "max-md:hidden")}
       />
-      {isLoading && <Loader2 size={14} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-neutral-400" />}
+      {isLoading && <Loader2 size={14} className={cn("pointer-events-none absolute top-1/2 -translate-y-1/2 animate-spin text-neutral-400", mobileOpen ? "right-14" : "right-3.5")} />}
 
       <AnimatePresence>
         {isOpen && (
@@ -251,7 +263,7 @@ export function GlobalSearch() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute left-0 top-full z-50 mt-2 w-[26rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-default bg-surface-1 shadow-[var(--elevation-lg)]"
+            className="absolute left-0 top-full z-50 mt-2 w-[26rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl max-md:left-3 max-md:right-3 max-md:w-auto max-md:max-w-none border border-border-default bg-surface-1 shadow-[var(--elevation-lg)]"
           >
             <div id={listboxId} role="listbox" className="max-h-[26rem] overflow-y-auto p-2">
               {!showingResults && (

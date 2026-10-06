@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
+import { ScrollableTable } from "@/components/ui/ScrollableTable";
 import { toast } from "@/components/toast/toast";
 import { importOpportunitiesCsv, type ImportLeadRow } from "@/lib/crm/actions";
 import { parseCsvRows } from "@/lib/utils/csv";
@@ -84,7 +85,7 @@ export function ImportLeadsSheet({ onClose, onImported }: { onClose: () => void;
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium text-foreground">{preview.length} fila(s) detectadas</p>
             <div className="max-h-52 overflow-y-auto rounded-md border border-border-default">
-              <table className="w-full text-xs">
+              <ScrollableTable><table className="w-full text-xs">
                 <thead className="bg-surface-2 text-neutral-500">
                   <tr>
                     <th className="px-2 py-1.5 text-left">Nombre</th>
@@ -103,7 +104,7 @@ export function ImportLeadsSheet({ onClose, onImported }: { onClose: () => void;
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></ScrollableTable>
             </div>
             <Button onClick={handleConfirm} loading={isPending}>
               Confirmar importación

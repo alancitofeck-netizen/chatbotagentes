@@ -1,5 +1,6 @@
 import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { MODULE_CATALOG } from "@/lib/modules/catalog";
 
 function slugify(base: string) {
   const cleaned = base
@@ -68,22 +69,10 @@ export async function provisionDefaultWorkspaceIfNeeded(userId: string, email: s
     throw new Error(`No se pudo asignar el workspace al usuario: ${memberError.message}`);
   }
 
-  const { error: modulesError } = await supabase.from("workspace_modules").insert([
-    { workspace_id: workspace.id, module_key: "crm", enabled: true },
-    { workspace_id: workspace.id, module_key: "advisors", enabled: true },
-    { workspace_id: workspace.id, module_key: "mini_apps", enabled: true },
-    { workspace_id: workspace.id, module_key: "asesorias", enabled: true },
-    { workspace_id: workspace.id, module_key: "tasks", enabled: true },
-    { workspace_id: workspace.id, module_key: "policies", enabled: true },
-    { workspace_id: workspace.id, module_key: "insurance_prospects", enabled: true },
-    { workspace_id: workspace.id, module_key: "collections", enabled: true },
-    { workspace_id: workspace.id, module_key: "policy_extraction", enabled: true },
-    { workspace_id: workspace.id, module_key: "goals", enabled: true },
-    { workspace_id: workspace.id, module_key: "ai_assistant", enabled: true },
-    { workspace_id: workspace.id, module_key: "insurance_providers", enabled: true },
-    { workspace_id: workspace.id, module_key: "data_transfer", enabled: true },
-    { workspace_id: workspace.id, module_key: "agenda", enabled: true },
-  ]);
+  // Una sola fuente de verdad: el catálogo de módulos (src/lib/modules/catalog.ts).
+  const { error: modulesError } = await supabase.from("workspace_modules").insert(
+    MODULE_CATALOG.map((m) => ({ workspace_id: workspace.id, module_key: m.key, enabled: m.defaultEnabled })),
+  );
 
   if (modulesError) {
     throw new Error(`No se pudieron habilitar los módulos iniciales: ${modulesError.message}`);

@@ -37,12 +37,12 @@ export function ClassroomHomeShell({
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-primary-600 text-white">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy text-white">
               <GraduationCap className="size-5" aria-hidden="true" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground">Classroom</h1>
+                <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Classroom</h1>
                 <ModuleHelp description="Acá vas a encontrar las capacitaciones para aprender a usar Growth Link y mejorar tu trabajo." tourKey="classroom-intro" />
               </div>
               <p className="mt-1 text-sm text-neutral-500">Bienvenido nuevamente. Continúa donde quedaste.</p>

@@ -240,7 +240,7 @@ function EditableRow({
       <button
         type="button"
         onClick={onStartEdit}
-        className="shrink-0 rounded-md p-1.5 text-neutral-400 opacity-0 transition-opacity hover:bg-surface-2 hover:text-foreground group-hover:opacity-100"
+        className="shrink-0 rounded-md p-1.5 text-neutral-400 opacity-0 transition-opacity hover:bg-surface-2 hover:text-foreground group-hover:opacity-100 max-md:size-11 max-md:opacity-100"
         aria-label={`Editar ${field.label}`}
       >
         <Pencil className="size-3.5" aria-hidden="true" />
@@ -329,7 +329,7 @@ export function MyProfileSection({ profile, onChanged }: { profile: MyProfile; o
               <span className="absolute text-[13px] font-semibold text-foreground">{percent}%</span>
             </div>
             {nextStep ? (
-              <button type="button" onClick={nextStep.act} className="text-right text-[11px] font-medium text-accent-600 hover:underline">
+              <button type="button" onClick={nextStep.act} className="text-right text-[11px] font-medium text-accent-600 hover:underline max-md:min-h-6">
                 Agregar {nextStep.label}
               </button>
             ) : (

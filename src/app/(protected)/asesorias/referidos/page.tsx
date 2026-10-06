@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getAsesoriaReferralsAction } from "@/lib/asesorias/actions";
 import { getReferralAgentsAutoStartSummaryAction } from "@/lib/ai-agents/actions";
 import { ReferidosShell } from "./ReferidosShell";
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 
 export default async function ReferidosPage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "asesorias");
+  if (!(await isModuleEnabled(workspaceId, "asesorias"))) return <ModuleDisabledState moduleName="Asesorías" />;
 
   const [referrals, referralAgents] = await Promise.all([getAsesoriaReferralsAction(), getReferralAgentsAutoStartSummaryAction()]);
 
@@ -22,11 +23,11 @@ export default async function ReferidosPage() {
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <RealtimeRefresh workspaceId={workspaceId} tables={["asesoria_referrals"]} />
       <div className="flex flex-col gap-1 px-4 sm:px-6 lg:px-8">
-        <Link href="/asesorias/presentacion" className="mb-1 flex w-fit items-center gap-1.5 text-sm text-neutral-500 hover:text-foreground">
+        <Link href="/asesorias/presentacion" className="mb-1 flex w-fit items-center gap-1.5 text-sm text-neutral-500 hover:text-foreground max-md:min-h-6">
           <ArrowLeft className="size-3.5" aria-hidden="true" />
           Volver a Presentación
         </Link>
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Referidos</h1>
+        <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Referidos</h1>
         <p className="text-sm text-neutral-500">Personas referidas por los prospectos durante las asesorías.</p>
       </div>
       <div className="px-4 sm:px-6 lg:px-8">

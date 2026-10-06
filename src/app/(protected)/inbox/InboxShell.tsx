@@ -11,6 +11,7 @@ import { ConversationList, type InboxTab } from "./ConversationList";
 import { ConversationThread } from "./ConversationThread";
 import { ContactInfoPanel } from "./ContactInfoPanel";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
+import { useMediaQuery } from "@/lib/ui/useMediaQuery";
 
 export function InboxShell({
   workspaceId,
@@ -28,6 +29,7 @@ export function InboxShell({
   approvedTemplates: WhatsAppTemplate[];
 }) {
   useAutoStartTour("inbox-intro");
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [conversations, setConversations] = useState(initialConversations);
   // Tabs (Todas/No leídas/Mis conversaciones/Sin asignar/Cerradas) are filtered client-side over
   // the same fetched list — only the text search still round-trips to the
@@ -127,6 +129,28 @@ export function InboxShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
+  // Al volver de segundo plano (iOS/Android suspenden el socket y los eventos
+  // perdidos no se reenvían): reconecta Realtime y refresca lista y detalle.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      createClient().realtime.connect();
+      refetchList();
+      if (selectedId) getConversationDetailAction(selectedId).then(setDetail);
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    document.body.dataset.inboxThread = "open";
+    return () => {
+      delete document.body.dataset.inboxThread;
+    };
+  }, [selectedId]);
+
   return (
     <div className="flex h-full bg-surface-2">
       <ConversationList
@@ -143,7 +167,7 @@ export function InboxShell({
         className={selectedId ? "hidden w-full border-r lg:flex lg:w-[360px]" : "flex w-full border-r lg:w-[360px]"}
       />
 
-      <div className={selectedId ? "flex flex-1" : "hidden flex-1 lg:flex"}>
+      <div className={selectedId ? "flex min-w-0 flex-1" : "hidden min-w-0 flex-1 lg:flex"}>
         <ConversationThread
           key={selectedId ?? "empty"}
           detail={detail}
@@ -155,9 +179,13 @@ export function InboxShell({
         />
       </div>
 
-      <div className="hidden w-[340px] shrink-0 border-l border-border-default lg:block">
-        <ContactInfoPanel detail={detail} loading={detailLoading} members={members} tags={tags} onChanged={refetchDetail} />
-      </div>
+      {/* Sólo se monta en lg+: en mobile el panel no está visible y sus
+       * acciones (CRM, pólizas) se encolan delante de "Tomar" y de la carga del hilo. */}
+      {isDesktop && (
+        <div className="hidden w-[340px] shrink-0 border-l border-border-default lg:block">
+          <ContactInfoPanel detail={detail} loading={detailLoading} members={members} tags={tags} onChanged={refetchDetail} />
+        </div>
+      )}
 
       <Sheet open={infoSheetOpen} onClose={() => setInfoSheetOpen(false)} title="Detalles" className="max-w-sm">
         <ContactInfoPanel detail={detail} loading={detailLoading} members={members} tags={tags} onChanged={refetchDetail} />

@@ -121,13 +121,13 @@ export function AgentWizardShell({ workspaceName, tools, referralCount }: { work
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
       <div>
         <div className="flex items-center gap-1 text-sm text-neutral-500">
-          <Link href="/agentes-ia" className="hover:text-foreground">
+          <Link href="/agentes-ia" className="hover:text-foreground max-md:inline-flex max-md:min-h-6 max-md:items-center">
             Agentes IA
           </Link>
           <ChevronRight size={14} aria-hidden="true" />
           <span className="text-foreground">Nuevo agente</span>
         </div>
-        <h1 className="mt-2 text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Crear nuevo agente IA</h1>
+        <h1 className="mt-2 font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Crear nuevo agente IA</h1>
         <p className="text-sm text-neutral-500">Configurá un agente inteligente para automatizar conversaciones de WhatsApp.</p>
       </div>
 

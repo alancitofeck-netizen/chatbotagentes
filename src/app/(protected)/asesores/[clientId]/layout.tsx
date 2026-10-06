@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Link2, CalendarCheck, MessageCircle, FileText, AlertTriangle, OctagonAlert } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getAgencyWorkspaceAccessForCurrentUser } from "@/lib/auth/roles";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getClientProfile } from "@/lib/clients/queries";
 import { getClientAlerts } from "@/lib/clients/alerts";
 import { recomputeAndCacheClientHealth } from "@/lib/clients/health";
@@ -63,7 +64,7 @@ export default async function ClientProfileLayout({ children, params }: { childr
     );
   }
 
-  await assertModuleEnabled(workspaceId, "asesores");
+  if (!(await isModuleEnabled(workspaceId, "asesores"))) return <ModuleDisabledState moduleName="Asesores" />;
   let client = await getClientProfile(workspaceId, clientId);
   if (!client) notFound();
 

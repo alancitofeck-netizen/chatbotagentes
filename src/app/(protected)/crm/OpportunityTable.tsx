@@ -45,7 +45,56 @@ export function OpportunityTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)]">
+    <>
+      <ul className="flex flex-col gap-2 md:hidden">
+        {cards.map((card) => {
+          const channel = resolveChannel(card.source);
+          const ChannelIcon = CHANNEL_ICON[channel];
+          return (
+            <li key={card.id} className="flex items-start gap-3 rounded-2xl border border-border-default bg-surface-1 p-3">
+              {selectionMode && (
+                <input
+                  type="checkbox"
+                  aria-label={`Seleccionar ${card.contactName}`}
+                  checked={selectedIds.has(card.id)}
+                  onChange={() => onToggleSelect(card.id)}
+                  className="mt-1 size-5 shrink-0 rounded border-border-strong accent-[var(--color-accent-500)]"
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <button type="button" onClick={() => onOpen(card)} className="flex w-full min-w-0 items-center gap-2 text-left">
+                  <Avatar name={card.contactName} src={card.contactAvatarUrl} size={28} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{card.contactName}</p>
+                    <p className="truncate text-xs text-neutral-500">{card.title}</p>
+                  </div>
+                </button>
+                <div className="mt-2 flex items-center justify-between gap-2 text-sm">
+                  <span className="font-mono font-semibold text-foreground">{formatCurrency(card.value, card.currency)}</span>
+                  <Badge variant={PRIORITY_VARIANT[card.priority]}>{PRIORITY_LABEL[card.priority]}</Badge>
+                </div>
+                <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-neutral-500">
+                  <ChannelIcon className="size-3.5 shrink-0 text-neutral-400" aria-hidden="true" />
+                  {stageNameById.get(card.stageId) ?? "—"}
+                  {card.ownerName ? ` · ${card.ownerName}` : " · Sin asignar"}
+                </p>
+                <div className="mt-2 flex items-center justify-end gap-1 border-t border-border-default pt-2 text-neutral-500">
+                  <button type="button" onClick={() => onOpen(card)} aria-label="Ver" className="flex size-11 items-center justify-center rounded-md hover:text-accent-700">
+                    <Eye className="size-4" aria-hidden="true" />
+                  </button>
+                  <button type="button" onClick={() => onEdit(card)} aria-label="Editar" className="flex size-11 items-center justify-center rounded-md hover:text-accent-700">
+                    <Pencil className="size-4" aria-hidden="true" />
+                  </button>
+                  <button type="button" onClick={() => onDelete(card)} aria-label="Eliminar" className="flex size-11 items-center justify-center rounded-md hover:text-error-strong">
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="hidden overflow-x-auto rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)] md:block">
       <table className="w-full min-w-[1200px] text-left text-sm">
         <thead>
           <tr className="border-b border-border-default text-xs text-neutral-500">
@@ -141,6 +190,7 @@ export function OpportunityTable({
           })}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }

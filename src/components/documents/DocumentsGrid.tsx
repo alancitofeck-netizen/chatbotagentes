@@ -139,7 +139,7 @@ function FolderCard({
           <FolderIcon size={28} className="text-accent-500" aria-hidden="true" />
           <span className="line-clamp-2 text-[13px] font-medium text-foreground">{folder.name}</span>
         </button>
-        <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
           <DropdownMenu trigger={<MoreVertical size={15} />} triggerLabel="Más opciones" items={menuItems} />
         </div>
       </div>
@@ -295,7 +295,7 @@ function DocumentCard({
           </span>
         </button>
         {document.isFavorite && <Star size={13} className="absolute left-3 top-3 fill-warning text-warning" aria-hidden="true" />}
-        <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
           <DropdownMenu trigger={<MoreVertical size={15} />} triggerLabel="Más opciones" items={menuItems} />
         </div>
       </div>

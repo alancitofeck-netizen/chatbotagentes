@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -19,6 +19,10 @@ import { attachFloatingPosition, type FloatingPosition } from "./floatingPositio
  * su contenido, como cualquier item de flexbox) o una Card de ancho
  * completo en una columna flex (hereda el stretch del padre); un
  * `inline-flex` rompía este segundo caso. */
+function noopSubscribe() {
+  return () => {};
+}
+
 export function ContextualHint({
   hintKey,
   title,
@@ -39,6 +43,8 @@ export function ContextualHint({
   const floatingRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<FloatingPosition | null>(null);
   const open = status === "pending";
+  // false en el servidor, true en el cliente: el portal no existe sin document.body.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   useLayoutEffect(() => {
     if (!open || !anchorRef.current || !floatingRef.current) {
@@ -65,7 +71,7 @@ export function ContextualHint({
   return (
     <div ref={anchorRef} className="relative">
       {children}
-      {open &&
+      {open && mounted &&
         createPortal(
           <div
             ref={floatingRef}

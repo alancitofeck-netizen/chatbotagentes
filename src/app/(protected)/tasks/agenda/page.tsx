@@ -18,7 +18,7 @@ export default async function AgendaPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
-      <h1 className="text-[17px] font-semibold text-foreground">{range === "today" ? "Hoy" : "Esta semana"}</h1>
+      <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">{range === "today" ? "Hoy" : "Esta semana"}</h1>
       <AgendaList tasks={tasks} groupsById={groupsById} />
     </div>
   );

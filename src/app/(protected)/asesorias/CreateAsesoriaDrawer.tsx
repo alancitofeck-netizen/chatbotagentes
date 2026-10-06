@@ -76,6 +76,7 @@ export function CreateAsesoriaDrawer({
             icon={Phone}
             uiSize="lg"
             type="tel"
+            inputMode="tel"
             placeholder="+54 9 ..."
             value={phone}
             onChange={(e) => onPhoneChange(e.target.value)}

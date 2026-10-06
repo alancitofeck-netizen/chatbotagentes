@@ -6,7 +6,32 @@ import type { AgendaSetterPerformance } from "@/lib/agenda/queries";
  * de tabla que PerformanceRankingTable.tsx (Asesores → Performance). */
 export function AgendaSetterPerformanceTable({ rows }: { rows: AgendaSetterPerformance[] }) {
   return (
-    <div className="overflow-x-auto">
+    <>
+      <ul className="flex flex-col gap-2 md:hidden">
+        {rows.map((r) => {
+          const asistieron = r.realizadas + r.ventas;
+          const showRate = r.citas === 0 ? 0 : Math.round((asistieron / r.citas) * 100);
+          return (
+            <li key={r.setterId} className="rounded-2xl border border-border-default bg-surface-1 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-sm font-semibold text-foreground">{r.setterName}</p>
+                <span className="shrink-0 text-sm font-semibold text-foreground">{showRate}% show</span>
+              </div>
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                <dt className="text-neutral-500">Citas</dt>
+                <dd className="text-right text-foreground">{r.citas}</dd>
+                <dt className="text-neutral-500">Confirmadas</dt>
+                <dd className="text-right text-foreground">{r.confirmadas}</dd>
+                <dt className="text-neutral-500">Asistieron</dt>
+                <dd className="text-right text-foreground">{asistieron}</dd>
+                <dt className="text-neutral-500">No Show</dt>
+                <dd className="text-right text-foreground">{r.noShow}</dd>
+              </dl>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="hidden overflow-x-auto md:block">
       <table className="w-full min-w-[560px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-border-default text-left text-xs text-neutral-500">
@@ -35,6 +60,7 @@ export function AgendaSetterPerformanceTable({ rows }: { rows: AgendaSetterPerfo
           })}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }

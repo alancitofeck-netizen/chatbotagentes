@@ -220,7 +220,7 @@ export function DocumentsShell({
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-6 border-b border-border-default px-6 pt-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-[19px] font-semibold text-foreground">Documentos</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Documentos</h1>
           <ModuleHelp description="Acá podés organizar los documentos relacionados con tu trabajo — subir, buscar, filtrar y descargar." tourKey="documents-intro" />
         </div>
         <Tabs
@@ -347,7 +347,7 @@ export function DocumentsShell({
                     aria-label="Vista de cuadrícula"
                     aria-pressed={layout === "grid"}
                     onClick={() => setLayout("grid")}
-                    className={cn("flex size-7 items-center justify-center rounded-full", layout === "grid" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
+                    className={cn("touch-hit-8 flex size-7 items-center justify-center rounded-full", layout === "grid" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
                   >
                     <LayoutGrid size={14} aria-hidden="true" />
                   </button>
@@ -356,7 +356,7 @@ export function DocumentsShell({
                     aria-label="Vista de lista"
                     aria-pressed={layout === "list"}
                     onClick={() => setLayout("list")}
-                    className={cn("flex size-7 items-center justify-center rounded-full", layout === "list" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
+                    className={cn("touch-hit-8 flex size-7 items-center justify-center rounded-full", layout === "list" ? "bg-surface-1 shadow-[var(--elevation-xs)]" : "text-neutral-500")}
                   >
                     <ListIcon size={14} aria-hidden="true" />
                   </button>
@@ -365,7 +365,7 @@ export function DocumentsShell({
             </div>
 
             <div className="flex items-center gap-1 px-6 pt-3 text-[13px] text-neutral-500">
-              <button type="button" onClick={() => setUrl(view === "all" ? "all" : view, null)} className="hover:text-foreground hover:underline">
+              <button type="button" onClick={() => setUrl(view === "all" ? "all" : view, null)} className="hover:text-foreground hover:underline max-md:inline-flex max-md:min-h-6 max-md:items-center">
                 {VIEW_LABELS[view]}
               </button>
               {breadcrumbs.map((f) => (

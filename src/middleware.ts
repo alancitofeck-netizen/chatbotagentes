@@ -11,13 +11,16 @@ const ACTIVE_WORKSPACE_COOKIE = "gl_active_workspace";
 
 const FORBIDDEN_HTML = `<!doctype html>
 <html lang="es">
-<head><meta charset="utf-8" /><title>Acceso denegado — Growth Link</title>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Acceso denegado — Growth Link</title>
 <style>
-  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0a;color:#fff;font-family:system-ui,-apple-system,sans-serif;text-align:center}
+  :root{--bg:#eef9fa;--fg:#0f2a3d;--muted:#5b6b7b;--accent:#0b7c8a;--on-accent:#ffffff;color-scheme:light}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a1024;--fg:#eaf1f7;--muted:#a1adc4;--accent:#13a9bd;--on-accent:#0a1024;color-scheme:dark}}
+  :root[data-theme="dark"]{--bg:#0a1024;--fg:#eaf1f7;--muted:#a1adc4;--accent:#13a9bd;--on-accent:#0a1024;color-scheme:dark}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--fg);font-family:Geist,Inter,system-ui,-apple-system,sans-serif;text-align:center;padding-inline:16px}
   .card{max-width:360px;padding:24px}
-  h1{font-size:20px;margin:16px 0 8px}
-  p{color:#a3a3a3;font-size:14px;margin:0 0 20px}
-  a{color:#fff;background:#7c3aed;padding:10px 18px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500}
+  h1{font:600 26px/1.2 "Bricolage Grotesque",Geist,system-ui,sans-serif;margin:0 0 8px;letter-spacing:-0.02em}
+  p{color:var(--muted);font-size:14px;margin:0 0 20px}
+  a{color:var(--on-accent);background:var(--accent);padding:10px 18px;border-radius:12px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block}
 </style></head>
 <body>
   <div class="card">

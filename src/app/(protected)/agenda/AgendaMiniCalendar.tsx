@@ -54,7 +54,7 @@ export function AgendaMiniCalendar({
               type="button"
               aria-label="Mes anterior"
               onClick={() => onMonthChange(new Date(year, monthIdx - 1, 1))}
-              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground touch-hit-8"
             >
               <ChevronLeft size={16} aria-hidden="true" />
             </button>
@@ -62,7 +62,7 @@ export function AgendaMiniCalendar({
               type="button"
               aria-label="Mes siguiente"
               onClick={() => onMonthChange(new Date(year, monthIdx + 1, 1))}
-              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+              className="flex size-7 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground touch-hit-8"
             >
               <ChevronRight size={16} aria-hidden="true" />
             </button>
@@ -86,7 +86,7 @@ export function AgendaMiniCalendar({
               key={day}
               type="button"
               onClick={() => onSelectDate(date)}
-              className={`flex flex-col items-center gap-0.5 rounded-md py-1 text-xs transition-colors ${
+              className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-md py-1 text-xs transition-colors md:min-h-0 ${
                 isSelected
                   ? "bg-accent-500 font-semibold text-white"
                   : isToday

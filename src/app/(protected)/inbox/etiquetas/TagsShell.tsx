@@ -31,7 +31,7 @@ function ColorPicker({ value, onChange }: { value: BadgeVariant; onChange: (v: B
           aria-pressed={value === color}
           title={COLOR_LABELS[color]}
           className={cn(
-            "rounded-full transition-shadow duration-[var(--duration-fast)]",
+            "rounded-full transition-shadow duration-[var(--duration-fast)] max-md:inline-flex max-md:min-h-6 max-md:items-center",
             value === color ? "ring-2 ring-accent-500 ring-offset-2" : "",
           )}
         >
@@ -130,7 +130,7 @@ export function TagsShell({
   return (
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-4 sm:p-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-foreground">Etiquetas</h1>
+        <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Etiquetas</h1>
         <p className="text-sm text-neutral-500">
           Organizá contactos y conversaciones con etiquetas compartidas entre Inbox y CRM.
         </p>

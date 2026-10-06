@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor, TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -34,7 +34,7 @@ function GroupRow({ group, active, onNavigate }: { group: TaskGroup; active: boo
           {...listeners}
           type="button"
           aria-label="Reordenar grupo"
-          className="cursor-grab text-neutral-300 opacity-0 hover:text-neutral-500 focus-visible:opacity-100 group-hover/row:opacity-100 active:cursor-grabbing"
+          className="cursor-grab text-neutral-300 opacity-0 hover:text-neutral-500 focus-visible:opacity-100 group-hover/row:opacity-100 max-lg:opacity-100 active:cursor-grabbing"
         >
           <GripVertical size={13} aria-hidden="true" />
         </button>
@@ -43,7 +43,7 @@ function GroupRow({ group, active, onNavigate }: { group: TaskGroup; active: boo
         href={`/tasks/groups/${group.id}`}
         onClick={onNavigate}
         className={cn(
-          "flex flex-1 items-center gap-2 truncate rounded-md px-2.5 py-1.5 text-[13px] font-medium",
+          "flex flex-1 items-center gap-2 truncate rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11",
           active ? "bg-accent-100 text-accent-700" : "text-foreground hover:bg-surface-3",
           group.isDefault && "ml-[17px]",
         )}
@@ -84,7 +84,7 @@ function SidebarContent({
           href="/tasks"
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium",
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11",
             pathname === "/tasks" ? "bg-accent-100 text-accent-700" : "text-foreground hover:bg-surface-3",
           )}
         >
@@ -95,7 +95,7 @@ function SidebarContent({
           href="/tasks/favorites"
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium",
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11",
             pathname === "/tasks/favorites" ? "bg-accent-100 text-accent-700" : "text-foreground hover:bg-surface-3",
           )}
         >
@@ -106,7 +106,7 @@ function SidebarContent({
           href="/tasks/agenda?range=today"
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium",
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11",
             pathname === "/tasks/agenda" ? "bg-accent-100 text-accent-700" : "text-foreground hover:bg-surface-3",
           )}
         >
@@ -117,7 +117,7 @@ function SidebarContent({
           href="/tasks/agenda?range=week"
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-3",
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium max-lg:min-h-11 text-foreground hover:bg-surface-3",
           )}
         >
           <CalendarDays size={14} aria-hidden="true" />
@@ -127,7 +127,7 @@ function SidebarContent({
 
       <div className="flex flex-col gap-1">
         <h3 className="px-2.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Grupos</h3>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext id="tasks-sidebar" sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={groups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
             <ul className="flex flex-col gap-0.5">
               {groups.map((g) => (
@@ -139,7 +139,7 @@ function SidebarContent({
         <button
           type="button"
           onClick={onNewGroup}
-          className="mt-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] font-medium text-neutral-500 hover:bg-surface-3 hover:text-foreground"
+          className="mt-1 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] font-medium text-neutral-500 hover:bg-surface-3 hover:text-foreground max-lg:min-h-11"
         >
           <Plus size={14} aria-hidden="true" />
           Nuevo grupo
@@ -147,7 +147,7 @@ function SidebarContent({
         <Link
           href="/tasks/archived"
           onClick={onNavigate}
-          className="px-2.5 py-1 text-[11px] text-neutral-400 hover:text-neutral-600 hover:underline"
+          className="px-2.5 py-1 text-[11px] text-neutral-400 hover:text-neutral-600 hover:underline max-lg:inline-flex max-lg:min-h-11 max-lg:items-center"
         >
           Ver archivados
         </Link>
@@ -181,7 +181,7 @@ export function TasksSidebar({
 }) {
   const pathname = usePathname();
   const [groups, setGroups] = useState(initialGroups);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   const activeGroupId = pathname.match(/^\/tasks\/groups\/([^/?]+)/)?.[1];
 
@@ -222,11 +222,12 @@ export function TasksSidebar({
       <div
         inert={!mobileOpen}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col gap-5 overflow-y-auto bg-surface-1 p-4 shadow-[var(--elevation-lg)] lg:hidden",
+          "fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col gap-5 overflow-y-auto rounded-t-2xl bg-surface-1 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[var(--elevation-lg)] lg:hidden",
           "transition-transform duration-300 ease-[var(--ease-out)]",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          mobileOpen ? "translate-y-0" : "translate-y-full",
         )}
       >
+        <div aria-hidden="true" className="mx-auto -mt-1 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300" />
         <SidebarContent
           pathname={pathname}
           groups={groups}

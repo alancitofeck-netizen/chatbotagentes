@@ -317,10 +317,10 @@ export function CalendarShell({
         <div className="border-b border-border-default bg-surface-1">
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 sm:px-6 sm:pt-5">
             <div className="flex items-center gap-2.5">
-              <span className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
                 <CalendarDays size={18} aria-hidden="true" />
               </span>
-              <h1 className="text-[19px] font-semibold text-foreground">Calendario</h1>
+              <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Calendario</h1>
               <ModuleHelp description="Acá vas a organizar tus reuniones, citas y actividades. Podés crear eventos, arrastrarlos para cambiar fecha/horario, y sincronizarlos con Google Calendar." tourKey="calendar-intro" />
             </div>
             <div className="flex items-center gap-2">
@@ -350,7 +350,7 @@ export function CalendarShell({
                   type="button"
                   aria-label="Anterior"
                   onClick={() => step(-1)}
-                  className="flex size-7 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+                  className="touch-hit-8 flex size-7 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
                 >
                   <ChevronLeft size={16} aria-hidden="true" />
                 </button>
@@ -365,7 +365,7 @@ export function CalendarShell({
                   type="button"
                   aria-label="Siguiente"
                   onClick={() => step(1)}
-                  className="flex size-7 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+                  className="touch-hit-8 flex size-7 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground"
                 >
                   <ChevronRight size={16} aria-hidden="true" />
                 </button>

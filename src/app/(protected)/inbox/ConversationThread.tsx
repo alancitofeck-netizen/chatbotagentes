@@ -21,6 +21,8 @@ import {
   BrainCircuit,
   ClipboardList,
   RefreshCw,
+  Bot,
+  Camera,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -28,7 +30,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/toast/toast";
 import type { ConversationDetail, MessageItem } from "@/lib/inbox/queries";
-import { approveDraftMessage, editDraftMessage, rejectDraftMessage } from "@/lib/inbox/actions";
+import { approveDraftMessage, editDraftMessage, rejectDraftMessage, updateConversationMode } from "@/lib/inbox/actions";
 import { createTask } from "@/lib/tasks/actions";
 import type { WhatsAppTemplate } from "@/lib/templates/queries";
 import {
@@ -95,7 +97,7 @@ const QUICK_REPLIES = [
  * — no new status values, just WhatsApp-style tick icons for outbound messages. */
 function MessageStatusIcon({ status, sending }: { status: string | null; sending: boolean }) {
   if (sending) return <Clock className="size-3" aria-hidden="true" />;
-  if (status === "read") return <CheckCheck className="size-3.5 text-blue-200" aria-hidden="true" />;
+  if (status === "read") return <CheckCheck className="size-3.5 text-accent-200" aria-hidden="true" />;
   if (status === "delivered") return <CheckCheck className="size-3.5" aria-hidden="true" />;
   if (status === "sent" || status === "accepted") return <Check className="size-3.5" aria-hidden="true" />;
   return null;
@@ -155,6 +157,48 @@ export function ConversationThread({
   const [liveMessages, setLiveMessages] = useState<MessageItem[]>([]);
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
+
+  const threadRef = useRef<HTMLDivElement>(null);
+  // iOS/Android no achican dvh cuando aparece el teclado: el compositor queda
+  // tapado. visualViewport da el alto real visible y se usa como padding inferior.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      if (threadRef.current) threadRef.current.style.paddingBottom = keyboard > 0 ? `${keyboard}px` : "";
+    };
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    };
+  }, []);
+
+  // Server Actions se ejecutan en cola: la escritura de modo espera detrás de
+  // las acciones que el panel lanza al abrir la conversación (insight de IA,
+  // CRM, pólizas), así que el banner se oculta al instante y se revierte sólo
+  // si la acción falla.
+  // Guarda el objeto `detail` del momento del clic: el override aplica sólo
+  // mientras ese mismo objeto siga en pantalla; al llegar un detalle refrescado
+  // vuelve a mandar el modo real (así no tapa un cambio posterior hecho desde
+  // el panel lateral).
+  const [takeoverSnapshot, setTakeoverSnapshot] = useState<ConversationDetail | null>(null);
+  async function takeOverConversation() {
+    if (!detail) return;
+    // Feedback inmediato: el banner y el toast salen en el clic. Si la action
+    // falla (se encola detrás de otras y puede tardar), se revierte el banner.
+    setTakeoverSnapshot(detail);
+    toast.success("Tomaste la conversación.");
+    try {
+      await updateConversationMode(detail.id, "human");
+      onDetailChanged?.();
+    } catch (err) {
+      setTakeoverSnapshot(null);
+      toast.error(err instanceof Error ? err.message : "No se pudo tomar la conversación.");
+    }
+  }
   const [isSending, setIsSending] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -168,6 +212,7 @@ export function ConversationThread({
   const templatesRef = useRef<HTMLDivElement>(null);
   const aiPopoverRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   // A ref counter (not Date.now()/Math.random()) for temp-id generation —
   // those are impure calls the react-hooks/purity rule flags even inside an
   // event handler defined in the component body.
@@ -566,7 +611,7 @@ export function ConversationThread({
   const isInstagram = detail.channel === "instagram";
 
   return (
-    <div className="flex h-full flex-1 flex-col bg-surface-2">
+    <div ref={threadRef} className="flex h-full min-w-0 flex-1 flex-col bg-surface-2">
       <div className="flex items-center justify-between gap-3 border-b border-border-default bg-surface-1 px-5 py-3.5">
         <div className="flex items-center gap-3">
           <button
@@ -634,13 +679,13 @@ export function ConversationThread({
             onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCreateTaskFromConversation()}
             placeholder="Título de la tarea…"
-            className="flex-1 rounded-sm border border-border-strong bg-surface-1 px-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-100"
+            className="flex-1 rounded-sm border border-border-strong bg-surface-1 px-3 py-1.5 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
           />
           <button
             type="button"
             disabled={creatingTask || !newTaskTitle.trim()}
             onClick={handleCreateTaskFromConversation}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+            className="rounded-md bg-accent-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-40"
           >
             Crear
           </button>
@@ -648,13 +693,13 @@ export function ConversationThread({
       )}
 
       {aiInsight?.summary && (
-        <div className="mx-5 mt-3 flex flex-col gap-1 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-700">
+        <div className="mx-5 mt-3 flex flex-col gap-1 rounded-xl border border-accent-200 bg-accent-50 px-3.5 py-2.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-accent-700">
             <Sparkles className="size-3" aria-hidden="true" /> Resumen IA
           </p>
           <p className="text-[13px] text-foreground">{aiInsight.summary}</p>
           {aiInsight.nextStep && (
-            <p className="text-[12px] text-violet-700">
+            <p className="text-[12px] text-accent-700">
               <span className="font-medium">Próximo paso:</span> {aiInsight.nextStep}
             </p>
           )}
@@ -687,8 +732,8 @@ export function ConversationThread({
                   )}
                   {isDraft ? (
                     <div className="mt-2 flex justify-end">
-                      <div className="flex max-w-[70%] flex-col gap-1.5 rounded-2xl rounded-br-md border border-dashed border-violet-300 bg-violet-50 px-3.5 py-2 text-sm">
-                        <p className="flex items-center gap-1 text-[11px] font-medium text-violet-700">
+                      <div className="flex max-w-[70%] flex-col gap-1.5 rounded-2xl rounded-br-md border border-dashed border-accent-300 bg-accent-50 px-3.5 py-2 text-sm">
+                        <p className="flex items-center gap-1 text-[11px] font-medium text-accent-700">
                           <Sparkles className="size-3" aria-hidden="true" />
                           Sugerencia de IA — sin enviar
                         </p>
@@ -698,7 +743,7 @@ export function ConversationThread({
                               value={draftEditText}
                               onChange={(e) => setDraftEditText(e.target.value)}
                               rows={3}
-                              className="w-full rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-sm text-foreground outline-none focus:border-violet-500"
+                              className="w-full rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-sm text-foreground outline-none focus:border-accent-500"
                             />
                             <div className="flex justify-end gap-2 text-[11px] font-medium">
                               <button type="button" onClick={() => setEditingDraftId(null)} className="text-neutral-500 hover:underline">
@@ -708,7 +753,7 @@ export function ConversationThread({
                                 type="button"
                                 disabled={draftActionPending === m.id}
                                 onClick={() => handleSaveDraftEdit(m.id)}
-                                className="text-violet-700 hover:underline disabled:opacity-50"
+                                className="text-accent-700 hover:underline disabled:opacity-50"
                               >
                                 Guardar
                               </button>
@@ -738,7 +783,7 @@ export function ConversationThread({
                                 type="button"
                                 disabled={draftActionPending === m.id}
                                 onClick={() => handleApproveDraft(m.id)}
-                                className="text-violet-700 hover:underline disabled:opacity-50"
+                                className="text-accent-700 hover:underline disabled:opacity-50"
                               >
                                 Aprobar y enviar
                               </button>
@@ -754,14 +799,14 @@ export function ConversationThread({
                         className={cn(
                           "px-3.5 py-2 text-sm shadow-[var(--elevation-xs)]",
                           outbound
-                            ? "rounded-2xl rounded-br-md bg-blue-600 text-white"
+                            ? "rounded-2xl rounded-br-md bg-accent-600 text-[var(--on-accent)]"
                             : "rounded-2xl rounded-bl-md bg-surface-1 text-foreground",
                           m.localStatus === "sending" && "opacity-60",
                           failed && "bg-red-50 text-red-600",
                         )}
                       >
                         {m.quotedMessage && (
-                          <div className={cn("mb-1.5 rounded-md border-l-2 px-2 py-1 text-[12px]", outbound ? "border-white/40 bg-white/10 text-white/85" : "border-blue-400 bg-surface-2 text-neutral-600")}>
+                          <div className={cn("mb-1.5 rounded-md border-l-2 px-2 py-1 text-[12px]", outbound ? "border-white/40 bg-white/10 text-white/85" : "border-accent-400 bg-surface-2 text-neutral-600")}>
                             <p className="truncate">{m.quotedMessage.body || "Mensaje"}</p>
                           </div>
                         )}
@@ -809,6 +854,16 @@ export function ConversationThread({
         )}
       </div>
 
+      {detail && detail !== takeoverSnapshot && (detail.mode === "ai" || detail.mode === "pending_human") && (
+        <div className="flex items-center gap-2 border-t border-border-default bg-accent-50 px-3 py-2 text-[13px] text-accent-800 md:hidden">
+          <Bot size={16} className="shrink-0" aria-hidden="true" />
+          <span className="flex-1">La IA está atendiendo. Tomá el control para responder vos.</span>
+          <button type="button" onClick={takeOverConversation} className="h-9 shrink-0 rounded-md bg-foreground px-3 text-sm font-medium text-surface-1">
+            Tomar
+          </button>
+        </div>
+      )}
+
       <div className="border-t border-border-default bg-surface-1 p-3">
         {pendingAttachment && (
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-border-default bg-surface-2 px-3 py-2 text-[13px]">
@@ -823,15 +878,25 @@ export function ConversationThread({
           {!isInstagram && (
             <>
               <input ref={fileInputRef} type="file" onChange={handleFileSelected} className="hidden" />
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelected} className="hidden" />
               <button
                 type="button"
                 disabled={uploadingAttachment}
                 onClick={() => fileInputRef.current?.click()}
                 title="Adjuntar archivo"
                 aria-label="Adjuntar archivo"
-                className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50 max-md:size-11"
               >
                 <Paperclip size={17} />
+              </button>
+              <button
+                type="button"
+                disabled={uploadingAttachment}
+                onClick={() => cameraInputRef.current?.click()}
+                aria-label="Sacar foto"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-50 md:hidden"
+              >
+                <Camera size={17} />
               </button>
             </>
           )}
@@ -844,7 +909,7 @@ export function ConversationThread({
               aria-expanded={quickRepliesOpen}
               className={cn(
                 "flex size-9 items-center justify-center rounded-full transition-colors",
-                quickRepliesOpen ? "bg-violet-100 text-violet-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+                quickRepliesOpen ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
               )}
             >
               <Sparkles size={17} />
@@ -881,7 +946,7 @@ export function ConversationThread({
                 title="Plantillas"
                 className={cn(
                   "flex size-9 items-center justify-center rounded-full transition-colors",
-                  templatesOpen ? "bg-blue-100 text-blue-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+                  templatesOpen ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
                 )}
               >
                 <FileText size={17} />
@@ -918,7 +983,7 @@ export function ConversationThread({
               aria-expanded={aiPopoverOpen}
               className={cn(
                 "flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors",
-                aiPopoverOpen ? "bg-violet-100 text-violet-700" : "text-violet-600 hover:bg-violet-50",
+                aiPopoverOpen ? "bg-accent-100 text-accent-700" : "text-accent-600 hover:bg-accent-50",
               )}
             >
               <Sparkles size={15} /> IA
@@ -934,7 +999,7 @@ export function ConversationThread({
                   onClick={handleGenerateReply}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <Wand2 size={14} className="shrink-0 text-violet-600" />
+                  <Wand2 size={14} className="shrink-0 text-accent-600" />
                   {aiActionPending === "reply" ? "Generando…" : "Generar respuesta"}
                 </button>
                 <button
@@ -943,7 +1008,7 @@ export function ConversationThread({
                   onClick={handleSummarize}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <FileText size={14} className="shrink-0 text-violet-600" />
+                  <FileText size={14} className="shrink-0 text-accent-600" />
                   {aiActionPending === "summary" ? "Resumiendo…" : "Resumir conversación"}
                 </button>
                 <button
@@ -952,7 +1017,7 @@ export function ConversationThread({
                   onClick={handleAnalyzeLead}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <BrainCircuit size={14} className="shrink-0 text-violet-600" />
+                  <BrainCircuit size={14} className="shrink-0 text-accent-600" />
                   {aiActionPending === "analyze" ? "Analizando…" : "Analizar lead"}
                 </button>
                 <button
@@ -961,11 +1026,11 @@ export function ConversationThread({
                   onClick={handleExtractInfo}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <ClipboardList size={14} className="shrink-0 text-violet-600" />
+                  <ClipboardList size={14} className="shrink-0 text-accent-600" />
                   {aiActionPending === "extract" ? "Extrayendo…" : "Extraer información"}
                 </button>
                 {aiInsight?.leadAnalysis && (
-                  <div className="mx-3 mt-1 flex flex-col gap-0.5 rounded-md bg-violet-50 px-2.5 py-2 text-[12px] text-violet-800">
+                  <div className="mx-3 mt-1 flex flex-col gap-0.5 rounded-md bg-accent-50 px-2.5 py-2 text-[12px] text-accent-800">
                     {aiInsight.leadAnalysis.interes && <p>Interés: {aiInsight.leadAnalysis.interes}</p>}
                     {aiInsight.leadAnalysis.necesidad && <p>Necesidad: {aiInsight.leadAnalysis.necesidad}</p>}
                     {aiInsight.leadAnalysis.probabilidad && <p>Probabilidad de avanzar: {aiInsight.leadAnalysis.probabilidad}</p>}
@@ -1010,14 +1075,14 @@ export function ConversationThread({
             }}
             placeholder="Escribí un mensaje…"
             rows={1}
-            className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-blue-100"
+            className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
           />
           <button
             type="button"
             onClick={handleSubmit}
             disabled={(!messageInput.trim() && !pendingAttachment) || isSending}
             aria-label="Enviar mensaje"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-600 text-[var(--on-accent)] transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send className="size-4" aria-hidden="true" />
           </button>

@@ -51,8 +51,13 @@ $$;
 
 -- Seed: alancitofeck@gmail.com is the one Owner global account (confirmed
 -- with the user).
+-- Guard: la FK platform_admins.user_id -> auth.users hace que este insert falle
+-- en una base vacía (p. ej. un branch de Supabase, que aplica todas las
+-- migraciones desde cero) porque ese usuario no existe allí. Se inserta sólo
+-- si el usuario existe; en producción ya está aplicada, así que no cambia nada.
 insert into public.platform_admins (user_id)
-values ('08e67a64-1e93-402d-bac3-64b2be246dae')
+select u.id from auth.users u
+where u.id = '08e67a64-1e93-402d-bac3-64b2be246dae'
 on conflict (user_id) do nothing;
 
 -- Public-schema wrapper — core.* functions aren't exposed over PostgREST,

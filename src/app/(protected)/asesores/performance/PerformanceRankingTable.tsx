@@ -31,7 +31,51 @@ const STATUS_BADGE: Record<RendimientoStatus, { variant: BadgeVariant }> = {
  * multi-agente sin disparar el detalle. */
 export function PerformanceRankingTable({ rows, compareIds, onToggleCompare, onSelect }: { rows: RankingRow[]; compareIds: string[]; onToggleCompare: (setterId: string) => void; onSelect: (setterId: string) => void }) {
   return (
-    <div className="overflow-x-auto">
+    <>
+      <ul className="flex flex-col gap-2 md:hidden">
+        {rows.map((r) => {
+          const status = STATUS_BADGE[r.status];
+          const checked = compareIds.includes(r.setterId);
+          return (
+            <li
+              key={r.setterId}
+              onClick={() => onSelect(r.setterId)}
+              className="flex items-start gap-3 rounded-2xl border border-border-default bg-surface-1 p-3"
+            >
+              <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggleCompare(r.setterId)}
+                  className="size-5 rounded border-border-strong accent-accent-500"
+                  aria-label={`Comparar a ${r.setterName}`}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm font-semibold text-foreground">{r.setterName}</p>
+                  <span className="shrink-0 text-sm font-semibold text-foreground">{r.conversionRate}%</span>
+                </div>
+                <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-neutral-500">
+                  <span className="truncate">{r.advisorName}</span>
+                  <Badge variant={status.variant} dot>
+                    {RENDIMIENTO_LABEL[r.status]}
+                  </Badge>
+                </div>
+                <dl className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
+                  <dt className="text-neutral-500">Agendas</dt>
+                  <dt className="text-neutral-500">Calificadas</dt>
+                  <dt className="text-neutral-500">Booking</dt>
+                  <dd className="text-foreground">{r.agendas}</dd>
+                  <dd className="text-foreground">{r.totals.calificadas}</dd>
+                  <dd className="text-foreground">{r.bookingRate}%</dd>
+                </dl>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="hidden overflow-x-auto md:block">
       <table className="w-full min-w-[880px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-border-default text-left text-xs text-neutral-500">
@@ -94,6 +138,7 @@ export function PerformanceRankingTable({ rows, compareIds, onToggleCompare, onS
           })}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }

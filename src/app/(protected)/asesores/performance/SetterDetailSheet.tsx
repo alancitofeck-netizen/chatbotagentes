@@ -10,6 +10,7 @@ import { totalsFromEntries, acceptanceRate, responseRate, conversationRate, book
 import { deltaPct } from "@/lib/clients/statsHelpers";
 import { RENDIMIENTO_LABEL, type RendimientoStatus } from "@/lib/kpis/aiManager/analysis";
 import { monthLabel } from "@/lib/kpis/periodHelpers";
+import { ScrollableTable } from "@/components/ui/ScrollableTable";
 
 type RangeOption = "4w" | "8w" | "3m" | "6m";
 
@@ -91,7 +92,7 @@ export function SetterDetailSheet({
 
         <Card>
           <CardHeader title="Resumen del período" />
-          <table className="w-full text-sm">
+          <ScrollableTable><table className="w-full text-sm">
             <tbody>
               {summaryRows.map((r) => {
                 const pct = deltaPct(r.current, r.previous);
@@ -106,12 +107,12 @@ export function SetterDetailSheet({
                 );
               })}
             </tbody>
-          </table>
+          </table></ScrollableTable>
         </Card>
 
         <Card>
           <CardHeader title="Tasas del período" />
-          <table className="w-full text-sm">
+          <ScrollableTable><table className="w-full text-sm">
             <tbody>
               {rateRows.map((r) => (
                 <tr key={r.label} className="border-b border-border-default/60 last:border-0">
@@ -120,7 +121,7 @@ export function SetterDetailSheet({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></ScrollableTable>
         </Card>
 
         <Card>

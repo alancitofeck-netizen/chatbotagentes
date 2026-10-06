@@ -1,28 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-const MODULE_KEYS = [
-  "crm",
-  "ats",
-  "advisors",
-  "mini_apps",
-  "asesorias",
-  "asesores",
-  "tasks",
-  "insurance_prospects",
-  "policies",
-  "collections",
-  "presentations",
-  "policy_extraction",
-  "goals",
-  "ai_assistant",
-  "insurance_providers",
-  "data_transfer",
-  "agenda",
-  "operaciones",
-  "manychat",
-] as const;
-export type ModuleKey = (typeof MODULE_KEYS)[number];
+import { MODULE_KEYS, type ModuleKey } from "@/lib/modules/catalog";
+export type { ModuleKey };
 
 export interface ModuleStatus {
   moduleKey: ModuleKey;
@@ -47,7 +27,7 @@ export async function getWorkspaceModuleStatus(workspaceId: string): Promise<Mod
  * Mini Apps adds this real check (docs/blueprint/03-modules.md's 3-layer
  * enforcement) so a stale bookmark/tab into a disabled module can't call
  * server actions at all, not just fail to navigate there via the UI. */
-export async function assertModuleEnabled(workspaceId: string, moduleKey: ModuleKey): Promise<void> {
+export async function isModuleEnabled(workspaceId: string, moduleKey: ModuleKey): Promise<boolean> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("workspace_modules")
@@ -55,7 +35,11 @@ export async function assertModuleEnabled(workspaceId: string, moduleKey: Module
     .eq("workspace_id", workspaceId)
     .eq("module_key", moduleKey)
     .maybeSingle();
-  if (!data?.enabled) throw new Error("Este módulo no está activo para este workspace.");
+  return data?.enabled === true;
+}
+
+export async function assertModuleEnabled(workspaceId: string, moduleKey: ModuleKey): Promise<void> {
+  if (!(await isModuleEnabled(workspaceId, moduleKey))) throw new Error("Este módulo no está activo para este workspace.");
 }
 
 export interface WorkspaceMember {

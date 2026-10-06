@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getGoalsBoardAction } from "@/lib/goals/actions";
 import { GoalsShell } from "./GoalsShell";
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function GoalsPage() {
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "goals");
+  if (!(await isModuleEnabled(workspaceId, "goals"))) return <ModuleDisabledState moduleName="Metas" />;
 
   const [board, members] = await Promise.all([getGoalsBoardAction(), getWorkspaceMembers(workspaceId)]);
 

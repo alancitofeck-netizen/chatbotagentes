@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { Users, ShieldCheck, FileCheck2, Wallet, CalendarDays } from "lucide-react";
 
-const CHIP_CLASS = "rounded-full border border-border-default px-3 py-1 text-xs font-medium text-foreground transition-colors hover:border-accent-500 hover:bg-surface-2";
+const CHIP_CLASS = "inline-flex min-h-11 items-center rounded-full border border-border-default px-3 py-1 text-xs font-medium text-foreground transition-colors hover:border-accent-500 hover:bg-surface-2 md:min-h-0 md:inline md:items-stretch";
 
 function ExportCard({ icon: Icon, title, links }: { icon: typeof Users; title: string; links: { label: string; href: string }[] }) {
   return (

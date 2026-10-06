@@ -21,6 +21,16 @@ declare
   -- sin depender de que la extensión pgcrypto esté habilitada.
   v_api_key_hash text := md5(gen_random_uuid()::text);
 begin
+  -- Guard: esta migración inserta una Mini App en un workspace fijo (el de
+  -- producción). En una base vacía (p. ej. un branch de Supabase recién
+  -- creado, que aplica todas las migraciones desde cero) ese workspace no
+  -- existe y el insert viola la FK mini_apps.workspace_id -> workspaces,
+  -- dejando el branch en MIGRATIONS_FAILED. Si no está el workspace, la
+  -- migración no hace nada (igual que el seed de supabase/seed.sql).
+  if not exists (select 1 from public.workspaces where id = v_workspace_id) then
+    raise notice 'Workspace % no existe: se omite el seed de la Mini App de contenido.', v_workspace_id;
+    return;
+  end if;
 
 insert into public.mini_apps (
   workspace_id, name, description, template_key, slug, is_private, status,

@@ -41,7 +41,7 @@ const QUICK_CATEGORIES = [
 ] as const;
 
 const STATUS_DOT: Record<string, string> = {
-  open: "bg-blue-500",
+  open: "bg-accent-500",
   pending_human: "bg-amber-500",
   closed: "bg-neutral-400",
 };
@@ -98,6 +98,7 @@ export function ConversationList({
   const memberById = useMemo(() => new Map(members.map((m) => [m.memberId, m])), [members]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
+  const [modeFilter, setModeFilter] = useState<"all" | "ai" | "human">("all");
 
   const channelCounts = useMemo(() => {
     const result: Record<ChannelFilter, number> = { all: conversations.length, whatsapp: 0, instagram: 0 };
@@ -126,9 +127,10 @@ export function ConversationList({
   const filtered = useMemo(() => {
     let list = conversations.filter((c) => matchesTab(c, activeTab, currentMemberId));
     if (channelFilter !== "all") list = list.filter((c) => c.channel === channelFilter);
+    if (modeFilter !== "all") list = list.filter((c) => (modeFilter === "ai" ? c.mode === "ai" : c.mode === "human"));
     if (activeCategory) list = list.filter((c) => c.tags.some((t) => t.name.trim().toLowerCase() === activeCategory));
     return list;
-  }, [conversations, activeTab, currentMemberId, activeCategory, channelFilter]);
+  }, [conversations, activeTab, currentMemberId, activeCategory, channelFilter, modeFilter]);
 
   return (
     <div className={cn("h-full flex-col bg-surface-1", className)}>
@@ -152,8 +154,20 @@ export function ConversationList({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar contacto, empresa…"
-            className="w-full rounded-full border border-border-strong bg-surface-2 py-2 pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-blue-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-blue-100"
+            className="w-full rounded-full border border-border-strong bg-surface-2 py-2 pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
           />
+        </div>
+        <div className="flex gap-1 overflow-x-auto md:hidden">
+          {([["all", "Todos"], ["ai", "IA"], ["human", "Humano"]] as const).map(([k, l]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setModeFilter(k)}
+              className={cn("shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium", modeFilter === k ? "bg-foreground text-surface-1" : "text-neutral-600")}
+            >
+              {l}
+            </button>
+          ))}
         </div>
         <div className="flex gap-1 overflow-x-auto">
           {CHANNEL_TABS.map((t) => (
@@ -188,7 +202,7 @@ export function ConversationList({
               onClick={() => onTabChange(t.key)}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
-                activeTab === t.key ? "bg-blue-600 text-white" : "text-neutral-600 hover:bg-surface-2",
+                activeTab === t.key ? "bg-accent-600 text-[var(--on-accent)]" : "text-neutral-600 hover:bg-surface-2",
               )}
             >
               {t.label}
@@ -216,7 +230,7 @@ export function ConversationList({
                   onClick={() => setActiveCategory(isActive ? null : cat.tagName)}
                   className={cn(
                     "shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors",
-                    isActive ? "border-blue-500 bg-blue-50 text-blue-700" : "border-border-default text-neutral-600 hover:bg-surface-2",
+                    isActive ? "border-accent-500 bg-accent-50 text-accent-700" : "border-border-default text-neutral-600 hover:bg-surface-2",
                   )}
                 >
                   {cat.label}
@@ -246,13 +260,13 @@ export function ConversationList({
                     onClick={() => onSelect(c.id)}
                     className={cn(
                       "group relative flex w-full items-start gap-3 border-b border-border-default py-3 pl-3.5 pr-4 text-left transition-colors",
-                      active ? "bg-blue-50" : "hover:bg-surface-2",
+                      active ? "bg-accent-50" : "hover:bg-surface-2",
                     )}
                   >
                     <span
                       className={cn(
                         "absolute inset-y-0 left-0 w-[3px] rounded-r-full transition-colors",
-                        active ? "bg-blue-600" : "bg-transparent",
+                        active ? "bg-accent-600" : "bg-transparent",
                       )}
                       aria-hidden="true"
                     />
@@ -291,7 +305,7 @@ export function ConversationList({
                           {c.lastMessagePreview}
                         </p>
                         {unread && (
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white">
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent-600 text-[10px] font-semibold text-white">
                             {c.unreadCount > 9 ? "9+" : c.unreadCount}
                           </span>
                         )}

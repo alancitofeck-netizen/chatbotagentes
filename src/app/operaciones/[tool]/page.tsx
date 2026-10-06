@@ -27,7 +27,7 @@ export default async function OperacionToolPage({ params }: { params: Promise<{ 
   if (role !== "owner" && role !== "admin" && !isSupervising) notFound();
 
   return (
-    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: info.bg }}>
+    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", background: info.bg }}>
       <iframe
         src={`/api/operaciones/${tool}/frame`}
         title={info.title}

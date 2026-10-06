@@ -66,7 +66,7 @@ export function ModulesSection({
                 type="button"
                 disabled={!canManage || isPending}
                 onClick={() => handleToggle(m)}
-                className="disabled:opacity-50"
+                className="disabled:opacity-50 max-md:flex max-md:min-h-11 max-md:items-center"
               >
                 <Badge variant={m.enabled ? "success" : "neutral"}>{m.enabled ? "Activo" : "Inactivo"}</Badge>
               </button>

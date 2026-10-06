@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Download, Pencil, Repeat, X, Link2, Check } from "lucide-react";
@@ -140,7 +140,7 @@ export function LessonEditorSheet({
   const [linkLabel, setLinkLabel] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [isPending, startTransition] = useTransition();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   useEffect(() => {
     if (lesson) getLessonResourcesAction(lesson.id).then(setResources);
@@ -324,7 +324,7 @@ export function LessonEditorSheet({
           {resources.length === 0 ? (
             <p className="text-xs text-neutral-500">Sin recursos todavía.</p>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext id="lesson-editor" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={resources.map((r) => r.id)} strategy={verticalListSortingStrategy}>
                 <ul className="flex flex-col gap-1.5">
                   {resources.map((r) =>

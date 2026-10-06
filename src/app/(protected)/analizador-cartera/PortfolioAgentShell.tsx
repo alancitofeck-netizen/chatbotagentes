@@ -165,7 +165,7 @@ export function PortfolioAgentShell({
                 title="Sin portal conectado"
                 description="Conectá el portal de una aseguradora para que el Agente IA de Cartera empiece a sincronizar."
                 action={
-                  <Link href="/aseguradoras" data-tour="portfolio-agent.connect-empty-link" className="text-sm font-medium text-accent-600 hover:underline">
+                  <Link href="/aseguradoras" data-tour="portfolio-agent.connect-empty-link" className="text-sm font-medium text-accent-600 hover:underline max-md:inline-flex max-md:min-h-6 max-md:items-center">
                     Ir a Aseguradoras →
                   </Link>
                 }

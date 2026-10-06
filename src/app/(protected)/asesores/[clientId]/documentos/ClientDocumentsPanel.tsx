@@ -133,7 +133,7 @@ export function ClientDocumentsPanel({
               <button
                 type="button"
                 onClick={() => setFolderFilter("all")}
-                className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm ${folderFilter === "all" ? "bg-accent-500/10 text-accent-700" : "text-foreground hover:bg-surface-2"}`}
+                className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm max-md:min-h-6 ${folderFilter === "all" ? "bg-accent-500/10 text-accent-700" : "text-foreground hover:bg-surface-2"}`}
               >
                 <span className="flex items-center gap-2">
                   <FolderOpen className="size-3.5" aria-hidden="true" />
@@ -146,7 +146,7 @@ export function ClientDocumentsPanel({
                   key={c.value}
                   type="button"
                   onClick={() => setFolderFilter(c.value)}
-                  className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm ${folderFilter === c.value ? "bg-accent-500/10 text-accent-700" : "text-foreground hover:bg-surface-2"}`}
+                  className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm max-md:min-h-6 ${folderFilter === c.value ? "bg-accent-500/10 text-accent-700" : "text-foreground hover:bg-surface-2"}`}
                 >
                   <span className="flex items-center gap-2">
                     <FolderOpen className="size-3.5" aria-hidden="true" />

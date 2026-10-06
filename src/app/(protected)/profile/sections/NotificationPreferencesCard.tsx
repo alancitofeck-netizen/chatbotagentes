@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { BellRing } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -39,8 +39,15 @@ function TogglePill({ active, onClick, label }: { active: boolean; onClick: () =
  * permiso es una única decisión del navegador, no por categoría — por eso
  * vive como un banner aparte arriba de la lista, y el toggle "Push" de cada
  * fila queda deshabilitado hasta que ese permiso está concedido. */
+function noopSubscribe() {
+  return () => {};
+}
+
 export function NotificationPreferencesCard() {
   const [preferences, setPreferences] = useState<PreferenceMap | null>(null);
+  // Soporte de push sólo existe en el navegador: el servidor no lo conoce y el
+  // cliente sí, así que el render inicial usa false y después la lectura real.
+  const pushSupported = useSyncExternalStore(noopSubscribe, () => isBrowserPushSupported(), () => false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">("unsupported");
 
   useEffect(() => {
@@ -77,7 +84,7 @@ export function NotificationPreferencesCard() {
   return (
     <Card>
       <CardHeader title="Notificaciones" />
-      {isBrowserPushSupported() && pushPermission !== "granted" && (
+      {pushSupported && pushPermission !== "granted" && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2.5">
           <div className="flex items-center gap-2">
             <BellRing size={15} className="shrink-0 text-neutral-400" aria-hidden="true" />
@@ -121,7 +128,7 @@ export function NotificationPreferencesCard() {
                     onClick={() => pref.enabled && update(category, { email: !pref.email })}
                     label="Email"
                   />
-                  {isBrowserPushSupported() && (
+                  {pushSupported && (
                     <TogglePill
                       active={pref.enabled && pref.push}
                       onClick={() => pref.enabled && handleEnablePush(category, !pref.push)}

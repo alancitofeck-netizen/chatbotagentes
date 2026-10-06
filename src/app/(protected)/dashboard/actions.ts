@@ -1,13 +1,24 @@
 "use server";
 
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { getActivitySeries, getPendingTasks, type ChartRange } from "@/lib/dashboard/queries";
+import { getActivitySeries, getLeadsBySource, getPendingTasks, type ChartRange } from "@/lib/dashboard/queries";
 import { getDashboardHome, type DashboardPeriod } from "@/lib/dashboard/homeQueries";
 import { completeTask as completeTaskShared } from "@/lib/tasks/actions";
 
 export async function getActivitySeriesAction(range: ChartRange) {
   const { workspaceId } = await requireActiveWorkspace();
   return getActivitySeries(workspaceId, range);
+}
+
+export type SourcePeriod = "hoy" | "7d" | "30d" | "todo";
+
+export async function getLeadsBySourceAction(period: SourcePeriod) {
+  const { workspaceId } = await requireActiveWorkspace();
+  if (period === "todo") return getLeadsBySource(workspaceId);
+  const since = new Date();
+  if (period === "hoy") since.setHours(0, 0, 0, 0);
+  else since.setDate(since.getDate() - (period === "7d" ? 7 : 30));
+  return getLeadsBySource(workspaceId, since);
 }
 
 export async function getPendingTasksAction() {

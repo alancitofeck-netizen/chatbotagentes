@@ -126,7 +126,7 @@ export function PendingTasks({
                   aria-label={`Editar "${task.title}"`}
                   disabled={editLoadingId === task.id}
                   className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity",
+                    "flex size-7 shrink-0 items-center justify-center rounded-md text-neutral-400 opacity-0 transition-opacity max-md:size-11 max-md:opacity-100",
                     "hover:bg-surface-3 hover:text-foreground group-hover:opacity-100 disabled:opacity-50",
                   )}
                 >
@@ -140,7 +140,7 @@ export function PendingTasks({
 
       <Link
         href="/crm?tab=tasks"
-        className="mt-3 block text-center text-[13px] font-medium text-accent-600 hover:underline"
+        className="mt-3 block text-center text-[13px] font-medium text-accent-600 hover:underline max-md:min-h-6"
       >
         Ver todas las tareas
       </Link>

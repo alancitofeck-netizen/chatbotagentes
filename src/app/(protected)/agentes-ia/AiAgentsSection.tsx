@@ -148,7 +148,7 @@ export function AiAgentsSection({ initialAgents, stats }: { initialAgents: AiAge
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-end gap-3">
-        <button type="button" onClick={() => setCreateOpen(true)} className="text-xs text-neutral-500 hover:text-foreground hover:underline">
+        <button type="button" onClick={() => setCreateOpen(true)} className="text-xs text-neutral-500 hover:text-foreground hover:underline max-md:inline-flex max-md:min-h-6 max-md:items-center">
           Crear agente ATS (formulario simple)
         </button>
         <Link href="/agentes-ia/nuevo" data-tour="ai-agents.new-link">

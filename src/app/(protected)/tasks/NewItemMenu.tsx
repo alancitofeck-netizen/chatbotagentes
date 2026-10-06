@@ -18,7 +18,7 @@ export function NewItemMenu({ onNewGroup, onNewTemplate }: { onNewGroup: () => v
           <ChevronDown size={14} aria-hidden="true" />
         </>
       }
-      triggerClassName="flex items-center gap-1.5 rounded-md bg-accent-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-accent-600"
+      triggerClassName="flex items-center gap-1.5 rounded-md bg-accent-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-accent-600 max-md:min-h-11"
       triggerTourId="tasks.new-menu-trigger"
       items={[
         { label: "Nuevo grupo de tareas", icon: <FolderPlus size={15} aria-hidden="true" />, onSelect: onNewGroup, tourId: "tasks.new-group-item" },

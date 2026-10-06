@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getMiniAppLeadDetail, getMiniAppDetail } from "@/lib/miniApps/queries";
 import { normalizeMiniAppLeadResponses } from "@/components/responseSummary/normalizeMiniAppLeadResponses";
 import { ResponseSummaryScreen } from "@/components/responseSummary/ResponseSummaryScreen";
@@ -17,7 +18,7 @@ function formatDateTime(iso: string) {
 export default async function MiniAppLeadResumenPage({ params }: { params: Promise<{ miniAppId: string; leadId: string }> }) {
   const { miniAppId, leadId } = await params;
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "mini_apps");
+  if (!(await isModuleEnabled(workspaceId, "mini_apps"))) return <ModuleDisabledState moduleName="Mini Apps" />;
 
   const [lead, miniApp] = await Promise.all([getMiniAppLeadDetail(workspaceId, leadId), getMiniAppDetail(workspaceId, miniAppId)]);
   if (!lead) notFound();

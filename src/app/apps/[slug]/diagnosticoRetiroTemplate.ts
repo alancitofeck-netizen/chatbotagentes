@@ -90,7 +90,7 @@ export const DIAGNOSTICO_RETIRO_CSS = `
      gana por especificidad sobre un selector de elemento \`body{display:flex}\`,
      lo que rompía el centrado (quedaba flex-direction:column, no row). Mismo
      criterio que .stage/.wrap en diagnosticoTemplate.ts. */
-  .stage{ min-height:100vh; display:flex; justify-content:center; padding:32px 16px 56px; }
+  .stage{ min-height:100vh;min-height:100dvh; display:flex; justify-content:center; padding:32px 16px 56px; }
   .page{ width:100%; max-width:620px; }
 
   /* ---------- Brand bar ---------- */

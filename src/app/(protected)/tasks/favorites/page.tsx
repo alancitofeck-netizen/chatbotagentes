@@ -19,7 +19,7 @@ export default async function FavoriteGroupsPage() {
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
-      <h1 className="text-[17px] font-semibold text-foreground">Favoritos</h1>
+      <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Favoritos</h1>
       {groups.length === 0 ? (
         <EmptyState icon={Star} title="Sin grupos favoritos" description="Marcá un grupo como favorito desde su propia página para verlo acá." />
       ) : (

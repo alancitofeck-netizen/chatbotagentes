@@ -165,7 +165,7 @@ export function SmartCardsColumn({ dashboard }: { dashboard: AssistantDashboard 
             data-tour="assistant.generate-recommendations"
             onClick={handleGenerateRecommendations}
             disabled={generating}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700 disabled:opacity-50 max-md:min-h-6"
           >
             {generating ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}
             Generar recomendaciones

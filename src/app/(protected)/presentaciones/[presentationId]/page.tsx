@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getPresentationByIdAction } from "@/lib/presentations/actions";
 import { PresentationShell } from "./PresentationShell";
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default async function PresentationDetailPage({ params }: { params: Promise<{ presentationId: string }> }) {
   const { presentationId } = await params;
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "presentations");
+  if (!(await isModuleEnabled(workspaceId, "presentations"))) return <ModuleDisabledState moduleName="Presentaciones" />;
 
   const presentation = await getPresentationByIdAction(presentationId);
   if (!presentation) notFound();

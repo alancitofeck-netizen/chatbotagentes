@@ -1,26 +1,25 @@
 /**
- * Identidad visual propia del Calendario — mismo criterio que
- * src/app/(protected)/inbox/inboxColors.ts: colores "de fábrica" de Tailwind,
- * deliberadamente separados de los tokens compartidos (accent-* / primary-*
- * en globals.css), usados únicamente dentro de src/app/(protected)/calendar/ y
- * src/components/calendar/. El resto de la app sigue con su paleta actual.
+ * Colores del Calendario. La parte de chrome (botones primarios, foco, "hoy")
+ * usa el acento teal de la app (accent-*, ver globals.css). Los colores de tipo
+ * de evento y de proveedor de videollamada siguen con colores propios: son
+ * categorías, no identidad visual.
  */
 export const CAL_PRIMARY = {
-  bg: "bg-blue-600",
-  bgHover: "hover:bg-blue-700",
-  text: "text-blue-600",
-  textStrong: "text-blue-700",
-  tint: "bg-blue-50",
-  tintText: "text-blue-700",
-  ring: "focus:ring-blue-200",
-  border: "focus:border-blue-500",
+  bg: "bg-accent-600",
+  bgHover: "hover:bg-accent-700",
+  text: "text-accent-600",
+  textStrong: "text-accent-700",
+  tint: "bg-accent-50",
+  tintText: "text-accent-700",
+  ring: "focus:ring-accent-100",
+  border: "focus:border-accent-500",
 } as const;
 
 export const CAL_SECONDARY = {
-  bg: "bg-violet-600",
-  text: "text-violet-600",
-  tint: "bg-violet-50",
-  tintText: "text-violet-700",
+  bg: "bg-accent-700",
+  text: "text-accent-700",
+  tint: "bg-accent-50",
+  tintText: "text-accent-700",
 } as const;
 
 export const CAL_SUCCESS = { tint: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", solid: "bg-emerald-500" } as const;
@@ -30,7 +29,7 @@ export const CAL_ERROR = { tint: "bg-red-50", text: "text-red-700", dot: "bg-red
 export const calSecondaryButton =
   "inline-flex items-center gap-1.5 rounded-full border border-neutral-300 px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-700";
 export const calPrimaryButton =
-  "inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex items-center gap-1.5 rounded-full bg-accent-600 px-3 py-1.5 text-[13px] font-medium text-[var(--on-accent)] shadow-sm transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** Detecta el proveedor de videollamada por el dominio de la URL — no hace
  * falta un campo nuevo, meetingUrl ya alcanza. */

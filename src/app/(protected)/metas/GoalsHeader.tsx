@@ -23,7 +23,7 @@ export function GoalsHeader({
         </span>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">Metas y Bonificaciones</h1>
+            <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Metas y Bonificaciones</h1>
             <ModuleHelp description="Acá podés ver tus objetivos y el progreso hacia tus metas — cuánto llevás, tu ranking, y lo que falta para el bono." tourKey="goals-intro" />
           </div>
           <p className="text-sm text-neutral-500">Tu ritmo real, tu ranking, y lo que falta para cada objetivo</p>

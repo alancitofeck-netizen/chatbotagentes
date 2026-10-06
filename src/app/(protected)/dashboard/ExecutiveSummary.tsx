@@ -18,7 +18,7 @@ export function ExecutiveSummary({
   return (
     <Card variant="contrast" className="flex flex-col gap-4">
       <div>
-        <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-balance">
+        <h1 className="font-display text-[24px] leading-[30px] font-semibold tracking-[-0.02em] text-balance">
           {greetingName ? `Buenos días, ${greetingName} 👋` : "Buenos días 👋"}
         </h1>
         <p className="mt-1 text-sm text-white/70">Hoy detectamos lo siguiente:</p>

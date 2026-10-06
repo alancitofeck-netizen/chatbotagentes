@@ -71,10 +71,10 @@ export function AdminClassroomShell({ categories, courses }: { categories: Class
     <div className="flex flex-col gap-6 p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-primary-600 text-white">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy text-white">
             <GraduationCap className="size-5" aria-hidden="true" />
           </div>
-          <h1 className="text-xl font-semibold text-foreground">Administrar Classroom</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Administrar Classroom</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setShowCategories(true)}>

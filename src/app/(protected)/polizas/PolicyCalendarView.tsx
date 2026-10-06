@@ -84,7 +84,7 @@ function DayCell({
       <span
         className={cn(
           "self-start rounded-full px-2 text-[12px] font-semibold",
-          isToday ? "bg-blue-600 text-white" : inMonth ? "text-foreground" : "text-neutral-400",
+          isToday ? "bg-accent-600 text-[var(--on-accent)]" : inMonth ? "text-foreground" : "text-neutral-400",
         )}
       >
         {day.getDate()}

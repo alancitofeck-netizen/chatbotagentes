@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, ChevronRight, GripVertical, Plus, Pencil, Trash2, MoreVertical, PlayCircle, FolderInput } from "lucide-react";
@@ -65,7 +65,7 @@ function LessonRow({
       <DropdownMenu
         trigger={<MoreVertical size={14} aria-hidden="true" />}
         triggerLabel="Más acciones"
-        triggerClassName="flex size-6 items-center justify-center rounded text-neutral-400 opacity-0 group-hover/lesson:opacity-100 hover:bg-surface-3 hover:text-foreground"
+        triggerClassName="flex size-6 items-center justify-center rounded text-neutral-400 opacity-0 group-hover/lesson:opacity-100 touch-hit-10 max-md:opacity-100 hover:bg-surface-3 hover:text-foreground"
         items={[
           { label: "Editar", icon: <Pencil size={13} aria-hidden="true" />, onSelect: onEdit },
           ...otherChapters.map((c) => ({
@@ -107,7 +107,7 @@ function ChapterCard({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: chapter.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
   const otherChapters = allChapters.filter((c) => c.id !== chapter.id);
 
   function handleLessonDragEnd(event: DragEndEvent) {
@@ -159,7 +159,7 @@ function ChapterCard({
           {chapter.lessons.length === 0 ? (
             <p className="px-2 py-2 text-xs text-neutral-400">Sin lecciones todavía.</p>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd}>
+            <DndContext id="lesson-tree" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd}>
               <SortableContext items={chapter.lessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
                 <ul className="flex flex-col gap-0.5">
                   {chapter.lessons.map((lesson) => (
@@ -208,7 +208,7 @@ export function AdminChapterLessonTree({ courseId, initialChapters }: { courseId
   const [confirmDeleteChapter, setConfirmDeleteChapter] = useState<ClassroomChapter | null>(null);
   const [confirmDeleteLesson, setConfirmDeleteLesson] = useState<ClassroomLesson | null>(null);
   const [isPending, startTransition] = useTransition();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   function refetch() {
     return getChapterTreeAction(courseId).then(setChapters);
@@ -299,7 +299,7 @@ export function AdminChapterLessonTree({ courseId, initialChapters }: { courseId
       {chapters.length === 0 ? (
         <EmptyState icon={FolderInput} title="Sin capítulos todavía" description="Creá el primer capítulo para empezar a armar el curso." />
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterDragEnd}>
+        <DndContext id="chapter-tree" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterDragEnd}>
           <SortableContext items={chapters.map((c) => c.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-2">
               {chapters.map((chapter) => (

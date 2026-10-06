@@ -264,7 +264,7 @@ export function CoursePlayerShell({
             )}
             <Badge variant={levelMeta.badge}>{levelMeta.label}</Badge>
           </div>
-          <h1 className="text-xl font-semibold text-foreground">{lesson.title}</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">{lesson.title}</h1>
         </div>
 
         {secondaryResources.length > 0 && (

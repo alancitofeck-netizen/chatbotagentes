@@ -331,14 +331,18 @@ export interface LeadSource {
 /** Same "group in JS, no new table" approach as getCompanyGroups
  * (src/lib/contacts/queries.ts) — contacts.source is free text, no need for
  * a dedicated aggregate query/view. */
-export async function getLeadsBySource(workspaceId: string): Promise<LeadSource[]> {
+/** `since` acota a los contactos creados desde esa fecha (selector de período
+ * de Inicio); sin `since` cuenta todo el historial. */
+export async function getLeadsBySource(workspaceId: string, since?: Date): Promise<LeadSource[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("contacts")
     .select("source")
     .eq("workspace_id", workspaceId)
     .not("source", "is", null)
     .neq("source", "");
+  if (since) query = query.gte("created_at", since.toISOString());
+  const { data } = await query;
 
   const counts = new Map<string, number>();
   for (const row of data ?? []) {

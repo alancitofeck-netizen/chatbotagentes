@@ -2,7 +2,12 @@
 -- mismo mecanismo que policy-automations/collection-automations (no sujeto a
 -- los límites de Cron Jobs de Vercel). Minuto 30 para no pisar los otros dos
 -- crons horarios de automatizaciones (minuto 0 y 15).
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if to_regclass('private.app_config') is not null then
+  if exists (select 1 from private.app_config where key = 'environment' and value = 'production') then
+    perform cron.schedule(
   'run-automations-check',
   '30 * * * *',
   $$
@@ -15,3 +20,7 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+  end if;
+end
+$gate$;

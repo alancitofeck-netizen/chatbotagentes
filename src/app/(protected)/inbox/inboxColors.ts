@@ -1,24 +1,21 @@
 /**
- * Identidad visual propia del Inbox — deliberadamente separada de los tokens
- * compartidos (`accent-*`/`primary-*` en globals.css, docs/blueprint/14-design-system.md),
- * a pedido explícito del usuario: el resto de la app (CRM, Dashboard,
- * Calendario, etc.) sigue con su paleta azul profundo/violeta apagado
- * actual, sin tocar. Estos son colores "de fábrica" de Tailwind (no tokens
- * custom) usados únicamente dentro de src/app/(protected)/inbox/ — nunca
- * importar esto fuera de esa carpeta.
+ * Colores del Inbox. La acción primaria usa los tokens `accent-*` de la marca
+ * (teal, docs/blueprint/14-design-system.md §2 y la nota de rediseño). El
+ * violeta queda sólo para lo relacionado a IA. Estos colores son de Tailwind
+ * a propósito: el Inbox los consume por clase y no hay token semántico extra.
  */
 
-/** Azul — acción primaria (botón de enviar, link activo, foco). */
+/** Teal de marca — acción primaria (botón de enviar, link activo, foco). */
 export const INBOX_PRIMARY = {
-  bg: "bg-blue-600",
-  bgHover: "hover:bg-blue-700",
-  text: "text-blue-600",
-  textStrong: "text-blue-700",
-  border: "border-blue-600",
-  ring: "focus:ring-blue-200",
-  tint: "bg-blue-50",
-  tintText: "text-blue-700",
-  dot: "bg-blue-500",
+  bg: "bg-accent-600",
+  bgHover: "hover:bg-accent-700",
+  text: "text-accent-600",
+  textStrong: "text-accent-700",
+  border: "border-accent-600",
+  ring: "focus:ring-accent-200",
+  tint: "bg-accent-50",
+  tintText: "text-accent-700",
+  dot: "bg-accent-500",
 } as const;
 
 /** Violeta — secundario, reservado para todo lo relacionado a IA (mismo
@@ -39,7 +36,7 @@ export const INBOX_ERROR = { tint: "bg-red-50", text: "text-red-700", dot: "bg-r
 
 /** Botón de acción primaria — pill, sombra suave, sin depender de <Button> */
 export const inboxPrimaryButton =
-  "inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3.5 py-2 text-[13px] font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex items-center gap-1.5 rounded-full bg-accent-600 px-3.5 py-2 text-[13px] font-medium text-white shadow-sm transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** Botón secundario — borde, fondo transparente */
 export const inboxSecondaryButton =

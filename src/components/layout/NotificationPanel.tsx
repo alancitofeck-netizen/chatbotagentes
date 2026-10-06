@@ -105,7 +105,7 @@ export function NotificationPanel({
             onClick={() => setFilter(tab.value)}
             className={cn(
               "shrink-0 rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors duration-[var(--duration-fast)]",
-              filter === tab.value ? "bg-accent-500 text-white" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+              filter === tab.value ? "bg-navy text-white" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
             )}
           >
             {tab.label}
@@ -149,7 +149,7 @@ export function NotificationPanel({
                     <p className="text-[12.5px] text-neutral-500">{n.message}</p>
                     <p className="mt-0.5 text-[11px] text-neutral-400">{formatRelativeTime(n.createdAt)}</p>
                   </button>
-                  <div className="flex shrink-0 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex shrink-0 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
                     {!n.read && (
                       <button
                         type="button"

@@ -161,7 +161,7 @@ export function TemplatesShell({
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-4 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold text-foreground">Plantillas</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Plantillas</h1>
           <p className="text-sm text-neutral-500">
             Plantillas de WhatsApp aprobadas por Meta, requeridas para enviar mensajes fuera de la ventana de 24h.
           </p>

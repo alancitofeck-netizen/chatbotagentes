@@ -52,7 +52,7 @@ export function TabsList({ className, children }: { className?: string; children
  * /ats while the rest stay ?tab= driven) and can't reuse TabLink as-is. */
 export function tabItemClassName(active: boolean, disabled: boolean) {
   return cn(
-    "flex items-center gap-1.5 border-b-2 px-0.5 py-2.5 text-sm font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]",
+    "flex items-center gap-1.5 border-b-2 px-0.5 py-2.5 text-sm font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] max-md:min-h-11",
     "focus-visible:outline-2 focus-visible:outline-accent-500 focus-visible:outline-offset-2",
     disabled && "cursor-default text-neutral-400",
     !disabled && active && "border-accent-500 text-foreground",

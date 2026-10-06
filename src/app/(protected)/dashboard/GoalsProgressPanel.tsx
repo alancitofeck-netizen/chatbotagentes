@@ -14,7 +14,7 @@ function goalVariant(pct: number): "success" | "accent" | "warning" {
 export function GoalsProgressPanel({ goals }: { goals: GoalProgressSummary[] }) {
   return (
     <Card className="flex flex-col gap-4">
-      <CardHeader title="Avance a tus metas" action={<Link href="/metas" className="text-xs font-medium text-accent-600 hover:underline">Ver todas</Link>} />
+      <CardHeader title="Avance a tus metas" action={<Link href="/metas" className="text-xs font-medium text-accent-600 hover:underline max-md:inline-flex max-md:min-h-6 max-md:items-center">Ver todas</Link>} />
       {goals.length === 0 ? (
         <EmptyState icon={Target} title="Sin metas activas" description="Creá un objetivo en Metas y Bonificaciones para verlo acá." />
       ) : (

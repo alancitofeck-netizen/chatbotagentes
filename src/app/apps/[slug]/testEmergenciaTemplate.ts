@@ -69,7 +69,7 @@ export const TEST_EMERGENCIA_CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{
-    font-family:var(--f);color:var(--ink);line-height:1.55;min-height:100vh;
+    font-family:var(--f);color:var(--ink);line-height:1.55;min-height:100vh;min-height:100dvh;
     padding:0 0 calc(30px + env(safe-area-inset-bottom));
     background:
       radial-gradient(800px 420px at 100% -6%, rgba(176,137,76,.07), transparent 55%),

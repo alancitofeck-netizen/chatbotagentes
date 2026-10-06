@@ -1,6 +1,6 @@
 "use client";
 
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { cn } from "@/lib/utils/cn";
 import type { CalendarEvent } from "@/lib/calendar/queries";
 import { EVENT_TYPE_META } from "@/components/calendar/eventTypeMeta";
@@ -54,7 +54,7 @@ function EventChip({
           isCancelled ? "border-l-neutral-300 bg-surface-3 text-neutral-400 line-through" : cn(meta.border, meta.bg, meta.text),
           isDragging && "opacity-80 shadow-[var(--elevation-md)]",
           selectionMode && "pr-4",
-          selected && "ring-2 ring-blue-500",
+          selected && "ring-2 ring-accent-500",
         )}
       >
         <span className="truncate text-[11px] font-semibold leading-tight">{event.title}</span>
@@ -66,7 +66,7 @@ function EventChip({
           checked={selected}
           onChange={() => onToggleSelect(event.id)}
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0.5 top-0.5 z-10 size-3 rounded border-border-strong accent-blue-600"
+          className="absolute right-0.5 top-0.5 z-10 size-3 rounded border-border-strong accent-accent-600"
         />
       )}
     </div>
@@ -103,7 +103,7 @@ function DayCell({
       className={cn(
         "flex min-h-[124px] flex-col gap-1.5 border-b border-l border-border-default p-2 transition-colors",
         !inMonth && "bg-surface-2/40",
-        isOver && "bg-blue-100/50",
+        isOver && "bg-accent-100/50",
       )}
     >
       <button
@@ -111,7 +111,7 @@ function DayCell({
         onClick={() => onOpenDay(day)}
         className={cn(
           "self-start rounded-full px-2 text-[12px] font-semibold hover:bg-surface-2",
-          isToday ? "bg-blue-600 text-white hover:bg-blue-700" : inMonth ? "text-foreground" : "text-neutral-400",
+          isToday ? "bg-accent-600 text-white hover:bg-accent-700" : inMonth ? "text-foreground" : "text-neutral-400",
         )}
       >
         {day.getDate()}
@@ -131,7 +131,7 @@ function DayCell({
           <button
             type="button"
             onClick={() => onOpenDay(day)}
-            className="px-1.5 text-left text-[11px] font-medium text-neutral-400 hover:text-blue-600"
+            className="px-1.5 text-left text-[11px] font-medium text-neutral-400 hover:text-accent-600"
           >
             +{overflow} más
           </button>
@@ -169,7 +169,7 @@ export function MonthView({
 
   // See TimeGrid.tsx: without this, PointerSensor's preventDefault() on
   // pointerdown suppresses the click event a plain (non-drag) tap relies on.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 4 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }));
 
   function handleDragEnd(dragEvent: DragEndEvent) {
     const eventId = dragEvent.active.id as string;
@@ -189,7 +189,7 @@ export function MonthView({
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext id="calendar-month" sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-7 border-t border-r border-border-default">
         {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((label) => (
           <div key={label} className="border-l border-border-default bg-surface-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-neutral-500">

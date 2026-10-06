@@ -12,9 +12,16 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
-select cron.schedule(
+do $gate$
+begin
+  -- Sólo producción programa este job (ver docs/mobile/cron-en-branches.md).
+  if to_regclass('private.app_config') is not null then
+  if exists (select 1 from private.app_config where key = 'environment' and value = 'production') then
+    perform cron.schedule(
   'sync-kpi-sheets',
-  '3 minutes',
+  -- Sintaxis cron. pg_cron no acepta '3 minutes' (error 22023 en branches);
+  -- '*/3 * * * *' es el mismo schedule que corre hoy en producción.
+  '*/3 * * * *',
   $$
   select net.http_get(
     url := 'https://chatbotagentes.vercel.app/api/cron/sync-kpis',
@@ -25,3 +32,7 @@ select cron.schedule(
   );
   $$
 );
+  end if;
+  end if;
+end
+$gate$;

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireActiveWorkspace } from "@/lib/auth/session";
-import { assertModuleEnabled } from "@/lib/settings/queries";
+import { isModuleEnabled } from "@/lib/settings/queries";
+import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { createClient } from "@/lib/supabase/server";
 import { getAsesoriaById, getAsesoriaResponses, type AsesoriaStatus } from "@/lib/asesorias/queries";
 import { normalizeAsesoriaResponses } from "@/components/responseSummary/normalizeAsesoriaResponses";
@@ -18,7 +19,7 @@ function formatDateTime(iso: string) {
 export default async function AsesoriaResumenPage({ params }: { params: Promise<{ asesoriaId: string }> }) {
   const { asesoriaId } = await params;
   const { workspaceId } = await requireActiveWorkspace();
-  await assertModuleEnabled(workspaceId, "asesorias");
+  if (!(await isModuleEnabled(workspaceId, "asesorias"))) return <ModuleDisabledState moduleName="Asesorías" />;
 
   const [asesoria, responses] = await Promise.all([getAsesoriaById(workspaceId, asesoriaId), getAsesoriaResponses(workspaceId, asesoriaId)]);
   if (!asesoria) notFound();

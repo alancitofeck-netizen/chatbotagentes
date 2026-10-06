@@ -139,7 +139,7 @@ export function AiAgentDetailView({
             </span>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-[22px] leading-[30px] font-semibold tracking-[-0.02em] text-foreground">{agent.name}</h1>
+                <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">{agent.name}</h1>
                 <Badge variant={agent.status === "active" ? "success" : "neutral"}>{agent.status === "active" ? "Activo" : "Inactivo"}</Badge>
               </div>
               {agent.description && <p className="text-sm text-neutral-500">{agent.description}</p>}

@@ -55,7 +55,7 @@ export function DashboardHomeSection({ initialData, initialPeriod }: { initialDa
               type="button"
               onClick={() => handlePeriodChange(p)}
               className={cn(
-                "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-150",
+                "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 max-md:min-h-11",
                 period === p ? "bg-accent-500 text-white" : "text-neutral-500 hover:text-foreground",
               )}
             >

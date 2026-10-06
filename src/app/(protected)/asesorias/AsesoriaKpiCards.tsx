@@ -93,7 +93,7 @@ function KpiCard({
       <div className="flex items-start justify-between">
         <span className={`flex size-10 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
         {href && (
-          <span className="flex items-center gap-1 text-xs font-medium text-accent-600 opacity-0 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] group-hover:opacity-100">
+          <span className="flex items-center gap-1 text-xs font-medium text-accent-600 opacity-0 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out)] group-hover:opacity-100 max-md:opacity-100">
             Ver detalle
             <ArrowRight className="size-3" aria-hidden="true" />
           </span>

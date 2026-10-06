@@ -45,7 +45,7 @@ export function ConnectedChannelsPanel({ status }: { status: ChannelConnectionSt
             </span>
           );
         })}
-        <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-1 font-medium text-accent-600 hover:underline">
+        <button type="button" onClick={() => setOpen(true)} className="flex items-center gap-1 font-medium text-accent-600 hover:underline max-md:min-h-6">
           <Plus className="size-3.5" aria-hidden="true" />
           Conectar canal
         </button>

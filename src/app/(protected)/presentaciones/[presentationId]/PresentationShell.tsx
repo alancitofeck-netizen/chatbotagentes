@@ -112,7 +112,7 @@ export function PresentationShell({ presentation: initialPresentation }: { prese
       <div className="flex flex-col gap-3 rounded-lg border border-border-default bg-surface-1 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-[18px] font-semibold tracking-[-0.01em] text-foreground">{presentation.title}</h1>
+            <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">{presentation.title}</h1>
             <Badge variant="info" dot>
               ✨ Crear mi Presentación
             </Badge>

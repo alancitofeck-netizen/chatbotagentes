@@ -24,7 +24,7 @@ export default async function AsesoriaPage({ params }: { params: Promise<{ aseso
   if (!asesoria) notFound();
 
   return (
-    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: "#050817" }}>
+    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", background: "#050817" }}>
       <iframe
         src={`/api/asesorias/${asesoriaId}/frame`}
         title="Asesoría"

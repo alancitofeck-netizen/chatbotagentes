@@ -142,7 +142,7 @@ export function ProfileShell({
       <div className="flex flex-col items-center gap-3 rounded-lg bg-surface-1 p-8 shadow-[var(--elevation-sm)] sm:flex-row sm:items-center sm:text-left">
         <Avatar name={profile.fullName || profile.email} src={profile.avatarUrl} size={72} />
         <div className="flex flex-col items-center gap-1 sm:items-start">
-          <h1 className="text-[19px] font-semibold text-foreground">{profile.fullName || "Tu cuenta"}</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">{profile.fullName || "Tu cuenta"}</h1>
           <p className="text-sm text-neutral-500">
             {profile.email} · {ROLE_LABEL[profile.role] ?? profile.role}
           </p>
@@ -160,7 +160,7 @@ export function ProfileShell({
                 type="button"
                 onClick={() => selectTab(t.key)}
                 className={cn(
-                  "flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
+                  "flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors max-lg:min-h-11",
                   active ? "bg-accent-100 text-accent-700" : "text-neutral-600 hover:bg-surface-2",
                 )}
               >
