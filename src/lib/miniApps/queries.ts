@@ -75,6 +75,8 @@ export interface MiniAppListItem {
   status: MiniAppStatus;
   assignedAgentName: string | null;
   leadsCount: number;
+  /** Visitas registradas ("Usos" del prototipo): mini_app_visits por app. */
+  visitsCount: number;
   /** Subconjunto de leadsCount con status "converted" — para calcular una
    * tasa de conversión real en el listado (MiniAppsListShell.tsx), nunca
    * inventada. */
@@ -331,6 +333,18 @@ export async function getMiniAppsList(workspaceId: string): Promise<MiniAppListI
   ]);
   if (!apps || apps.length === 0) return [];
 
+  const visitCounts = await Promise.all(
+    apps.map((a) =>
+      supabase
+        .from("mini_app_visits")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("mini_app_id", a.id as string)
+        .then(({ count }) => count ?? 0),
+    ),
+  );
+  const visitsByApp = new Map(apps.map((a, i) => [a.id as string, visitCounts[i]]));
+
   const { data: leadStats } = await supabase
     .from("mini_app_leads")
     .select("mini_app_id, received_at, status")
@@ -356,6 +370,7 @@ export async function getMiniAppsList(workspaceId: string): Promise<MiniAppListI
     status: a.status as MiniAppStatus,
     assignedAgentName: a.assigned_agent_id ? (memberNames.get(a.assigned_agent_id as string) ?? null) : null,
     leadsCount: statsByApp.get(a.id as string)?.count ?? 0,
+    visitsCount: visitsByApp.get(a.id as string) ?? 0,
     convertedLeadsCount: statsByApp.get(a.id as string)?.converted ?? 0,
     lastLeadAt: statsByApp.get(a.id as string)?.lastLeadAt ?? null,
     createdAt: a.created_at as string,

@@ -48,12 +48,13 @@ export function MiniAppsListShell({
     const leadsTotales = miniApps.reduce((sum, a) => sum + a.leadsCount, 0);
     const convertidos = miniApps.reduce((sum, a) => sum + a.convertedLeadsCount, 0);
     const conversion = leadsTotales > 0 ? Math.round((convertidos / leadsTotales) * 100) : null;
+    const usos = miniApps.reduce((sum, a) => sum + a.visitsCount, 0);
     const conLeads = miniApps.filter((a) => a.leadsCount > 0).length;
     const sinLeads = total - conLeads;
     const sinAsesor = miniApps.filter((a) => !a.assignedAgentName).length;
     const inactivas = total - activas;
     const top = [...miniApps].sort((a, b) => b.leadsCount - a.leadsCount)[0];
-    return { total, activas, leadsTotales, convertidos, conversion, conLeads, sinLeads, sinAsesor, inactivas, top: top && top.leadsCount > 0 ? top : null };
+    return { total, activas, leadsTotales, convertidos, conversion, usos, conLeads, sinLeads, sinAsesor, inactivas, top: top && top.leadsCount > 0 ? top : null };
   }, [miniApps]);
 
   const chips: { key: ChipFilter; label: string; count: number }[] = [
@@ -189,8 +190,8 @@ export function MiniAppsListShell({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <KpiTile label="Mini Apps" value={metrics.total} hint={`${metrics.activas} activas`} />
             <KpiTile label="Leads" value={metrics.leadsTotales} hint={`${metrics.conLeads} con leads`} />
-            <KpiTile label="A cliente" value={metrics.convertidos} />
-            <KpiTile label="Conversión" value={metrics.conversion !== null ? `${metrics.conversion}%` : "—"} />
+            <KpiTile label="Usos" value={metrics.usos} hint="visitas a las apps" />
+            <KpiTile label="A cliente" value={metrics.convertidos} hint={metrics.conversion !== null ? `${metrics.conversion}% de los leads` : undefined} />
           </div>
 
           <div className="flex flex-col gap-3">

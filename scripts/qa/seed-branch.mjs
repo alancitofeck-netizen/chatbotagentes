@@ -272,6 +272,12 @@ async function main() {
     ...Array.from({ length: 2 }, (_, i) => ({ mini_app_id: brecha.id, status: i === 0 ? "converted" : "new", origen_app: "calculadora_brecha_retiro", nombre: `[QA] Lead brecha ${i + 1}`, whatsapp: `+5215500008${String(i).padStart(3, "0")}`, consentimiento: true, consentimiento_fecha: day(-i).toISOString(), fecha: dateOnly(-i) })),
   ].map((r) => ({ ...r, workspace_id: BRANCH_WORKSPACE_ID, data: {} }));
   must(await db.from("mini_app_leads").insert(leadRows), "mini app leads");
+  // Visitas de prueba ("Usos"): 12 en la app de retiro y 4 en la de brecha.
+  const visitRows = [
+    ...Array.from({ length: 12 }, (_, i) => ({ workspace_id: BRANCH_WORKSPACE_ID, mini_app_id: retiro.id, created_at: day(-i).toISOString() })),
+    ...Array.from({ length: 4 }, (_, i) => ({ workspace_id: BRANCH_WORKSPACE_ID, mini_app_id: brecha.id, created_at: day(-i).toISOString() })),
+  ];
+  must(await db.from("mini_app_visits").insert(visitRows), "mini app visits");
 
   // Classroom (no está atado a un workspace): un curso del admin y dos comentarios,
   // uno de la cuenta con nombre y otro de la cuenta sin nombre (debe verse "Usuario").
