@@ -22,7 +22,12 @@ const nextConfig: NextConfig = {
   // Contactos moved from its own top-level route into Inbox's secondary nav
   // (src/app/(protected)/inbox/contactos/) — keeps old bookmarks/links alive.
   async redirects() {
-    return [{ source: "/contacts", destination: "/inbox/contactos", permanent: false }];
+    return [
+      { source: "/contacts", destination: "/inbox/contactos", permanent: false },
+      // Configuración quedó dentro de Perfil. La redirección vive acá (y no en una
+      // página con redirect()) para que no haya un render intermedio en el cliente.
+      { source: "/settings", destination: "/profile?tab=workspace", permanent: false },
+    ];
   },
 };
 
