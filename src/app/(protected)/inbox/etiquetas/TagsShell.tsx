@@ -130,7 +130,7 @@ export function TagsShell({
   return (
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-4 sm:p-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-foreground">Etiquetas</h1>
+        <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Etiquetas</h1>
         <p className="text-sm text-neutral-500">
           Organizá contactos y conversaciones con etiquetas compartidas entre Inbox y CRM.
         </p>

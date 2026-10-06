@@ -57,7 +57,7 @@ export function CategoryPageShell({
         <div className="flex items-center gap-3">
           <span className={cn("flex size-12 items-center justify-center rounded-xl text-2xl", colorMeta.bg)}>{category.icon}</span>
           <div>
-            <h1 className="text-xl font-semibold text-foreground">{category.name}</h1>
+            <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">{category.name}</h1>
             {category.description && <p className="text-sm text-neutral-500">{category.description}</p>}
           </div>
         </div>

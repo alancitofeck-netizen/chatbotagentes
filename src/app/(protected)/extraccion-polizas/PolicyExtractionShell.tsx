@@ -147,7 +147,7 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
           Diferenciador
         </span>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Extracción de pólizas con IA</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Extracción de pólizas con IA</h1>
           <ModuleHelp description="Subí el PDF de una póliza y la IA detecta y organiza todos los datos por vos — vos solo revisás y confirmás." tourKey="extraction-intro" />
         </div>
         <p className="text-sm text-neutral-500">Sube el PDF y la IA llena todos los campos por ti</p>

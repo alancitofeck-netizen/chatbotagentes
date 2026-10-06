@@ -220,7 +220,7 @@ export function DocumentsShell({
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-6 border-b border-border-default px-6 pt-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-[19px] font-semibold text-foreground">Documentos</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Documentos</h1>
           <ModuleHelp description="Acá podés organizar los documentos relacionados con tu trabajo — subir, buscar, filtrar y descargar." tourKey="documents-intro" />
         </div>
         <Tabs

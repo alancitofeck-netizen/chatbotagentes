@@ -320,7 +320,7 @@ export function CalendarShell({
               <span className="flex size-9 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
                 <CalendarDays size={18} aria-hidden="true" />
               </span>
-              <h1 className="text-[19px] font-semibold text-foreground">Calendario</h1>
+              <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Calendario</h1>
               <ModuleHelp description="Acá vas a organizar tus reuniones, citas y actividades. Podés crear eventos, arrastrarlos para cambiar fecha/horario, y sincronizarlos con Google Calendar." tourKey="calendar-intro" />
             </div>
             <div className="flex items-center gap-2">

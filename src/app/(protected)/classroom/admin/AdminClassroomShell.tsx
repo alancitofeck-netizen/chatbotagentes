@@ -74,7 +74,7 @@ export function AdminClassroomShell({ categories, courses }: { categories: Class
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy text-white">
             <GraduationCap className="size-5" aria-hidden="true" />
           </div>
-          <h1 className="text-xl font-semibold text-foreground">Administrar Classroom</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Administrar Classroom</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setShowCategories(true)}>

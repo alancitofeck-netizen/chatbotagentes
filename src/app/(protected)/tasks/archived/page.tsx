@@ -13,7 +13,7 @@ export default async function ArchivedGroupsPage() {
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
-      <h1 className="text-[17px] font-semibold text-foreground">Grupos archivados</h1>
+      <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Grupos archivados</h1>
       {/* ArchivedGroupsList renders its own empty state — needed so the
          message also appears after the last item is optimistically removed
          client-side (Desarchivar), not only on a fresh server render. */}

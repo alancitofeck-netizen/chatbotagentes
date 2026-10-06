@@ -190,7 +190,7 @@ export function ContactsShell({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-4 border-b border-border-default px-6 py-4">
         <div>
-          <h1 className="text-[17px] font-semibold text-foreground">Contactos</h1>
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Contactos</h1>
           <Tabs value={tab} onValueChange={(v) => setTab(v as "contactos" | "empresas" | "apps")} className="mt-2">
             <TabsList>
               <TabsTrigger value="contactos">Contactos</TabsTrigger>
