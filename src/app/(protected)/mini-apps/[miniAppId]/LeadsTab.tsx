@@ -233,7 +233,10 @@ export function LeadsTab({
                     <button
                       key={lead.id}
                       type="button"
-                      onClick={() => setSelectedLeadId(lead.id)}
+                      onClick={() => {
+                        setSelectedLeadId(lead.id);
+                        if (window.matchMedia("(max-width: 767px)").matches) setShowFullDrawer(true);
+                      }}
                       className={`flex items-center gap-3 border-b border-border-default/60 px-4 py-3 text-left last:border-0 hover:bg-surface-2 ${
                         selectedLeadId === lead.id ? "bg-accent-500/10" : ""
                       }`}
