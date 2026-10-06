@@ -8,12 +8,15 @@ export function PageHeader({
   icon: Icon,
   title,
   description,
+  titleAdornment,
   actions,
   className,
 }: {
   icon?: LucideIcon;
   title: string;
   description?: ReactNode;
+  /** Algo chico junto al título (p. ej. el botón de ayuda del módulo). */
+  titleAdornment?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }) {
@@ -25,9 +28,12 @@ export function PageHeader({
         </span>
       )}
       <div className="min-w-[12rem] flex-1">
-        <h1 className="font-display text-[28px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground sm:text-[32px]">
-          {title}
-        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="font-display text-[28px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground sm:text-[32px]">
+            {title}
+          </h1>
+          {titleAdornment}
+        </div>
         {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

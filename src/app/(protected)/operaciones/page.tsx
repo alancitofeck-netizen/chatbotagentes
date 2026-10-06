@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { Metadata } from "next";
-import { Workflow } from "lucide-react";
+import { Workflow, Wrench } from "lucide-react";
 import { OperacionesOverview } from "./OperacionesOverview";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
@@ -13,11 +14,7 @@ export default function OperacionesPage() {
           <Workflow className="size-5" aria-hidden="true" />
         </div>
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-[26px] leading-[32px] font-semibold tracking-[-0.02em] text-foreground">Operaciones</h1>
-            <ModuleHelp description="Este módulo centraliza dos herramientas internas de tu equipo." tourKey="operations-intro" />
-          </div>
-          <p className="text-sm text-neutral-500">Herramientas internas — solo owner/admin.</p>
+          <PageHeader icon={Wrench} title="Operaciones" description="Herramientas internas — solo owner/admin." titleAdornment={<ModuleHelp description="Este módulo centraliza dos herramientas internas de tu equipo." tourKey="operations-intro" />} />
         </div>
       </div>
 
