@@ -105,7 +105,7 @@ export function NotificationPanel({
             onClick={() => setFilter(tab.value)}
             className={cn(
               "shrink-0 rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors duration-[var(--duration-fast)]",
-              filter === tab.value ? "bg-accent-500 text-white" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+              filter === tab.value ? "bg-navy text-white" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
             )}
           >
             {tab.label}

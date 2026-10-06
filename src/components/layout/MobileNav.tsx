@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu, Search, Settings, UserCircle, X } from "lucide-react";
+import { ChevronRight, CircleDollarSign, Inbox, Kanban, ListTodo, Menu, Search, Settings, UserCircle, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { signOut } from "@/app/(protected)/actions";
+import { getInboxUnreadTotalAction } from "@/lib/inbox/actions";
+import { getCollectionsKpisAction } from "@/lib/collections/actions";
 import { ThemeToggle } from "@/lib/theme/ThemeToggle";
 import { cn } from "@/lib/utils/cn";
 import { getSidebarNavItems, groupNavItems, isNavItemActive } from "@/lib/navigation/sidebarConfig";
@@ -34,10 +36,39 @@ export function MobileNav({
   const pathname = usePathname();
   const groups = groupNavItems(getSidebarNavItems(new Set(enabledModules)));
   const [query, setQuery] = useState("");
+  const [counts, setCounts] = useState<{ inbox: number; overdue: number }>({ inbox: 0, overdue: 0 });
   const q = query.trim().toLowerCase();
+  // Accesos rápidos del prototipo: sólo los módulos encendidos, con contador real
+  // (no leídos del inbox y cobros vencidos) cargado al abrir el menú.
+  const quick = [
+    { href: "/inbox", label: "Inbox", icon: Inbox, count: counts.inbox, module: null },
+    { href: "/crm", label: "CRM", icon: Kanban, count: 0, module: "crm" },
+    { href: "/cobranza", label: "Cobranza", icon: CircleDollarSign, count: counts.overdue, module: "collections" },
+    { href: "/tasks", label: "Tareas", icon: ListTodo, count: 0, module: "tasks" },
+  ].filter((t) => !t.module || enabledModules.includes(t.module));
   const shownGroups = q
     ? groups.map((g) => ({ ...g, items: g.items.filter((i) => i.label.toLowerCase().includes(q)) })).filter((g) => g.items.length > 0)
     : groups;
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    // Cada contador llega por su lado: una acción lenta no retrasa a la otra.
+    getInboxUnreadTotalAction()
+      .catch(() => 0)
+      .then((inbox) => {
+        if (!cancelled) setCounts((c) => ({ ...c, inbox }));
+      });
+    getCollectionsKpisAction()
+      .then((k) => k.overdueCount)
+      .catch(() => 0)
+      .then((overdue) => {
+        if (!cancelled) setCounts((c) => ({ ...c, overdue }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     const openDrawer = () => setOpen(true);
@@ -110,6 +141,29 @@ export function MobileNav({
             className="w-full rounded-full border border-border-default bg-surface-1 py-2.5 pr-3 pl-9 text-sm text-foreground placeholder:text-neutral-400 outline-none focus:border-accent-500"
           />
         </div>
+
+        {!q && (
+          <div className="grid grid-cols-4 gap-2 px-4 pt-4">
+            {quick.map((t) => (
+              <Link
+                key={t.href}
+                href={t.href}
+                onClick={() => setOpen(false)}
+                className="relative flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-lg border border-border-default bg-surface-1 p-2 text-[12px] font-medium text-foreground shadow-[var(--elevation-xs)]"
+              >
+                <span className="flex size-8 items-center justify-center rounded-md bg-accent-50 text-accent-600">
+                  <t.icon className="size-4" aria-hidden="true" />
+                </span>
+                {t.label}
+                {t.count > 0 && (
+                  <span className="absolute top-1.5 right-1.5 min-w-5 rounded-full bg-accent-600 px-1.5 text-center text-[11px] leading-5 font-semibold text-[var(--on-accent)] tabular-nums">
+                    {t.count > 99 ? "99+" : t.count}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
 
         <nav className="flex flex-col px-4">
           {shownGroups.map((group) => (
