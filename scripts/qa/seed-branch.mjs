@@ -282,7 +282,7 @@ async function main() {
   // Classroom (no está atado a un workspace): un curso del admin y dos comentarios,
   // uno de la cuenta con nombre y otro de la cuenta sin nombre (debe verse "Usuario").
   const cat = must(
-    await db.from("classroom_categories").insert({ slug: "qa-mobile-categoria", name: "QA Mobile", icon: "book", color: "neutral", position: 0, is_visible: true }).select("id").single(),
+    await db.from("classroom_categories").insert({ slug: "qa-mobile-categoria", name: "QA Mobile", icon: "📘", color: "neutral", position: 0, is_visible: true }).select("id").single(),
     "classroom category",
   );
   const course = must(

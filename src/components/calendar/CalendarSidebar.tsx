@@ -84,7 +84,7 @@ export function CalendarSidebar({
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Buscar evento o contacto…"
-          className="w-full rounded-full border border-border-strong bg-surface-1 py-2 pl-8 pr-3 text-[13px] outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-100"
+          className="w-full rounded-full border border-border-strong bg-surface-1 py-2 pl-8 pr-3 text-[13px] outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
         />
       </div>
 
@@ -96,7 +96,7 @@ export function CalendarSidebar({
         <h3 className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Resumen de hoy</h3>
         <div className="flex items-center justify-between text-[13px]">
           <span className="flex items-center gap-1.5 text-neutral-600">
-            <span className="size-2 rounded-full bg-blue-500" aria-hidden="true" /> Ocupado
+            <span className="size-2 rounded-full bg-accent-500" aria-hidden="true" /> Ocupado
           </span>
           <span className="font-medium text-foreground">{formatHours(todaySummary.busyMinutes)}</span>
         </div>
@@ -185,7 +185,7 @@ export function CalendarSidebar({
             type="checkbox"
             checked={showMine}
             onChange={onToggleMine}
-            className="size-4 rounded border-border-strong text-blue-600 focus:ring-blue-200"
+            className="size-4 rounded border-border-strong text-accent-600 focus:ring-accent-200"
           />
           Mi calendario
         </label>
@@ -194,7 +194,7 @@ export function CalendarSidebar({
             type="checkbox"
             checked={showTeam}
             onChange={onToggleTeam}
-            className="size-4 rounded border-border-strong text-blue-600 focus:ring-blue-200"
+            className="size-4 rounded border-border-strong text-accent-600 focus:ring-accent-200"
           />
           Equipo
         </label>
@@ -208,7 +208,7 @@ export function CalendarSidebar({
               type="checkbox"
               checked={activeCategories.has(key)}
               onChange={() => onToggleCategory(key)}
-              className="size-4 rounded border-border-strong text-blue-600 focus:ring-blue-200"
+              className="size-4 rounded border-border-strong text-accent-600 focus:ring-accent-200"
             />
             <span className={cn("size-2 rounded-full", meta.solid)} aria-hidden="true" />
             {meta.label}
@@ -225,7 +225,7 @@ export function CalendarSidebar({
         <h3 className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Calendarios conectados</h3>
         <div className="flex items-center justify-between text-[13px]">
           <span className="flex items-center gap-1.5 text-foreground">
-            <span className="size-2 rounded-full bg-blue-500" aria-hidden="true" /> Calendario interno
+            <span className="size-2 rounded-full bg-accent-500" aria-hidden="true" /> Calendario interno
           </span>
           <span className="text-[11px] text-neutral-400">Siempre activo</span>
         </div>
@@ -237,7 +237,7 @@ export function CalendarSidebar({
           {googleCalendarConnected ? (
             <span className="text-[11px] font-medium text-emerald-600">Conectado</span>
           ) : (
-            <a href="/profile?tab=integrations" data-tour="calendar.google-connect" className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:underline">
+            <a href="/profile?tab=integrations" data-tour="calendar.google-connect" className="flex items-center gap-1 text-[11px] font-medium text-accent-600 hover:underline">
               <Link2 size={11} aria-hidden="true" /> Conectar
             </a>
           )}

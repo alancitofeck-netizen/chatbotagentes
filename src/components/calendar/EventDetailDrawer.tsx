@@ -285,7 +285,7 @@ export function EventDetailDrawer({
               onChange={(e) => setNewTaskTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreateTask()}
               placeholder="Título de la tarea…"
-              className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3 py-1.5 text-[13px] outline-none focus:border-blue-500 focus:bg-surface-1"
+              className="flex-1 rounded-full border border-border-strong bg-surface-2 px-3 py-1.5 text-[13px] outline-none focus:border-accent-500 focus:bg-surface-1"
             />
             <button
               type="button"
@@ -315,7 +315,7 @@ export function EventDetailDrawer({
 
         {event.meetingUrl && (
           <Row icon={Video}>
-            <a href={event.meetingUrl} target="_blank" rel="noreferrer" className="break-all text-blue-600 hover:underline">
+            <a href={event.meetingUrl} target="_blank" rel="noreferrer" className="break-all text-accent-600 hover:underline">
               {event.meetingUrl}
             </a>
           </Row>

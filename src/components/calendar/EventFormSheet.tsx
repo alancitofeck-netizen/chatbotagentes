@@ -313,7 +313,7 @@ export function EventFormSheet({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="resize-none rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-100"
+              className="resize-none rounded-sm border border-border-strong bg-surface-1 px-3 py-2 text-sm text-foreground outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
             />
           </div>
         </div>

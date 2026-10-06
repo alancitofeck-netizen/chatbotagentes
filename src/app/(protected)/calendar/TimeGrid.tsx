@@ -137,7 +137,7 @@ function EventBlock({
               : cn(meta.border, meta.bg, meta.text),
           isDragging && "opacity-90 shadow-[var(--elevation-lg)]",
           selectionMode && "pr-5",
-          selected && "ring-2 ring-blue-500",
+          selected && "ring-2 ring-accent-500",
         )}
       >
         <div className={cn("truncate font-semibold", compact ? "text-[11px]" : "text-[12px]")}>{event.title}</div>
@@ -169,7 +169,7 @@ function EventBlock({
           checked={selected}
           onChange={() => onToggleSelect(event.id)}
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-1.5 top-1.5 z-10 size-3.5 rounded border-border-strong accent-blue-600"
+          className="absolute right-1.5 top-1.5 z-10 size-3.5 rounded border-border-strong accent-accent-600"
         />
       )}
     </div>
@@ -213,7 +213,7 @@ function DayColumn({
   return (
     <div
       ref={setNodeRef}
-      className={cn("relative transition-colors", dayIsToday && "bg-blue-50/30", isOver && "bg-blue-100/50")}
+      className={cn("relative transition-colors", dayIsToday && "bg-accent-50/30", isOver && "bg-accent-100/50")}
       style={{ height: GRID_HEIGHT }}
     >
       {HOURS.map((h) => (
@@ -334,14 +334,14 @@ export function TimeGrid({
                 <div
                   className={cn(
                     "flex h-12 flex-col items-center justify-center gap-0.5 border-b border-border-default text-xs",
-                    dayIsToday ? "text-blue-600" : "text-neutral-500",
+                    dayIsToday ? "text-accent-600" : "text-neutral-500",
                   )}
                 >
                   <span className="capitalize">{day.toLocaleDateString("es", { weekday: "short" })}</span>
                   <span
                     className={cn(
                       "flex size-6 items-center justify-center rounded-full text-[13px] font-semibold",
-                      dayIsToday ? "bg-blue-600 text-white" : "text-foreground",
+                      dayIsToday ? "bg-accent-600 text-white" : "text-foreground",
                     )}
                   >
                     {day.getDate()}

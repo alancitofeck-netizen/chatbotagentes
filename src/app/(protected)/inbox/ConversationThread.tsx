@@ -693,13 +693,13 @@ export function ConversationThread({
       )}
 
       {aiInsight?.summary && (
-        <div className="mx-5 mt-3 flex flex-col gap-1 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-700">
+        <div className="mx-5 mt-3 flex flex-col gap-1 rounded-xl border border-accent-200 bg-accent-50 px-3.5 py-2.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-accent-700">
             <Sparkles className="size-3" aria-hidden="true" /> Resumen IA
           </p>
           <p className="text-[13px] text-foreground">{aiInsight.summary}</p>
           {aiInsight.nextStep && (
-            <p className="text-[12px] text-violet-700">
+            <p className="text-[12px] text-accent-700">
               <span className="font-medium">Próximo paso:</span> {aiInsight.nextStep}
             </p>
           )}
@@ -732,8 +732,8 @@ export function ConversationThread({
                   )}
                   {isDraft ? (
                     <div className="mt-2 flex justify-end">
-                      <div className="flex max-w-[70%] flex-col gap-1.5 rounded-2xl rounded-br-md border border-dashed border-violet-300 bg-violet-50 px-3.5 py-2 text-sm">
-                        <p className="flex items-center gap-1 text-[11px] font-medium text-violet-700">
+                      <div className="flex max-w-[70%] flex-col gap-1.5 rounded-2xl rounded-br-md border border-dashed border-accent-300 bg-accent-50 px-3.5 py-2 text-sm">
+                        <p className="flex items-center gap-1 text-[11px] font-medium text-accent-700">
                           <Sparkles className="size-3" aria-hidden="true" />
                           Sugerencia de IA — sin enviar
                         </p>
@@ -743,7 +743,7 @@ export function ConversationThread({
                               value={draftEditText}
                               onChange={(e) => setDraftEditText(e.target.value)}
                               rows={3}
-                              className="w-full rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-sm text-foreground outline-none focus:border-violet-500"
+                              className="w-full rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-sm text-foreground outline-none focus:border-accent-500"
                             />
                             <div className="flex justify-end gap-2 text-[11px] font-medium">
                               <button type="button" onClick={() => setEditingDraftId(null)} className="text-neutral-500 hover:underline">
@@ -753,7 +753,7 @@ export function ConversationThread({
                                 type="button"
                                 disabled={draftActionPending === m.id}
                                 onClick={() => handleSaveDraftEdit(m.id)}
-                                className="text-violet-700 hover:underline disabled:opacity-50"
+                                className="text-accent-700 hover:underline disabled:opacity-50"
                               >
                                 Guardar
                               </button>
@@ -783,7 +783,7 @@ export function ConversationThread({
                                 type="button"
                                 disabled={draftActionPending === m.id}
                                 onClick={() => handleApproveDraft(m.id)}
-                                className="text-violet-700 hover:underline disabled:opacity-50"
+                                className="text-accent-700 hover:underline disabled:opacity-50"
                               >
                                 Aprobar y enviar
                               </button>
@@ -855,7 +855,7 @@ export function ConversationThread({
       </div>
 
       {detail && detail !== takeoverSnapshot && (detail.mode === "ai" || detail.mode === "pending_human") && (
-        <div className="flex items-center gap-2 border-t border-border-default bg-violet-50 px-3 py-2 text-[13px] text-violet-800 md:hidden">
+        <div className="flex items-center gap-2 border-t border-border-default bg-accent-50 px-3 py-2 text-[13px] text-accent-800 md:hidden">
           <Bot size={16} className="shrink-0" aria-hidden="true" />
           <span className="flex-1">La IA está atendiendo. Tomá el control para responder vos.</span>
           <button type="button" onClick={takeOverConversation} className="h-9 shrink-0 rounded-md bg-foreground px-3 text-sm font-medium text-surface-1">
@@ -909,7 +909,7 @@ export function ConversationThread({
               aria-expanded={quickRepliesOpen}
               className={cn(
                 "flex size-9 items-center justify-center rounded-full transition-colors",
-                quickRepliesOpen ? "bg-violet-100 text-violet-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
+                quickRepliesOpen ? "bg-accent-100 text-accent-700" : "text-neutral-500 hover:bg-surface-2 hover:text-foreground",
               )}
             >
               <Sparkles size={17} />
@@ -983,7 +983,7 @@ export function ConversationThread({
               aria-expanded={aiPopoverOpen}
               className={cn(
                 "flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors",
-                aiPopoverOpen ? "bg-violet-100 text-violet-700" : "text-violet-600 hover:bg-violet-50",
+                aiPopoverOpen ? "bg-accent-100 text-accent-700" : "text-accent-600 hover:bg-accent-50",
               )}
             >
               <Sparkles size={15} /> IA
@@ -999,7 +999,7 @@ export function ConversationThread({
                   onClick={handleGenerateReply}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <Wand2 size={14} className="shrink-0 text-violet-600" />
+                  <Wand2 size={14} className="shrink-0 text-accent-600" />
                   {aiActionPending === "reply" ? "Generando…" : "Generar respuesta"}
                 </button>
                 <button
@@ -1008,7 +1008,7 @@ export function ConversationThread({
                   onClick={handleSummarize}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <FileText size={14} className="shrink-0 text-violet-600" />
+                  <FileText size={14} className="shrink-0 text-accent-600" />
                   {aiActionPending === "summary" ? "Resumiendo…" : "Resumir conversación"}
                 </button>
                 <button
@@ -1017,7 +1017,7 @@ export function ConversationThread({
                   onClick={handleAnalyzeLead}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <BrainCircuit size={14} className="shrink-0 text-violet-600" />
+                  <BrainCircuit size={14} className="shrink-0 text-accent-600" />
                   {aiActionPending === "analyze" ? "Analizando…" : "Analizar lead"}
                 </button>
                 <button
@@ -1026,11 +1026,11 @@ export function ConversationThread({
                   onClick={handleExtractInfo}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] text-foreground hover:bg-surface-2 disabled:opacity-50"
                 >
-                  <ClipboardList size={14} className="shrink-0 text-violet-600" />
+                  <ClipboardList size={14} className="shrink-0 text-accent-600" />
                   {aiActionPending === "extract" ? "Extrayendo…" : "Extraer información"}
                 </button>
                 {aiInsight?.leadAnalysis && (
-                  <div className="mx-3 mt-1 flex flex-col gap-0.5 rounded-md bg-violet-50 px-2.5 py-2 text-[12px] text-violet-800">
+                  <div className="mx-3 mt-1 flex flex-col gap-0.5 rounded-md bg-accent-50 px-2.5 py-2 text-[12px] text-accent-800">
                     {aiInsight.leadAnalysis.interes && <p>Interés: {aiInsight.leadAnalysis.interes}</p>}
                     {aiInsight.leadAnalysis.necesidad && <p>Necesidad: {aiInsight.leadAnalysis.necesidad}</p>}
                     {aiInsight.leadAnalysis.probabilidad && <p>Probabilidad de avanzar: {aiInsight.leadAnalysis.probabilidad}</p>}

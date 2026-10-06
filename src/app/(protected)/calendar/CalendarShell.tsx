@@ -317,7 +317,7 @@ export function CalendarShell({
         <div className="border-b border-border-default bg-surface-1">
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 sm:px-6 sm:pt-5">
             <div className="flex items-center gap-2.5">
-              <span className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-accent-500/10 text-accent-600">
                 <CalendarDays size={18} aria-hidden="true" />
               </span>
               <h1 className="text-[19px] font-semibold text-foreground">Calendario</h1>

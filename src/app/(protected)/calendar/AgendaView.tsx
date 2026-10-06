@@ -65,7 +65,7 @@ export function AgendaView({
                       type="checkbox"
                       checked={selectedIds.has(event.id)}
                       onChange={() => onToggleSelect(event.id)}
-                      className="size-4 shrink-0 rounded border-border-strong accent-blue-600"
+                      className="size-4 shrink-0 rounded border-border-strong accent-accent-600"
                     />
                   )}
                   <button
@@ -75,7 +75,7 @@ export function AgendaView({
                       "flex max-sm:min-h-14 w-full items-center gap-4 rounded-xl border-l-[3px] bg-surface-1 px-4 py-3.5 text-left shadow-[var(--elevation-xs)] transition-all duration-150",
                       "hover:-translate-y-0.5 hover:shadow-[var(--elevation-sm)]",
                       isCancelled ? "border-l-neutral-300" : meta.border,
-                      selectedIds.has(event.id) && "ring-2 ring-blue-500",
+                      selectedIds.has(event.id) && "ring-2 ring-accent-500",
                     )}
                   >
                     <div className="w-[92px] shrink-0 text-[13px] font-medium text-neutral-500">{formatTimeRange(event.startTime, event.endTime)}</div>

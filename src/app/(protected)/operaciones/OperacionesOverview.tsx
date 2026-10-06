@@ -33,14 +33,14 @@ function ToolCard({
   return (
     <Card
       variant="default"
-      className={`relative flex flex-col gap-5 overflow-hidden border-l-4 ${isViolet ? "border-l-accent-500 bg-gradient-to-br from-[var(--tint-violet-subtle)] to-surface-1" : "border-l-blue-500 bg-gradient-to-br from-[var(--tint-blue-subtle)] to-surface-1"}`}
+      className={`relative flex flex-col gap-5 overflow-hidden border-l-4 ${isViolet ? "border-l-accent-500" : "border-l-accent-500"}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${isViolet ? "bg-accent-600" : "bg-blue-600"}`}>
+          <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${"bg-accent-600"}`}>
             {number}
           </span>
-          <span className={`flex size-12 shrink-0 items-center justify-center rounded-full ${isViolet ? "bg-accent-100 text-accent-700" : "bg-blue-100 text-blue-700"}`}>
+          <span className={`flex size-12 shrink-0 items-center justify-center rounded-full ${isViolet ? "bg-accent-100 text-accent-700" : "bg-accent-100 text-accent-700"}`}>
             {icon}
           </span>
           <div>
@@ -67,7 +67,7 @@ function ToolCard({
           href={href}
           data-tour="operations.open-tool"
           className={`flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-sm font-medium transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] ${
-            isViolet ? "border-accent-200 text-accent-700 hover:bg-accent-50" : "border-blue-200 text-blue-700 hover:bg-blue-50"
+            isViolet ? "border-accent-200 text-accent-700 hover:bg-accent-50" : "border-accent-200 text-accent-700 hover:bg-accent-50"
           }`}
         >
           Abrir herramienta
@@ -77,7 +77,7 @@ function ToolCard({
 
       <span
         className={`pointer-events-none absolute -right-4 top-1/2 hidden size-28 -translate-y-1/2 items-center justify-center rounded-3xl sm:flex ${
-          isViolet ? "bg-gradient-to-br from-accent-500 to-accent-700" : "bg-gradient-to-br from-blue-500 to-blue-700"
+          "bg-accent-600"
         }`}
       >
         {panelIcon}
