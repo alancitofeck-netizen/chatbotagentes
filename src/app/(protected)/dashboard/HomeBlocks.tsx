@@ -81,6 +81,9 @@ export function FunnelCard({ board }: { board: CrmBoard | null }) {
           </div>
         ))}
       </div>
+      <p className="mt-3 text-sm text-neutral-600">
+        <span className="font-medium text-foreground tabular-nums">{board.kpis.totalPipelineValue.toLocaleString("es-AR")}</span> de valor en el pipeline
+      </p>
     </Card>
   );
 }
