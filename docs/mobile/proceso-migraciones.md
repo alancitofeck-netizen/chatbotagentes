@@ -124,3 +124,10 @@ Comparación rama contra producción:
 Idempotencia de 0191: se ejecutó completa sobre la rama, que ya tiene 0191 aplicada, dentro de una transacción con `ROLLBACK`. Corre sin errores y no altera los grants.
 
 Pendiente: aplicar 0191 en producción (vía el merge). Recién ahí se cierran los default privileges para funciones nuevas.
+
+## 0192: revocación de TRUNCATE, REFERENCES y TRIGGER (2026-10-06)
+
+- **Antes (producción y qa-mobile):** 128 tablas de `public` con `TRUNCATE`, `REFERENCES` y `TRIGGER` para `anon` y `authenticated`.
+- **Aplicada en qa-mobile:** `db query --linked --project-ref evoanshcejupacdtruev --file 0192...sql`. Después: 0 filas para esos tres privilegios. `SELECT`, `INSERT`, `UPDATE` y `DELETE` siguen en 128 tablas para ambos roles.
+- **Smoke en qa-mobile:** 31 rutas con sesión de QA, sin respuestas HTTP ≥ 400 de Supabase ni errores de permisos en consola.
+- **Producción:** pendiente de merge a `main` y aprobación explícita.
