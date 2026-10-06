@@ -311,7 +311,7 @@ export function TimeGrid({
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext id="calendar-time-grid" sensors={sensors} onDragEnd={handleDragEnd}>
       {/* Fixed 900px only makes sense for the multi-column Week view — Day
          view (days.length === 1) forced the same horizontal scroll for a
          single column with nothing to its right, which is exactly the

@@ -324,7 +324,7 @@ export function LessonEditorSheet({
           {resources.length === 0 ? (
             <p className="text-xs text-neutral-500">Sin recursos todavía.</p>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext id="lesson-editor" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={resources.map((r) => r.id)} strategy={verticalListSortingStrategy}>
                 <ul className="flex flex-col gap-1.5">
                   {resources.map((r) =>

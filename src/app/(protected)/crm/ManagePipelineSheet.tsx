@@ -210,7 +210,7 @@ export function ManagePipelineSheet({
             </div>
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext id="manage-pipeline" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={orderedStages.map((s) => s.id)} strategy={verticalListSortingStrategy}>
               <ul className="flex flex-col gap-2">
                 {orderedStages.map((stage) => (

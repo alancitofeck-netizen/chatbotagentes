@@ -189,7 +189,7 @@ export function MonthView({
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext id="calendar-month" sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-7 border-t border-r border-border-default">
         {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((label) => (
           <div key={label} className="border-l border-border-default bg-surface-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-neutral-500">

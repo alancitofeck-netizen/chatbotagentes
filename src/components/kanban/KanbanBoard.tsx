@@ -341,6 +341,7 @@ export function KanbanBoard<T extends KanbanCardBase>({
 
   return (
     <DndContext
+      id="kanban-board"
       sensors={sensors}
       // closestCorners compares the dragged card's corners against every droppable's
       // corners — great for "columns" mode (each column is a tall, similarly-sized

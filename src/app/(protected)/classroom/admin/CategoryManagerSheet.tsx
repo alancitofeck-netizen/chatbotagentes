@@ -274,7 +274,7 @@ export function CategoryManagerSheet({
           </form>
         ) : (
           <div className="flex flex-col gap-2 p-5">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext id="category-manager" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={items.map((c) => c.id)} strategy={verticalListSortingStrategy}>
                 <ul className="flex flex-col gap-0.5">
                   {items.map((c) => (

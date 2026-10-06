@@ -127,7 +127,7 @@ function SidebarContent({
 
       <div className="flex flex-col gap-1">
         <h3 className="px-2.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Grupos</h3>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext id="tasks-sidebar" sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={groups.map((g) => g.id)} strategy={verticalListSortingStrategy}>
             <ul className="flex flex-col gap-0.5">
               {groups.map((g) => (

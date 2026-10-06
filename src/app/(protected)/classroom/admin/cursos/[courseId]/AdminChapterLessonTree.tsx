@@ -159,7 +159,7 @@ function ChapterCard({
           {chapter.lessons.length === 0 ? (
             <p className="px-2 py-2 text-xs text-neutral-400">Sin lecciones todavía.</p>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd}>
+            <DndContext id="lesson-tree" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleLessonDragEnd}>
               <SortableContext items={chapter.lessons.map((l) => l.id)} strategy={verticalListSortingStrategy}>
                 <ul className="flex flex-col gap-0.5">
                   {chapter.lessons.map((lesson) => (
@@ -299,7 +299,7 @@ export function AdminChapterLessonTree({ courseId, initialChapters }: { courseId
       {chapters.length === 0 ? (
         <EmptyState icon={FolderInput} title="Sin capítulos todavía" description="Creá el primer capítulo para empezar a armar el curso." />
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterDragEnd}>
+        <DndContext id="chapter-tree" sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterDragEnd}>
           <SortableContext items={chapters.map((c) => c.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-2">
               {chapters.map((chapter) => (
