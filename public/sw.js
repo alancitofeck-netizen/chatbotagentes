@@ -3,7 +3,7 @@
 // fit here; a plain static file in public/ needs zero bundler plugin at
 // all). See optimización mobile Fase 5 plan for the reasoning.
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 
 // Deliberately small and hand-picked — NOT an aggressive full-app precache.
