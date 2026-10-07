@@ -504,3 +504,24 @@ body {
   z-index: -1;
   pointer-events: none;
 }
+
+/* Hoja de notificaciones en mobile: sube desde abajo con el fondo que se oscurece.
+ * Las tarjetas entran en cascada con un retardo por índice (--delay). */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sheet-up { animation: sheet-up 280ms var(--ease-out) both; }
+.sheet-fade { animation: sheet-fade 220ms var(--ease-out) both; }
+.card-in { animation: card-in 260ms var(--ease-out) both; animation-delay: var(--delay, 0ms); }
+@media (prefers-reduced-motion: reduce) {
+  .sheet-up, .sheet-fade, .card-in { animation: none; }
+}
