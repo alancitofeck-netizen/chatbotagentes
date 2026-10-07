@@ -179,6 +179,7 @@ export function NotificationBell({
           onDelete={handleDelete}
           onDeleteAll={handleDeleteAll}
           onNavigate={handleNavigate}
+          onClose={() => setOpen(false)}
         />
       )}
     </div>
