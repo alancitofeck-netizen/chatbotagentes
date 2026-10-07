@@ -30,6 +30,9 @@ export function AdvisorsBoardShell({
   const [board, setBoard] = useState(initialBoard);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  // Sube cuando una acción cambia el tablero desde afuera del arrastre (p. ej. "Avanzar etapa"):
+  // el tablero genérico solo lee sus tarjetas al montarse, así que se vuelve a montar.
+  const [boardVersion, setBoardVersion] = useState(0);
   const [dealForm, setDealForm] = useState<{ card: DealCard | null; defaultStageId: string | null } | null>(null);
 
   // Búsqueda local sobre lo que ya está cargado (nombre, empresa, título, contacto, tipo).
@@ -113,12 +116,16 @@ export function AdvisorsBoardShell({
 
           <AdvisorsKanban
             stages={board.stages}
-            key={query}
+            key={`${query}-${boardVersion}`}
             cardsByStage={visibleCardsByStage ?? board.cardsByStage}
             onOpen={(card) => setDetailId(card.id)}
             onEdit={(card) => setDealForm({ card, defaultStageId: null })}
             onNote={(card) => setDetailId(card.id)}
             onChanged={refreshBoard}
+            onAdvanced={async () => {
+              await refreshBoard();
+              setBoardVersion((v) => v + 1);
+            }}
           />
         </>
       )}
