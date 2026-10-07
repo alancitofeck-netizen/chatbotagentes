@@ -5,6 +5,7 @@ import { requireActiveWorkspace } from "@/lib/auth/session";
 import { isModuleEnabled } from "@/lib/settings/queries";
 import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { AgendaShell } from "./AgendaShell";
+import { AgendaMobileHome } from "./AgendaMobileHome";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default async function AgendaPage() {
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
-      <div className="px-4 sm:px-6 lg:px-8">
+      <div className="hidden px-4 sm:px-6 lg:px-8 md:block">
         <PageHeader
           icon={CalendarClock}
           title="Agenda"
@@ -32,7 +33,8 @@ export default async function AgendaPage() {
           actions={<ModuleHelp description="La Agenda te permite organizar tus próximas citas y seguimientos — llegan solas desde tu hoja conectada, nunca se cargan a mano acá." tourKey="agenda-intro" />}
         />
       </div>
-      <div className="px-4 sm:px-6 lg:px-8">
+      <AgendaMobileHome />
+      <div className="hidden px-4 sm:px-6 lg:px-8 md:block">
         <AgendaShell isManager={isManager} />
       </div>
     </div>
