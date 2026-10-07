@@ -2,13 +2,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
-import { ensureQaUserAndPassword } from "./qaUser.mjs";
+import { ensureQaUserAndPassword, ensureQaAdminUserAndPassword } from "./qaUser.mjs";
 
 const BASE = process.env.QA_BASE_URL ?? "http://localhost:3001";
 const [outDir, name, route, scheme = "light"] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch({ channel: "chrome", headless: true });
-const { email, password } = await ensureQaUserAndPassword();
+const { email, password } = process.env.QA_ACCOUNT === "admin" ? await ensureQaAdminUserAndPassword() : await ensureQaUserAndPassword();
 for (const [w, h, mobile] of [[390, 844, true], [1440, 900, false]]) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: mobile, hasTouch: mobile, colorScheme: scheme === "oscuro" ? "dark" : "light", locale: "es-AR", reducedMotion: "reduce" });
   const page = await ctx.newPage();
