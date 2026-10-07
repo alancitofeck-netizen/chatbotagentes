@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import type { LeadSource } from "@/lib/dashboard/queries";
 import { getLeadsBySourceAction, type SourcePeriod } from "./actions";
-import { LeadsBySourceChart } from "./LeadsBySourceChart";
 
 const PERIODS: { key: SourcePeriod; label: string }[] = [
   { key: "hoy", label: "Hoy" },
@@ -82,9 +81,6 @@ export function LeadsBySourcePanel({ initialSources }: { initialSources: LeadSou
         </>
       )}
 
-      <div className={pending ? "opacity-60 transition-opacity" : ""}>
-        <LeadsBySourceChart sources={sources} />
-      </div>
     </div>
   );
 }
