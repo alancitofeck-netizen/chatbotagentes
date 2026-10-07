@@ -9,6 +9,7 @@ import { getNotifications, getUnreadCount, getNotificationPreferences } from "@/
 
 interface NavbarProps {
   workspaceName: string;
+  role: string;
   enabledModules: string[];
   /** Null during "Modo Supervisor" (platform admin viewing a workspace they
    * aren't really a member of — see ProtectedLayout) — there's no real
@@ -32,7 +33,7 @@ interface NavbarProps {
  * (src/lib/notifications/). `ThemeToggle` moves into MobileNav's drawer
  * below `md` instead of disappearing — same function, different spot, so
  * nothing is actually lost on mobile. */
-export async function Navbar({ workspaceName, enabledModules, memberId, userName, userEmail, userAvatarUrl, isPlatformAdmin, hasMultipleWorkspaces }: NavbarProps) {
+export async function Navbar({ workspaceName, role, enabledModules, memberId, userName, userEmail, userAvatarUrl, isPlatformAdmin, hasMultipleWorkspaces }: NavbarProps) {
   const [initialNotifications, initialUnreadCount, initialPreferences] = memberId
     ? await Promise.all([getNotifications(), getUnreadCount(), getNotificationPreferences()])
     : [[], 0, null];
@@ -40,7 +41,7 @@ export async function Navbar({ workspaceName, enabledModules, memberId, userName
   return (
     <header className="flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center justify-between gap-4 px-4 pt-[env(safe-area-inset-top)] sm:px-6 md:h-16 md:pt-0">
       <div className="flex items-center gap-3">
-        <MobileNav enabledModules={enabledModules} userName={userName} workspaceName={workspaceName} />
+        <MobileNav enabledModules={enabledModules} userName={userName} workspaceName={workspaceName} role={role} />
         <span className="truncate text-sm font-medium text-neutral-500">{workspaceName}</span>
       </div>
       <div className="flex flex-1 items-center justify-end gap-3">

@@ -19,27 +19,67 @@ function initials(name: string) {
   return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-/** Pantalla "Más" de mobile (md:hidden): perfil y workspace, todos los módulos
- * en grilla de 3 agrupados por sección, y abajo modo oscuro, perfil,
- * configuración y cerrar sesión. Se abre desde la pestaña "Más" de la barra
- * inferior (evento) o desde el botón de menú del header. */
+/** Etiqueta del rol para el perfil del menú, como en la referencia ("Administrador"). */
+function roleLabel(role: string) {
+  if (role === "owner" || role === "admin") return "Administrador";
+  if (role === "agent") return "Agente";
+  return "Miembro";
+}
+
+/** Descripción corta de cada módulo en el menú "Más". Los que no tienen entrada
+ * muestran sólo el nombre. */
+const DESCRIPTIONS: Record<string, string> = {
+  inbox: "Conversaciones de todos los canales",
+  crm: "Tu cartera y oportunidades",
+  advisors: "Personas a contactar",
+  mini_apps: "Calculadoras y formularios para captar leads",
+  asesorias: "Sesiones con clientes",
+  policies: "Emitidas y en proceso",
+  policy_extraction: "Cargá pólizas desde un PDF",
+  insurance_providers: "Conexión con aseguradoras",
+  portfolio_agent: "Tu cartera sincronizada",
+  calendar: "Eventos y reuniones",
+  agenda: "Citas y disponibilidad",
+  collections: "Pagos y vencimientos",
+  goals: "Objetivos y ranking",
+  tasks: "Pendientes y seguimientos",
+  documents: "Archivos del CRM",
+  kpis: "Números de tus setters",
+  ai_assistant: "Preguntas en lenguaje natural",
+  automations: "Acciones automáticas",
+  presentations: "Presentaciones con IA",
+  ai_agents: "Asistentes especializados",
+  manychat: "Leads desde Instagram",
+  classroom: "Capacitaciones",
+  asesores: "Equipo y rendimiento",
+  operaciones: "Herramientas internas",
+  data_transfer: "Importá y exportá tus datos",
+};
+
+/** Pantalla "Más" de mobile (md:hidden): perfil con rol, búsqueda, accesos rápidos
+ * con contador real y, por sección, la lista de módulos. Abajo: modo oscuro,
+ * perfil, configuración y cerrar sesión. Se abre desde la pestaña "Más" de la
+ * barra inferior (evento) o desde el botón de menú del header. */
 export function MobileNav({
   enabledModules,
   userName,
   workspaceName,
+  role,
 }: {
   enabledModules: string[];
   userName: string;
   workspaceName: string;
+  role: string;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const groups = groupNavItems(getSidebarNavItems(new Set(enabledModules)));
+  // Principal (Inicio e Inbox) ya está en la barra inferior y en los accesos rápidos.
+  const groups = groupNavItems(getSidebarNavItems(new Set(enabledModules))).filter((g) => g.category !== "Principal");
   const [query, setQuery] = useState("");
   const [counts, setCounts] = useState<{ inbox: number; overdue: number }>({ inbox: 0, overdue: 0 });
   const q = query.trim().toLowerCase();
-  // Accesos rápidos del prototipo: sólo los módulos encendidos, con contador real
-  // (no leídos del inbox y cobros vencidos) cargado al abrir el menú.
+  // Accesos rápidos: sólo los módulos encendidos, con contador real (no leídos del
+  // inbox y cobros vencidos) cargado al abrir el menú.
   const quick = [
     { href: "/inbox", label: "Inbox", icon: Inbox, count: counts.inbox, module: null },
     { href: "/crm", label: "CRM", icon: Kanban, count: 0, module: "crm" },
@@ -106,27 +146,28 @@ export function MobileNav({
           open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
         )}
       >
-        <div className="flex items-center justify-between px-4 pb-3 pt-4">
-          <h2 className="text-xl font-semibold text-foreground">Más</h2>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Cerrar menú"
-            className="flex size-11 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2"
-          >
-            <X className="size-5" aria-hidden="true" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Cerrar menú"
+          className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] right-3 z-10 flex size-10 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2"
+        >
+          <X className="size-5" aria-hidden="true" />
+        </button>
 
-        <div className="navy-card mx-4 flex shrink-0 items-center gap-3 rounded-lg p-3 text-white">
+        <div className="navy-card mx-4 mt-[calc(env(safe-area-inset-top)+3.5rem)] flex shrink-0 items-center gap-3 rounded-xl p-3.5 pr-14 text-white max-sm:pr-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-600 text-sm font-semibold text-[var(--on-accent)]">
             {initials(userName || workspaceName)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">{userName || "Tu cuenta"}</p>
-            <p className="truncate text-xs text-white/60">{workspaceName}</p>
+            <p className="truncate text-[15px] font-semibold text-white">{userName || "Tu cuenta"}</p>
+            <p className="truncate text-xs text-white/70">{roleLabel(role)}</p>
           </div>
-          <Link href="/select-workspace" onClick={() => setOpen(false)} className="flex min-h-10 shrink-0 items-center rounded-md border border-white/20 px-3 text-sm font-medium text-white hover:bg-white/10">
+          <Link
+            href="/select-workspace"
+            onClick={() => setOpen(false)}
+            className="flex min-h-10 shrink-0 items-center rounded-md border border-white/20 px-3 text-sm font-medium text-white hover:bg-white/10"
+          >
             Cambiar
           </Link>
         </div>
@@ -149,14 +190,14 @@ export function MobileNav({
                 key={t.href}
                 href={t.href}
                 onClick={() => setOpen(false)}
-                className="relative flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-lg border border-border-default bg-surface-1 p-2 text-[12px] font-medium text-foreground shadow-[var(--elevation-xs)]"
+                className="relative flex flex-col items-center gap-2 rounded-xl border border-border-default bg-surface-1 px-2 py-3 text-[13px] font-medium text-foreground"
               >
-                <span className="flex size-8 items-center justify-center rounded-md bg-accent-50 text-accent-600">
-                  <t.icon className="size-4" aria-hidden="true" />
+                <span className="flex size-10 items-center justify-center rounded-xl bg-navy text-white">
+                  <t.icon className="size-[18px]" aria-hidden="true" />
                 </span>
                 {t.label}
                 {t.count > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-5 rounded-full bg-accent-600 px-1.5 text-center text-[11px] leading-5 font-semibold text-[var(--on-accent)] tabular-nums">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-5 rounded-full bg-error px-1.5 text-center text-[11px] leading-5 font-semibold text-white tabular-nums">
                     {t.count > 99 ? "99+" : t.count}
                   </span>
                 )}
@@ -168,13 +209,15 @@ export function MobileNav({
         <nav className="flex flex-col px-4">
           {shownGroups.map((group) => (
             <div key={group.category} className="flex flex-col">
-              <p role="presentation" className="pb-2 pt-5 text-[13px] font-medium text-neutral-500">
+              <p role="presentation" className="pt-5 pb-2 text-[13px] font-medium text-neutral-500">
                 {group.category}
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="divide-y divide-border-default overflow-hidden rounded-xl border border-border-default bg-surface-1">
                 {group.items.map((item) => {
                   const isActive = isNavItemActive(pathname, item.href);
                   const Icon = item.icon;
+                  const count = item.id === "inbox" ? counts.inbox : item.id === "collections" ? counts.overdue : 0;
+                  const description = DESCRIPTIONS[item.id];
                   return (
                     <Link
                       key={item.id}
@@ -185,27 +228,35 @@ export function MobileNav({
                       }}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
-                        "relative flex min-h-[92px] flex-col items-start justify-between rounded-2xl border border-border-default p-3 text-left",
+                        "flex items-center gap-3 p-3.5",
                         item.comingSoon ? "cursor-default opacity-60" : "active:bg-surface-2",
-                        isActive && "border-accent-500 bg-accent-50",
+                        isActive && "bg-accent-50",
                       )}
                     >
-                      <span className="flex size-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-navy text-white">
                         <Icon className="size-[18px]" aria-hidden="true" />
                       </span>
-                      <span className="text-[13px] font-medium leading-tight text-foreground">
-                        {item.label}
-                        {item.isAI && !item.comingSoon && (
-                          <Badge variant="success" className="ml-1 px-1 py-0 text-[9px]">
-                            IA
-                          </Badge>
-                        )}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5 text-[15px] font-semibold text-foreground">
+                          <span className="truncate">{item.label}</span>
+                          {item.isAI && !item.comingSoon && (
+                            <Badge variant="success" className="px-1 py-0 text-[9px]">
+                              IA
+                            </Badge>
+                          )}
+                        </span>
+                        {description && <span className="block truncate text-xs text-neutral-500">{description}</span>}
                       </span>
-                      {item.comingSoon && (
-                        <Badge variant="neutral" className="absolute right-2 top-2">
-                          Pronto
-                        </Badge>
+                      {item.comingSoon ? (
+                        <Badge variant="neutral">Pronto</Badge>
+                      ) : (
+                        count > 0 && (
+                          <span className="min-w-6 rounded-full bg-error px-2 text-center text-xs leading-6 font-semibold text-white tabular-nums">
+                            {count > 99 ? "99+" : count}
+                          </span>
+                        )
                       )}
+                      {!item.comingSoon && <ChevronRight className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />}
                     </Link>
                   );
                 })}
