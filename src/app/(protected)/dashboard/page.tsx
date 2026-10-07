@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
+import { getCurrentMemberId, requireActiveWorkspace, getWorkspacePrimaryUserName } from "@/lib/auth/session";
 import {
   getDashboardKpis,
   getActivitySeries,
@@ -16,6 +16,7 @@ import { getCrmBoard } from "@/lib/crm/queries";
 import { getAgentList } from "@/lib/agents/queries";
 import {
   getUnansweredConversations,
+  getReplyActivity,
   getWeekOverWeekMetrics,
   getOverdueTasksCount,
   getUncontactedLeads,
@@ -42,6 +43,7 @@ import { getMiniAppsList } from "@/lib/miniApps/queries";
 import { RecommendedActions } from "./RecommendedActions";
 import { Trends } from "./Trends";
 import { AdvisorPerformance } from "./AdvisorPerformance";
+import { HomeGreeting, homeGreetingParts } from "./HomeGreeting";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 import { DashboardLearningCard } from "@/components/onboarding/DashboardLearningCard";
 
@@ -75,6 +77,7 @@ export default async function DashboardPage() {
     conversationOptions,
     upcomingEvents,
     agendaPerformance,
+    primaryUserName,
     crmBoard,
     unansweredConversations,
     weekOverWeek,
@@ -83,6 +86,7 @@ export default async function DashboardPage() {
     linkedinConnected,
     agentList,
     miniApps,
+    replyActivity,
   ] = await Promise.all([
     getDashboardKpis(workspaceId),
     getActivitySeries(workspaceId, "7d"),
@@ -96,6 +100,7 @@ export default async function DashboardPage() {
     getConversationOptions(workspaceId),
     getUpcomingEvents(workspaceId),
     getAgendaPerformance(workspaceId, currentMonthRange()),
+    getWorkspacePrimaryUserName(workspaceId),
     // Insights-first Dashboard redesign (2026-07-27) — see
     // src/lib/insights/ for the pure rules engine these feed.
     getCrmBoard(workspaceId),
@@ -107,6 +112,7 @@ export default async function DashboardPage() {
     // Only Owners see Rendimiento de Asesores — skip this heavier query otherwise.
     isOwner ? getAgentList(workspaceId) : Promise.resolve([]),
     getMiniAppsList(workspaceId),
+    getReplyActivity(workspaceId),
   ]);
   // "Semana" es el tab default (mismo criterio que la referencia) — el resto
   // de los períodos se piden client-side al cambiar (DashboardHomeSection).
@@ -129,10 +135,20 @@ export default async function DashboardPage() {
     overdueTasksCount,
   });
   const now = new Date();
+  const firstName = primaryUserName.split(" ")[0];
+  const greetingParts = homeGreetingParts(now);
   const advisors = agentList.map((agent) => ({ ...agent, ...computeAdvisorStatus(agent, now) }));
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
+      <HomeGreeting
+        name={firstName}
+        greeting={greetingParts.greeting}
+        dateLabel={greetingParts.dateLabel}
+        pendingLeads={unansweredConversations.length}
+        activity={replyActivity}
+      />
+
       <LeadDeck conversations={unansweredConversations} />
 
       <section className="flex flex-col gap-4">

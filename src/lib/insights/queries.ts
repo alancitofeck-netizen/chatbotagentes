@@ -1,4 +1,5 @@
 import "server-only";
+import { computeReplyActivity, type OutboundMessage, type ReplyActivity } from "./replyActivity";
 import { createClient } from "@/lib/supabase/server";
 import { getMonday } from "@/lib/calendar/week";
 
@@ -201,4 +202,21 @@ export async function hasLinkedInConnection(workspaceId: string): Promise<boolea
     .eq("provider", "linkedin")
     .eq("status", "active");
   return (count ?? 0) > 0;
+}
+
+/** Respuestas salientes de los últimos 60 días, para la meta de hoy y la racha. */
+export async function getReplyActivity(workspaceId: string, now: Date = new Date()): Promise<ReplyActivity> {
+  const supabase = await createClient();
+  const since = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("conversations")
+    .select("id, messages!inner(created_at)")
+    .eq("workspace_id", workspaceId)
+    .eq("messages.direction", "outbound")
+    .gte("messages.created_at", since);
+
+  const messages: OutboundMessage[] = (data ?? []).flatMap((conv) =>
+    ((conv.messages ?? []) as { created_at: string }[]).map((m) => ({ conversationId: conv.id as string, createdAt: m.created_at })),
+  );
+  return computeReplyActivity(messages, now);
 }
