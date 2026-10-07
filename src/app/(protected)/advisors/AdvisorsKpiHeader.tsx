@@ -7,11 +7,11 @@ import { formatCurrency } from "@/lib/utils/format";
 
 function KpiTile({ icon, iconBg, iconColor, value, label }: { icon: React.ReactNode; iconBg: string; iconColor: string; value: string; label: string }) {
   return (
-    <Card className="flex flex-col gap-3">
-      <span className={`flex size-10 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
-      <div>
-        <p className="font-mono text-2xl font-semibold leading-none text-foreground">{value}</p>
-        <p className="mt-1.5 text-[13px] text-neutral-500">{label}</p>
+    <Card className="flex flex-col gap-2 max-sm:p-3 sm:gap-3">
+      <span className={`flex size-8 items-center justify-center rounded-full sm:size-10 ${iconBg} ${iconColor}`}>{icon}</span>
+      <div className="min-w-0">
+        <p className="truncate font-mono text-xl font-semibold leading-none text-foreground sm:text-2xl">{value}</p>
+        <p className="mt-1.5 text-[12.5px] leading-tight text-neutral-500 sm:text-[13px]">{label}</p>
       </div>
     </Card>
   );
@@ -19,7 +19,7 @@ function KpiTile({ icon, iconBg, iconColor, value, label }: { icon: React.ReactN
 
 export function AdvisorsKpiHeader({ kpis }: { kpis: AdvisorsKpis }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
       <KpiTile
         icon={<ShieldCheck className="size-[18px]" aria-hidden="true" />}
         iconBg="bg-accent-100"

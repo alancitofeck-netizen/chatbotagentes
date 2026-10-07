@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, Plus, Upload } from "lucide-react";
+import { ShieldCheck, Plus, Upload, Search } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { LinkButton } from "@/components/ui/LinkButton";
@@ -29,7 +29,21 @@ export function AdvisorsBoardShell({
   useAutoStartTour("advisors-intro");
   const [board, setBoard] = useState(initialBoard);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [dealForm, setDealForm] = useState<{ card: DealCard | null; defaultStageId: string | null } | null>(null);
+
+  // Búsqueda local sobre lo que ya está cargado (nombre, empresa, título, contacto, tipo).
+  const query = search.trim().toLowerCase();
+  const visibleCardsByStage = !board || !query
+    ? board?.cardsByStage
+    : Object.fromEntries(
+        Object.entries(board.cardsByStage).map(([stageId, cards]) => [
+          stageId,
+          cards.filter((c) =>
+            [c.contactName, c.company, c.title, c.email, c.phone, c.policyType].some((v) => v?.toLowerCase().includes(query)),
+          ),
+        ]),
+      );
 
   async function refreshBoard() {
     const fresh = await getAdvisorsBoardAction();
@@ -74,7 +88,18 @@ export function AdvisorsBoardShell({
         <>
           <div className="flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
             <AdvisorsKpiHeader kpis={board.kpis} />
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar prospecto, empresa o teléfono"
+                aria-label="Buscar prospecto"
+                className="w-full rounded-full border border-border-default bg-surface-1 py-2.5 pl-10 pr-4 text-base outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100 sm:py-2 sm:text-sm md:max-w-md"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
               <Button onClick={() => setDealForm({ card: null, defaultStageId: board.stages[0]?.id ?? null })} data-tour="advisors.new-button">
                 <Plus className="size-4" aria-hidden="true" />
                 Nuevo prospecto
@@ -88,7 +113,8 @@ export function AdvisorsBoardShell({
 
           <AdvisorsKanban
             stages={board.stages}
-            cardsByStage={board.cardsByStage}
+            key={query}
+            cardsByStage={visibleCardsByStage ?? board.cardsByStage}
             onOpen={(card) => setDetailId(card.id)}
             onEdit={(card) => setDealForm({ card, defaultStageId: null })}
             onNote={(card) => setDetailId(card.id)}

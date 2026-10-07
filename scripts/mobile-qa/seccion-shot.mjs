@@ -19,6 +19,7 @@ for (const [w, h, mobile] of [[390, 844, true], [1440, 900, false]]) {
   await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 60000 }).catch(() => {});
   await page.waitForLoadState("networkidle").catch(() => {});
   await page.goto(`${BASE}${route}`, { waitUntil: "networkidle", timeout: 90000 });
+  await page.waitForTimeout(1500);
   for (let i = 0; i < 4; i++) {
     const omit = page.getByText("Omitir tutorial", { exact: true }).first();
     if (!(await omit.isVisible().catch(() => false))) break;

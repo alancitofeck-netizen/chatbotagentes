@@ -1,0 +1,25 @@
+// Comprueba que la búsqueda de /advisors filtra (uso: QA_TARGET=branch node scripts/qa/branch.mjs node scripts/mobile-qa/prospectos-busqueda.mjs)
+import { chromium } from "playwright";
+import { ensureQaUserAndPassword } from "./qaUser.mjs";
+const BASE = process.env.QA_BASE_URL ?? "http://localhost:3001";
+const b = await chromium.launch({ channel: "chrome", headless: true });
+const { email, password } = await ensureQaUserAndPassword();
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "es-AR" });
+const p = await ctx.newPage();
+const errors = [];
+p.on("pageerror", (e) => errors.push(e.message));
+await p.goto(`${BASE}/login`); await p.fill('input[name="email"]', email); await p.fill('input[name="password"]', password); await p.click('button[type="submit"]');
+await p.waitForURL((u) => !u.pathname.startsWith("/login")); await p.waitForLoadState("networkidle").catch(() => {});
+await p.goto(`${BASE}/advisors`, { waitUntil: "networkidle" }); await p.waitForTimeout(1500);
+const names = ["Andrés Molina", "Belén Ocampo", "Helena Sosa", "Cristian Vera", "Gonzalo Iturbe", "Delfina Rossi", "Emiliano Paz", "Fernanda Quiroga"];
+const count = async () => { let n = 0; for (const x of names) n += await p.getByText(x, { exact: true }).count(); return n; };
+const total = await count();
+await p.getByLabel("Buscar prospecto").fill("belén"); await p.waitForTimeout(500);
+const filtrado = await count();
+const hay = await p.getByText("Belén Ocampo", { exact: true }).count();
+await p.getByLabel("Buscar prospecto").fill("retiro"); await p.waitForTimeout(500);
+const porTipo = await count();
+await p.getByLabel("Buscar prospecto").fill(""); await p.waitForTimeout(500);
+const vuelta = await count();
+console.log(JSON.stringify({ total, filtrado, hayBelen: hay, porTipoRetiro: porTipo, vuelta, errors }));
+await b.close();
