@@ -148,6 +148,11 @@ export interface Lead {
   etapa: StageId;
   creado: number;
   valor: number;
+  /** Datos de contacto de la hoja (opcionales: no todas las hojas los traen). */
+  nombre?: string;
+  telefono?: string;
+  usuario?: string;
+  nota?: string;
 }
 
 export interface NormalizedSheet {
@@ -179,6 +184,10 @@ export function normalizeRows(rows: Record<string, string>[]): NormalizedSheet {
       etapa: detectStage(get("etapa"), get("tags")),
       creado,
       valor: parseNumber(get("valor")),
+      nombre: get("nombre") || get("usuario") || "Sin nombre",
+      telefono: get("telefono"),
+      usuario: get("usuario"),
+      nota: get("notas"),
     });
   });
   return {
@@ -295,4 +304,43 @@ export function contentRanking(leads: Lead[], hasCitas: boolean): ContentStat[] 
       conversion: ratio(r.clientes, r.leads),
     };
   });
+}
+
+export type PeriodId = "7" | "30" | "90" | "all";
+
+const DAY_MS = 86_400_000;
+
+/** Ventana del período elegido y la anterior de la misma duración (para comparar). "Todo" no tiene comparación. */
+export function periodWindows(period: PeriodId, now: number): { from: number | null; prevFrom: number | null; days: number | null } {
+  if (period === "all") return { from: null, prevFrom: null, days: null };
+  const days = Number(period);
+  return { from: now - days * DAY_MS, prevFrom: now - 2 * days * DAY_MS, days };
+}
+
+/** Leads creados en [from, to). Con `from` en null no hay límite inferior. */
+export function leadsBetween(leads: Lead[], from: number | null, to: number): Lead[] {
+  return leads.filter((l) => (from === null || l.creado >= from) && l.creado < to);
+}
+
+export interface Kpis {
+  leads: number;
+  calificados: number;
+  /** Null cuando la hoja no tiene datos de citas. */
+  citas: number | null;
+  clientes: number;
+  /** % de leads que llegan a cliente. */
+  conversion: number;
+  ingresos: number;
+}
+
+export function computeKpis(leads: Lead[], hasCitas: boolean): Kpis {
+  const clientes = leads.filter((l) => l.etapa === "cliente");
+  return {
+    leads: leads.length,
+    calificados: leads.filter((l) => reached(l, "calificado")).length,
+    citas: hasCitas ? leads.filter((l) => reached(l, "cita")).length : null,
+    clientes: clientes.length,
+    conversion: ratio(clientes.length, leads.length),
+    ingresos: clientes.reduce((sum, l) => sum + l.valor, 0),
+  };
 }

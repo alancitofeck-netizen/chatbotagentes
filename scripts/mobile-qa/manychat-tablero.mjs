@@ -1,0 +1,40 @@
+// Prueba el tablero de ManyChat en la página temporal /qa-manychat (celular, cuenta admin).
+// Uso: QA_TARGET=branch node scripts/qa/branch.mjs node scripts/mobile-qa/manychat-tablero.mjs
+import fs from "node:fs";
+import { chromium } from "playwright";
+import { ensureQaAdminUserAndPassword } from "./qaUser.mjs";
+const BASE = process.env.QA_BASE_URL ?? "http://localhost:3001";
+const b = await chromium.launch({ channel: "chrome", headless: true });
+const { email, password } = await ensureQaAdminUserAndPassword();
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "es-AR", acceptDownloads: true });
+const p = await ctx.newPage();
+const errors = []; p.on("pageerror", (e) => errors.push(e.message));
+await p.goto(`${BASE}/login`); await p.fill('input[name="email"]', email); await p.fill('input[name="password"]', password); await p.click('button[type="submit"]');
+await p.waitForURL((u) => !u.pathname.startsWith("/login")); await p.waitForLoadState("networkidle").catch(() => {});
+await p.goto(`${BASE}/qa-manychat`, { waitUntil: "networkidle" }); await p.waitForTimeout(2000);
+for (let i = 0; i < 4; i++) { const o = p.getByText("Omitir tutorial", { exact: true }).first(); if (!(await o.isVisible().catch(() => false))) break; await o.click().catch(() => {}); await p.waitForTimeout(400); }
+const kpi = async (label) => (await p.getByText(label, { exact: true }).first().locator("xpath=following-sibling::b").first().innerText()).trim();
+const contador = async () => (await p.locator("span", { hasText: /^\d+ de \d+$/ }).first().innerText()).trim();
+const out = {};
+out.leads30 = await kpi("Leads"); out.contador30 = await contador();
+await p.getByRole("button", { name: "7 días", exact: true }).click(); await p.waitForTimeout(400);
+out.leads7 = await kpi("Leads"); out.nota7 = await p.getByText(/Cambios contra/).innerText();
+await p.getByRole("button", { name: "Todo", exact: true }).click(); await p.waitForTimeout(400);
+out.leadsTodo = await kpi("Leads"); out.notaTodo = await p.getByText(/Desde el primer lead/).innerText();
+await p.getByRole("button", { name: "30 días", exact: true }).click(); await p.waitForTimeout(300);
+await p.locator('[aria-label="Filtrar por etapa"] button', { hasText: "Nuevo" }).click(); await p.waitForTimeout(300);
+out.contadorNuevo = await contador();
+await p.locator('[aria-label="Filtrar por etapa"] button', { hasText: "Todos" }).click();
+await p.getByPlaceholder("Nombre, teléfono o nota").fill("martina"); await p.waitForTimeout(300);
+out.contadorBusqueda = await contador();
+await p.getByRole("button", { name: /Martina Ríos/ }).click(); await p.waitForTimeout(300);
+out.whatsapp = await p.getByRole("link", { name: "Escribir por WhatsApp" }).getAttribute("href");
+await p.getByPlaceholder("Nombre, teléfono o nota").fill("");
+const [dl] = await Promise.all([p.waitForEvent("download"), p.getByRole("button", { name: "Exportar" }).click()]);
+const path = await dl.path(); const csv = fs.readFileSync(path, "utf8");
+out.csvArchivo = dl.suggestedFilename(); out.csvFilas = csv.trim().split("\n").length - 1; out.csvEncabezado = csv.split("\n")[0].replace("﻿", "");
+out.lead = await p.getByRole("link", { name: "Lead", exact: true }).getAttribute("href");
+await p.getByRole("button", { name: "Actualizar" }).click(); await p.waitForTimeout(1500);
+out.sigueVivo = await p.getByRole("heading", { name: "ManyChat" }).isVisible();
+console.log(JSON.stringify({ ...out, errors }, null, 1));
+await b.close();
