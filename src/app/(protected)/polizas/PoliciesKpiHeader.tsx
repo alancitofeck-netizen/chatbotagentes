@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ShieldCheck, UserPlus, CalendarClock, AlertTriangle, Coins, Wallet, Layers, Building2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
@@ -31,16 +32,16 @@ function KpiTile({
 }) {
   const content = (
     <>
-      <span className={cn("flex size-10 items-center justify-center rounded-full", iconBg, iconColor)}>{icon}</span>
-      <div>
-        <p className="font-mono text-2xl font-semibold leading-none text-foreground">{value}</p>
-        <p className="mt-1.5 text-[13px] text-neutral-500">{label}</p>
+      <span className={cn("flex size-8 items-center justify-center rounded-full sm:size-10", iconBg, iconColor)}>{icon}</span>
+      <div className="min-w-0">
+        <p className="truncate font-mono text-xl font-semibold leading-none text-foreground sm:text-2xl">{value}</p>
+        <p className="mt-1.5 text-[12.5px] leading-tight text-neutral-500 sm:text-[13px]">{label}</p>
       </div>
     </>
   );
 
   if (!onClick) {
-    return <Card className="flex flex-col gap-3">{content}</Card>;
+    return <Card className="flex flex-col gap-2 max-sm:p-3 sm:gap-3">{content}</Card>;
   }
 
   return (
@@ -48,7 +49,7 @@ function KpiTile({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-3 rounded-lg bg-surface-1 p-5 text-left shadow-[var(--elevation-sm)] transition-all duration-150 ease-out hover:shadow-[var(--elevation-md)]",
+        "flex flex-col gap-2 rounded-lg bg-surface-1 p-3 text-left sm:gap-3 sm:p-5 shadow-[var(--elevation-sm)] transition-all duration-150 ease-out hover:shadow-[var(--elevation-md)]",
         active && "ring-2 ring-accent-500",
       )}
     >
@@ -66,12 +67,17 @@ export function PoliciesKpiHeader({
   quickFilter: PolicyQuickFilter;
   onQuickFilterChange: (next: PolicyQuickFilter) => void;
 }) {
+  // En celular se ven los 4 indicadores que filtran la lista; el resto (primas, comisión,
+  // clientes, aseguradoras, renovación) queda detrás de "Ver más indicadores".
+  const [showAll, setShowAll] = useState(false);
+
   function toggle(next: PolicyQuickFilter) {
     onQuickFilterChange(quickFilter === next ? "all" : next);
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="flex flex-col gap-2">
+    <div className={cn("grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4", !showAll && "max-md:[&>*:nth-child(n+5)]:hidden")}>
       <KpiTile
         icon={<Layers className="size-[18px]" aria-hidden="true" />}
         iconBg="bg-neutral-200 dark:bg-neutral-800"
@@ -164,6 +170,15 @@ export function PoliciesKpiHeader({
         value={kpis.renewalRate !== null ? `${Math.round(kpis.renewalRate * 100)}%` : "—"}
         label="Tasa de renovación"
       />
+    </div>
+    <button
+      type="button"
+      onClick={() => setShowAll((v) => !v)}
+      aria-expanded={showAll}
+      className="min-h-11 self-start text-sm font-medium text-accent-700 md:hidden"
+    >
+      {showAll ? "Ver menos indicadores" : "Ver más indicadores"}
+    </button>
     </div>
   );
 }
