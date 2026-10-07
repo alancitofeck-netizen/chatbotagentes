@@ -57,6 +57,8 @@ export interface BoardKpis {
   proposalsSent: number;
   dealsWonThisMonth: number;
   dealsWonDeltaPct: number | null;
+  /** Oportunidades hoy en una etapa "perdida" (is_lost), sin filtro de mes. */
+  lostTotal: number;
   totalPipelineValue: number;
   monthlyConversionRate: number;
   monthlyConversionDeltaPct: number | null;
@@ -369,6 +371,7 @@ export async function getCrmBoard(workspaceId: string, pipelineId?: string): Pro
     proposalsSent,
     dealsWonThisMonth: wonThisMonth,
     dealsWonDeltaPct: deltaPct(wonThisMonth, wonLastMonth),
+    lostTotal: stageList.filter((s) => s.isLost).reduce((sum, s) => sum + (cardsByStage[s.id]?.length ?? 0), 0),
     totalPipelineValue,
     monthlyConversionRate,
     monthlyConversionDeltaPct: deltaPct(monthlyConversionRate, conversionLastMonth),

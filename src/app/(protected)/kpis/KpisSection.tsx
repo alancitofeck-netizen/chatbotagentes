@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { Table2 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { HorizontalCardScroller } from "@/components/ui/HorizontalCardScroller";
 import { Select } from "@/components/ui/Select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -185,15 +184,15 @@ export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; 
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8">
-      <div className="flex flex-wrap items-end gap-3" data-tour="kpis.filters">
+      <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)] items-end gap-2 sm:flex sm:flex-wrap sm:gap-3" data-tour="kpis.filters">
         <Input
           label="Mes"
           type="month"
           value={periodMonth.slice(0, 7)}
           onChange={(e) => setPeriodMonth(`${e.target.value}-01`)}
-          containerClassName="w-auto"
+          containerClassName="w-full min-w-0 sm:w-auto"
         />
-        <Select label="Setter" value={setterId} onChange={(e) => setSetterId(e.target.value)} containerClassName="w-auto">
+        <Select label="Setter" value={setterId} onChange={(e) => setSetterId(e.target.value)} containerClassName="w-full min-w-0 sm:w-auto">
           <option value="">Todos</option>
           {setters.map((s) => (
             <option key={s.id} value={s.id}>
@@ -201,7 +200,7 @@ export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; 
             </option>
           ))}
         </Select>
-        <Select label="Equipo" value={teamId} onChange={(e) => setTeamId(e.target.value)} containerClassName="w-auto">
+        <Select label="Equipo" value={teamId} onChange={(e) => setTeamId(e.target.value)} containerClassName="w-full min-w-0 sm:w-auto">
           <option value="">Todos</option>
           {teams.map((t) => (
             <option key={t.id} value={t.id}>
@@ -212,23 +211,23 @@ export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; 
       </div>
 
       {!entries ? (
-        <HorizontalCardScroller desktopClassName="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full" />
           ))}
-        </HorizontalCardScroller>
+        </div>
       ) : (
-        <HorizontalCardScroller desktopClassName="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-5">
           {CARD_DEFS.map((c, i) => (
-            <Card key={c.key} data-tour={i === 0 ? "kpis.tiles" : undefined}>
+            <Card key={c.key} data-tour={i === 0 ? "kpis.tiles" : undefined} className="max-sm:p-3">
               <p className="font-mono text-[22px] font-semibold leading-none text-foreground">{totals[c.key]}</p>
               <p className="mt-1.5 text-[13px] text-neutral-500">{c.label}</p>
             </Card>
           ))}
-        </HorizontalCardScroller>
+        </div>
       )}
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [&_button]:shrink-0 [&_button]:whitespace-nowrap">
         <TabsList>
           <TabsTrigger value="1">Semana 1</TabsTrigger>
           <TabsTrigger value="2">Semana 2</TabsTrigger>
@@ -250,10 +249,10 @@ export function KpisSection({ hasConnection, teams }: { hasConnection: boolean; 
             <CardHeader title={chart.label} />
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklySeries} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                <BarChart data={weeklySeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="var(--border-default)" />
                   <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--color-neutral-500)" }} />
-                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--color-neutral-500)" }} width={28} />
+                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--color-neutral-500)" }} width={32} />
                   <Tooltip
                     contentStyle={{
                       background: "var(--surface-1)",

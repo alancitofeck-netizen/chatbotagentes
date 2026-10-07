@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Mail, Phone, MessageCircle, Eye, Pencil, StickyNote, ShieldCheck, CalendarClock } from "lucide-react";
+import { Mail, Phone, MessageCircle, Eye, Pencil, StickyNote, ShieldCheck, CalendarClock, ArrowRight, Send } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import type { DealCard } from "@/lib/advisors/queries";
@@ -26,11 +26,16 @@ export function DealCardView({
   onOpen,
   onEdit,
   onNote,
+  nextStageName,
+  onAdvance,
 }: {
   card: DealCard;
   onOpen: () => void;
   onEdit: () => void;
   onNote: () => void;
+  /** Etapa a la que "Avanzar etapa" mueve la tarjeta; null/undefined = no se muestra. */
+  nextStageName?: string | null;
+  onAdvance?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.pipelineItemId,
@@ -94,6 +99,33 @@ export function DealCardView({
       )}
 
       {card.lastNote && <p className="truncate text-[11px] text-neutral-500">Última nota: {formatRelativeTime(card.lastNote.createdAt)}</p>}
+
+      {(card.phone || (nextStageName && onAdvance)) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {card.phone && (
+            <a
+              href={waLink(card.phone)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border-default bg-surface-1 px-3 py-1.5 text-[13px] font-medium text-foreground hover:border-border-strong max-md:min-h-11"
+            >
+              <Send className="size-3.5" aria-hidden="true" />
+              Escribir
+            </a>
+          )}
+          {nextStageName && onAdvance && (
+            <button
+              type="button"
+              onClick={onAdvance}
+              title={`Mover a ${nextStageName}`}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-accent-700 max-md:min-h-11"
+            >
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+              Avanzar etapa
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center justify-between border-t border-border-default pt-2">
         <Avatar name={card.ownerName ?? "Sin asignar"} src={card.ownerAvatarUrl} size={20} />

@@ -17,6 +17,7 @@ import {
   type PolicyBoard,
 } from "@/lib/policies/actions";
 import { filterAndSortPolicyBoard, EMPTY_POLICIES_FILTERS, type PoliciesFilters, type PolicyQuickFilter } from "@/lib/policies/boardFilters";
+import { POLICY_STAGES } from "@/lib/policies/constants";
 import { PoliciesActionBar } from "./PoliciesActionBar";
 import { PoliciesKpiHeader } from "./PoliciesKpiHeader";
 import { PolicyTable } from "./PolicyTable";
@@ -92,6 +93,14 @@ export function PoliciesBoardShell({
   const hasPolicies = Object.values(board.cardsByStage).some((cards) => cards.length > 0);
   const companies = useMemo(() => board.kpis.byCompany.map((c) => c.company), [board.kpis.byCompany]);
   const cancelStageId = useMemo(() => board.stages.find((s) => s.name === "Cancelada")?.id ?? null, [board.stages]);
+
+  // Conteo por estado (sobre todo lo cargado, sin los filtros activos) para la fila de etapas.
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const cards of Object.values(board.cardsByStage)) for (const c of cards) counts[c.status] = (counts[c.status] ?? 0) + 1;
+    return counts;
+  }, [board.cardsByStage]);
+  const totalCount = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
   const filtered = useMemo(
     () => filterAndSortPolicyBoard(board, { search, filters, quickFilter }),
@@ -171,6 +180,25 @@ export function PoliciesBoardShell({
               onOpenAutomations={() => setAutomationsOpen(true)}
               onOpenImport={() => setImportOpen(true)}
             />
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtrar por estado">
+              {[{ key: "", name: "Todas", count: totalCount }, ...POLICY_STAGES.map((s) => ({ key: s.key as string, name: s.name, count: statusCounts[s.key] ?? 0 }))]
+                .filter((s) => s.key === "" || s.count > 0 || filters.status === s.key)
+                .map((s) => {
+                  const active = filters.status === s.key;
+                  return (
+                    <button
+                      key={s.key || "all"}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setFilters({ ...filters, status: active ? "" : s.key })}
+                      className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium md:min-h-9 ${active ? "border-accent-700 bg-accent-700 text-white" : "border-border-default bg-surface-1 text-neutral-600 hover:border-border-strong"}`}
+                    >
+                      {s.name}
+                      <span className={active ? "text-white/80" : "text-neutral-400"}>{s.count}</span>
+                    </button>
+                  );
+                })}
+            </div>
           </div>
 
           {view === "table" && (

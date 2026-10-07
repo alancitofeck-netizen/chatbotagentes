@@ -5,12 +5,37 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import type { CollectionItem } from "@/lib/collections/queries";
-import { deriveCollectionBucket, COLLECTION_BUCKET_LABEL, COLLECTION_BUCKET_VARIANT } from "@/lib/collections/constants";
+import { deriveCollectionBucket, COLLECTION_BUCKET_LABEL, COLLECTION_BUCKET_VARIANT, type CollectionBucket } from "@/lib/collections/constants";
 import { formatCurrency } from "@/lib/utils/format";
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+/** Grupos de la lista en celular, en el orden de atención: lo vencido primero. */
+const MOBILE_GROUPS: { label: string; buckets: CollectionBucket[]; variant: "success" | "error" | "warning" | "info" | "neutral" }[] = [
+  { label: "Vencidos", buckets: ["vencido"], variant: "error" },
+  { label: "Esta semana", buckets: ["proximo"], variant: "warning" },
+  { label: "Programados", buckets: ["en_seguimiento", "pendiente"], variant: "info" },
+  { label: "Cobrados", buckets: ["pagado"], variant: "success" },
+  { label: "Cancelados", buckets: ["cancelado"], variant: "neutral" },
+];
+
+const BUCKET_BORDER: Record<CollectionBucket, string> = {
+  vencido: "border-l-error-strong",
+  proximo: "border-l-warning-strong",
+  en_seguimiento: "border-l-info-strong",
+  pendiente: "border-l-info-strong",
+  pagado: "border-l-success-strong",
+  cancelado: "border-l-neutral-300",
+};
+
+function daysLate(iso: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [y, m, d] = iso.split("-").map(Number);
+  return Math.round((today.getTime() - new Date(y, m - 1, d).getTime()) / 86_400_000);
 }
 
 function whatsAppHref(item: CollectionItem): string | null {
@@ -63,33 +88,83 @@ export function CollectionsTable({
 
   return (
     <>
-      <ul className="flex flex-col gap-2 md:hidden">
-        {items.map((item) => {
-          const bucket = deriveCollectionBucket(item.status, item.dueDate);
+      <div className="flex flex-col gap-1 md:hidden">
+        {MOBILE_GROUPS.map((group) => {
+          const groupItems = items
+            .filter((i) => group.buckets.includes(deriveCollectionBucket(i.status, i.dueDate)))
+            .sort((x, y) => x.dueDate.localeCompare(y.dueDate));
+          if (groupItems.length === 0) return null;
           return (
-            <li key={item.id} className="flex flex-col gap-2 rounded-2xl border border-border-default bg-surface-1 p-3">
-              <div className="flex items-start justify-between gap-2">
-                <button type="button" onClick={() => onOpen(item)} className="min-w-0 text-left text-sm font-semibold text-foreground">
-                  <span className="block truncate">{item.contactName}</span>
-                </button>
-                <Badge variant={COLLECTION_BUCKET_VARIANT[bucket]}>{COLLECTION_BUCKET_LABEL[bucket]}</Badge>
-              </div>
-              <p className="truncate text-xs text-neutral-500">
-                {item.company}
-                {item.policyNumber ? ` · ${item.policyNumber}` : ""}
+            <section key={group.label} aria-label={group.label}>
+              <p className="mx-1 mb-2 mt-3 flex items-center gap-2 text-[13.5px] font-semibold text-neutral-500">
+                {group.label}
+                <Badge variant={group.variant}>{groupItems.length}</Badge>
               </p>
-              <div className="flex items-center justify-between gap-2 text-sm">
-                <span className="font-mono font-semibold text-foreground">{formatCurrency(item.amount, item.currency)}</span>
-                <span className="text-xs text-neutral-500">Vence {formatDate(item.dueDate)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2 border-t border-border-default pt-2 text-xs text-neutral-500">
-                <span className="truncate">{item.ownerName ?? "Sin asignar"}</span>
-                <DropdownMenu trigger={<MoreHorizontal className="size-4" aria-hidden="true" />} triggerLabel="Acciones" triggerClassName="flex size-11 items-center justify-center rounded-md text-neutral-500" items={actionsFor(item)} />
-              </div>
-            </li>
+              <ul className="flex flex-col gap-2">
+                {groupItems.map((item) => {
+                  const bucket = deriveCollectionBucket(item.status, item.dueDate);
+                  const isOpen = item.status === "pendiente" || item.status === "en_seguimiento";
+                  const wa = whatsAppHref(item);
+                  const late = daysLate(item.dueDate);
+                  return (
+                    <li key={item.id} className={`flex flex-col gap-2 rounded-2xl border border-l-4 border-border-default bg-surface-1 p-3 ${BUCKET_BORDER[bucket]}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <button type="button" onClick={() => onOpen(item)} className="min-w-0 text-left">
+                          <span className="block truncate text-sm font-semibold text-foreground">{item.contactName}</span>
+                          <span className="block truncate text-xs text-neutral-500">
+                            {item.company}
+                            {item.policyNumber ? ` · ${item.policyNumber}` : item.product ? ` · ${item.product}` : ""}
+                          </span>
+                        </button>
+                        <div className="shrink-0 text-right">
+                          <p className="font-mono text-base font-semibold text-foreground">{formatCurrency(item.amount, item.currency)}</p>
+                          <p className={`text-xs ${bucket === "vencido" ? "font-semibold text-error-strong" : "text-neutral-500"}`}>
+                            {bucket === "pagado" && item.paidAt
+                              ? `Cobrado ${formatDate(item.paidAt.slice(0, 10))}`
+                              : bucket === "vencido" && late > 0
+                                ? `${late} ${late === 1 ? "día" : "días"} de atraso`
+                                : `Vence ${formatDate(item.dueDate)}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isOpen && wa && (
+                          <a
+                            href={wa}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border-default bg-surface-1 px-3 text-[13px] font-medium text-foreground"
+                          >
+                            <MessageCircle className="size-3.5" aria-hidden="true" />
+                            Recordar
+                          </a>
+                        )}
+                        {isOpen && (
+                          <button
+                            type="button"
+                            onClick={() => onRegisterPayment(item)}
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-accent-600 px-3 text-[13px] font-medium text-white hover:bg-accent-700"
+                          >
+                            <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                            Cobrado
+                          </button>
+                        )}
+                        <span className="ml-auto min-w-0 truncate text-xs text-neutral-500">{item.ownerName ?? "Sin asignar"}</span>
+                        <DropdownMenu
+                          trigger={<MoreHorizontal className="size-4" aria-hidden="true" />}
+                          triggerLabel="Acciones"
+                          triggerClassName="flex size-11 shrink-0 items-center justify-center rounded-md text-neutral-500"
+                          items={actionsFor(item)}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           );
         })}
-      </ul>
+      </div>
       <div className="hidden overflow-x-auto rounded-lg border border-border-default bg-surface-1 shadow-[var(--elevation-sm)] md:block">
       <table className="w-full min-w-[1100px] text-left text-sm">
         <thead>

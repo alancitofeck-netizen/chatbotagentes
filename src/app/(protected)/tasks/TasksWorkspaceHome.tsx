@@ -3,6 +3,8 @@ import { AlertTriangle, CheckCircle2, Clock, ListTodo } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { TaskGroup, GroupStats } from "@/lib/tasks/groups/queries";
 import { GROUP_COLOR_META } from "@/components/tasks/groupColorMeta";
+import type { TaskItem } from "@/lib/tasks/queries";
+import { PendingTasksList } from "./PendingTasksList";
 
 export interface TasksHomeStats {
   greetingName: string;
@@ -63,9 +65,13 @@ export function GroupCard({ group, stats }: { group: TaskGroup; stats: GroupStat
  * mismo getTasks(workspaceId) ya usado en el resto del módulo. */
 export function TasksWorkspaceHome({
   stats,
+  pendingTasks,
+  groupsById,
   recentGroups,
 }: {
   stats: TasksHomeStats;
+  pendingTasks: TaskItem[];
+  groupsById: Map<string, TaskGroup>;
   recentGroups: { group: TaskGroup; stats: GroupStats }[];
 }) {
   const hour = new Date().getHours();
@@ -80,6 +86,11 @@ export function TasksWorkspaceHome({
         <StatChip icon={AlertTriangle} label="Alta prioridad" value={stats.highPriority} tone={stats.highPriority > 0 ? "critical" : "neutral"} />
         <StatChip icon={Clock} label="Vencen hoy" value={stats.dueToday} tone={stats.dueToday > 0 ? "critical" : "neutral"} />
         <StatChip icon={CheckCircle2} label="Completadas esta semana" value={stats.completedThisWeek} tone="neutral" />
+      </div>
+
+      <div className="lg:max-w-3xl">
+        <h2 className="mb-1 text-[13px] font-semibold text-foreground">Tus tareas pendientes</h2>
+        <PendingTasksList tasks={pendingTasks} groupsById={groupsById} />
       </div>
 
       <div>

@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { MetricCard } from "@/components/responseSummary/MetricCard";
+import { AdvisorKpiTile } from "./AdvisorKpiTile";
 import type { ClientListItem } from "@/lib/clients/queries";
 import type { ClientAlertType } from "@/lib/clients/alerts";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
@@ -124,41 +124,45 @@ export function ClientesListShell({
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            <MetricCard icon={UserCheck} label="Asesores activos" value={String(metrics.activos)} />
-            <MetricCard icon={CalendarDays} label="Citas este mes" value={String(metrics.citasMes)} />
-            <MetricCard icon={FileCheck2} label="Pólizas este mes" value={String(metrics.polizasMes)} />
-            <MetricCard icon={DollarSign} label="MRR activo" value={`USD ${metrics.mrr.toLocaleString("es-MX")}`} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+            <AdvisorKpiTile icon={UserCheck} label="Asesores activos" value={String(metrics.activos)} />
+            <AdvisorKpiTile icon={CalendarDays} label="Citas este mes" value={String(metrics.citasMes)} />
+            <AdvisorKpiTile icon={FileCheck2} label="Pólizas este mes" value={String(metrics.polizasMes)} />
+            <AdvisorKpiTile icon={DollarSign} label="MRR activo" value={`USD ${metrics.mrr.toLocaleString("es-MX")}`} />
           </div>
 
           {/* Las 4 alertas — clickeables como quick-filter, mismo criterio
            * (alertTypes) que dispara el banner del perfil de cada cliente. */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MetricCard
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+            <AdvisorKpiTile
               icon={CalendarClock}
-              label="Contratos x vencer"
+              label="Contratos por vencer"
               value={String(metrics.contratosPorVencer)}
+              hint="Tocá para ver"
               onClick={() => toggleAlertFilter("contract_expiring")}
               active={alertFilter === "contract_expiring"}
             />
-            <MetricCard
+            <AdvisorKpiTile
               icon={ListTodo}
               label="Tareas pendientes"
               value={String(metrics.tareasPendientes)}
+              hint="Tocá para ver"
               onClick={() => toggleAlertFilter("tasks_pending")}
               active={alertFilter === "tasks_pending"}
             />
-            <MetricCard
+            <AdvisorKpiTile
               icon={CalendarX2}
               label="Sin citas recientes"
               value={String(metrics.sinCitasRecientes)}
+              hint="Tocá para ver"
               onClick={() => toggleAlertFilter("no_recent_activity")}
               active={alertFilter === "no_recent_activity"}
             />
-            <MetricCard
+            <AdvisorKpiTile
               icon={Wallet}
-              label="Pago pendiente"
+              label="Pagos pendientes"
               value={String(metrics.pagoPendiente)}
+              hint="Tocá para ver"
               onClick={() => toggleAlertFilter("payment_pending")}
               active={alertFilter === "payment_pending"}
             />
@@ -166,19 +170,45 @@ export function ClientesListShell({
 
           <ContextualHint hintKey="advisors-admin-filters-first-use" title="🔎 ¿Primera vez usando filtros?" description="Te mostramos rápidamente cómo funcionan.">
           <div className="flex flex-wrap items-center gap-2" data-tour="advisors-admin.filters">
-            <div className="relative flex-1 sm:max-w-xs">
+            <div className="relative basis-full sm:max-w-xs sm:flex-1 sm:basis-auto">
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar asesores…"
-                className="w-full rounded-full border border-border-default bg-surface-1 py-2 pr-3 pl-9 text-sm text-foreground placeholder:text-neutral-400 outline-none focus:border-accent-500"
+                className="w-full rounded-full border border-border-default bg-surface-1 py-2.5 pr-3 pl-9 text-base text-foreground placeholder:text-neutral-400 outline-none focus:border-accent-500 sm:py-2 sm:text-sm"
               />
+            </div>
+            <div className="-mx-4 flex basis-full gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:hidden [&::-webkit-scrollbar]:hidden" role="group" aria-label="Estado">
+              {(
+                [
+                  ["all", "Todos"],
+                  ["en_onboarding", "En onboarding"],
+                  ["activo", "Activos"],
+                  ["pausado", "Pausados"],
+                  ["archivado", "Archivados"],
+                ] as [StatusFilter, string][]
+              ).map(([value, label]) => {
+                const count = value === "all" ? clients.length : clients.filter((c) => c.status === value).length;
+                const active = statusFilter === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setStatusFilter(value)}
+                    className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium ${active ? "border-accent-700 bg-accent-700 text-white" : "border-border-default bg-surface-1 text-neutral-600"}`}
+                  >
+                    {label}
+                    <span className={active ? "text-white/80" : "text-neutral-400"}>{count}</span>
+                  </button>
+                );
+              })}
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="rounded-full border border-border-default bg-surface-1 px-3.5 py-2 text-[13px] font-medium text-foreground outline-none focus:border-accent-500"
+              className="hidden rounded-full border border-border-default bg-surface-1 px-3.5 py-2 text-[13px] font-medium text-foreground outline-none focus:border-accent-500 sm:block"
             >
               <option value="all">Filtrar por estado</option>
               <option value="en_onboarding">En onboarding</option>
@@ -189,7 +219,7 @@ export function ClientesListShell({
             <select
               value={accountManagerFilter}
               onChange={(e) => setAccountManagerFilter(e.target.value)}
-              className="rounded-full border border-border-default bg-surface-1 px-3.5 py-2 text-[13px] font-medium text-foreground outline-none focus:border-accent-500"
+              className="rounded-full border border-border-default bg-surface-1 px-3.5 py-2 text-base font-medium text-foreground outline-none focus:border-accent-500 max-md:min-h-11 sm:text-[13px]"
             >
               <option value="all">Account Manager</option>
               {members.map((m) => (

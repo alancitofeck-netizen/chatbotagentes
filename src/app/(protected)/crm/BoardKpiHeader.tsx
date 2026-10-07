@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Briefcase, UserPlus, CalendarClock, FileText, Award, Wallet, Percent, TrendingUp, TrendingDown } from "lucide-react";
+import { Briefcase, UserPlus, CalendarClock, FileText, Award, Wallet, Percent, TrendingUp, TrendingDown, XCircle } from "lucide-react";
 import type { BoardKpis } from "@/lib/crm/queries";
 
 function formatCurrency(value: number) {
@@ -36,13 +36,19 @@ function KpiTile({
   deltaPct?: number | null;
   footnote?: string;
 }) {
+  // En celular cada indicador es una tarjeta de 2 columnas (ícono + etiqueta
+  // arriba, número grande abajo, como el prototipo); desde `md` vuelve a la
+  // franja compacta de siempre (ícono al costado).
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-border-default bg-surface-1 px-3 py-2.5">
-      <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[11.5px] leading-tight text-neutral-500">{label}</p>
-        <div className="flex items-baseline gap-1.5">
-          <p className="font-mono text-[17px] font-semibold leading-tight text-foreground">{value}</p>
+    <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border-default bg-surface-1 p-3 md:flex-1 md:flex-row md:items-center md:gap-2.5 md:rounded-lg md:px-3 md:py-2.5">
+      <div className="flex min-w-0 items-start gap-2 md:contents">
+        <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>{icon}</span>
+        <p className="min-w-0 text-[12.5px] leading-tight text-neutral-500 md:hidden">{label}</p>
+      </div>
+      <div className="min-w-0 md:flex-1">
+        <p className="hidden truncate text-[11.5px] leading-tight text-neutral-500 md:block">{label}</p>
+        <div className="flex flex-wrap items-baseline gap-x-1.5">
+          <p className="font-mono text-[22px] font-semibold leading-tight text-foreground md:text-[17px]">{value}</p>
           {deltaPct !== undefined && <DeltaBadge pct={deltaPct} />}
         </div>
         {footnote && <p className="truncate text-[10px] text-neutral-400">{footnote}</p>}
@@ -51,7 +57,7 @@ function KpiTile({
   );
 }
 
-/** Fila compacta de 7 KPIs — mismos 7 números y mismo cálculo que antes
+/** Fila compacta de KPIs (los 7 de siempre más "Perdidas") — mismos 7 números y mismo cálculo que antes
  * (BoardKpis, src/lib/crm/queries.ts), solo una presentación mucho más
  * densa (una sola franja delgada en vez de tarjetas grandes) para que el
  * pipeline/leads sean lo primero que ocupe espacio en pantalla, no las
@@ -60,7 +66,7 @@ function KpiTile({
  * el valor actual en vez de una tendencia inventada. */
 export function BoardKpiHeader({ kpis }: { kpis: BoardKpis }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
       <KpiTile
         icon={<Briefcase className="size-4" aria-hidden="true" />}
         iconBg="bg-accent-100"
@@ -112,6 +118,13 @@ export function BoardKpiHeader({ kpis }: { kpis: BoardKpis }) {
         value={`${kpis.monthlyConversionRate}%`}
         label="Conversión"
         deltaPct={kpis.monthlyConversionDeltaPct}
+      />
+      <KpiTile
+        icon={<XCircle className="size-4" aria-hidden="true" />}
+        iconBg="bg-[var(--color-error-bg)]"
+        iconColor="text-[var(--color-error-strong)]"
+        value={String(kpis.lostTotal)}
+        label="Perdidas"
       />
     </div>
   );

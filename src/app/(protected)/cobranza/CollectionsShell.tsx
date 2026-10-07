@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CircleDollarSign } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "@/components/toast/toast";
@@ -29,6 +29,12 @@ export function CollectionsShell({ initialItems, initialKpis }: { initialItems: 
   const [formOpen, setFormOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [kanbanKey, setKanbanKey] = useState(0);
+
+  // En celular la lista agrupada (Vencidos / Esta semana / …) es la vista principal; en pantallas
+  // grandes se mantiene el calendario. Se decide al montar para no desfasar el HTML del servidor.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) Promise.resolve().then(() => setView("table"));
+  }, []);
 
   const filtered = useMemo(() => filterCollections(items, search, quickFilter), [items, search, quickFilter]);
 

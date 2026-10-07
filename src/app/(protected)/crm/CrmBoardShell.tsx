@@ -364,9 +364,9 @@ export function CrmBoardShell({
           )}
           <div className="flex items-center gap-2">
             <ModuleHelp description="En este módulo podés gestionar tus leads, consultar su información, cambiar su etapa y hacer seguimiento." tourKey="crm-create-lead" />
-            <Button variant="secondary" size="sm" onClick={() => setManageOpen(true)}>
+            <Button variant="secondary" size="sm" onClick={() => setManageOpen(true)} aria-label="Gestionar pipeline">
               <Settings size={14} aria-hidden="true" />
-              Gestionar pipeline
+              <span className="max-md:sr-only">Gestionar pipeline</span>
             </Button>
           </div>
         </div>

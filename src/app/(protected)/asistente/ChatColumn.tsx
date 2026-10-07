@@ -7,6 +7,10 @@ import { toast } from "@/components/toast/toast";
 import type { AssistantMessageView, AssistantToolCallView } from "@/lib/assistant/actions";
 import { sendAssistantMessageAction, getPendingToolCallsAction, confirmToolCallAction, rejectToolCallAction, getConversationMessagesAction } from "@/lib/assistant/actions";
 
+/** Atajos para empezar: consultas y una acción, todas dentro de lo que el asistente puede hacer
+ * (consultar datos del CRM y proponer acciones que el usuario confirma). */
+const SUGGESTIONS = ["¿Cómo va mi día?", "Creá una tarea para llamar a Pedro", "¿Quién me debe?"];
+
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
 }
@@ -108,10 +112,10 @@ export function ChatColumn({ conversationId, initialMessages }: { conversationId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
-  async function handleSend() {
-    const text = draft.trim();
+  async function handleSend(textOverride?: string) {
+    const text = (textOverride ?? draft).trim();
     if (!text || sending) return;
-    setDraft("");
+    if (textOverride === undefined) setDraft("");
     setSending(true);
     setMessages((prev) => [...prev, { id: `optimistic-${Date.now()}`, role: "user", content: text, pendingToolCallIds: [], createdAt: new Date().toISOString() }]);
 
@@ -138,7 +142,7 @@ export function ChatColumn({ conversationId, initialMessages }: { conversationId
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-surface-1 shadow-[var(--elevation-sm)]">
+    <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-surface-1 shadow-[var(--elevation-sm)] max-md:min-h-[62dvh]">
       <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
         {messages.length === 0 && (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-neutral-500">
@@ -172,7 +176,21 @@ export function ChatColumn({ conversationId, initialMessages }: { conversationId
         )}
       </div>
 
-      <div className="flex items-end gap-2 border-t border-border-default p-3" data-tour="assistant.chat-input">
+      <div className="flex gap-2 overflow-x-auto border-t border-border-default px-3 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Sugerencias">
+        {SUGGESTIONS.map((text) => (
+          <button
+            key={text}
+            type="button"
+            disabled={sending}
+            onClick={() => handleSend(text)}
+            className="min-h-11 shrink-0 rounded-full border border-border-default bg-surface-1 px-3.5 text-[13px] font-semibold text-neutral-600 hover:border-border-strong disabled:opacity-50 md:min-h-9"
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-end gap-2 p-3" data-tour="assistant.chat-input">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -184,13 +202,13 @@ export function ChatColumn({ conversationId, initialMessages }: { conversationId
           }}
           placeholder="Escribí un mensaje…"
           rows={1}
-          className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-sm outline-none focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
+          className="max-h-32 flex-1 resize-none rounded-2xl border border-border-strong bg-surface-2 px-3.5 py-2.5 text-base outline-none md:text-sm focus:border-accent-500 focus:bg-surface-1 focus:ring-[3px] focus:ring-accent-100"
         />
         <button
           type="button"
-          onClick={handleSend}
+          onClick={() => handleSend()}
           disabled={sending || !draft.trim()}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white transition-colors hover:bg-accent-600 disabled:opacity-40"
+          className="flex size-10 max-md:size-11 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white transition-colors hover:bg-accent-600 disabled:opacity-40"
           aria-label="Enviar"
         >
           <Send className="size-4" aria-hidden="true" />

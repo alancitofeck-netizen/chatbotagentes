@@ -49,25 +49,27 @@ export function PoliciesActionBar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1" data-tour="policies.search">
+        <div className="relative basis-full md:min-w-[220px] md:flex-1 md:basis-auto" data-tour="policies.search">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
           <input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Buscar por número, cliente, aseguradora, ramo, ejecutivo o teléfono…"
-            className="w-full rounded-sm border border-border-strong bg-surface-1 py-2 pl-9 pr-3 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+            className="w-full rounded-sm border border-border-strong bg-surface-1 py-2.5 pl-9 pr-3 text-base outline-none md:py-2 md:text-sm focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
           />
         </div>
 
-        <Button size="sm" onClick={onNewPolicy}>
+        <Button size="sm" onClick={onNewPolicy} className="max-md:min-h-11">
           <Plus className="size-4" aria-hidden="true" />
           Nueva póliza
         </Button>
-        <Button size="sm" variant="secondary" onClick={onUploadPdf}>
+        {/* Celular: acciones secundarias en una fila deslizable debajo; desde md `contents` las deja como antes. */}
+        <div className="order-last -mx-4 flex w-[calc(100%+2rem)] items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:contents [&::-webkit-scrollbar]:hidden [&>*]:shrink-0">
+        <Button size="sm" variant="secondary" onClick={onUploadPdf} className="max-md:min-h-11">
           <FileUp className="size-4" aria-hidden="true" />
           Subir PDF
         </Button>
-        <Button size="sm" variant="secondary" onClick={onOpenImport}>
+        <Button size="sm" variant="secondary" onClick={onOpenImport} className="max-md:min-h-11">
           <Upload className="size-4" aria-hidden="true" />
           Importar Excel
         </Button>
@@ -78,7 +80,7 @@ export function PoliciesActionBar({
               Exportar
             </span>
           }
-          triggerClassName="inline-flex h-8 items-center gap-2 rounded-md border border-border-strong bg-surface-1 px-3 text-sm font-medium text-foreground hover:bg-surface-2"
+          triggerClassName="inline-flex h-8 items-center gap-2 max-md:h-11 rounded-md border border-border-strong bg-surface-1 px-3 text-sm font-medium text-foreground hover:bg-surface-2"
           items={[
             { label: "Excel (.xlsx)", icon: <FileSpreadsheet className="size-4" aria-hidden="true" />, onSelect: () => window.open("/api/policies/export?format=xlsx", "_blank") },
             { label: "CSV", icon: <FileSpreadsheet className="size-4" aria-hidden="true" />, onSelect: () => window.open("/api/policies/export?format=csv", "_blank") },
@@ -91,15 +93,16 @@ export function PoliciesActionBar({
           description="Te mostramos rápidamente cómo funcionan."
           onShowMe={() => setFiltersOpen(true)}
         >
-          <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)} data-tour="policies.filters">
+          <Button size="sm" variant={filtersOpen ? "primary" : "secondary"} onClick={() => setFiltersOpen((v) => !v)} data-tour="policies.filters" className="max-md:min-h-11">
             <SlidersHorizontal className="size-4" aria-hidden="true" />
             Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
           </Button>
         </ContextualHint>
-        <Button size="sm" variant="secondary" onClick={onOpenAutomations}>
+        <Button size="sm" variant="secondary" onClick={onOpenAutomations} className="max-md:min-h-11">
           <Zap className="size-4" aria-hidden="true" />
           Automatizaciones
         </Button>
+        </div>
 
         <div className="ml-auto flex items-center gap-1 rounded-md border border-border-default bg-surface-1 p-1">
           <button

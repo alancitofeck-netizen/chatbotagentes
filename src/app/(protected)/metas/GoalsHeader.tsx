@@ -31,17 +31,17 @@ export function GoalsHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="secondary" onClick={onOpenHistory} data-tour="goals.history-button">
+        <Button size="sm" variant="secondary" onClick={onOpenHistory} data-tour="goals.history-button" className="max-md:min-h-11">
           <History className="size-4" aria-hidden="true" />
           Historial
         </Button>
         {canManage && (
           <>
-            <Button size="sm" variant="secondary" onClick={onCreateBono}>
+            <Button size="sm" variant="secondary" onClick={onCreateBono} className="max-md:min-h-11">
               <Gift className="size-4" aria-hidden="true" />
               Crear Bono
             </Button>
-            <Button size="sm" onClick={onCreateGoal} data-tour="goals.create-button">
+            <Button size="sm" onClick={onCreateGoal} data-tour="goals.create-button" className="max-md:min-h-11">
               <Target className="size-4" aria-hidden="true" />
               Crear Meta
             </Button>
