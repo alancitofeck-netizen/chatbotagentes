@@ -22,21 +22,21 @@ export function CollectionsActionBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-[220px] flex-1" data-tour="collections.search">
+      <div className="relative basis-full md:min-w-[220px] md:flex-1 md:basis-auto" data-tour="collections.search">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" aria-hidden="true" />
         <input
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Buscar por cliente, aseguradora, póliza o ejecutivo…"
-          className="w-full rounded-sm border border-border-strong bg-surface-1 py-2 pl-9 pr-3 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+          className="w-full rounded-sm border border-border-strong bg-surface-1 py-2.5 pl-9 pr-3 text-base outline-none md:py-2 md:text-sm focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
         />
       </div>
 
-      <Button size="sm" onClick={onNewCollection} data-tour="collections.new-button">
+      <Button size="sm" onClick={onNewCollection} data-tour="collections.new-button" className="max-md:min-h-11">
         <Plus className="size-4" aria-hidden="true" />
         Nuevo cobro
       </Button>
-      <Button size="sm" variant="secondary" onClick={onOpenAutomations}>
+      <Button size="sm" variant="secondary" onClick={onOpenAutomations} className="max-md:min-h-11">
         <Zap className="size-4" aria-hidden="true" />
         Automatizaciones
       </Button>

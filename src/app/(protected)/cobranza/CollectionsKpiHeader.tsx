@@ -16,6 +16,7 @@ function KpiTile({
   sublabel,
   onClick,
   active,
+  className,
 }: {
   icon: React.ReactNode;
   iconBg: string;
@@ -25,20 +26,21 @@ function KpiTile({
   sublabel?: React.ReactNode;
   onClick?: () => void;
   active?: boolean;
+  className?: string;
 }) {
   const content = (
     <>
-      <span className={cn("flex size-10 items-center justify-center rounded-full", iconBg, iconColor)}>{icon}</span>
-      <div>
-        <p className="font-mono text-2xl font-semibold leading-none text-foreground">{value}</p>
-        <p className="mt-1.5 text-[13px] text-neutral-500">{label}</p>
+      <span className={cn("flex size-8 items-center justify-center rounded-full sm:size-10", iconBg, iconColor)}>{icon}</span>
+      <div className="min-w-0">
+        <p className="truncate font-mono text-xl font-semibold leading-none text-foreground sm:text-2xl">{value}</p>
+        <p className="mt-1.5 text-[12.5px] leading-tight text-neutral-500 sm:text-[13px]">{label}</p>
         {sublabel && <p className="text-xs text-neutral-400">{sublabel}</p>}
       </div>
     </>
   );
 
   if (!onClick) {
-    return <Card className="flex flex-col gap-3">{content}</Card>;
+    return <Card className={cn("flex flex-col gap-2 max-sm:p-3 sm:gap-3", className)}>{content}</Card>;
   }
 
   return (
@@ -46,8 +48,9 @@ function KpiTile({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-3 rounded-lg bg-surface-1 p-5 text-left shadow-[var(--elevation-sm)] transition-all duration-150 ease-out hover:shadow-[var(--elevation-md)]",
+        "flex flex-col gap-2 rounded-lg bg-surface-1 p-3 text-left sm:gap-3 sm:p-5 shadow-[var(--elevation-sm)] transition-all duration-150 ease-out hover:shadow-[var(--elevation-md)]",
         active && "ring-2 ring-accent-500",
+        className,
       )}
     >
       {content}
@@ -78,7 +81,7 @@ export function CollectionsKpiHeader({
   const changePct = kpis.collectedThisMonthChangePct;
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
       <KpiTile
         icon={<CalendarClock className="size-[18px]" aria-hidden="true" />}
         iconBg="bg-info-bg"
@@ -104,6 +107,7 @@ export function CollectionsKpiHeader({
         iconBg="bg-success-bg"
         iconColor="text-success-strong"
         value={formatCurrency(kpis.collectedThisMonth)}
+        className="max-sm:col-span-2"
         label="Cobrado este mes"
         sublabel={
           changePct === null ? undefined : (
