@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getCurrentMemberId, requireActiveWorkspace, getWorkspacePrimaryUserName } from "@/lib/auth/session";
+import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import {
   getDashboardKpis,
   getActivitySeries,
@@ -22,7 +22,7 @@ import {
   hasLinkedInConnection,
 } from "@/lib/insights/queries";
 import { evaluateInsights } from "@/lib/insights/engine";
-import { buildExecutiveSummary, buildTrendItems, buildRecommendedActions, deriveStaleOpportunities } from "@/lib/insights/summary";
+import { buildTrendItems, buildRecommendedActions, deriveStaleOpportunities } from "@/lib/insights/summary";
 import { computeAdvisorStatus } from "@/lib/insights/advisorStatus";
 import type { EngineInput } from "@/lib/insights/types";
 import { getDashboardHome } from "@/lib/dashboard/homeQueries";
@@ -35,7 +35,6 @@ import { UpcomingMeetings } from "./UpcomingMeetings";
 import { AgendaSummary } from "./AgendaSummary";
 import { LeadsBySourcePanel } from "./LeadsBySourcePanel";
 import { TopDeals } from "./TopDeals";
-import { ExecutiveSummary } from "./ExecutiveSummary";
 import { PriorityInsights } from "./PriorityInsights";
 import { LeadDeck } from "./LeadDeck";
 import { FunnelCard, MiniAppsRankingCard, TeamTodayCard } from "./HomeBlocks";
@@ -76,7 +75,6 @@ export default async function DashboardPage() {
     conversationOptions,
     upcomingEvents,
     agendaPerformance,
-    primaryUserName,
     crmBoard,
     unansweredConversations,
     weekOverWeek,
@@ -98,11 +96,6 @@ export default async function DashboardPage() {
     getConversationOptions(workspaceId),
     getUpcomingEvents(workspaceId),
     getAgendaPerformance(workspaceId, currentMonthRange()),
-    // The workspace's own primary user — NOT the signed-in caller — so the
-    // greeting reflects whose workspace this is. In Modo Supervisor those
-    // differ: a platform admin viewing someone else's workspace must see
-    // that workspace owner's name here, never their own.
-    getWorkspacePrimaryUserName(workspaceId),
     // Insights-first Dashboard redesign (2026-07-27) — see
     // src/lib/insights/ for the pure rules engine these feed.
     getCrmBoard(workspaceId),
@@ -115,7 +108,6 @@ export default async function DashboardPage() {
     isOwner ? getAgentList(workspaceId) : Promise.resolve([]),
     getMiniAppsList(workspaceId),
   ]);
-  const firstName = primaryUserName.split(" ")[0];
   // "Semana" es el tab default (mismo criterio que la referencia) — el resto
   // de los períodos se piden client-side al cambiar (DashboardHomeSection).
   const home = await getDashboardHome(workspaceId, "week");
@@ -129,16 +121,6 @@ export default async function DashboardPage() {
     hasLinkedInConnection: linkedinConnected,
   };
   const insights = evaluateInsights(engineInput);
-  const { bullets, health } = buildExecutiveSummary(
-    {
-      wonThisWeek: weekOverWeek.wonThisWeek,
-      unansweredCount: unansweredConversations.length,
-      connectionsDeltaPct: weekOverWeek.connections.deltaPct,
-      staleOpportunitiesCount: staleOpportunities.length,
-      overdueTasksCount,
-    },
-    insights,
-  );
   const trends = buildTrendItems(weekOverWeek);
   const recommendedActions = buildRecommendedActions({
     unansweredConversations,
@@ -151,8 +133,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <ExecutiveSummary greetingName={firstName} bullets={bullets} health={health} />
-
       <LeadDeck conversations={unansweredConversations} />
 
       <section className="flex flex-col gap-4">
