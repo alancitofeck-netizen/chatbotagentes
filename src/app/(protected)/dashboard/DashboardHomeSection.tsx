@@ -14,8 +14,7 @@ import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 const PERIOD_LABEL: Record<DashboardPeriod, string> = { day: "Día", week: "Semana", month: "Mes", year: "Año" };
 const PERIODS: DashboardPeriod[] = ["day", "week", "month", "year"];
 
-/** No repite el saludo — ExecutiveSummary (más arriba en page.tsx) ya dice
- * "Buenos días/tardes/noches, {nombre}"; acá solo el título de esta sección
+/** Sin saludo propio: acá solo el título de esta sección
  * + el selector de período + el resumen de agenda del día. Tampoco un
  * gráfico de actividad propio — ActivityChart (más abajo en la página) ya
  * cubre esa vista; duplicarlo con otro gráfico de barras al lado se sentía
