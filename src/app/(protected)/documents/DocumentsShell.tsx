@@ -38,6 +38,7 @@ import { DocumentDetailDrawer } from "@/components/documents/DocumentDetailDrawe
 import { ImportWizard } from "@/components/documents/ImportWizard";
 import { GoogleDriveBrowser } from "@/components/documents/GoogleDriveBrowser";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { POLICY_DOCUMENT_CATEGORIES } from "@/lib/policies/constants";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
 type Section = "crm" | "drive";
@@ -49,6 +50,28 @@ const VIEW_LABELS: Record<DocumentView, string> = {
   favorites: "Favoritos",
   trash: "Papelera",
 };
+
+/** Etiquetas de doc_category (texto libre en la base): las de Pólizas más las que usan Asesores y Contrato. */
+const CATEGORY_LABELS = new Map<string, string>([
+  ...POLICY_DOCUMENT_CATEGORIES.map((c) => [c.key, c.label] as [string, string]),
+  ["contrato", "Contrato"],
+  ["facturacion", "Facturación"],
+  ["sin_categoria", "Sin categoría"],
+]);
+
+/** Orden de los chips: primero las categorías conocidas (en el orden del catálogo); "Otro" y "Sin categoría" al final. */
+function categoryRank(key: string) {
+  if (key === "otro") return 998;
+  if (key === "sin_categoria") return 999;
+  const i = [...CATEGORY_LABELS.keys()].indexOf(key);
+  return i === -1 ? 500 : i;
+}
+
+function categoryLabel(key: string) {
+  if (CATEGORY_LABELS.has(key)) return CATEGORY_LABELS.get(key) as string;
+  const text = key.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 const EXPORT_ENTITIES = Object.keys(ENTITY_LABELS) as ExportEntity[];
 const EXPORT_FORMATS: { value: ExportFormat; label: string; disabled?: boolean }[] = [
@@ -94,6 +117,7 @@ export function DocumentsShell({
   const [documents, setDocuments] = useState(initialDocuments);
   const [folders, setFolders] = useState(initialFolders);
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
   const [layout, setLayout] = useState<"grid" | "list">("grid");
   const [uploads, setUploads] = useState<UploadState[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -144,6 +168,17 @@ export function DocumentsShell({
     if (nextFolderId) params.set("folder", nextFolderId);
     router.replace(`/documents?${params.toString()}`, { scroll: false });
   }
+
+  // Filtro por tipo: sale de las categorías que realmente tienen los documentos cargados.
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const d of documents) counts.set(d.docCategory ?? "sin_categoria", (counts.get(d.docCategory ?? "sin_categoria") ?? 0) + 1);
+    return counts;
+  }, [documents]);
+  const shownDocuments = useMemo(
+    () => (category ? documents.filter((d) => (d.docCategory ?? "sin_categoria") === category) : documents),
+    [documents, category],
+  );
 
   const visibleFolders = useMemo(
     () => (view === "all" ? folders.filter((f) => f.parentFolderId === folderId) : []),
@@ -218,7 +253,7 @@ export function DocumentsShell({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-6 border-b border-border-default px-6 pt-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-b border-border-default px-4 pt-4 sm:px-6">
         <div className="flex items-center gap-2">
           <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Documentos</h1>
           <ModuleHelp description="Acá podés organizar los documentos relacionados con tu trabajo — subir, buscar, filtrar y descargar." tourKey="documents-intro" />
@@ -285,15 +320,15 @@ export function DocumentsShell({
           />
 
           <div className="relative flex min-w-0 flex-1 flex-col">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-default px-6 py-4">
-              <div className="relative w-64" data-tour="documents.search">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-default px-4 py-4 sm:px-6">
+              <div className="relative w-full sm:w-64" data-tour="documents.search">
                 <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && refetch()}
                   placeholder="Buscar documentos…"
-                  className="w-full rounded-full border border-border-strong bg-surface-1 py-1.5 pl-9 pr-3 text-sm outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+                  className="w-full rounded-full border border-border-strong bg-surface-1 py-2.5 pl-9 pr-3 text-base outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100 sm:py-1.5 sm:text-sm"
                 />
               </div>
 
@@ -305,7 +340,7 @@ export function DocumentsShell({
                       Exportar
                     </>
                   }
-                  triggerClassName={buttonClassName({ variant: "secondary", size: "sm" })}
+                  triggerClassName={cn(buttonClassName({ variant: "secondary", size: "sm" }), "max-md:min-h-11")}
                   align="end"
                   items={EXPORT_ENTITIES.flatMap((entity) => [
                     ...EXPORT_FORMATS.map((f) => ({
@@ -333,7 +368,7 @@ export function DocumentsShell({
                       Nuevo
                     </>
                   }
-                  triggerClassName={buttonClassName({ size: "sm" })}
+                  triggerClassName={cn(buttonClassName({ size: "sm" }), "max-md:min-h-11")}
                   triggerTourId="documents.new-trigger"
                   items={[
                     { label: "Nueva carpeta", icon: <FolderPlus size={14} />, onSelect: handleNewFolder },
@@ -364,7 +399,45 @@ export function DocumentsShell({
               </div>
             </div>
 
-            <div className="flex items-center gap-1 px-6 pt-3 text-[13px] text-neutral-500">
+            {/* Celular y tablet: la barra lateral no existe, así que las vistas pasan a chips. */}
+            <div className="flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none] sm:px-6 lg:hidden [&::-webkit-scrollbar]:hidden" role="group" aria-label="Vista">
+              {(Object.keys(VIEW_LABELS) as DocumentView[]).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={view === v}
+                  onClick={() => setUrl(v, null)}
+                  className={cn(
+                    "flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[13px] font-medium",
+                    view === v ? "border-accent-700 bg-accent-700 text-white" : "border-border-default bg-surface-1 text-neutral-600",
+                  )}
+                >
+                  {VIEW_LABELS[v]}
+                </button>
+              ))}
+            </div>
+
+            {categoryCounts.size > 0 && (
+              <div className="flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden" role="group" aria-label="Tipo de documento">
+                {[["", "Todos", documents.length] as [string, string, number], ...[...categoryCounts.entries()].sort(([x], [y]) => categoryRank(x) - categoryRank(y)).map(([key, n]) => [key, categoryLabel(key), n] as [string, string, number])].map(([key, label, n]) => (
+                  <button
+                    key={key || "todos"}
+                    type="button"
+                    aria-pressed={category === key}
+                    onClick={() => setCategory(category === key ? "" : key)}
+                    className={cn(
+                      "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium md:min-h-9",
+                      category === key ? "border-accent-700 bg-accent-700 text-white" : "border-border-default bg-surface-1 text-neutral-600",
+                    )}
+                  >
+                    {label}
+                    <span className={category === key ? "text-white/80" : "text-neutral-400"}>{n}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 px-4 pt-3 text-[13px] text-neutral-500 sm:px-6">
               <button type="button" onClick={() => setUrl(view === "all" ? "all" : view, null)} className="hover:text-foreground hover:underline max-md:inline-flex max-md:min-h-6 max-md:items-center">
                 {VIEW_LABELS[view]}
               </button>
@@ -378,8 +451,8 @@ export function DocumentsShell({
               ))}
             </div>
 
-            <div className="flex-1 overflow-auto px-6 py-4">
-              {documents.length === 0 && visibleFolders.length === 0 ? (
+            <div className="flex-1 overflow-auto px-4 py-4 sm:px-6">
+              {shownDocuments.length === 0 && visibleFolders.length === 0 ? (
                 <EmptyState
                   icon={Upload}
                   title="Sin documentos"
@@ -389,7 +462,7 @@ export function DocumentsShell({
                 <DocumentsGrid
                   layout={layout}
                   view={view}
-                  documents={documents}
+                  documents={shownDocuments}
                   folders={visibleFolders}
                   onOpenFolder={(id) => setUrl("all", id)}
                   onOpenDocument={handleSelectDocument}
