@@ -19,7 +19,7 @@ export async function saveSheetLinkAction(_prev: SheetLinkState, formData: FormD
   if (!extractSheetRef(url)) return { ok: false, error: "Pegá el link de una hoja de Google Sheets." };
 
   const saved = await saveManychatSheetLink(workspaceId, url);
-  if (!saved) return { ok: false, error: "Primero conectá ManyChat desde Perfil → Integraciones." };
+  if (!saved) return { ok: false, error: "No se pudo guardar la hoja. Probá de nuevo." };
 
   revalidatePath("/manychat");
   return { ok: true, error: null };
