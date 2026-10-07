@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, Sparkles, UploadCloud, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { Zap, Sparkles, UploadCloud, AlertTriangle, CheckCircle2, Check, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { toast } from "@/components/toast/toast";
@@ -35,6 +35,38 @@ const PAYMENT_FREQUENCIES = [
 const CONFIDENCE_VARIANT: Record<ExtractionConfidence, BadgeVariant> = { alta: "success", media: "warning", baja: "error" };
 const CONFIDENCE_LABEL: Record<ExtractionConfidence, string> = { alta: "Confianza alta", media: "Confianza media", baja: "Confianza baja" };
 
+const STEP_LABELS = ["Subir", "Leer", "Revisar", "Listo"] as const;
+const STEP_INDEX: Record<Step, number> = { upload: 0, extracting: 1, review: 2, saving: 3 };
+
+/** Cuatro pasos como el prototipo: Subir → Leer → Revisar → Listo (al guardar se pasa a Pólizas). */
+function Stepper({ step }: { step: Step }) {
+  const current = STEP_INDEX[step];
+  return (
+    <ol className="flex items-center gap-1.5 text-[12.5px] font-semibold text-neutral-500" aria-label={`Paso ${current + 1} de 4`}>
+      {STEP_LABELS.map((label, i) => {
+        const done = i < current;
+        const active = i <= current;
+        return (
+          <li key={label} className="flex flex-1 items-center gap-1.5 last:flex-none" aria-current={i === current ? "step" : undefined}>
+            <span className={cn("flex items-center gap-1.5 whitespace-nowrap", active && "text-foreground")}>
+              <span
+                className={cn(
+                  "flex size-[26px] items-center justify-center rounded-full border-[1.5px] text-xs",
+                  active ? "border-accent-700 bg-accent-700 text-white" : "border-border-default bg-surface-2",
+                )}
+              >
+                {done ? <Check className="size-3.5" aria-hidden="true" /> : i + 1}
+              </span>
+              <span className="max-[420px]:sr-only">{label}</span>
+            </span>
+            {i < STEP_LABELS.length - 1 && <span className={cn("h-0.5 min-w-2 flex-1 rounded-full", i < current ? "bg-accent-500" : "bg-border-default")} aria-hidden="true" />}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function FieldLabel({ children, lowConfidence }: { children: string; lowConfidence?: boolean }) {
   return (
     <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
@@ -46,7 +78,7 @@ function FieldLabel({ children, lowConfidence }: { children: string; lowConfiden
 
 function fieldClassName(lowConfidence: boolean) {
   return cn(
-    "w-full appearance-none rounded-md border bg-surface-2 px-3 py-2 text-sm text-foreground outline-none transition-colors",
+    "w-full appearance-none rounded-md border bg-surface-2 px-3 py-2 text-sm text-foreground outline-none transition-colors max-md:min-h-11 max-md:text-base",
     "focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100",
     lowConfidence ? "border-warning-strong ring-1 ring-warning-strong/30" : "border-border-default",
   );
@@ -142,6 +174,7 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div className="flex flex-col gap-4">
+        <Stepper step={step} />
         <span className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-600">
           <Zap className="size-3.5" aria-hidden="true" />
           Diferenciador
@@ -166,13 +199,21 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
             if (file) handleFile(file);
           }}
           className={cn(
-            "flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed bg-surface-1 p-10 text-center transition-colors",
+            "flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed bg-surface-1 p-6 text-center transition-colors sm:p-10",
             dragOver ? "border-accent-500 bg-accent-50" : "border-border-strong hover:border-accent-500",
           )}
         >
-          <UploadCloud className="size-8 text-neutral-400" aria-hidden="true" />
-          <p className="text-sm font-medium text-foreground">Arrastra el PDF de la póliza</p>
-          <p className="text-xs text-neutral-500">o haz clic para subir</p>
+          <span className="flex size-14 items-center justify-center rounded-2xl bg-accent-100 text-accent-700">
+            <UploadCloud className="size-7" aria-hidden="true" />
+          </span>
+          <p className="text-sm font-medium text-foreground">
+            <span className="hidden sm:inline">Arrastra el PDF de la póliza</span>
+            <span className="sm:hidden">Subí el PDF de la póliza</span>
+          </p>
+          <p className="text-xs text-neutral-500">
+            <span className="hidden sm:inline">o haz clic para subir</span>
+            <span className="sm:hidden">tocá para elegirlo</span>
+          </p>
           <input
             type="file"
             accept="application/pdf"
@@ -224,7 +265,7 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
             </div>
             <p className="-mt-2 text-xs text-neutral-500">Revisa los campos en amarillo antes de guardar</p>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <FieldLabel lowConfidence={lowConfidence.has("company")}>Aseguradora</FieldLabel>
                 <input className={fieldClassName(lowConfidence.has("company"))} value={data.company ?? ""} onChange={(e) => patch({ company: e.target.value })} />
@@ -302,7 +343,7 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
               type="button"
               onClick={handleConfirm}
               disabled={step === "saving"}
-              className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-success text-sm font-medium text-white transition-colors hover:bg-success/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-success max-md:h-12 text-sm font-medium text-white transition-colors hover:bg-success/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {step === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="size-4" aria-hidden="true" />}
               Confirmar y guardar en Pólizas
