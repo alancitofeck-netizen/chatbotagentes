@@ -62,6 +62,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
           {activeWorkspace.isSupervising && <SupervisorModeBanner workspaceName={activeWorkspace.name} />}
           <Navbar
             workspaceName={activeWorkspace.name}
+            role={activeWorkspace.role}
             enabledModules={enabledModules}
             memberId={memberId}
             userName={userName}
