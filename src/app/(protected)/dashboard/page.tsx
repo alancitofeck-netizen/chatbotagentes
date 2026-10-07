@@ -1,143 +1,50 @@
 import type { Metadata } from "next";
-import { getCurrentMemberId, requireActiveWorkspace, getWorkspacePrimaryUserName } from "@/lib/auth/session";
-import {
-  getDashboardKpis,
-  getActivitySeries,
-  getRecentConversations,
-  getPendingTasks,
-  getLeadsBySource,
-  getTopOpportunities,
-} from "@/lib/dashboard/queries";
-import { getWorkspaceMembers } from "@/lib/inbox/queries";
-import { getContactOptions, getConversationOptions } from "@/lib/tasks/queries";
-import { getUpcomingEvents } from "@/lib/calendar/queries";
-import { getAgendaPerformance } from "@/lib/agenda/queries";
+import { requireActiveWorkspace, getWorkspacePrimaryUserName } from "@/lib/auth/session";
+import { getLeadsBySource } from "@/lib/dashboard/queries";
 import { getCrmBoard } from "@/lib/crm/queries";
 import { getAgentList } from "@/lib/agents/queries";
-import {
-  getUnansweredConversations,
-  getReplyActivity,
-  getWeekOverWeekMetrics,
-  getOverdueTasksCount,
-  getUncontactedLeads,
-  hasLinkedInConnection,
-} from "@/lib/insights/queries";
-import { evaluateInsights } from "@/lib/insights/engine";
-import { buildTrendItems, buildRecommendedActions, deriveStaleOpportunities } from "@/lib/insights/summary";
+import { getCollectionsKpis } from "@/lib/collections/queries";
+import { getUnansweredConversations, getReplyActivity } from "@/lib/insights/queries";
 import { computeAdvisorStatus } from "@/lib/insights/advisorStatus";
-import type { EngineInput } from "@/lib/insights/types";
-import { getDashboardHome } from "@/lib/dashboard/homeQueries";
-import { DashboardHomeSection } from "./DashboardHomeSection";
-import { KpiCards } from "./KpiCards";
-import { ActivityChart } from "./ActivityChart";
-import { RecentConversations } from "./RecentConversations";
-import { PendingTasks } from "./PendingTasks";
-import { UpcomingMeetings } from "./UpcomingMeetings";
-import { AgendaSummary } from "./AgendaSummary";
+import { getMiniAppsList } from "@/lib/miniApps/queries";
 import { LeadsBySourcePanel } from "./LeadsBySourcePanel";
-import { TopDeals } from "./TopDeals";
-import { PriorityInsights } from "./PriorityInsights";
 import { LeadDeck } from "./LeadDeck";
 import { FunnelCard, MiniAppsRankingCard, TeamTodayCard } from "./HomeBlocks";
-import { getMiniAppsList } from "@/lib/miniApps/queries";
-import { RecommendedActions } from "./RecommendedActions";
-import { Trends } from "./Trends";
-import { AdvisorPerformance } from "./AdvisorPerformance";
 import { HomeGreeting, homeGreetingParts } from "./HomeGreeting";
-import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { RequiereAtencion } from "./RequiereAtencion";
 import { DashboardLearningCard } from "@/components/onboarding/DashboardLearningCard";
 
 export const metadata: Metadata = {
   title: "Dashboard — Growth Link",
 };
 
-/** Mes calendario completo (no "hasta hoy") — Agenda mira hacia adelante,
- * mismo criterio que useAgendaPerformance.ts (src/app/(protected)/agenda/). */
-function currentMonthRange(): { start: string; end: string } {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return { start: start.toISOString(), end: end.toISOString() };
-}
-
+/** Inicio como en la referencia del dueño: saludo, siguiente contacto, lo que
+ * requiere atención, de dónde llegan, mini apps, embudo, equipo y progreso.
+ * Todo con datos reales de la base. */
 export default async function DashboardPage() {
   const { workspaceId, role } = await requireActiveWorkspace();
   const isOwner = role === "owner";
 
-  const [
-    kpis,
-    activity,
-    conversations,
-    tasks,
-    leadsBySource,
-    topDeals,
-    ownMemberId,
-    members,
-    contactOptions,
-    conversationOptions,
-    upcomingEvents,
-    agendaPerformance,
-    primaryUserName,
-    crmBoard,
-    unansweredConversations,
-    weekOverWeek,
-    overdueTasksCount,
-    uncontactedLeads,
-    linkedinConnected,
-    agentList,
-    miniApps,
-    replyActivity,
-  ] = await Promise.all([
-    getDashboardKpis(workspaceId),
-    getActivitySeries(workspaceId, "7d"),
-    getRecentConversations(workspaceId),
-    getPendingTasks(workspaceId),
-    getLeadsBySource(workspaceId),
-    getTopOpportunities(workspaceId),
-    getCurrentMemberId(workspaceId),
-    getWorkspaceMembers(workspaceId),
-    getContactOptions(workspaceId),
-    getConversationOptions(workspaceId),
-    getUpcomingEvents(workspaceId),
-    getAgendaPerformance(workspaceId, currentMonthRange()),
-    getWorkspacePrimaryUserName(workspaceId),
-    // Insights-first Dashboard redesign (2026-07-27) — see
-    // src/lib/insights/ for the pure rules engine these feed.
-    getCrmBoard(workspaceId),
-    getUnansweredConversations(workspaceId),
-    getWeekOverWeekMetrics(workspaceId),
-    getOverdueTasksCount(workspaceId),
-    getUncontactedLeads(workspaceId),
-    hasLinkedInConnection(workspaceId),
-    // Only Owners see Rendimiento de Asesores — skip this heavier query otherwise.
-    isOwner ? getAgentList(workspaceId) : Promise.resolve([]),
-    getMiniAppsList(workspaceId),
-    getReplyActivity(workspaceId),
-  ]);
-  // "Semana" es el tab default (mismo criterio que la referencia) — el resto
-  // de los períodos se piden client-side al cambiar (DashboardHomeSection).
-  const home = await getDashboardHome(workspaceId, "week");
+  const [primaryUserName, leadsBySource, crmBoard, unansweredConversations, agentList, miniApps, replyActivity, collections] =
+    await Promise.all([
+      getWorkspacePrimaryUserName(workspaceId),
+      getLeadsBySource(workspaceId),
+      getCrmBoard(workspaceId),
+      getUnansweredConversations(workspaceId),
+      // Solo owners ven el equipo: se saltea la consulta para el resto.
+      isOwner ? getAgentList(workspaceId) : Promise.resolve([]),
+      getMiniAppsList(workspaceId),
+      getReplyActivity(workspaceId),
+      getCollectionsKpis(workspaceId),
+    ]);
 
-  const staleOpportunities = deriveStaleOpportunities(crmBoard);
-  const engineInput: EngineInput = {
-    unansweredConversations,
-    staleOpportunities,
-    overdueTasksCount,
-    weekOverWeek,
-    hasLinkedInConnection: linkedinConnected,
-  };
-  const insights = evaluateInsights(engineInput);
-  const trends = buildTrendItems(weekOverWeek);
-  const recommendedActions = buildRecommendedActions({
-    unansweredConversations,
-    staleOpportunities,
-    uncontactedLeads,
-    overdueTasksCount,
-  });
   const now = new Date();
   const firstName = primaryUserName.split(" ")[0];
   const greetingParts = homeGreetingParts(now);
   const advisors = agentList.map((agent) => ({ ...agent, ...computeAdvisorStatus(agent, now) }));
+  const inactiveAgent = advisors.find((advisor) => advisor.advisorStatus === "sin_actividad");
+
+  const closedWindowChats = unansweredConversations.filter((c) => c.hoursWaiting >= 24).length;
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -151,13 +58,11 @@ export default async function DashboardPage() {
 
       <LeadDeck conversations={unansweredConversations} />
 
-      <section className="flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-[15px] font-semibold text-foreground">Insights prioritarios</h2>
-          <ModuleHelp description="Tu resumen del día — insights, tendencias, tareas pendientes y actividad reciente, todo en un solo lugar." tourKey="dashboard-intro" />
-        </div>
-        <PriorityInsights insights={insights} />
-      </section>
+      <RequiereAtencion
+        overduePolicies={collections.overdueCount}
+        closedWindowChats={closedWindowChats}
+        inactiveAdvisor={inactiveAgent ? { name: inactiveAgent.fullName.split(" ")[0], sentence: inactiveAgent.sentence } : null}
+      />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-[15px] font-semibold text-foreground">De dónde llegan</h2>
@@ -171,39 +76,6 @@ export default async function DashboardPage() {
       {isOwner && <TeamTodayCard advisors={advisors} />}
 
       <DashboardLearningCard />
-
-      <RecommendedActions actions={recommendedActions} />
-
-      <DashboardHomeSection initialData={home} initialPeriod="week" />
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-[15px] font-semibold text-foreground">Tendencias</h2>
-        <Trends trends={trends} />
-      </section>
-
-      <AdvisorPerformance isOwner={isOwner} advisors={advisors} />
-
-      <KpiCards kpis={kpis} activity={activity} compact />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RecentConversations conversations={conversations} />
-        <PendingTasks
-          tasks={tasks}
-          members={members}
-          contactOptions={contactOptions}
-          conversationOptions={conversationOptions}
-          canAssignOthers={role === "owner" || role === "admin"}
-          ownMemberId={ownMemberId}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <UpcomingMeetings events={upcomingEvents} />
-        <AgendaSummary data={agendaPerformance} />
-        <TopDeals deals={topDeals} />
-      </div>
-
-      <ActivityChart initialData={activity} />
     </div>
   );
 }
