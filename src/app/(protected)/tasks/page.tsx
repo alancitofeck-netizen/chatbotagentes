@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
 import { getTasks } from "@/lib/tasks/queries";
-import { getGroupStatsBatch, getRecentGroups } from "@/lib/tasks/groups/queries";
+import { getGroupStatsBatch, getRecentGroups, getTaskGroups } from "@/lib/tasks/groups/queries";
 import { TasksWorkspaceHome, type TasksHomeStats } from "./TasksWorkspaceHome";
 import { getMonday } from "@/lib/calendar/week";
 
@@ -14,7 +14,12 @@ export default async function TasksHomePage() {
   const { workspaceId } = await requireActiveWorkspace();
   const ownMemberId = await getCurrentMemberId(workspaceId);
 
-  const [tasks, members, recentGroups] = await Promise.all([getTasks(workspaceId), getWorkspaceMembers(workspaceId), getRecentGroups(workspaceId)]);
+  const [tasks, members, recentGroups, allGroups] = await Promise.all([
+    getTasks(workspaceId),
+    getWorkspaceMembers(workspaceId),
+    getRecentGroups(workspaceId),
+    getTaskGroups(workspaceId),
+  ]);
   const statsByGroup = await getGroupStatsBatch(
     workspaceId,
     recentGroups.map((g) => g.id),
@@ -40,9 +45,14 @@ export default async function TasksHomePage() {
 
   const stats: TasksHomeStats = { greetingName, pending, highPriority, dueToday, completedThisWeek };
 
+  const pendingTasks = tasks.filter((t) => t.status !== "completed");
+  const groupsById = new Map(allGroups.map((g) => [g.id, g]));
+
   return (
     <TasksWorkspaceHome
       stats={stats}
+      pendingTasks={pendingTasks}
+      groupsById={groupsById}
       recentGroups={recentGroups.map((group) => ({
         group,
         stats: statsByGroup.get(group.id) ?? { pending: 0, inProgress: 0, completed: 0, total: 0, progressPct: 0 },
