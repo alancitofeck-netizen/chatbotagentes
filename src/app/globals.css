@@ -97,6 +97,8 @@
   --background: #eef9fa;
   --foreground: #0f2a3d;
   --surface-1: #ffffff;
+  /* Chip de filtro activo (FilterChips): navy en claro, azul pizarra en oscuro. */
+  --chip-active: #0e1630;
   --surface-2: #f4fbfc;
   --surface-3: #e2f3f5;
   --border-default: #d6eef1;
@@ -188,6 +190,7 @@
     --background: #0a1024;
     --foreground: #eaf1f7;
     --surface-1: #131b36;
+    --chip-active: #27346a;
     --surface-2: #18213f;
     --surface-3: #1e2a4d;
     --border-default: #232e50;
@@ -212,6 +215,7 @@
   --background: #0a1024;
   --foreground: #eaf1f7;
   --surface-1: #131b36;
+  --chip-active: #27346a;
   --surface-2: #18213f;
   --surface-3: #1e2a4d;
   --border-default: #232e50;

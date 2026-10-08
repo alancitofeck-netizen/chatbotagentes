@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, CircleDollarSign, Inbox, Kanban, ListTodo, Menu, Search, Settings, UserCircle, X } from "lucide-react";
+import { ChevronRight, CircleDollarSign, Inbox, Kanban, ListTodo, Search, Settings, ShieldCheck, UserCircle, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { signOut } from "@/app/(protected)/actions";
 import { getInboxUnreadTotalAction } from "@/lib/inbox/actions";
@@ -59,17 +59,20 @@ const DESCRIPTIONS: Record<string, string> = {
 /** Pantalla "Más" de mobile (md:hidden): perfil con rol, búsqueda, accesos rápidos
  * con contador real y, por sección, la lista de módulos. Abajo: modo oscuro,
  * perfil, configuración y cerrar sesión. Se abre desde la pestaña "Más" de la
- * barra inferior (evento) o desde el botón de menú del header. */
+ * barra inferior (evento); el header de mobile ya no tiene botón de menú. */
 export function MobileNav({
   enabledModules,
   userName,
   workspaceName,
   role,
+  isPlatformAdmin = false,
 }: {
   enabledModules: string[];
   userName: string;
   workspaceName: string;
   role: string;
+  /** "Workspaces de clientes" — en mobile solo está acá (antes, en el menú del avatar del header). */
+  isPlatformAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -137,14 +140,6 @@ export function MobileNav({
 
   return (
     <div className="md:hidden">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Abrir menú"
-        className="flex size-9 items-center justify-center rounded-md text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:size-11"
-      >
-        <Menu className="size-5" aria-hidden="true" />
-      </button>
 
       {/* Siempre montado (no `{open && ...}`) para que la transición tenga
        * de dónde animar. `inert` saca la pantalla cerrada del foco y del tacto. */}
@@ -292,6 +287,13 @@ export function MobileNav({
             <span className="flex-1">Configuración</span>
             <ChevronRight className="size-4 text-neutral-400" aria-hidden="true" />
           </Link>
+          {isPlatformAdmin && (
+            <Link href="/crm?tab=agents" onClick={() => setOpen(false)} className="flex min-h-12 items-center gap-3 text-sm text-foreground">
+              <ShieldCheck className="size-5 text-neutral-500" aria-hidden="true" />
+              <span className="flex-1">Workspaces de clientes</span>
+              <ChevronRight className="size-4 text-neutral-400" aria-hidden="true" />
+            </Link>
+          )}
           <form action={signOut}>
             <button type="submit" className="flex min-h-12 w-full items-center text-sm font-medium text-error-strong">
               Cerrar sesión

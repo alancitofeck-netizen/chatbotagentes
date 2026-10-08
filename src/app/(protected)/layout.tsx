@@ -66,10 +66,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
             enabledModules={enabledModules}
             memberId={memberId}
             userName={userName}
-            userEmail={user.email ?? ""}
-            userAvatarUrl={userAvatarUrl}
             isPlatformAdmin={isPlatformAdmin}
-            hasMultipleWorkspaces={hasMultipleWorkspaces}
           />
           <main className="flex-1 overflow-y-auto overflow-x-hidden max-md:pb-[calc(4rem+env(safe-area-inset-bottom))]">{children}</main>
           <MobileBottomNav enabledModules={enabledModules} />

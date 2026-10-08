@@ -22,7 +22,8 @@ export function FilterChips<T extends string>({
           onClick={() => onChange(o.value)}
           className={cn(
             "h-9 shrink-0 rounded-full px-4 text-sm font-medium",
-            value === o.value ? "bg-foreground text-surface-1" : "border border-border-default text-neutral-500",
+            // Activo: --chip-active (navy en claro, azul pizarra en oscuro), como la referencia.
+            value === o.value ? "bg-[var(--chip-active)] text-white" : "border border-border-default text-neutral-500",
           )}
         >
           {o.label}
