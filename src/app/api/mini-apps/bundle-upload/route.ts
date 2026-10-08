@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { parseBundle, MAX_BUNDLE_BYTES } from "@/lib/miniApps/bundleParser";
 import { generateApiKey, hashApiKey, lastFour } from "@/lib/miniApps/apiKey";
 import { injectSdkSnippet } from "@/lib/miniApps/sdkInjection";
+import { getMiniAppGroup, updateMiniAppGroup } from "@/lib/miniApps/mirrors";
 
 export const runtime = "nodejs";
 
@@ -72,14 +73,18 @@ export async function POST(request: NextRequest) {
   // /api/documents/upload/route.ts).
   const { data: miniApp } = await service
     .from("mini_apps")
-    .select("id, workspace_id, slug, config, allowed_origins, mirror_of")
+    .select("id")
     .eq("id", miniAppId)
     .eq("workspace_id", active.workspaceId)
     .maybeSingle();
   if (!miniApp) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  // Un espejo (0194_mini_app_mirrors.sql) sirve la página de su original: subir
-  // acá no cambiaría la URL pública. La página se reemplaza desde la original.
-  if (miniApp.mirror_of) return NextResponse.json({ error: "Esta Mini App es un espejo de la de otra cuenta: la página se reemplaza desde la original." }, { status: 409 });
+
+  // Mini Apps espejo (0194_mini_app_mirrors.sql): la página publicada es una
+  // sola, la de la original. Subir desde cualquier copia (original o espejo)
+  // reemplaza esa página y deja igual la config de todas las copias.
+  const group = await getMiniAppGroup(service, miniAppId);
+  if (!group) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  const published = group.published;
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const parsed = await parseBundle(file.name, bytes);
@@ -97,11 +102,11 @@ export async function POST(request: NextRequest) {
   const indexFile = parsed.bundle.files.find((f) => f.path === parsed.bundle.indexPath);
   if (indexFile) {
     const html = new TextDecoder().decode(indexFile.bytes);
-    const injected = injectSdkSnippet(html, { appId: miniApp.slug as string, apiKey: plaintextApiKey, sdkOrigin });
+    const injected = injectSdkSnippet(html, { appId: published.slug, apiKey: plaintextApiKey, sdkOrigin });
     indexFile.bytes = new TextEncoder().encode(injected);
   }
 
-  const prefix = `${active.workspaceId}/${miniAppId}`;
+  const prefix = `${published.workspace_id}/${published.id}`;
 
   // Replace: clear out whatever's there from a previous version first —
   // recursively, since a nested file only ever shows up one level at a time.
@@ -120,17 +125,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const previousVersion = typeof (miniApp.config as { bundleVersion?: number })?.bundleVersion === "number"
-    ? (miniApp.config as { bundleVersion: number }).bundleVersion
-    : 0;
+  const previousVersion = typeof published.config.bundleVersion === "number" ? published.config.bundleVersion : 0;
   const bundleVersion = previousVersion + 1;
-
-  const nextConfig = {
-    ...(miniApp.config as Record<string, unknown>),
-    hostingMode: "upload",
-    indexPath: parsed.bundle.indexPath,
-    bundleVersion,
-  };
 
   // A bundle served inside the sandboxed iframe (LinkedAppLanding.tsx, no
   // allow-same-origin) has an opaque origin, so its own fetch() calls send
@@ -140,19 +136,15 @@ export async function POST(request: NextRequest) {
   // this, the GrowthLink SDK's automatic form capture would 403 on every
   // hosted bundle. This doesn't weaken the allow-list for hostingMode
   // "url" apps (real third-party sites keep sending their own real Origin).
-  const existingOrigins = (miniApp.allowed_origins as string[] | null) ?? [];
+  const existingOrigins = published.allowed_origins;
   const nextOrigins = existingOrigins.includes("null") ? existingOrigins : [...existingOrigins, "null"];
 
-  await service
-    .from("mini_apps")
-    .update({
-      config: nextConfig,
-      allowed_origins: nextOrigins,
-      api_key_hash: hashApiKey(plaintextApiKey),
-      api_key_last4: lastFour(plaintextApiKey),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", miniAppId);
+  await updateMiniAppGroup(
+    service,
+    group,
+    { hostingMode: "upload", indexPath: parsed.bundle.indexPath, bundleVersion },
+    { allowed_origins: nextOrigins, api_key_hash: hashApiKey(plaintextApiKey), api_key_last4: lastFour(plaintextApiKey) },
+  );
 
   // Same proxy route the public /apps/{slug} page uses (see that route's own
   // comment) — Supabase Storage's public URL would serve index.html as
@@ -160,7 +152,7 @@ export async function POST(request: NextRequest) {
   // workspaceId/miniAppId in the URL. The "Vista previa" button in the
   // wizard/Configuración loads this exact URL too, so preview and
   // production are the same render, not a separate mock.
-  const publicUrl = `/api/public/mini-apps/${miniApp.slug}/bundle/${parsed.bundle.indexPath}?v=${bundleVersion}`;
+  const publicUrl = `/api/public/mini-apps/${published.slug}/bundle/${parsed.bundle.indexPath}?v=${bundleVersion}`;
 
   return NextResponse.json({
     ok: true,

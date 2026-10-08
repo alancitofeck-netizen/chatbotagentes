@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { getMiniAppGroup, updateMiniAppGroup } from "@/lib/miniApps/mirrors";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
@@ -242,7 +243,7 @@ export async function updateMiniApp(id: string, input: UpdateMiniAppInput): Prom
   // Configuración, que ya quedó persistido arriba.
   const linkedConfig = config as Partial<LinkedAppConfig>;
   if (linkedConfig.hostingMode === "upload" && linkedConfig.indexPath) {
-    await resyncUploadedBundleCalendly(workspaceId, id, linkedConfig.indexPath, linkedConfig.calendlyUrl);
+    await resyncUploadedBundleCalendly(id, linkedConfig.indexPath, linkedConfig.calendlyUrl);
   }
 
   revalidateMiniAppsPaths(id);
@@ -279,10 +280,15 @@ export async function updateMiniAppBranding(id: string, branding: MiniAppBrandin
  * is also, incidentally, the one-click fix for any "Vincular App" created
  * before auto-injection existed: just clicking "Regenerar API Key" repairs
  * it, no need to re-upload the original file. */
-async function resyncUploadedBundleKey(workspaceId: string, miniAppId: string, slug: string, config: Record<string, unknown>, apiKey: string): Promise<void> {
-  const indexPath = typeof config.indexPath === "string" ? config.indexPath : "index.html";
+async function resyncUploadedBundleKey(miniAppId: string, apiKey: string): Promise<void> {
+  // Mini Apps espejo: la página publicada es la de la original, compartida por
+  // todas las copias (mirrors.ts, getMiniAppGroup).
   const service = createServiceRoleClient();
-  const objectPath = `${workspaceId}/${miniAppId}/${indexPath}`;
+  const group = await getMiniAppGroup(service, miniAppId);
+  if (!group) return;
+  const { published } = group;
+  const indexPath = typeof published.config.indexPath === "string" ? published.config.indexPath : "index.html";
+  const objectPath = `${published.workspace_id}/${published.id}/${indexPath}`;
 
   const { data: file, error: downloadError } = await service.storage.from(BUNDLE_BUCKET).download(objectPath);
   if (downloadError || !file) {
@@ -296,7 +302,7 @@ async function resyncUploadedBundleKey(workspaceId: string, miniAppId: string, s
   const sdkOrigin = `${proto}://${host}`;
 
   const html = await file.text();
-  const injected = injectSdkSnippet(html, { appId: slug, apiKey, sdkOrigin });
+  const injected = injectSdkSnippet(html, { appId: published.slug, apiKey, sdkOrigin });
 
   const { error: uploadError } = await service.storage.from(BUNDLE_BUCKET).upload(objectPath, new TextEncoder().encode(injected), {
     contentType: "text/html",
@@ -307,12 +313,8 @@ async function resyncUploadedBundleKey(workspaceId: string, miniAppId: string, s
     return;
   }
 
-  const previousVersion = typeof config.bundleVersion === "number" ? config.bundleVersion : 0;
-  await service
-    .from("mini_apps")
-    .update({ config: { ...config, bundleVersion: previousVersion + 1 } })
-    .eq("id", miniAppId)
-    .eq("workspace_id", workspaceId);
+  const previousVersion = typeof published.config.bundleVersion === "number" ? published.config.bundleVersion : 0;
+  await updateMiniAppGroup(service, group, { bundleVersion: previousVersion + 1 });
 }
 
 /** Re-inyecta `window.GL_CALENDLY_URL` en un bundle ya alojado cada vez que
@@ -320,9 +322,15 @@ async function resyncUploadedBundleKey(workspaceId: string, miniAppId: string, s
  * (el archivo servido es estático, así que un cambio en `config` no le
  * llega solo). Best-effort: nunca tira la actualización de Configuración,
  * que ya se persistió en la fila antes de llamar a esto. */
-async function resyncUploadedBundleCalendly(workspaceId: string, miniAppId: string, indexPath: string, calendlyUrl: string | undefined): Promise<void> {
+async function resyncUploadedBundleCalendly(miniAppId: string, indexPath: string, calendlyUrl: string | undefined): Promise<void> {
+  // Mini Apps espejo: el link va dentro de la página publicada, que es una sola
+  // para todas las copias — así que el valor también queda igual en todas.
   const service = createServiceRoleClient();
-  const objectPath = `${workspaceId}/${miniAppId}/${indexPath}`;
+  const group = await getMiniAppGroup(service, miniAppId);
+  if (!group) return;
+  const { published } = group;
+  if (group.copies.length > 1) await updateMiniAppGroup(service, group, { calendlyUrl });
+  const objectPath = `${published.workspace_id}/${published.id}/${indexPath}`;
 
   const { data: file, error: downloadError } = await service.storage.from(BUNDLE_BUCKET).download(objectPath);
   if (downloadError || !file) {
@@ -343,14 +351,11 @@ async function resyncUploadedBundleCalendly(workspaceId: string, miniAppId: stri
     return;
   }
 
-  const { data: row } = await service.from("mini_apps").select("config").eq("id", miniAppId).single();
-  const currentConfig = (row?.config as Record<string, unknown>) ?? {};
-  const previousVersion = typeof currentConfig.bundleVersion === "number" ? currentConfig.bundleVersion : 0;
-  await service
-    .from("mini_apps")
-    .update({ config: { ...currentConfig, bundleVersion: previousVersion + 1 } })
-    .eq("id", miniAppId)
-    .eq("workspace_id", workspaceId);
+  // Releído: la config de la copia editada se acaba de guardar en updateMiniApp.
+  const fresh = await getMiniAppGroup(service, miniAppId);
+  if (!fresh) return;
+  const previousVersion = typeof fresh.published.config.bundleVersion === "number" ? fresh.published.config.bundleVersion : 0;
+  await updateMiniAppGroup(service, fresh, { bundleVersion: previousVersion + 1 });
 }
 
 export async function regenerateApiKey(id: string): Promise<{ apiKey: string }> {
@@ -359,19 +364,19 @@ export async function regenerateApiKey(id: string): Promise<{ apiKey: string }> 
   await assertModuleEnabled(workspaceId, "mini_apps");
   const supabase = await createClient();
 
-  const { data: miniApp } = await supabase.from("mini_apps").select("slug, config, mirror_of").eq("id", id).eq("workspace_id", workspaceId).maybeSingle();
-  if (miniApp?.mirror_of) throw new Error(MIRROR_READONLY_MESSAGE);
+  const { data: miniApp } = await supabase.from("mini_apps").select("id").eq("id", id).eq("workspace_id", workspaceId).maybeSingle();
+  if (!miniApp) throw new Error("No encontramos la Mini App.");
 
+  // Mini Apps espejo: la key valida los envíos de la URL pública, que es una
+  // sola para la original y sus espejos — se regenera para todas las copias.
+  const service = createServiceRoleClient();
+  const group = await getMiniAppGroup(service, id);
+  if (!group) throw new Error("No encontramos la Mini App.");
   const apiKey = generateApiKey();
-  await supabase
-    .from("mini_apps")
-    .update({ api_key_hash: hashApiKey(apiKey), api_key_last4: lastFour(apiKey), updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("workspace_id", workspaceId);
+  await updateMiniAppGroup(service, group, {}, { api_key_hash: hashApiKey(apiKey), api_key_last4: lastFour(apiKey) });
 
-  const config = (miniApp?.config as Record<string, unknown>) ?? {};
-  if (miniApp && config.hostingMode === "upload") {
-    await resyncUploadedBundleKey(workspaceId, id, miniApp.slug as string, config, apiKey);
+  if (group.published.config.hostingMode === "upload") {
+    await resyncUploadedBundleKey(id, apiKey);
   }
 
   revalidateMiniAppsPaths(id);
@@ -379,11 +384,6 @@ export async function regenerateApiKey(id: string): Promise<{ apiKey: string }> 
 }
 
 const BUNDLE_BUCKET = "mini-app-bundles";
-
-/** Un espejo (mini_apps.mirror_of, 0194_mini_app_mirrors.sql) comparte la URL
- * pública de su original, que es la que se sirve: la página y su API key se
- * cambian desde la original, no desde el espejo. */
-const MIRROR_READONLY_MESSAGE = "Esta Mini App es un espejo de la de otra cuenta: la página pública y su API key se cambian desde la original.";
 
 export async function deleteMiniApp(id: string): Promise<void> {
   const { workspaceId, role } = await requireActiveWorkspace();
