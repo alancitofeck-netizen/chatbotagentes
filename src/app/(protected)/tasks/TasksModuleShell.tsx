@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sparkles, PanelLeft } from "lucide-react";
 import type { TaskGroup } from "@/lib/tasks/groups/queries";
 import { GroupFormDialog } from "@/components/tasks/GroupFormDialog";
@@ -12,6 +12,8 @@ import { NewItemMenu } from "./NewItemMenu";
 import { TaskAiPanel } from "./TaskAiPanel";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
+import { cn } from "@/lib/utils/cn";
+import { TasksShellContext } from "./TasksShellContext";
 
 /** Chrome for the whole Tasks/Workspace module: sidebar (Grupos list) + a
  * slim top bar ("Nuevo"/IA toggle) wrapping whatever page is active. Each
@@ -25,6 +27,10 @@ export function TasksModuleShell({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // El inicio de Tareas en mobile trae su propio encabezado y acciones (como la
+  // referencia), así que ahí no se muestra esta barra.
+  const isHome = pathname === "/tasks";
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -39,6 +45,13 @@ export function TasksModuleShell({
   }
 
   return (
+    <TasksShellContext.Provider
+      value={{
+        openNewGroup: () => setShowGroupForm(true),
+        openNewTemplate: () => setShowTemplatePicker(true),
+        openAiPanel: () => setAiPanelOpen(true),
+      }}
+    >
     <div className="flex h-full">
       <TasksSidebar
         initialGroups={groups}
@@ -48,7 +61,7 @@ export function TasksModuleShell({
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <div className="flex items-center justify-between gap-2 border-b border-border-default px-4 py-2.5 sm:px-6 lg:justify-end lg:px-8">
+        <div className={cn("flex items-center justify-between gap-2 border-b border-border-default px-4 py-2.5 sm:px-6 lg:justify-end lg:px-8", isHome && "max-md:hidden")}>
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}
@@ -80,5 +93,6 @@ export function TasksModuleShell({
       )}
       {showTemplatePicker && <TemplatePickerDialog onClose={() => setShowTemplatePicker(false)} onCreated={handleGroupCreated} />}
     </div>
+    </TasksShellContext.Provider>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getCurrentMemberId, requireActiveWorkspace } from "@/lib/auth/session";
 import { getWorkspaceMembers } from "@/lib/inbox/queries";
-import { getTasks } from "@/lib/tasks/queries";
+import { getContactOptions, getConversationOptions, getTasks } from "@/lib/tasks/queries";
 import { getGroupStatsBatch, getRecentGroups, getTaskGroups } from "@/lib/tasks/groups/queries";
 import { TasksWorkspaceHome, type TasksHomeStats } from "./TasksWorkspaceHome";
 import { getMonday } from "@/lib/calendar/week";
@@ -11,14 +11,17 @@ export const metadata: Metadata = {
 };
 
 export default async function TasksHomePage() {
-  const { workspaceId } = await requireActiveWorkspace();
+  const { workspaceId, role } = await requireActiveWorkspace();
   const ownMemberId = await getCurrentMemberId(workspaceId);
 
-  const [tasks, members, recentGroups, allGroups] = await Promise.all([
+  const [tasks, members, recentGroups, allGroups, contactOptions, conversationOptions] = await Promise.all([
     getTasks(workspaceId),
     getWorkspaceMembers(workspaceId),
-    getRecentGroups(workspaceId),
+    // 6 = dos filas completas de la grilla de 3 en mobile.
+    getRecentGroups(workspaceId, 6),
     getTaskGroups(workspaceId),
+    getContactOptions(workspaceId),
+    getConversationOptions(workspaceId),
   ]);
   const statsByGroup = await getGroupStatsBatch(
     workspaceId,
@@ -45,14 +48,18 @@ export default async function TasksHomePage() {
 
   const stats: TasksHomeStats = { greetingName, pending, highPriority, dueToday, completedThisWeek };
 
-  const pendingTasks = tasks.filter((t) => t.status !== "completed");
   const groupsById = new Map(allGroups.map((g) => [g.id, g]));
 
   return (
     <TasksWorkspaceHome
       stats={stats}
-      pendingTasks={pendingTasks}
+      tasks={tasks}
       groupsById={groupsById}
+      ownMemberId={ownMemberId}
+      members={members.map((m) => ({ memberId: m.memberId, fullName: m.fullName }))}
+      contactOptions={contactOptions}
+      conversationOptions={conversationOptions}
+      canAssignOthers={role === "owner" || role === "admin"}
       recentGroups={recentGroups.map((group) => ({
         group,
         stats: statsByGroup.get(group.id) ?? { pending: 0, inProgress: 0, completed: 0, total: 0, progressPct: 0 },
