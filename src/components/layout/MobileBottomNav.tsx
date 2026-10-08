@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppWindow, CalendarClock, House, Menu, MessageCircle, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { isNavItemActive } from "@/lib/navigation/sidebarConfig";
-import { MOBILE_NAV_OPEN_EVENT } from "./mobileNavEvent";
+import { MOBILE_NAV_CLOSE_EVENT, MOBILE_NAV_OPEN_EVENT, MOBILE_NAV_STATE_EVENT } from "./mobileNavEvent";
 
 interface BottomItem {
   key: string;
@@ -25,22 +26,40 @@ const PRIMARY: BottomItem[] = [
   { key: "agenda", label: "Agenda", href: "/agenda", icon: CalendarClock, moduleKey: "agenda" },
 ];
 
-/** Barra inferior sólo en mobile (md:hidden). "Más" abre el MobileNav existente
- * (drawer completo) vía un evento, para no tocar su estado interno. */
+/** Barra inferior sólo en mobile (md:hidden). "Más" abre y cierra el MobileNav
+ * (pantalla completa) vía eventos, para no tocar su estado interno. Con "Más"
+ * abierto la barra sigue visible encima del menú, con "Más" marcado; tocar otra
+ * pestaña cierra el menú. */
 export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }) {
   const pathname = usePathname();
   const enabled = new Set(enabledModules);
   const items = PRIMARY.filter((item) => !item.moduleKey || enabled.has(item.moduleKey));
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  useEffect(() => {
+    const onState = (e: Event) => setMoreOpen(Boolean((e as CustomEvent<boolean>).detail));
+    window.addEventListener(MOBILE_NAV_STATE_EVENT, onState);
+    return () => window.removeEventListener(MOBILE_NAV_STATE_EVENT, onState);
+  }, []);
+
+  const closeMore = () => {
+    if (moreOpen) window.dispatchEvent(new Event(MOBILE_NAV_CLOSE_EVENT));
+  };
 
   return (
     <nav
       data-mobile-bottom-nav
       aria-label="Navegación principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-navy pb-[env(safe-area-inset-bottom)] md:hidden"
+      className={cn(
+        "fixed inset-x-0 bottom-0 border-t border-white/10 bg-navy pb-[env(safe-area-inset-bottom)] md:hidden",
+        // Encima del menú "Más" (z-50) sólo mientras está abierto; si no, debajo de los diálogos.
+        moreOpen ? "z-[60]" : "z-40",
+      )}
     >
       <ul className="grid h-16" style={{ gridTemplateColumns: `repeat(${items.length + 1}, minmax(0, 1fr))` }}>
         {items.map((item) => {
-          const active = isNavItemActive(pathname, item.href);
+          // Con "Más" abierto, la única pestaña marcada es "Más".
+          const active = !moreOpen && isNavItemActive(pathname, item.href);
           const Icon = item.icon;
           if (item.key === "dashboard") {
             // Inicio es el orbe central: sobresale de la barra, como en el prototipo.
@@ -48,6 +67,7 @@ export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }
               <li key={item.key} className="relative">
                 <Link
                   href={item.href}
+                  onClick={closeMore}
                   aria-current={active ? "page" : undefined}
                   className="flex h-full flex-col items-center justify-end gap-0.5 pb-1 text-[11px] font-semibold text-white/70"
                 >
@@ -68,6 +88,7 @@ export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }
             <li key={item.key}>
               <Link
                 href={item.href}
+                onClick={closeMore}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
@@ -83,10 +104,16 @@ export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }
         <li>
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new Event(MOBILE_NAV_OPEN_EVENT))}
-            className="flex h-full w-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-white/60"
+            onClick={() => window.dispatchEvent(new Event(moreOpen ? MOBILE_NAV_CLOSE_EVENT : MOBILE_NAV_OPEN_EVENT))}
+            aria-expanded={moreOpen}
+            className={cn(
+              "flex h-full w-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
+              moreOpen ? "text-accent-500" : "text-white/60",
+            )}
           >
-            <Menu className="size-5" aria-hidden="true" />
+            <span className={cn("flex h-7 w-12 items-center justify-center rounded-full transition-colors", moreOpen && "bg-accent-500/15")}>
+              <Menu className="size-5" aria-hidden="true" />
+            </span>
             Más
           </button>
         </li>
