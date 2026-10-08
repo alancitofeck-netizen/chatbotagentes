@@ -11,7 +11,7 @@ import { getCollectionsKpisAction } from "@/lib/collections/actions";
 import { ThemeToggle } from "@/lib/theme/ThemeToggle";
 import { cn } from "@/lib/utils/cn";
 import { getSidebarNavItems, groupNavItems, isNavItemActive } from "@/lib/navigation/sidebarConfig";
-import { MOBILE_NAV_OPEN_EVENT } from "./mobileNavEvent";
+import { MOBILE_NAV_CLOSE_EVENT, MOBILE_NAV_OPEN_EVENT, MOBILE_NAV_STATE_EVENT } from "./mobileNavEvent";
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -112,9 +112,19 @@ export function MobileNav({
 
   useEffect(() => {
     const openDrawer = () => setOpen(true);
+    const closeDrawer = () => setOpen(false);
     window.addEventListener(MOBILE_NAV_OPEN_EVENT, openDrawer);
-    return () => window.removeEventListener(MOBILE_NAV_OPEN_EVENT, openDrawer);
+    window.addEventListener(MOBILE_NAV_CLOSE_EVENT, closeDrawer);
+    return () => {
+      window.removeEventListener(MOBILE_NAV_OPEN_EVENT, openDrawer);
+      window.removeEventListener(MOBILE_NAV_CLOSE_EVENT, closeDrawer);
+    };
   }, []);
+
+  // La barra inferior queda visible encima del menú y marca "Más" mientras está abierto.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(MOBILE_NAV_STATE_EVENT, { detail: open }));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -141,7 +151,8 @@ export function MobileNav({
       <div
         inert={!open}
         className={cn(
-          "fixed inset-0 z-50 flex flex-col overflow-y-auto bg-surface-1 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]",
+          // El pie deja libre la altura de la barra inferior (h-16), que queda visible encima.
+          "fixed inset-0 z-50 flex flex-col overflow-y-auto bg-surface-1 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]",
           "transition-[opacity,transform] duration-300 ease-[var(--ease-out)]",
           open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
         )}
