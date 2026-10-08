@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { withMirrorTargets } from "@/lib/miniApps/mirrors";
 
 const ALLOWED_EVENT_TYPES = new Set(["app_opened", "step_viewed", "simulation_completed", "lead_submitted"]);
 const RATE_LIMIT_PER_MINUTE = 60;
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const meta = body.meta && typeof body.meta === "object" ? body.meta : {};
 
   const supabase = createServiceRoleClient();
-  const { data: app } = await supabase.from("mini_apps").select("id, workspace_id, status").eq("slug", slug).maybeSingle();
+  const { data: app } = await supabase.from("mini_apps").select("id, workspace_id, status").eq("slug", slug).is("mirror_of", null).maybeSingle();
   if (!app || app.status !== "active") return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   const { count: recentCount } = await supabase
@@ -37,13 +38,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .gte("created_at", new Date(Date.now() - 60_000).toISOString());
   if ((recentCount ?? 0) >= RATE_LIMIT_PER_MINUTE) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
 
-  await supabase.from("mini_app_events").insert({
-    workspace_id: app.workspace_id,
-    mini_app_id: app.id,
-    session_id: sessionId,
-    event_type: eventType,
-    step,
-    meta,
-  });
+  // El evento cuenta también en los espejos de la Mini App (otros workspaces).
+  const targets = await withMirrorTargets(supabase, app);
+  await supabase.from("mini_app_events").insert(targets.map((t) => ({ ...t, session_id: sessionId, event_type: eventType, step, meta })));
   return NextResponse.json({ ok: true });
 }
