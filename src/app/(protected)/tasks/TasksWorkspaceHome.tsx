@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Clock, ListTodo } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { cn } from "@/lib/utils/cn";
 import type { TaskGroup, GroupStats } from "@/lib/tasks/groups/queries";
-import { GROUP_COLOR_META } from "@/components/tasks/groupColorMeta";
-import type { TaskItem } from "@/lib/tasks/queries";
+import type { TaskItem, TaskOption } from "@/lib/tasks/queries";
 import { PendingTasksList } from "./PendingTasksList";
+import { TasksHomeActions, TasksHomeBackButton } from "./TasksHomeMobile";
 
 export interface TasksHomeStats {
   greetingName: string;
@@ -14,22 +16,38 @@ export interface TasksHomeStats {
   completedThisWeek: number;
 }
 
-function StatChip({ icon: Icon, label, value, tone }: { icon: typeof ListTodo; label: string; value: number; tone: "critical" | "neutral" }) {
+type StatTone = "accent" | "critical" | "warning" | "success";
+
+// Tinte translúcido del tono medio: los "strong" están pensados para fondo claro
+// y el modo oscuro no los redefine, así que sobre la tarjeta oscura quedaban apagados.
+const STAT_TONE: Record<StatTone, string> = {
+  accent: "bg-accent-500/15 text-accent-500",
+  critical: "bg-error/15 text-error",
+  warning: "bg-warning/15 text-warning",
+  success: "bg-success/15 text-success",
+};
+
+// Mismo criterio para el cuadrado del ícono de cada grupo (GROUP_COLOR_META.bg son
+// fondos pastel claros, que en oscuro se ven como manchas blancas).
+const GROUP_TILE: Record<TaskGroup["color"], string> = {
+  neutral: "bg-neutral-400/15",
+  accent: "bg-accent-500/15",
+  success: "bg-success/15",
+  warning: "bg-warning/15",
+  error: "bg-error/15",
+  info: "bg-info/15",
+};
+
+function StatChip({ icon: Icon, label, value, tone }: { icon: typeof ListTodo; label: string; value: number; tone: StatTone }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-sm)]">
-      <span
-        className={
-          tone === "critical"
-            ? "flex size-9 shrink-0 items-center justify-center rounded-lg bg-error-bg text-error-strong"
-            : "flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-700"
-        }
-      >
-        <Icon size={17} aria-hidden="true" />
-      </span>
-      <div>
-        <p className="font-display text-[22px] font-semibold tracking-[-0.02em] tabular-nums text-foreground">{value}</p>
-        <p className="text-xs text-neutral-500">{label}</p>
+    <div className="rounded-2xl border border-border-default bg-surface-1 p-3.5 shadow-[var(--elevation-sm)]">
+      <div className="flex items-center gap-2.5">
+        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", STAT_TONE[tone])}>
+          <Icon size={16} aria-hidden="true" />
+        </span>
+        <p className="text-[13px] leading-tight text-foreground/80">{label}</p>
       </div>
+      <p className="mt-2.5 font-display text-[24px] leading-none font-semibold tracking-[-0.02em] tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -41,70 +59,118 @@ export function GroupCard({ group, stats }: { group: TaskGroup; stats: GroupStat
   return (
     <Link
       href={`/tasks/groups/${group.id}`}
-      className="flex flex-col gap-2.5 rounded-xl border border-border-default bg-surface-1 p-4 shadow-[var(--elevation-xs)] transition-shadow hover:shadow-[var(--elevation-sm)]"
+      className="flex min-w-0 flex-col gap-2.5 rounded-2xl border border-border-default bg-surface-1 p-3 shadow-[var(--elevation-xs)] transition-shadow hover:shadow-[var(--elevation-sm)] sm:p-4"
     >
-      <div className="flex items-center gap-2.5">
-        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-[17px] ${GROUP_COLOR_META[group.color].bg}`}>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-[15px] sm:size-9 sm:text-[17px] ${GROUP_TILE[group.color]}`}>
           {group.icon}
         </span>
-        <p className="truncate text-sm font-semibold text-foreground">{group.name}</p>
+        <p className="truncate text-[15px] font-semibold text-foreground sm:text-sm">{group.name}</p>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
         <div className="h-full rounded-full bg-accent-500" style={{ width: `${stats.progressPct}%` }} />
       </div>
-      <p className="text-xs text-neutral-500">
+      <p className="text-[11.5px] leading-tight text-neutral-500 sm:text-xs">
         {stats.progressPct}% · {stats.completed}/{stats.total} completadas
       </p>
     </Link>
   );
 }
 
-/** "Buenos días" home screen — Sección "Dashboard principal" del rediseño
- * Grupos: solo información de tareas, nunca métricas de Inbox/CRM/Calendario/
- * Pólizas (esas viven en sus propios módulos). Todos los stats vienen del
- * mismo getTasks(workspaceId) ya usado en el resto del módulo. */
+const HELP = "Las tareas te ayudan a saber qué tenés que hacer y cuándo. Organizalas en grupos y asignaselas a vos o a tu equipo.";
+
+/** Inicio de Tareas — solo información de tareas, nunca métricas de
+ * Inbox/CRM/Calendario/Pólizas (esas viven en sus propios módulos). Todos los
+ * stats vienen del mismo getTasks(workspaceId) ya usado en el resto del módulo.
+ *
+ * Mobile sigue la referencia: encabezado "Tareas" con volver y "¿Qué hago acá?",
+ * indicadores, "Nueva tarea" / "Sugerencias IA", grupos en grilla de 3, chips de
+ * filtro y la lista; el FAB crea tareas, grupos o plantillas. En escritorio el
+ * saludo y la barra del módulo (Nuevo / IA) siguen como estaban. */
 export function TasksWorkspaceHome({
   stats,
-  pendingTasks,
+  tasks,
   groupsById,
   recentGroups,
+  ownMemberId,
+  members,
+  contactOptions,
+  conversationOptions,
+  canAssignOthers,
 }: {
   stats: TasksHomeStats;
-  pendingTasks: TaskItem[];
+  tasks: TaskItem[];
   groupsById: Map<string, TaskGroup>;
   recentGroups: { group: TaskGroup; stats: GroupStats }[];
+  ownMemberId: string | null;
+  members: { memberId: string; fullName: string }[];
+  contactOptions: TaskOption[];
+  conversationOptions: TaskOption[];
+  canAssignOthers: boolean;
 }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+  // La lista guarda su propio estado (completar es optimista): se vuelve a montar
+  // cuando cambian las tareas del servidor, p. ej. después de crear una.
+  const listKey = `${tasks.length}-${tasks.reduce((max, t) => (t.updatedAt > max ? t.updatedAt : max), "")}`;
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <PageHeader icon={ListTodo} title={`${greeting}, ${stats.greetingName} 👋`} description="Esto es lo que tenés pendiente en tu Workspace." />
+    <div className="flex flex-col gap-5 p-4 sm:gap-6 sm:p-6 lg:p-8">
+      <header className="flex items-start gap-3 md:hidden">
+        <TasksHomeBackButton />
+        <span className="flex size-[54px] shrink-0 items-center justify-center rounded-xl bg-navy text-white shadow-[var(--elevation-md)]">
+          <ListTodo className="size-6" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-[32px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground">Tareas</h1>
+          <p className="mt-1 text-sm text-neutral-500">Lo que tenés pendiente vos y tu equipo.</p>
+          <div className="mt-2.5">
+            <ModuleHelp description={HELP} tourKey="tasks-create-task" />
+          </div>
+        </div>
+      </header>
+      <PageHeader
+        icon={ListTodo}
+        title={`${greeting}, ${stats.greetingName} 👋`}
+        description="Esto es lo que tenés pendiente en tu Workspace."
+        className="max-md:hidden"
+      />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatChip icon={ListTodo} label="Tareas pendientes" value={stats.pending} tone="neutral" />
-        <StatChip icon={AlertTriangle} label="Alta prioridad" value={stats.highPriority} tone={stats.highPriority > 0 ? "critical" : "neutral"} />
-        <StatChip icon={Clock} label="Vencen hoy" value={stats.dueToday} tone={stats.dueToday > 0 ? "critical" : "neutral"} />
-        <StatChip icon={CheckCircle2} label="Completadas esta semana" value={stats.completedThisWeek} tone="neutral" />
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
+        <StatChip icon={ListTodo} label="Tareas pendientes" value={stats.pending} tone="accent" />
+        <StatChip icon={AlertTriangle} label="Alta prioridad" value={stats.highPriority} tone="critical" />
+        <StatChip icon={Clock} label="Vencen hoy" value={stats.dueToday} tone="warning" />
+        <StatChip icon={CheckCircle2} label="Completadas esta semana" value={stats.completedThisWeek} tone="success" />
       </div>
 
-      <div className="lg:max-w-3xl">
-        <h2 className="mb-1 text-[13px] font-semibold text-foreground">Tus tareas pendientes</h2>
-        <PendingTasksList tasks={pendingTasks} groupsById={groupsById} />
-      </div>
+      <TasksHomeActions
+        ownMemberId={ownMemberId}
+        members={members}
+        contactOptions={contactOptions}
+        conversationOptions={conversationOptions}
+        canAssignOthers={canAssignOthers}
+      />
 
-      <div>
-        <h2 className="mb-3 text-[13px] font-semibold text-foreground">Grupos recientes</h2>
+      <section>
+        <h2 className="mb-2.5 text-[13.5px] font-semibold text-neutral-500 md:text-[13px] md:text-foreground">Grupos</h2>
         {recentGroups.length === 0 ? (
-          <p className="text-sm text-neutral-500">Todavía no creaste ningún grupo — usá &ldquo;Nuevo&rdquo; para empezar.</p>
+          <p className="text-sm text-neutral-500">
+            Todavía no creaste ningún grupo — <span className="md:hidden">tocá &ldquo;+&rdquo; para crear uno.</span>
+            <span className="max-md:hidden">usá &ldquo;Nuevo&rdquo; para empezar.</span>
+          </p>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
             {recentGroups.map(({ group, stats: gStats }) => (
               <GroupCard key={group.id} group={group} stats={gStats} />
             ))}
           </div>
         )}
-      </div>
+      </section>
+
+      <section className="lg:max-w-3xl">
+        <h2 className="mb-2.5 text-[13px] font-semibold text-foreground max-md:sr-only">Tus tareas</h2>
+        <PendingTasksList key={listKey} tasks={tasks} groupsById={groupsById} ownMemberId={ownMemberId} />
+      </section>
     </div>
   );
 }

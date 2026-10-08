@@ -8,15 +8,17 @@ export interface FabMenuAction {
   label: string;
   icon?: ReactNode;
   onSelect: () => void;
+  /** data-tour para que un tour guiado pueda apuntar a esta acción. */
+  tourId?: string;
 }
 
 /** FAB que abre un bottom sheet con las acciones de crear de la pantalla
  * (ej. "Nuevo lead / Nueva cita / Nueva tarea"). Solo mobile, como el Fab base. */
-export function FabMenu({ title = "Crear", actions }: { title?: string; actions: FabMenuAction[] }) {
+export function FabMenu({ title = "Crear", actions, tourId }: { title?: string; actions: FabMenuAction[]; /** data-tour del FAB. */ tourId?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Fab aria-label={title} onClick={() => setOpen(true)} />
+      <Fab aria-label={title} data-tour={tourId} onClick={() => setOpen(true)} />
       {open && (
         <Sheet open onClose={() => setOpen(false)} title={title} className="max-w-md">
           <div className="flex flex-col gap-1 p-3">
@@ -24,6 +26,7 @@ export function FabMenu({ title = "Crear", actions }: { title?: string; actions:
               <button
                 key={action.label}
                 type="button"
+                data-tour={action.tourId}
                 onClick={() => {
                   setOpen(false);
                   action.onSelect();

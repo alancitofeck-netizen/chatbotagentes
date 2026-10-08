@@ -20,7 +20,16 @@ const ACTIONS: { label: string; icon: typeof Sparkles }[] = [
  * Tasks module. */
 export function TaskAiPanel({ onClose }: { onClose: () => void }) {
   return (
-    <aside className="hidden w-[280px] shrink-0 flex-col gap-4 overflow-y-auto border-l border-border-default bg-surface-1 p-4 lg:flex">
+    <>
+    {/* Debajo de lg no hay lugar para un panel lateral: se abre como hoja inferior. */}
+    <button type="button" aria-label="Cerrar panel de IA" onClick={onClose} className="fixed inset-0 z-50 bg-black/40 lg:hidden" />
+    <aside
+      className={
+        "flex shrink-0 flex-col gap-4 overflow-y-auto bg-surface-1 p-4 " +
+        "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:max-h-[85dvh] max-lg:rounded-t-2xl max-lg:pb-[calc(1rem+env(safe-area-inset-bottom))] max-lg:shadow-[var(--elevation-lg)] " +
+        "lg:w-[280px] lg:border-l lg:border-border-default"
+      }
+    >
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
           <Sparkles size={15} className="text-accent-500" aria-hidden="true" />
@@ -51,5 +60,6 @@ export function TaskAiPanel({ onClose }: { onClose: () => void }) {
         ))}
       </div>
     </aside>
+    </>
   );
 }
