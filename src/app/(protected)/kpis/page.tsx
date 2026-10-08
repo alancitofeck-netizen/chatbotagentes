@@ -27,10 +27,11 @@ export default async function KpisPage({ searchParams }: { searchParams: Promise
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
       <div className="px-4 sm:px-6 lg:px-8">
         <PageHeader
+          back
           icon={Gauge}
           title="KPIs"
           description={tab === "agendas" ? "Rendimiento de setters y asesores, a partir de las citas reales." : "Números de tus setters, sincronizados desde Google Sheets."}
-          titleAdornment={<ModuleHelp description="Los KPIs te muestran cómo está funcionando tu actividad — leads, contactos, citas y calificadas, sin abrir tu hoja." tourKey="kpis-intro" />}
+          help={<ModuleHelp description="Los KPIs te muestran cómo está funcionando tu actividad — leads, contactos, citas y calificadas, sin abrir tu hoja." tourKey="kpis-intro" />}
         />
       </div>
       <div className="px-4 sm:px-6 lg:px-8">
