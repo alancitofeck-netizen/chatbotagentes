@@ -38,6 +38,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ sl
     .from("mini_apps")
     .select("id, workspace_id, template_key, status, config")
     .eq("slug", slug)
+    .is("mirror_of", null)
     .maybeSingle();
 
   const config = (miniApp?.config as Record<string, unknown>) ?? {};

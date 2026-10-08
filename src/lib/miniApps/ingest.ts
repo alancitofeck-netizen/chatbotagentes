@@ -42,6 +42,7 @@ import {
 import { extractInsuranceProspectFields } from "@/lib/insuranceProspects/fieldDictionary";
 import { createReferralFromMiniAppLeadIfEligible } from "@/lib/miniApps/referralFromLead";
 import { logActivity } from "@/lib/activity/log";
+import { getMiniAppMirrors } from "@/lib/miniApps/mirrors";
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "fecha",
@@ -102,6 +103,9 @@ async function resolveMiniAppBySlug(slug: string): Promise<{ ok: true; app: Mini
     .from("mini_apps")
     .select("id, workspace_id, api_key_hash, allowed_origins, status, name, template_key, config, assigned_agent_id")
     .eq("slug", slug)
+    // Un espejo comparte el slug con su original (0194_mini_app_mirrors.sql):
+    // la URL pública siempre es de la original.
+    .is("mirror_of", null)
     .maybeSingle();
 
   if (!app) return { ok: false, status: 404, error: "not_found" };
@@ -604,23 +608,22 @@ async function processLeadSubmission(
     console.error("[mini-apps] failed to record webhook_events row:", webhookEventError);
   }
 
+  const leadRow = {
+    origen_app: typeof body.origen_app === "string" && body.origen_app.trim() ? body.origen_app.trim() : app.name,
+    agente: resolveAgenteName(body.agente, app.config),
+    nombre,
+    whatsapp,
+    consentimiento: true,
+    consentimiento_fecha: body.consentimiento_fecha,
+    fecha: body.fecha,
+    data,
+    duration_seconds: toFiniteNumber(body.duration_seconds),
+    ip_address: ip,
+    user_agent: userAgent,
+  };
   const { data: insertedLead, error: insertError } = await supabase
     .from("mini_app_leads")
-    .insert({
-      workspace_id: app.workspace_id,
-      mini_app_id: app.id,
-      origen_app: typeof body.origen_app === "string" && body.origen_app.trim() ? body.origen_app.trim() : app.name,
-      agente: resolveAgenteName(body.agente, app.config),
-      nombre,
-      whatsapp,
-      consentimiento: true,
-      consentimiento_fecha: body.consentimiento_fecha,
-      fecha: body.fecha,
-      data,
-      duration_seconds: toFiniteNumber(body.duration_seconds),
-      ip_address: ip,
-      user_agent: userAgent,
-    })
+    .insert({ workspace_id: app.workspace_id, mini_app_id: app.id, ...leadRow })
     .select("id")
     .single();
   if (insertError && insertError.code !== "23505") {
@@ -637,40 +640,74 @@ async function processLeadSubmission(
   }
 
   if (insertedLead) {
-    const leadId = insertedLead.id as string;
-    // Autoritativo, server-side — a diferencia de step_viewed/simulation_completed
-    // (que dependen del beacon del navegador en cada plantilla, ver
-    // /api/public/mini-apps/[slug]/track), este paso del embudo ("Dejó sus
-    // datos") nunca puede perderse: se registra acá mismo, una sola vez, para
-    // las 11 plantillas a la vez, sin tocar el JS de ninguna.
-    const rawSessionId = typeof body.session_id === "string" ? body.session_id : null;
-    await supabase.from("mini_app_events").insert({
-      workspace_id: app.workspace_id,
-      mini_app_id: app.id,
-      session_id: rawSessionId ?? leadId,
-      event_type: "lead_submitted",
-      meta: { leadId },
-    });
-    // Punto de partida del timeline "Actividad" del lead (LeadDetailDrawer,
-    // Fase 2) — sin actor (es un visitante anónimo, no un miembro del
-    // workspace), la UI ya muestra "Sistema" para actor_id null (mismo
-    // criterio que el timeline de Pólizas/Oportunidades).
-    await logActivity(supabase, app.workspace_id, null, "mini_app_lead", leadId, "lead_received", { origenApp: typeof body.origen_app === "string" ? body.origen_app : app.name });
-    const contactId = await linkLeadToContact(supabase, app.workspace_id, nombre, whatsapp, leadId);
-    if (contactId) {
-      await syncInsuranceProspect(supabase, app.workspace_id, contactId, app.id, app.name, leadId, data);
-    }
-    await createReferralFromMiniAppLeadIfEligible(supabase, {
-      workspaceId: app.workspace_id,
-      assignedAgentId: app.assigned_agent_id,
-      referidoPor: data.referidoPor,
+    const leadSideEffects = {
       nombre,
       whatsapp,
-      contactId,
-    });
+      data,
+      sessionId: typeof body.session_id === "string" ? body.session_id : null,
+      origenApp: typeof body.origen_app === "string" ? body.origen_app : null,
+    };
+    await recordLeadSideEffects(supabase, app, insertedLead.id as string, leadSideEffects);
+
+    // Mini Apps espejo (0194_mini_app_mirrors.sql): el mismo lead entra también
+    // a cada workspace que tiene un espejo de esta Mini App, con su propio
+    // contacto y prospecto ahí. Best-effort: el lead de la original ya está
+    // guardado, un espejo que falla nunca hace fallar el envío.
+    for (const mirror of await getMiniAppMirrors(supabase, app.id)) {
+      const { data: mirrorLead, error: mirrorError } = await supabase
+        .from("mini_app_leads")
+        .insert({ workspace_id: mirror.workspace_id, mini_app_id: mirror.id, ...leadRow })
+        .select("id")
+        .single();
+      if (mirrorError || !mirrorLead) {
+        if (mirrorError?.code !== "23505") console.error("[mini-apps] failed to copy lead to mirror:", mirrorError);
+        continue;
+      }
+      await recordLeadSideEffects(supabase, mirror, mirrorLead.id as string, leadSideEffects);
+    }
   }
 
   return { ok: true, duplicate: insertError?.code === "23505", allowedOrigins, leadId: insertedLead?.id as string | undefined };
+}
+
+/** Todo lo que sigue a guardar un lead en un workspace: evento del embudo,
+ * actividad, contacto, prospecto y referido. Se corre para la Mini App
+ * original y, con su propia fila de lead, para cada espejo. */
+async function recordLeadSideEffects(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  app: { id: string; workspace_id: string; name: string; assigned_agent_id: string | null },
+  leadId: string,
+  lead: { nombre: string; whatsapp: string; data: Record<string, unknown>; sessionId: string | null; origenApp: string | null },
+): Promise<void> {
+  // Autoritativo, server-side — a diferencia de step_viewed/simulation_completed
+  // (que dependen del beacon del navegador en cada plantilla, ver
+  // /api/public/mini-apps/[slug]/track), este paso del embudo ("Dejó sus
+  // datos") nunca puede perderse: se registra acá mismo, una sola vez, para
+  // las 11 plantillas a la vez, sin tocar el JS de ninguna.
+  await supabase.from("mini_app_events").insert({
+    workspace_id: app.workspace_id,
+    mini_app_id: app.id,
+    session_id: lead.sessionId ?? leadId,
+    event_type: "lead_submitted",
+    meta: { leadId },
+  });
+  // Punto de partida del timeline "Actividad" del lead (LeadDetailDrawer,
+  // Fase 2) — sin actor (es un visitante anónimo, no un miembro del
+  // workspace), la UI ya muestra "Sistema" para actor_id null (mismo
+  // criterio que el timeline de Pólizas/Oportunidades).
+  await logActivity(supabase, app.workspace_id, null, "mini_app_lead", leadId, "lead_received", { origenApp: lead.origenApp ?? app.name });
+  const contactId = await linkLeadToContact(supabase, app.workspace_id, lead.nombre, lead.whatsapp, leadId);
+  if (contactId) {
+    await syncInsuranceProspect(supabase, app.workspace_id, contactId, app.id, app.name, leadId, lead.data);
+  }
+  await createReferralFromMiniAppLeadIfEligible(supabase, {
+    workspaceId: app.workspace_id,
+    assignedAgentId: app.assigned_agent_id,
+    referidoPor: lead.data.referidoPor,
+    nombre: lead.nombre,
+    whatsapp: lead.whatsapp,
+    contactId,
+  });
 }
 
 /** Best-effort — a failure here must never fail the lead submission itself

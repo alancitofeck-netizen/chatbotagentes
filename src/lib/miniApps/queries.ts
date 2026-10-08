@@ -1082,6 +1082,7 @@ export async function getPublicMiniAppBySlug(slug: string): Promise<PublicMiniAp
     .from("mini_apps")
     .select("id, slug, name, description, template_key, external_url, status, branding, config")
     .eq("slug", slug)
+    .is("mirror_of", null)
     .maybeSingle();
   if (!data || data.status !== "active") return null;
 

@@ -359,7 +359,8 @@ export async function regenerateApiKey(id: string): Promise<{ apiKey: string }> 
   await assertModuleEnabled(workspaceId, "mini_apps");
   const supabase = await createClient();
 
-  const { data: miniApp } = await supabase.from("mini_apps").select("slug, config").eq("id", id).eq("workspace_id", workspaceId).maybeSingle();
+  const { data: miniApp } = await supabase.from("mini_apps").select("slug, config, mirror_of").eq("id", id).eq("workspace_id", workspaceId).maybeSingle();
+  if (miniApp?.mirror_of) throw new Error(MIRROR_READONLY_MESSAGE);
 
   const apiKey = generateApiKey();
   await supabase
@@ -379,11 +380,22 @@ export async function regenerateApiKey(id: string): Promise<{ apiKey: string }> 
 
 const BUNDLE_BUCKET = "mini-app-bundles";
 
+/** Un espejo (mini_apps.mirror_of, 0194_mini_app_mirrors.sql) comparte la URL
+ * pública de su original, que es la que se sirve: la página y su API key se
+ * cambian desde la original, no desde el espejo. */
+const MIRROR_READONLY_MESSAGE = "Esta Mini App es un espejo de la de otra cuenta: la página pública y su API key se cambian desde la original.";
+
 export async function deleteMiniApp(id: string): Promise<void> {
   const { workspaceId, role } = await requireActiveWorkspace();
   requireManagerRole(role);
   await assertModuleEnabled(workspaceId, "mini_apps");
   const supabase = await createClient();
+
+  // La FK mirror_of es "on delete restrict": la original no se puede borrar
+  // mientras tenga espejos en otras cuentas. Se avisa en vez de fallar callado.
+  const service = createServiceRoleClient();
+  const { count: mirrorCount } = await service.from("mini_apps").select("id", { count: "exact", head: true }).eq("mirror_of", id);
+  if ((mirrorCount ?? 0) > 0) throw new Error("Esta Mini App tiene copias espejo en otras cuentas. Borrá primero los espejos.");
 
   await supabase.from("mini_apps").delete().eq("id", id).eq("workspace_id", workspaceId);
   revalidateMiniAppsPaths();

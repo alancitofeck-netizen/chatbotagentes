@@ -72,11 +72,14 @@ export async function POST(request: NextRequest) {
   // /api/documents/upload/route.ts).
   const { data: miniApp } = await service
     .from("mini_apps")
-    .select("id, workspace_id, slug, config, allowed_origins")
+    .select("id, workspace_id, slug, config, allowed_origins, mirror_of")
     .eq("id", miniAppId)
     .eq("workspace_id", active.workspaceId)
     .maybeSingle();
   if (!miniApp) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  // Un espejo (0194_mini_app_mirrors.sql) sirve la página de su original: subir
+  // acá no cambiaría la URL pública. La página se reemplaza desde la original.
+  if (miniApp.mirror_of) return NextResponse.json({ error: "Esta Mini App es un espejo de la de otra cuenta: la página se reemplaza desde la original." }, { status: 409 });
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const parsed = await parseBundle(file.name, bytes);
