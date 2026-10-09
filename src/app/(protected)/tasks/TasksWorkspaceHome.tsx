@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils/cn";
 import type { TaskGroup, GroupStats } from "@/lib/tasks/groups/queries";
 import type { TaskItem, TaskOption } from "@/lib/tasks/queries";
 import { PendingTasksList } from "./PendingTasksList";
-import { TasksHomeActions, TasksHomeBackButton } from "./TasksHomeMobile";
+import { TasksHomeActions } from "./TasksHomeMobile";
 
 export interface TasksHomeStats {
   greetingName: string;
@@ -116,19 +116,14 @@ export function TasksWorkspaceHome({
 
   return (
     <div className="flex flex-col gap-5 p-4 sm:gap-6 sm:p-6 lg:p-8">
-      <header className="flex items-start gap-3 md:hidden">
-        <TasksHomeBackButton />
-        <span className="flex size-[54px] shrink-0 items-center justify-center rounded-xl bg-navy text-white shadow-[var(--elevation-md)]">
-          <ListTodo className="size-6" aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="font-display text-[32px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground">Tareas</h1>
-          <p className="mt-1 text-sm text-neutral-500">Lo que tenés pendiente vos y tu equipo.</p>
-          <div className="mt-2.5">
-            <ModuleHelp description={HELP} tourKey="tasks-create-task" />
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        back
+        icon={ListTodo}
+        title="Tareas"
+        description="Lo que tenés pendiente vos y tu equipo."
+        help={<ModuleHelp description={HELP} tourKey="tasks-create-task" />}
+        className="md:hidden"
+      />
       <PageHeader
         icon={ListTodo}
         title={`${greeting}, ${stats.greetingName} 👋`}

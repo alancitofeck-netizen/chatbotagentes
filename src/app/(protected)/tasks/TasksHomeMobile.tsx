@@ -2,26 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, FolderPlus, LayoutTemplate, ListTodo, Plus, Sparkles } from "lucide-react";
+import { FolderPlus, LayoutTemplate, ListTodo, Plus, Sparkles } from "lucide-react";
 import { FabMenu } from "@/components/ui/FabMenu";
 import { TaskFormSheet } from "@/components/tasks/TaskFormSheet";
 import type { TaskOption } from "@/lib/tasks/queries";
 import { useTasksShell } from "./TasksShellContext";
-
-/** Volver a la pantalla anterior; si se entró directo a /tasks, al inicio. */
-export function TasksHomeBackButton() {
-  const router = useRouter();
-  return (
-    <button
-      type="button"
-      aria-label="Volver"
-      onClick={() => (window.history.length > 1 ? router.back() : router.push("/dashboard"))}
-      className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border-default bg-surface-1 text-foreground"
-    >
-      <ChevronLeft className="size-5" aria-hidden="true" />
-    </button>
-  );
-}
 
 /** Acciones del inicio de Tareas en mobile (la barra superior del módulo no se
  * muestra ahí): "Nueva tarea", "Sugerencias IA" y el FAB, que además ofrece
