@@ -85,6 +85,19 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   rendimiento_anual: "Rendimiento anual estimado",
   objetivo: "Objetivo principal",
   interes_urgencia: "Urgencia declarada",
+  // Simuladores de retiro vinculados (p. ej. "Simulador de Retiro - Luis Morelos").
+  aportacion_mensual: "Aportación mensual",
+  aportacion_hasta_edad: "Aporta hasta los (edad)",
+  patrimonio_proyectado: "Patrimonio proyectado",
+  ingreso_mensual_estimado: "Ingreso mensual estimado",
+  escenario_aportar_1000_mas: "Escenario: aportar $1,000 más al mes",
+  escenario_empezar_3_anos_despues: "Escenario: empezar 3 años después",
+  escenario_retirarse_3_anos_despues: "Escenario: retirarse 3 años más tarde",
+  diagnostico_lo_que_hace_bien: "Diagnóstico: lo que está haciendo bien",
+  diagnostico_oportunidad: "Diagnóstico: oportunidad de mejora",
+  recomendacion: "Recomendación del asesor",
+  asesor: "Asesor",
+  origen: "Origen",
   tipo_constructor: "Quién construye la meta",
   titular_1_edad: "Edad del titular 1",
   titular_1_sexo: "Sexo del titular 1",
@@ -144,6 +157,12 @@ const MONEY_FIELD_KEYS = new Set([
   "costo_equilibrada_anual",
   "costo_mayor_mensual",
   "costo_mayor_anual",
+  "aportacion_mensual",
+  "patrimonio_proyectado",
+  "ingreso_mensual_estimado",
+  "escenario_aportar_1000_mas",
+  "escenario_empezar_3_anos_despues",
+  "escenario_retirarse_3_anos_despues",
 ]);
 
 /** Campos que llegan como fracción (0.07 = 7%), no como porcentaje entero
