@@ -43,6 +43,7 @@ import { extractInsuranceProspectFields } from "@/lib/insuranceProspects/fieldDi
 import { createReferralFromMiniAppLeadIfEligible } from "@/lib/miniApps/referralFromLead";
 import { logActivity } from "@/lib/activity/log";
 import { getMiniAppMirrors } from "@/lib/miniApps/mirrors";
+import { mergeRepeatedLeadData } from "@/lib/miniApps/leadDataMerge";
 
 const KNOWN_TOP_LEVEL_FIELDS = new Set([
   "fecha",
@@ -603,6 +604,10 @@ async function processLeadSubmission(
     .insert({ provider: "mini_app_lead", event_id: eventId, event_type: "lead", payload: body });
   if (webhookEventError) {
     if (webhookEventError.code === "23505") {
+      // Reenvío del mismo lead (misma Mini App + WhatsApp + fecha): no es un
+      // lead nuevo, pero puede traer datos que antes no estaban (p. ej. una
+      // página de varios pasos que vuelve a enviar al sumar la urgencia).
+      await mergeIntoRepeatedLead(supabase, app.id, whatsapp, body.fecha as string, data);
       return { ok: true, duplicate: true, allowedOrigins };
     }
     console.error("[mini-apps] failed to record webhook_events row:", webhookEventError);
@@ -668,6 +673,33 @@ async function processLeadSubmission(
   }
 
   return { ok: true, duplicate: insertError?.code === "23505", allowedOrigins, leadId: insertedLead?.id as string | undefined };
+}
+
+/** Suma la data de un reenvío al lead ya guardado — en la Mini App original y
+ * en cada espejo (mismo WhatsApp + fecha). Best-effort: nunca hace fallar el
+ * envío, que ya respondió como duplicado. */
+async function mergeIntoRepeatedLead(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  miniAppId: string,
+  whatsapp: string,
+  fecha: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const mirrors = await getMiniAppMirrors(supabase, miniAppId);
+    const { data: leads } = await supabase
+      .from("mini_app_leads")
+      .select("id, data")
+      .in("mini_app_id", [miniAppId, ...mirrors.map((m) => m.id)])
+      .eq("whatsapp", whatsapp)
+      .eq("fecha", fecha);
+    for (const lead of leads ?? []) {
+      const merged = mergeRepeatedLeadData((lead.data as Record<string, unknown> | null) ?? {}, data);
+      if (merged) await supabase.from("mini_app_leads").update({ data: merged }).eq("id", lead.id as string);
+    }
+  } catch (err) {
+    console.error("[mini-apps] failed to merge repeated lead submission:", err);
+  }
 }
 
 /** Todo lo que sigue a guardar un lead en un workspace: evento del embudo,
