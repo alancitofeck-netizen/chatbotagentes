@@ -124,6 +124,13 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   coaseguro_equilibrada: "Protección Equilibrada (coaseguro)",
   deducible_mayor: "Mayor Protección (deducible)",
   coaseguro_mayor: "Mayor Protección (coaseguro)",
+  // App Vinculada — Simulador Vida Mujer (Luis Morelos)
+  producto: "Producto",
+  plazo: "Plazo",
+  tasa_anual_hipotetica: "Tasa hipotética anual (ejemplo educativo)",
+  valor_futuro_hipotetico: "Valor futuro hipotético",
+  crecimiento_hipotetico: "Crecimiento hipotético",
+  acepta_comunicaciones: "Acepta comunicaciones comerciales",
   // App Vinculada — Formulario Pre-Cita (agentes/asesores)
   estado: "Estado del guardado",
   fit: "Fit",
@@ -166,6 +173,8 @@ const MONEY_FIELD_KEYS = new Set([
   "deducible_esencial",
   "deducible_equilibrada",
   "deducible_mayor",
+  "valor_futuro_hipotetico",
+  "crecimiento_hipotetico",
   "aportacion_mensual",
   "patrimonio_proyectado",
   "ingreso_mensual_estimado",
