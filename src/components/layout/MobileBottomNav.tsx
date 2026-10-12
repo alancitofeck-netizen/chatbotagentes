@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AppWindow, CalendarClock, House, Menu, MessageCircle, type LucideIcon } from "lucide-react";
+import { AppWindow, CalendarClock, House, LayoutGrid, MessageCircle, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { isNavItemActive } from "@/lib/navigation/sidebarConfig";
 import { MOBILE_NAV_CLOSE_EVENT, MOBILE_NAV_OPEN_EVENT, MOBILE_NAV_STATE_EVENT } from "./mobileNavEvent";
@@ -29,7 +29,8 @@ const PRIMARY: BottomItem[] = [
 /** Barra inferior sólo en mobile (md:hidden). "Más" abre y cierra el MobileNav
  * (pantalla completa) vía eventos, para no tocar su estado interno. Con "Más"
  * abierto la barra sigue visible encima del menú, con "Más" marcado; tocar otra
- * pestaña cierra el menú. */
+ * pestaña cierra el menú. "Más" también queda marcado en cualquier sección que
+ * vive dentro de Más (Tareas, CRM, KPIs...), como en la referencia. */
 export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }) {
   const pathname = usePathname();
   const enabled = new Set(enabledModules);
@@ -41,6 +42,9 @@ export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }
     window.addEventListener(MOBILE_NAV_STATE_EVENT, onState);
     return () => window.removeEventListener(MOBILE_NAV_STATE_EVENT, onState);
   }, []);
+
+  const inMoreSection = !items.some((item) => isNavItemActive(pathname, item.href));
+  const moreActive = moreOpen || inMoreSection;
 
   const closeMore = () => {
     if (moreOpen) window.dispatchEvent(new Event(MOBILE_NAV_CLOSE_EVENT));
@@ -108,11 +112,11 @@ export function MobileBottomNav({ enabledModules }: { enabledModules: string[] }
             aria-expanded={moreOpen}
             className={cn(
               "flex h-full w-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
-              moreOpen ? "text-accent-500" : "text-white/60",
+              moreActive ? "text-accent-500" : "text-white/60",
             )}
           >
-            <span className={cn("flex h-7 w-12 items-center justify-center rounded-full transition-colors", moreOpen && "bg-accent-500/15")}>
-              <Menu className="size-5" aria-hidden="true" />
+            <span className={cn("flex h-7 w-12 items-center justify-center rounded-full transition-colors", moreActive && "bg-accent-500/15")}>
+              <LayoutGrid className="size-5" aria-hidden="true" />
             </span>
             Más
           </button>
