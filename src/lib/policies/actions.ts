@@ -29,6 +29,7 @@ import {
   type PolicyPayment,
 } from "@/lib/policies/queries";
 import { extractTextFromPdf, extractPolicyDataWithAI, type ExtractedPolicyData } from "@/lib/policies/pdfExtraction";
+import { SAMPLE_POLICY_TEXT } from "@/lib/policies/samplePolicy";
 import { ensurePolicyAutomationRules, updatePolicyAutomationRule, type PolicyAutomationRulePatch } from "@/lib/policies/automationRules";
 import { isSupportedFileName, isXlsxFileName, listWorkbookSheets, parseExcelSheet, parseCsvFile, type SheetInfo } from "@/lib/advisors/import/parseFile";
 import { detectPolicyColumnMapping, importPolicyRows, type PolicyImportResult } from "@/lib/policies/import";
@@ -386,6 +387,20 @@ export async function extractPolicyFromPdfAction(storagePath: string): Promise<E
   }
 
   return extractPolicyDataWithAI(apiKey, text);
+}
+
+/** "Probar con una póliza de ejemplo": la misma IA que extractPolicyFromPdfAction,
+ * sobre el texto de una póliza ficticia (samplePolicy.ts) en vez de un PDF
+ * subido. No sube ni guarda nada — ni Documentos ni Pólizas —, así una prueba
+ * nunca ensucia la cartera real. */
+export async function extractSamplePolicyAction(): Promise<ExtractedPolicyData | { error: string }> {
+  const { workspaceId } = await requireActiveWorkspace();
+  const service = createServiceRoleClient();
+
+  const credentials = await resolveOpenRouterApiKey(service, workspaceId, "leer pólizas con IA");
+  if (!credentials.ok) return { error: credentials.error };
+
+  return extractPolicyDataWithAI(credentials.apiKey, SAMPLE_POLICY_TEXT);
 }
 
 /** Paso 2: el usuario ya revisó/editó los datos extraídos — crea cliente
