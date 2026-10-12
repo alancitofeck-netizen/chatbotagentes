@@ -28,7 +28,7 @@ async function loadSheet(sheetUrl: string | null): Promise<{ sheet: NormalizedSh
 /** Tablero de ManyChat dentro de la app: los datos vienen de la hoja del workspace
  * y se calculan en el servidor. Sin iframe. */
 export default async function ManychatPage() {
-  const { workspaceId, role } = await requireActiveWorkspace();
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
   const moduleStatus = await getWorkspaceModuleStatus(workspaceId);
   if (!moduleStatus.some((m) => m.moduleKey === "manychat" && m.enabled)) {
     return <ModuleDisabledState moduleName="ManyChat" />;
@@ -36,7 +36,8 @@ export default async function ManychatPage() {
 
   const sheetUrl = await getManychatSheetLink(workspaceId);
   const { sheet, error, readAt } = await loadSheet(sheetUrl);
-  const canEdit = role === "owner" || role === "admin";
+  // El asesor (agent) administra su propio workspace; el modo supervisor es solo lectura.
+  const canEdit = !isSupervising && (role === "owner" || role === "admin" || role === "agent");
   const showBoard = Boolean(sheet && sheet.leads.length > 0);
 
   // Con datos, el encabezado del tablero hace de título de la página.
@@ -67,7 +68,7 @@ export default async function ManychatPage() {
         {!sheetUrl && (
           <Panel title="Conectá tu hoja de ManyChat">
             <p className="text-sm text-neutral-600">Pegá el link de la hoja donde ManyChat guarda tus leads. Lo guarda tu workspace, así lo ve todo el equipo.</p>
-            {canEdit ? <SheetLinkForm currentUrl={null} /> : <p className="text-sm text-neutral-500">Pedile al owner o a un admin que conecte la hoja.</p>}
+            {canEdit ? <SheetLinkForm currentUrl={null} /> : <p className="text-sm text-neutral-500">Solo el dueño del workspace puede conectar la hoja.</p>}
           </Panel>
         )}
 

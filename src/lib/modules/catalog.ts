@@ -30,7 +30,7 @@ export const MODULE_CATALOG = [
   { key: "data_transfer", defaultEnabled: true },
   { key: "agenda", defaultEnabled: true },
   { key: "operaciones", defaultEnabled: false },
-  { key: "manychat", defaultEnabled: false },
+  { key: "manychat", defaultEnabled: true },
 ] as const;
 
 export type ModuleKey = (typeof MODULE_CATALOG)[number]["key"];
