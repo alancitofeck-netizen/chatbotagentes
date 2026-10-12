@@ -13,6 +13,7 @@ export function PageHeader({
   icon: Icon,
   title,
   description,
+  eyebrow,
   titleAdornment,
   help,
   back = false,
@@ -22,6 +23,8 @@ export function PageHeader({
   icon?: LucideIcon;
   title: string;
   description?: ReactNode;
+  /** Etiqueta chica encima del título (ej. "Diferenciador"). */
+  eyebrow?: ReactNode;
   /** Algo chico junto al título. */
   titleAdornment?: ReactNode;
   /** Botón de ayuda del módulo (ModuleHelp). */
@@ -39,6 +42,7 @@ export function PageHeader({
         </span>
       )}
       <div className="min-w-[12rem] flex-1 max-md:min-w-0">
+        {eyebrow && <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent-600">{eyebrow}</div>}
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="font-display text-[28px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground sm:text-[32px]">
             {title}

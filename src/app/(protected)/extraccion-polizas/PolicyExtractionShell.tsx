@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, Sparkles, UploadCloud, AlertTriangle, CheckCircle2, Check, Loader2 } from "lucide-react";
+import { Zap, Sparkles, UploadCloud, AlertTriangle, CheckCircle2, Check, Loader2, ScanText } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { toast } from "@/components/toast/toast";
 import { cn } from "@/lib/utils/cn";
 import { uploadDocumentFile } from "@/lib/documents/uploadClient";
 import { recordUploadedDocument } from "@/lib/documents/actions";
-import { extractPolicyFromPdfAction, confirmPolicyFromExtractionAction } from "@/lib/policies/actions";
+import { extractPolicyFromPdfAction, extractSamplePolicyAction, confirmPolicyFromExtractionAction } from "@/lib/policies/actions";
 import type { ExtractedPolicyData } from "@/lib/policies/pdfExtraction";
 import { computeExtractionConfidence, type ExtractionConfidence } from "@/lib/policies/extractionConfidence";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
@@ -101,6 +102,8 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
   const [fileName, setFileName] = useState<string | null>(null);
   const [data, setData] = useState<ExtractedPolicyData | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // Prueba con la póliza de ejemplo: misma revisión, pero nunca se guarda.
+  const [isSample, setIsSample] = useState(false);
 
   function patch(fields: Partial<ExtractedPolicyData>) {
     setData((prev) => (prev ? { ...prev, ...fields } : prev));
@@ -166,191 +169,241 @@ export function PolicyExtractionShell({ workspaceId }: { workspaceId: string }) 
     setDocumentId(null);
     setFileName(null);
     setData(null);
+    setIsSample(false);
+  }
+
+  async function handleSample() {
+    setIsSample(true);
+    setFileName("Póliza de ejemplo");
+    setStep("extracting");
+    try {
+      const extracted = await extractSamplePolicyAction();
+      if ("error" in extracted) {
+        toast.error(extracted.error);
+        handleStartOver();
+        return;
+      }
+      setData(extracted);
+      setStep("review");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo leer la póliza de ejemplo con IA.");
+      handleStartOver();
+    }
   }
 
   const lowConfidence = new Set(data?.lowConfidenceFields ?? []);
   const confidence = data ? computeExtractionConfidence(data.lowConfidenceFields) : "alta";
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <div className="flex flex-col gap-4">
-        <Stepper step={step} />
-        <span className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-600">
-          <Zap className="size-3.5" aria-hidden="true" />
-          Diferenciador
-        </span>
-        <div className="flex items-center gap-2">
-          <h1 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-foreground">Extracción de pólizas con IA</h1>
-          <ModuleHelp description="Subí el PDF de una póliza y la IA detecta y organiza todos los datos por vos — vos solo revisás y confirmás." tourKey="extraction-intro" />
-        </div>
-        <p className="text-sm text-neutral-500">Sube el PDF y la IA llena todos los campos por ti</p>
-
-        <label
-          data-tour="extraction.dropzone"
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            const file = e.dataTransfer.files?.[0];
-            if (file) handleFile(file);
-          }}
-          className={cn(
-            "flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed bg-surface-1 p-6 text-center transition-colors sm:p-10",
-            dragOver ? "border-accent-500 bg-accent-50" : "border-border-strong hover:border-accent-500",
-          )}
-        >
-          <span className="flex size-14 items-center justify-center rounded-2xl bg-accent-100 text-accent-700">
-            <UploadCloud className="size-7" aria-hidden="true" />
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        back
+        icon={ScanText}
+        eyebrow={
+          <span className="inline-flex items-center gap-1.5">
+            <Zap className="size-3.5" aria-hidden="true" />
+            Diferenciador
           </span>
-          <p className="text-sm font-medium text-foreground">
-            <span className="hidden sm:inline">Arrastra el PDF de la póliza</span>
-            <span className="sm:hidden">Subí el PDF de la póliza</span>
-          </p>
-          <p className="text-xs text-neutral-500">
-            <span className="hidden sm:inline">o haz clic para subir</span>
-            <span className="sm:hidden">tocá para elegirlo</span>
-          </p>
-          <input
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            disabled={step === "extracting" || step === "saving"}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
+        }
+        title="Extracción de pólizas con IA"
+        description="Subí el PDF y la IA completa los campos por vos."
+        help={<ModuleHelp description="Subí el PDF de una póliza y la IA detecta y organiza todos los datos por vos — vos solo revisás y confirmás." tourKey="extraction-intro" />}
+      />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <Stepper step={step} />
+
+          <label
+            data-tour="extraction.dropzone"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const file = e.dataTransfer.files?.[0];
               if (file) handleFile(file);
             }}
-          />
-        </label>
-
-        <p className="text-xs text-neutral-500">La IA lee el documento y empata con tu cartera. Tú revisas y confirmas.</p>
-
-        {fileName && step !== "upload" && (
-          <p className="text-xs text-neutral-400">
-            Archivo: <span className="text-foreground">{fileName}</span>
-            {(step === "review" || step === "saving") && (
-              <button type="button" onClick={handleStartOver} className="ml-2 font-medium text-accent-600 hover:text-accent-700">
-                Subir otro
-              </button>
+            className={cn(
+              "flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed bg-surface-1 p-6 text-center transition-colors sm:p-10",
+              dragOver ? "border-accent-500 bg-accent-50" : "border-border-strong hover:border-accent-500",
             )}
-          </p>
-        )}
-      </div>
+          >
+            <span className="flex size-14 items-center justify-center rounded-2xl bg-accent-100 text-accent-700">
+              <UploadCloud className="size-7" aria-hidden="true" />
+            </span>
+            <p className="text-base font-semibold text-foreground">Arrastrá el PDF de la póliza</p>
+            <p className="text-sm text-neutral-500">
+              <span className="hidden sm:inline">o hacé clic para elegirlo</span>
+              <span className="sm:hidden">o tocá para elegirlo</span>
+            </p>
+            <input
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              disabled={step === "extracting" || step === "saving"}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+              }}
+            />
+          </label>
 
-      <Card className="flex flex-col gap-4">
-        {step === "upload" && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center text-neutral-500">
-            <Sparkles className="size-6" aria-hidden="true" />
-            <p className="text-sm">Los datos extraídos van a aparecer acá.</p>
-          </div>
-        )}
+          <p className="text-sm text-neutral-500">La IA lee el documento y lo cruza con tu cartera. Vos revisás y confirmás.</p>
 
-        {step === "extracting" && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-            <Loader2 className="size-8 animate-spin text-accent-500" aria-hidden="true" />
-            <p className="text-sm font-medium text-foreground">Leyendo {fileName} con IA…</p>
-            <p className="text-xs text-neutral-500">Esto puede tardar unos segundos.</p>
-          </div>
-        )}
-
-        {(step === "review" || step === "saving") && data && (
-          <>
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-4 text-accent-500" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-foreground">Datos extraídos</h2>
-              <Badge variant={CONFIDENCE_VARIANT[confidence]}>{CONFIDENCE_LABEL[confidence]}</Badge>
-            </div>
-            <p className="-mt-2 text-xs text-neutral-500">Revisa los campos en amarillo antes de guardar</p>
-
-            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel lowConfidence={lowConfidence.has("company")}>Aseguradora</FieldLabel>
-                <input className={fieldClassName(lowConfidence.has("company"))} value={data.company ?? ""} onChange={(e) => patch({ company: e.target.value })} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel lowConfidence={lowConfidence.has("policyNumber")}>No. Póliza</FieldLabel>
-                <input className={fieldClassName(lowConfidence.has("policyNumber"))} value={data.policyNumber ?? ""} onChange={(e) => patch({ policyNumber: e.target.value })} />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel lowConfidence={lowConfidence.has("clientName")}>Contratante</FieldLabel>
-                <input className={fieldClassName(lowConfidence.has("clientName"))} value={data.clientName ?? ""} onChange={(e) => patch({ clientName: e.target.value })} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel lowConfidence={lowConfidence.has("insuranceType")}>Ramo</FieldLabel>
-                <select
-                  className={fieldClassName(lowConfidence.has("insuranceType"))}
-                  value={data.insuranceType}
-                  onChange={(e) => patch({ insuranceType: e.target.value as ExtractedPolicyData["insuranceType"] })}
-                >
-                  {INSURANCE_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel lowConfidence={lowConfidence.has("premium")}>Prima</FieldLabel>
-                <input
-                  type="number"
-                  className={fieldClassName(lowConfidence.has("premium"))}
-                  value={data.premium ?? ""}
-                  onChange={(e) => patch({ premium: e.target.value ? Number(e.target.value) : null })}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel lowConfidence={lowConfidence.has("paymentFrequency")}>Frecuencia</FieldLabel>
-                <select
-                  className={fieldClassName(lowConfidence.has("paymentFrequency"))}
-                  value={data.paymentFrequency ?? ""}
-                  onChange={(e) => patch({ paymentFrequency: (e.target.value || null) as ExtractedPolicyData["paymentFrequency"] })}
-                >
-                  <option value="">Sin especificar</option>
-                  {PAYMENT_FREQUENCIES.map((f) => (
-                    <option key={f.value} value={f.value}>
-                      {f.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel lowConfidence={lowConfidence.has("sumInsured")}>Suma asegurada</FieldLabel>
-                <input
-                  type="number"
-                  className={fieldClassName(lowConfidence.has("sumInsured"))}
-                  value={data.sumInsured ?? ""}
-                  onChange={(e) => patch({ sumInsured: e.target.value ? Number(e.target.value) : null })}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel lowConfidence={lowConfidence.has("endDate")}>Vencimiento</FieldLabel>
-                <input
-                  type="date"
-                  className={fieldClassName(lowConfidence.has("endDate"))}
-                  value={data.endDate ?? ""}
-                  onChange={(e) => patch({ endDate: e.target.value || null })}
-                />
-              </div>
-            </div>
-
+          {step === "upload" && (
             <button
               type="button"
-              onClick={handleConfirm}
-              disabled={step === "saving"}
-              className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-success max-md:h-12 text-sm font-medium text-white transition-colors hover:bg-success/90 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={handleSample}
+              className="inline-flex min-h-11 items-center justify-center gap-2 self-center rounded-xl border border-border-default bg-surface-1 px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-2"
             >
-              {step === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="size-4" aria-hidden="true" />}
-              Confirmar y guardar en Pólizas
+              <Sparkles className="size-4" aria-hidden="true" />
+              Probar con una póliza de ejemplo
             </button>
-          </>
-        )}
-      </Card>
+          )}
+
+          {fileName && step !== "upload" && (
+            <p className="text-xs text-neutral-400">
+              Archivo: <span className="text-foreground">{fileName}</span>
+              {(step === "review" || step === "saving") && (
+                <button type="button" onClick={handleStartOver} className="ml-2 font-medium text-accent-600 hover:text-accent-700">
+                  {isSample ? "Subir mi póliza" : "Subir otro"}
+                </button>
+              )}
+            </p>
+          )}
+        </div>
+
+        <Card className="flex flex-col gap-4">
+          {step === "upload" && (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center text-neutral-500">
+              <Sparkles className="size-6" aria-hidden="true" />
+              <p className="text-sm">Los datos extraídos van a aparecer acá.</p>
+            </div>
+          )}
+
+          {step === "extracting" && (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+              <Loader2 className="size-8 animate-spin text-accent-500" aria-hidden="true" />
+              <p className="text-sm font-medium text-foreground">Leyendo {fileName} con IA…</p>
+              <p className="text-xs text-neutral-500">Esto puede tardar unos segundos.</p>
+            </div>
+          )}
+
+          {(step === "review" || step === "saving") && data && (
+            <>
+              <div className="flex items-center gap-2">
+                <Sparkles className="size-4 text-accent-500" aria-hidden="true" />
+                <h2 className="text-sm font-semibold text-foreground">Datos extraídos</h2>
+                <Badge variant={CONFIDENCE_VARIANT[confidence]}>{CONFIDENCE_LABEL[confidence]}</Badge>
+              </div>
+              <p className="-mt-2 text-xs text-neutral-500">Revisá los campos en amarillo antes de guardar.</p>
+              {isSample && (
+                <p className="rounded-md border border-accent-500/30 bg-accent-500/10 px-3 py-2 text-xs text-foreground">
+                  Es una póliza de ejemplo con datos ficticios: así lee la IA una póliza real. No se guarda nada en tu cartera.
+                </p>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel lowConfidence={lowConfidence.has("company")}>Aseguradora</FieldLabel>
+                  <input className={fieldClassName(lowConfidence.has("company"))} value={data.company ?? ""} onChange={(e) => patch({ company: e.target.value })} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel lowConfidence={lowConfidence.has("policyNumber")}>No. Póliza</FieldLabel>
+                  <input className={fieldClassName(lowConfidence.has("policyNumber"))} value={data.policyNumber ?? ""} onChange={(e) => patch({ policyNumber: e.target.value })} />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel lowConfidence={lowConfidence.has("clientName")}>Contratante</FieldLabel>
+                  <input className={fieldClassName(lowConfidence.has("clientName"))} value={data.clientName ?? ""} onChange={(e) => patch({ clientName: e.target.value })} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel lowConfidence={lowConfidence.has("insuranceType")}>Ramo</FieldLabel>
+                  <select
+                    className={fieldClassName(lowConfidence.has("insuranceType"))}
+                    value={data.insuranceType}
+                    onChange={(e) => patch({ insuranceType: e.target.value as ExtractedPolicyData["insuranceType"] })}
+                  >
+                    {INSURANCE_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel lowConfidence={lowConfidence.has("premium")}>Prima</FieldLabel>
+                  <input
+                    type="number"
+                    className={fieldClassName(lowConfidence.has("premium"))}
+                    value={data.premium ?? ""}
+                    onChange={(e) => patch({ premium: e.target.value ? Number(e.target.value) : null })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel lowConfidence={lowConfidence.has("paymentFrequency")}>Frecuencia</FieldLabel>
+                  <select
+                    className={fieldClassName(lowConfidence.has("paymentFrequency"))}
+                    value={data.paymentFrequency ?? ""}
+                    onChange={(e) => patch({ paymentFrequency: (e.target.value || null) as ExtractedPolicyData["paymentFrequency"] })}
+                  >
+                    <option value="">Sin especificar</option>
+                    {PAYMENT_FREQUENCIES.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel lowConfidence={lowConfidence.has("sumInsured")}>Suma asegurada</FieldLabel>
+                  <input
+                    type="number"
+                    className={fieldClassName(lowConfidence.has("sumInsured"))}
+                    value={data.sumInsured ?? ""}
+                    onChange={(e) => patch({ sumInsured: e.target.value ? Number(e.target.value) : null })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel lowConfidence={lowConfidence.has("endDate")}>Vencimiento</FieldLabel>
+                  <input
+                    type="date"
+                    className={fieldClassName(lowConfidence.has("endDate"))}
+                    value={data.endDate ?? ""}
+                    onChange={(e) => patch({ endDate: e.target.value || null })}
+                  />
+                </div>
+              </div>
+
+              {isSample ? (
+                <button
+                  type="button"
+                  onClick={handleStartOver}
+                  className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-accent-500 max-md:h-12 text-sm font-semibold text-white transition-colors hover:bg-accent-600"
+                >
+                  <UploadCloud className="size-4" aria-hidden="true" />
+                  Subir mi póliza
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  disabled={step === "saving"}
+                  className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-success max-md:h-12 text-sm font-medium text-white transition-colors hover:bg-success/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {step === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="size-4" aria-hidden="true" />}
+                  Confirmar y guardar en Pólizas
+                </button>
+              )}
+            </>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
