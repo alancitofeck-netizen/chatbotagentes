@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, Users, TrendingUp, CalendarClock, UserRound, MessageSquareText, Lock, ListChecks, Plus } from "lucide-react";
+import { ArrowDown, Users, TrendingUp, CalendarClock, UserRound, MessageSquareText, Lock, ListChecks, Plus, Gift } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
@@ -118,10 +118,13 @@ export function AsesoriaStageOverview({
   referidos,
   lastActivityAt,
   advisorName,
+  referralSystem = null,
 }: {
   referidos: number;
   lastActivityAt: string | null;
   advisorName: string | null;
+  /** Sistema de Referidos (privado, 0196): solo llega en las cuentas que lo tienen. */
+  referralSystem?: { sessions: number; referidos: number; lastActivityAt: string | null } | null;
 }) {
   useAutoStartTour("asesorias-intro");
   return (
@@ -193,6 +196,47 @@ export function AsesoriaStageOverview({
         }
         panelIcon={<CalendarClock className="size-10 text-white/90" aria-hidden="true" />}
       />
+
+      {referralSystem && (
+        <>
+          <div className="flex items-center justify-center py-2">
+            <span className="flex size-8 items-center justify-center rounded-full border border-border-default bg-surface-1 text-neutral-400">
+              <ArrowDown className="size-4" aria-hidden="true" />
+            </span>
+          </div>
+          <StageCard
+            accent="teal"
+            sessionLabel="Cierre con referidos"
+            number="03"
+            icon={<Gift className="size-6" aria-hidden="true" />}
+            title="Sistema de Referidos"
+            subtitle="Compartido"
+            description="Al cerrar, el prospecto te recomienda a quienes también les puede servir. Las sesiones y los referidos se comparten con la otra cuenta."
+            statusBadge={
+              <span className="flex items-center gap-1.5 rounded-full bg-success-bg px-2.5 py-1 text-xs font-medium text-success-strong">
+                <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+                Privado
+              </span>
+            }
+            stats={[
+              { icon: <Gift className="size-4 text-accent-700" aria-hidden="true" />, value: String(referralSystem.sessions), label: "Sesiones" },
+              { icon: <Users className="size-4 text-accent-700" aria-hidden="true" />, value: String(referralSystem.referidos), label: "Referidos" },
+              { icon: <CalendarClock className="size-4 text-accent-700" aria-hidden="true" />, value: formatLastActivity(referralSystem.lastActivityAt), label: "Última actividad" },
+            ]}
+            detailsHref="/asesorias/sistema-referidos"
+            primaryAction={
+              <Link
+                href="/asesorias/sistema-referidos"
+                className="flex items-center gap-1.5 rounded-md bg-accent-600 px-3.5 py-2 text-sm font-medium text-[var(--on-accent)] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:bg-accent-700"
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                Abrir
+              </Link>
+            }
+            panelIcon={<Gift className="size-10 text-[var(--on-accent)]" aria-hidden="true" />}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -27,7 +27,7 @@ import {
 export async function getClientAsesorias(workspaceId: string, clientId: string): Promise<AsesoriaListItem[]> {
   const linkedWorkspaceId = await getLinkedWorkspaceId(workspaceId, clientId);
   if (!linkedWorkspaceId) return [];
-  return getAsesoriaList(linkedWorkspaceId);
+  return getAsesoriaList(linkedWorkspaceId, "all");
 }
 
 export interface ClientAsesoriaDetail {

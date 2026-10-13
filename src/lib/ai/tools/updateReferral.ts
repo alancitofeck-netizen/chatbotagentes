@@ -1,4 +1,5 @@
 import type { ToolContext } from "@/lib/ai/tools/shared";
+import { propagateReferralStatus } from "@/lib/asesorias/referralSystem";
 
 const ALLOWED_STATUSES = ["nuevo", "contactado", "interesado", "no_interesado", "convertido"];
 
@@ -25,6 +26,8 @@ export async function updateReferral(args: Record<string, unknown>, ctx: ToolCon
 
   const { error } = await ctx.supabase.from("asesoria_referrals").update({ status, updated_at: new Date().toISOString() }).eq("id", referral.id);
   if (error) throw new Error("update_referral_failed");
+  // Sistema de Referidos: el mismo referido en la otra cuenta del grupo queda con el mismo estado.
+  await propagateReferralStatus(referral.id as string);
 
   return { referralId: referral.id, status };
 }

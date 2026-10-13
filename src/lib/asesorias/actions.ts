@@ -12,6 +12,7 @@ import { getDefaultOutboundBusinessNumber, getOrCreateOpenConversationForContact
 import { generateReferralOpener } from "@/lib/ai/agentRuntime";
 import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
 import { logActivity } from "@/lib/activity/log";
+import { createReferralSessionRows, deleteReferralSessionGroup, getReferralSystemGroup, REFERRAL_SESSION_KIND } from "@/lib/asesorias/referralSystem";
 
 const ASESORIA_CONTACT_SOURCE = "asesoria";
 
@@ -232,6 +233,29 @@ export async function duplicateAsesoriaAction(asesoriaId: string): Promise<{ id:
 export async function deleteAsesoriaAction(asesoriaId: string): Promise<void> {
   const { workspaceId } = await requireActiveWorkspace();
   const supabase = await createClient();
-  await supabase.from("asesorias").delete().eq("id", asesoriaId).eq("workspace_id", workspaceId);
+  const { data: row } = await supabase.from("asesorias").select("kind").eq("id", asesoriaId).eq("workspace_id", workspaceId).maybeSingle();
+  if (row?.kind === REFERRAL_SESSION_KIND) {
+    // Sistema de Referidos: la sesión es la misma en las dos cuentas, así que se borra en las dos.
+    await deleteReferralSessionGroup(asesoriaId);
+    revalidatePath("/asesorias/sistema-referidos");
+  } else {
+    await supabase.from("asesorias").delete().eq("id", asesoriaId).eq("workspace_id", workspaceId);
+  }
   revalidatePath("/asesorias");
+}
+
+/** Asesorías → Sistema de Referidos: sesión nueva en esta cuenta y su copia en las otras cuentas del grupo
+ * (0196). Solo para cuentas que lo tienen (es privado). */
+export async function createReferralSessionAction(): Promise<{ id: string }> {
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  if (isSupervising) throw new Error("Modo supervisor: no podés crear sesiones en una cuenta que no es la tuya.");
+  if (role !== "owner" && role !== "admin" && role !== "agent") throw new Error("No tenés permiso para crear sesiones.");
+  const group = await getReferralSystemGroup(workspaceId);
+  if (!group) throw new Error("El Sistema de Referidos no está habilitado en esta cuenta.");
+  const memberId = await getCurrentMemberId(workspaceId);
+  const supabase = await createClient();
+  const id = await createReferralSessionRows({ supabase, workspaceId, memberId, group });
+  revalidatePath("/asesorias");
+  revalidatePath("/asesorias/sistema-referidos");
+  return { id };
 }

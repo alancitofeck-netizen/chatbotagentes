@@ -9,6 +9,7 @@ import { createOpportunity } from "@/lib/crm/actions";
 import { logActivity } from "@/lib/activity/log";
 import { extractAsesoriaResponses } from "@/lib/asesorias/responseExtraction";
 import { autoStartReferralConversationIfEligible } from "@/lib/asesorias/autoStartConversation";
+import { REFERRAL_SESSION_KIND, syncReferralSessionGroup } from "@/lib/asesorias/referralSystem";
 
 type AsesoriaStatus = "no_iniciada" | "en_progreso" | "finalizada";
 
@@ -73,11 +74,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("asesorias")
-    .select("id, contact_id, opportunity_id, status")
+    .select("id, contact_id, opportunity_id, status, kind")
     .eq("id", asesoriaId)
     .eq("workspace_id", active.workspaceId)
     .maybeSingle();
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  // Sistema de Referidos (0196): la sesión vive en todas las cuentas del grupo y se guarda en todas a la
+  // vez. Ya se verificó arriba que la fila es de la cuenta de quien llama.
+  if (existing.kind === REFERRAL_SESSION_KIND) {
+    await syncReferralSessionGroup(asesoriaId, project);
+    if (mapStatus(session.status) !== existing.status) {
+      revalidatePath("/asesorias");
+      revalidatePath("/asesorias/sistema-referidos");
+    }
+    return NextResponse.json({ ok: true });
+  }
 
   const newStatus = mapStatus(session.status);
   const previousStatus = existing.status as AsesoriaStatus;
