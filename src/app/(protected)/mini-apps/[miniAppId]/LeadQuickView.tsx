@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
 import { MessageCircle, CalendarPlus, Download } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Select } from "@/components/ui/Select";
@@ -54,7 +53,8 @@ export function LeadQuickView({
   const spec = getResultFieldSpec(miniApp.templateKey);
   const resultValue = getLeadResultValue(miniApp.templateKey, lead.data);
   const digits = lead.whatsapp.replace(/\D/g, "");
-  const responses = normalizeMiniAppLeadResponses(lead, miniApp).filter((r) => r.section !== "Resultado");
+  // El resultado ya va destacado arriba: no se repite en "Lo que respondió".
+  const responses = normalizeMiniAppLeadResponses(lead, miniApp).filter((r) => r.section !== "Resultado" && r.key !== spec?.key);
   const email = typeof lead.data.email === "string" ? lead.data.email : null;
   const edad = typeof lead.data.edad === "number" ? lead.data.edad : null;
 
@@ -194,15 +194,15 @@ export function LeadQuickView({
         <button type="button" onClick={onOpenFull} className="flex-1 rounded-xl bg-gradient-to-r from-accent-500 to-primary-600 px-3 py-2.5 text-sm font-semibold text-white hover:brightness-110">
           Ver ficha completa
         </button>
-        <Link
-          href={`/mini-apps/${lead.miniAppId}/leads/${lead.id}/resumen`}
-          target="_blank"
+        <a
+          href={`/api/mini-apps/leads/${lead.id}/pdf`}
+          download
           className="flex items-center justify-center gap-1.5 rounded-xl border border-border-default px-3 py-2.5 text-sm font-medium text-foreground hover:bg-surface-2"
-          title="Ver / imprimir resumen"
+          title="Descargar la ficha en PDF"
         >
           <Download className="size-4" aria-hidden="true" />
           PDF
-        </Link>
+        </a>
       </div>
     </div>
   );

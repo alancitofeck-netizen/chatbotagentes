@@ -65,6 +65,8 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   score_deuda: "Deuda",
   score_retiro: "Retiro",
   score_patrimonio: "Patrimonio",
+  // Calculadora de Ahorro Fiscal (ejercicioFiscal llega en camelCase tal cual lo manda la plantilla).
+  ejercicioFiscal: "Ejercicio fiscal",
   situacion_fiscal: "Situación fiscal",
   ingreso_anual: "Ingreso anual",
   isr_retenido: "ISR retenido",
@@ -149,9 +151,50 @@ const GENERIC_FIELD_LABELS: Record<string, string> = {
   nota_prospecto: "Nota del prospecto",
   dia_preferido: "Día preferido",
   horario_preferido: "Horario preferido",
+  referidoPor: "Referido por",
 };
 
-const SKIP_GENERIC_KEYS = new Set(["bundle_version", "answers"]);
+/** Claves técnicas que mandan las plantillas o el SDK (identificadores internos, sesión, página de
+ * origen, la casilla del formulario). No le dicen nada al asesor, así que no se muestran. */
+const SKIP_GENERIC_KEYS = new Set([
+  "bundle_version",
+  "answers",
+  "recurso",
+  "agenteID",
+  "agente_id",
+  "growthlink_session_id",
+  "pagina_origen",
+  "consent",
+  "consentimiento",
+]);
+
+/** Valores guardados como códigos que se muestran como texto. */
+const VALUE_LABELS: Record<string, Record<string, string>> = {
+  ppr_estado: { si: "Ya tiene PPR", no: "No tiene PPR", evaluando: "Lo está evaluando" },
+  situacion_fiscal: {
+    sueldos: "Sueldos y salarios",
+    honorarios: "Servicios profesionales / honorarios",
+    empresarial: "Actividad empresarial",
+    arrendamiento: "Arrendamiento",
+    mixtos: "Ingresos mixtos",
+    otro: "Otro",
+  },
+  opportunity_level: { HIGH: "Alta", MEDIUM: "Media", LOW: "Baja" },
+  colegiaturas_nivel: {
+    preescolar: "Preescolar",
+    primaria: "Primaria",
+    secundaria: "Secundaria",
+    profesionalTecnico: "Profesional técnico",
+    bachillerato: "Bachillerato",
+  },
+};
+
+/** Números que no llevan separador de miles (un año se lee "2026", no "2,026"). */
+const PLAIN_NUMBER_KEYS = new Set(["ejercicioFiscal", "anio", "year"]);
+
+/** Orden de presentación: el de GENERIC_FIELD_LABELS (agrupa cada plantilla en un orden lógico); lo que
+ * no tiene etiqueta va al final. La base guarda `data` como jsonb, que no conserva el orden de llegada. */
+const LABEL_ORDER = new Map(Object.keys(GENERIC_FIELD_LABELS).map((key, i) => [key, i]));
 
 /** Campos monetarios (pesos) del fallback genérico — mismo concepto que ya
  * usan simulador_retiro/calculadora_brecha_retiro (también caen acá, sin
@@ -181,11 +224,22 @@ const MONEY_FIELD_KEYS = new Set([
   "escenario_aportar_1000_mas",
   "escenario_empezar_3_anos_despues",
   "escenario_retirarse_3_anos_despues",
+  // Calculadora de Ahorro Fiscal
+  "ingreso_anual",
+  "isr_retenido",
+  "deducciones_aplicadas",
+  "ppr_aplicada",
+  "efi_aplicada",
+  "base_gravable_estimada",
+  "isr_sin_estrategia",
+  "isr_con_estrategia",
+  "ahorro_fiscal_estimado",
+  "saldo_estimado",
 ]);
 
 /** Campos que llegan como fracción (0.07 = 7%), no como porcentaje entero
  * — a diferencia de `score`/`overall`/etc., que ya llegan en escala 0-100. */
-const PERCENT_FIELD_KEYS = new Set(["rendimiento_anual"]);
+const PERCENT_FIELD_KEYS = new Set(["rendimiento_anual", "tasa_marginal"]);
 
 /** Etiquetas legibles para DiagnosticoRetiroThemeKey (diagnosticoRetiroDefaults.ts)
  * — la pregunta de "objetivo" (sin puntos, solo tema) guarda la clave interna
@@ -198,10 +252,19 @@ const THEME_LABELS: Record<string, string> = {
 };
 
 function formatGenericValue(key: string, value: unknown): string {
+  if (typeof value === "boolean") return value ? "Sí" : "No";
   if (typeof value === "number") {
+    if (PLAIN_NUMBER_KEYS.has(key)) return String(value);
     if (PERCENT_FIELD_KEYS.has(key)) return `${new Intl.NumberFormat("es-MX", { maximumFractionDigits: 1 }).format(value * 100)}%`;
     if (MONEY_FIELD_KEYS.has(key)) return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(value);
     return new Intl.NumberFormat("es-MX").format(value);
+  }
+  if (typeof value === "string") {
+    const mapped = VALUE_LABELS[key]?.[value];
+    if (mapped) return mapped;
+    const lower = value.trim().toLowerCase();
+    if (lower === "si" || lower === "sí" || lower === "yes" || lower === "true") return "Sí";
+    if (lower === "no" || lower === "false") return "No";
   }
   if (Array.isArray(value)) {
     return value.map((v) => (typeof v === "object" && v !== null ? Object.values(v).join(" ") : String(v))).join(", ");
@@ -478,8 +541,9 @@ function normalizeGeneric(lead: MiniAppLeadDetail): ResponseViewModel[] {
       answer: formatGenericValue(key, value),
       answerType: "field" as const,
       section: "Datos",
-      order: i,
-    }));
+      order: LABEL_ORDER.get(key) ?? LABEL_ORDER.size + i,
+    }))
+    .sort((a, b) => a.order - b.order);
 }
 
 /** Reconstruye pregunta+respuesta real para los dos tipos de Diagnóstico
