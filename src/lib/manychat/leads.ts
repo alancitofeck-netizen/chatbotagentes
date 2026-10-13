@@ -161,6 +161,10 @@ export interface Lead {
   ref: string;
   /** True si tiene ediciones hechas desde el CRM. */
   editado?: boolean;
+  /** PDFs subidos a este lead desde el CRM (Documentos, related_type "manychat_lead"). */
+  archivos?: { id: string; name: string }[];
+  /** Proyecciones que este lead hizo en las mini apps del workspace (mismo teléfono). */
+  proyecciones?: { leadId: string; origen: string; fecha: string }[];
   email?: string;
   canal: string;
   contenido: string;
@@ -236,6 +240,8 @@ export function leadRef(id: string, telefono: string, index: number): string {
 
 /** Ediciones de un lead hechas desde el CRM (manychat_lead_overrides). Null = no se editó ese campo. */
 export interface LeadOverride {
+  /** Id de la fila en manychat_lead_overrides (los PDFs del lead se asocian a este id). */
+  id: string;
   ref: string;
   nombre: string | null;
   telefono: string | null;
@@ -253,9 +259,10 @@ export function applyLeadOverrides(sheet: NormalizedSheet, overrides: LeadOverri
   const leads = sheet.leads.map((lead) => {
     const o = byRef.get(lead.ref);
     if (!o) return lead;
+    const edited = [o.nombre, o.telefono, o.email, o.usuario, o.nota, o.etapa, o.valor].some((v) => v !== null);
     return {
       ...lead,
-      editado: true,
+      editado: edited,
       nombre: o.nombre ?? lead.nombre,
       telefono: o.telefono ?? lead.telefono,
       email: o.email ?? lead.email,
@@ -413,4 +420,10 @@ export function computeKpis(leads: Lead[], hasCitas: boolean): Kpis {
     conversion: ratio(clientes.length, leads.length),
     ingresos: clientes.reduce((sum, l) => sum + l.valor, 0),
   };
+}
+
+/** Últimos 10 dígitos de un teléfono, para cruzar el mismo número escrito con o sin código de país. */
+export function phoneKey(telefono: string | undefined): string | null {
+  const digits = (telefono ?? "").replace(/\D/g, "");
+  return digits.length >= 8 ? digits.slice(-10) : null;
 }

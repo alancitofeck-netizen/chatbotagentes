@@ -7,8 +7,22 @@ import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { getManychatSheetLink } from "@/lib/manychat/sheetLink";
 import { fetchSheetRows, SheetError } from "@/lib/manychat/sheetSource";
-import { applyLeadOverrides, normalizeRows, type NormalizedSheet } from "@/lib/manychat/leads";
-import { getManychatLeadOverrides } from "@/lib/manychat/leadOverrides";
+import { applyLeadOverrides, normalizeRows, phoneKey, type NormalizedSheet } from "@/lib/manychat/leads";
+import { getManychatLeadDocuments, getManychatLeadOverrides, getMiniAppProjectionsByPhone } from "@/lib/manychat/leadOverrides";
+
+function withLeadFiles(
+  sheet: NormalizedSheet,
+  documents: Map<string, { id: string; name: string }[]>,
+  projections: Map<string, { leadId: string; origen: string; fecha: string }[]>,
+): NormalizedSheet {
+  return {
+    ...sheet,
+    leads: sheet.leads.map((lead) => {
+      const key = phoneKey(lead.telefono);
+      return { ...lead, archivos: documents.get(lead.ref) ?? [], proyecciones: key ? (projections.get(key) ?? []) : [] };
+    }),
+  };
+}
 import { ManychatBoard } from "./ManychatBoard";
 import { Panel } from "./Panel";
 import { SheetLinkForm } from "./SheetLinkForm";
@@ -36,9 +50,15 @@ export default async function ManychatPage() {
   }
 
   const sheetUrl = await getManychatSheetLink(workspaceId);
-  const [{ sheet: sheetRaw, error, readAt }, overrides] = await Promise.all([loadSheet(sheetUrl), getManychatLeadOverrides(workspaceId)]);
-  // Las ediciones hechas desde el CRM se aplican encima de lo que trae la hoja.
-  const sheet = sheetRaw ? applyLeadOverrides(sheetRaw, overrides) : null;
+  const [{ sheet: sheetRaw, error, readAt }, overrides, projections] = await Promise.all([
+    loadSheet(sheetUrl),
+    getManychatLeadOverrides(workspaceId),
+    getMiniAppProjectionsByPhone(workspaceId),
+  ]);
+  const documents = await getManychatLeadDocuments(workspaceId, overrides);
+  // Las ediciones hechas desde el CRM se aplican encima de lo que trae la hoja; después se suman los PDFs
+  // subidos al lead y las proyecciones que hizo en las mini apps (mismo teléfono).
+  const sheet = sheetRaw ? withLeadFiles(applyLeadOverrides(sheetRaw, overrides), documents, projections) : null;
   // El asesor (agent) administra su propio workspace; el modo supervisor es solo lectura.
   const canEdit = !isSupervising && (role === "owner" || role === "admin" || role === "agent");
   const showBoard = Boolean(sheet && sheet.leads.length > 0);
