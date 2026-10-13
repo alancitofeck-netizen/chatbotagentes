@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowLeftRight, MessageCircle, Trash2, ShieldPlus, StickyNote, CalendarPlus } from "lucide-react";
+import { Sparkles, ArrowLeftRight, MessageCircle, Trash2, ShieldPlus, StickyNote, CalendarPlus, Download } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
 import { LeadMessageBox } from "./LeadMessageBox";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -223,6 +223,17 @@ export function LeadDetailDrawer({
             <Sparkles className="size-4" aria-hidden="true" />
             Ver resumen visual
           </Link>
+
+          {/* Misma ficha en PDF que el botón "PDF" del panel de escritorio (LeadQuickView). En el celular este
+              drawer es la única vista del lead, así que la descarga tiene que estar acá también. */}
+          <a
+            href={`/api/mini-apps/leads/${lead.id}/pdf`}
+            download
+            className="-mt-2 flex items-center justify-center gap-2 rounded-xl border border-border-default bg-surface-1 px-4 py-3 text-sm font-semibold text-foreground hover:bg-surface-2"
+          >
+            <Download className="size-4" aria-hidden="true" />
+            Descargar PDF de la proyección
+          </a>
 
           {models.length > 0 && (
             <div className="flex flex-col gap-2">
