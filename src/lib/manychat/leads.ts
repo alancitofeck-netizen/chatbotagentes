@@ -3,15 +3,25 @@
  * (src/lib/manychat/dashboardTemplate.ts) para que los números coincidan. Todo es
  * puro: no toca la red ni la base. */
 
-export type StageId = "nuevo" | "contactado" | "calificado" | "cita" | "cliente";
+export type StageId = "nuevo" | "contactado" | "calificado" | "agenda" | "confirmacion" | "cita" | "calendario" | "propuesta" | "cliente";
 
-export const STAGES: { id: StageId; label: string; color: string }[] = [
-  { id: "nuevo", label: "Nuevo", color: "var(--s-nuevo)" },
-  { id: "contactado", label: "Contactado", color: "var(--s-contactado)" },
-  { id: "calificado", label: "Calificado", color: "var(--s-calificado)" },
-  { id: "cita", label: "Cita", color: "var(--s-cita)" },
-  { id: "cliente", label: "Cliente", color: "var(--s-cliente)" },
+/** Etapas en el orden del embudo. Agenda, Esperando confirmación de cita, Calendario y Propuesta se
+ * sumaron a pedido del usuario; se pueden asignar desde el CRM (manychat_lead_overrides) o venir en la hoja. */
+export const STAGES: { id: StageId; label: string }[] = [
+  { id: "nuevo", label: "Nuevo" },
+  { id: "contactado", label: "Contactado" },
+  { id: "calificado", label: "Calificado" },
+  { id: "agenda", label: "Agenda" },
+  { id: "confirmacion", label: "Esperando confirmación de cita" },
+  { id: "cita", label: "Cita" },
+  { id: "calendario", label: "Calendario" },
+  { id: "propuesta", label: "Propuesta" },
+  { id: "cliente", label: "Cliente" },
 ];
+
+export function isStageId(value: unknown): value is StageId {
+  return STAGES.some((s) => s.id === value);
+}
 
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s.id, i])) as Record<StageId, number>;
 
@@ -107,7 +117,12 @@ export function detectChannel(canal: string, ...hints: string[]): string {
 export function detectStage(value: string, tags?: string): StageId {
   const t = norm(`${value} ${tags ?? ""}`);
   if (/cliente|client|compr|vendid|venta cerrada|won|ganad|pagad/.test(t)) return "cliente";
+  if (/propuesta|cotizacion|proposal/.test(t)) return "propuesta";
+  if (/calendario/.test(t)) return "calendario";
+  // Antes que "cita": "Esperando confirmación de cita" también contiene "cita".
+  if (/esperando confirm|confirmacion|sin confirmar|por confirmar/.test(t)) return "confirmacion";
   if (/\bcita\b|agendad|appointment|meeting|reunion|booked|llamada/.test(t)) return "cita";
+  if (/\bagenda\b|\bagendar\b/.test(t)) return "agenda";
   if (/calific|qualif|interesad|\bhot\b|caliente|oportunidad/.test(t)) return "calificado";
   if (/contact|seguimiento|follow|respond|conversacion/.test(t)) return "contactado";
   return "nuevo";
@@ -142,6 +157,11 @@ export function parseNumber(value: unknown): number {
 
 export interface Lead {
   id: string;
+  /** Clave estable del lead en la hoja, para guardar sus ediciones (ver leadRef). */
+  ref: string;
+  /** True si tiene ediciones hechas desde el CRM. */
+  editado?: boolean;
+  email?: string;
   canal: string;
   contenido: string;
   campana: string;
@@ -178,6 +198,8 @@ export function normalizeRows(rows: Record<string, string>[]): NormalizedSheet {
     const contenido = get("contenido") || get("campana") || (get("keyword") ? `Palabra clave: ${get("keyword")}` : "Sin identificar");
     leads.push({
       id: get("id") || `row-${index}`,
+      ref: leadRef(get("id"), get("telefono"), index),
+      email: get("email"),
       canal: detectChannel(get("canal"), get("tags"), contenido, get("keyword"), get("campana")),
       contenido,
       campana: get("contenido") ? get("campana") : "",
@@ -194,8 +216,56 @@ export function normalizeRows(rows: Record<string, string>[]): NormalizedSheet {
     leads,
     skipped,
     hasStages: Boolean(cols.etapa || cols.tags),
-    hasCitas: Boolean(cols.fechaCita) || leads.some((l) => l.etapa === "cita"),
+    hasCitas: Boolean(cols.fechaCita) || hasScheduling(leads),
   };
+}
+
+/** Algún lead en una etapa de agenda/cita o posterior (sin contar Cliente, que puede venir sin pasar por cita). */
+function hasScheduling(leads: Lead[]): boolean {
+  return leads.some((l) => l.etapa !== "cliente" && STAGE_INDEX[l.etapa] >= STAGE_INDEX.agenda);
+}
+
+/** Clave estable de un lead de la hoja: el id de ManyChat si la hoja lo trae; si no, el teléfono (solo
+ * dígitos); si no, el número de fila. Si dos filas comparten teléfono, comparten las ediciones. */
+export function leadRef(id: string, telefono: string, index: number): string {
+  if (id) return `id:${id}`;
+  const digits = telefono.replace(/\D/g, "");
+  if (digits.length >= 8) return `tel:${digits}`;
+  return `row:${index}`;
+}
+
+/** Ediciones de un lead hechas desde el CRM (manychat_lead_overrides). Null = no se editó ese campo. */
+export interface LeadOverride {
+  ref: string;
+  nombre: string | null;
+  telefono: string | null;
+  email: string | null;
+  usuario: string | null;
+  nota: string | null;
+  etapa: StageId | null;
+  valor: number | null;
+}
+
+/** Aplica las ediciones del CRM encima de los leads de la hoja: lo editado manda. */
+export function applyLeadOverrides(sheet: NormalizedSheet, overrides: LeadOverride[]): NormalizedSheet {
+  if (overrides.length === 0) return sheet;
+  const byRef = new Map(overrides.map((o) => [o.ref, o]));
+  const leads = sheet.leads.map((lead) => {
+    const o = byRef.get(lead.ref);
+    if (!o) return lead;
+    return {
+      ...lead,
+      editado: true,
+      nombre: o.nombre ?? lead.nombre,
+      telefono: o.telefono ?? lead.telefono,
+      email: o.email ?? lead.email,
+      usuario: o.usuario ?? lead.usuario,
+      nota: o.nota ?? lead.nota,
+      etapa: o.etapa ?? lead.etapa,
+      valor: o.valor ?? lead.valor,
+    };
+  });
+  return { ...sheet, leads, hasStages: true, hasCitas: sheet.hasCitas || hasScheduling(leads) };
 }
 
 export function reached(lead: Lead, stage: StageId): boolean {

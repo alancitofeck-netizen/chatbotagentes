@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, Plus, RefreshCw, Search, Send, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
+import { Download, Pencil, Plus, RefreshCw, Search, Send, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import {
   CHANNEL_BY_ID,
@@ -22,6 +22,7 @@ import {
   type StageId,
 } from "@/lib/manychat/leads";
 import { ContentRanking } from "./ContentRanking";
+import { LeadEditForm } from "./LeadEditForm";
 import { Panel } from "./Panel";
 import { SheetLinkForm } from "./SheetLinkForm";
 import { fmtInt, fmtPct } from "./format";
@@ -31,7 +32,11 @@ const STAGE_COLOR: Record<StageId, string> = {
   nuevo: "#c9e6ec",
   contactado: "#8fcfdb",
   calificado: "#13a9bd",
+  agenda: "#a78bfa",
+  confirmacion: "#f5b942",
   cita: "#6fdae8",
+  calendario: "#60a5fa",
+  propuesta: "#f472b6",
   cliente: "#3dd68c",
 };
 
@@ -58,7 +63,8 @@ function initials(name: string): string {
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
+    // Array.from separa por caracteres reales: w[0] parte un emoji en dos y queda "�".
+    .map((w) => Array.from(w)[0]?.toUpperCase() ?? "")
     .join("");
 }
 
@@ -140,6 +146,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [openLead, setOpenLead] = useState<number | null>(null);
+  const [editingRef, setEditingRef] = useState<string | null>(null);
   const [showSheetForm, setShowSheetForm] = useState(false);
   // Misma hora que el servidor al renderizar (sin desfase de hidratación); se actualiza al montar.
   const [now, setNow] = useState(generatedAt);
@@ -166,7 +173,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
     return periodLeads.filter((l) => {
       if (stage !== "todos" && l.etapa !== stage) return false;
       if (!q) return true;
-      return [l.nombre, l.telefono, l.usuario, l.nota, l.contenido].some((v) => v?.toLowerCase().includes(q));
+      return [l.nombre, l.telefono, l.email, l.usuario, l.nota, l.contenido].some((v) => v?.toLowerCase().includes(q));
     });
   }, [periodLeads, stage, search]);
 
@@ -333,15 +340,19 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
           <ul className="flex flex-col gap-2">
             {filtered.slice(0, visible).map((lead, i) => {
               const channel = CHANNEL_BY_ID[lead.canal] ?? CHANNEL_BY_ID.otros;
-              const name = lead.nombre ?? "Sin nombre";
+              const name = lead.nombre || "Sin nombre";
               const open = openLead === i;
+              const editing = open && editingRef === lead.ref;
               const digits = (lead.telefono ?? "").replace(/\D/g, "");
-              const hasDetail = Boolean(lead.telefono || lead.usuario || lead.nota);
+              const hasDetail = Boolean(lead.telefono || lead.email || lead.usuario || lead.nota);
               return (
                 <li key={`${lead.id}-${i}`}>
                   <button
                     type="button"
-                    onClick={() => setOpenLead(open ? null : i)}
+                    onClick={() => {
+                      setOpenLead(open ? null : i);
+                      setEditingRef(null);
+                    }}
                     aria-expanded={open}
                     className="grid w-full grid-cols-[46px_minmax(0,1fr)] gap-3 rounded-2xl border border-border-default bg-surface-1 p-3 text-left"
                   >
@@ -365,30 +376,52 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
                           {STAGES.find((s) => s.id === lead.etapa)?.label}
                         </span>
                         <span className="inline-flex h-6 items-center rounded-full border border-border-default px-2.5 text-[12.5px] font-semibold text-neutral-600">{channel.corto}</span>
+                        {lead.editado && (
+                          <span className="inline-flex h-6 items-center rounded-full border border-dashed border-border-default px-2.5 text-[12.5px] font-medium text-neutral-500">Editado</span>
+                        )}
                       </span>
                     </span>
                   </button>
                   {open && (
                     <div className="mx-1 -mt-1 flex flex-col gap-2 rounded-b-2xl border border-t-0 border-border-default bg-surface-2 p-3 text-[13.5px] text-neutral-600">
-                      {hasDetail ? (
-                        <>
-                          {lead.telefono && <p>Teléfono: <span className="text-foreground">{lead.telefono}</span></p>}
-                          {lead.usuario && <p>Usuario: <span className="text-foreground">{lead.usuario}</span></p>}
-                          {lead.nota && <p>Nota: <span className="text-foreground">{lead.nota}</span></p>}
-                          {digits && (
-                            <a
-                              href={`https://wa.me/${digits}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex h-11 w-fit items-center gap-2 rounded-xl bg-accent-600 px-4 text-[14px] font-semibold text-[var(--on-accent)] hover:bg-accent-700"
-                            >
-                              <Send className="size-4" aria-hidden="true" />
-                              Escribir por WhatsApp
-                            </a>
-                          )}
-                        </>
+                      {editing ? (
+                        <LeadEditForm lead={lead} onDone={() => setEditingRef(null)} />
                       ) : (
-                        <p>La hoja no trae teléfono, usuario ni notas de este lead.</p>
+                        <>
+                          {hasDetail ? (
+                            <>
+                              {lead.telefono && <p>Teléfono: <span className="text-foreground">{lead.telefono}</span></p>}
+                              {lead.email && <p>Email: <span className="text-foreground">{lead.email}</span></p>}
+                              {lead.usuario && <p>Usuario: <span className="text-foreground">{lead.usuario}</span></p>}
+                              {lead.nota && <p>Nota: <span className="text-foreground">{lead.nota}</span></p>}
+                            </>
+                          ) : (
+                            <p>Todavía no hay teléfono, email, usuario ni notas de este lead.</p>
+                          )}
+                          <div className="flex flex-wrap gap-2">
+                            {digits && (
+                              <a
+                                href={`https://wa.me/${digits}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex h-11 w-fit items-center gap-2 rounded-xl bg-accent-600 px-4 text-[14px] font-semibold text-[var(--on-accent)] hover:bg-accent-700"
+                              >
+                                <Send className="size-4" aria-hidden="true" />
+                                Escribir por WhatsApp
+                              </a>
+                            )}
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingRef(lead.ref)}
+                                className="inline-flex h-11 w-fit items-center gap-2 rounded-xl border border-border-default bg-surface-1 px-4 text-[14px] font-semibold text-foreground hover:border-border-strong"
+                              >
+                                <Pencil className="size-4" aria-hidden="true" />
+                                Editar
+                              </button>
+                            )}
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
