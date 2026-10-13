@@ -8,6 +8,7 @@ import { getAsesoriaListAction, getAsesoriaReferralActivityAction } from "@/lib/
 import { AsesoriaStageOverview } from "./AsesoriaStageOverview";
 import { RealtimeRefresh } from "./RealtimeRefresh";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { getReferralSessions, getReferralSystemGroup } from "@/lib/asesorias/referralSystem";
 
 export const metadata: Metadata = {
   title: "Asesorías — Growth Link",
@@ -25,6 +26,16 @@ export default async function AsesoriasPage() {
   }, null);
   const referidos = referralActivity.length;
   const advisorName = (user.user_metadata?.full_name as string | undefined) ?? null;
+  // Sistema de Referidos: privado, solo en las cuentas del grupo (0196).
+  const referralGroup = await getReferralSystemGroup(workspaceId);
+  const referralSessions = referralGroup ? await getReferralSessions(workspaceId) : [];
+  const referralSystem = referralGroup
+    ? {
+        sessions: referralSessions.length,
+        referidos: referralSessions.reduce((sum, s) => sum + s.referidos, 0),
+        lastActivityAt: referralSessions[0]?.updatedAt ?? null,
+      }
+    : null;
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
@@ -33,7 +44,7 @@ export default async function AsesoriasPage() {
         <PageHeader icon={Handshake} title="Asesorías" description="Gestioná tus reuniones comerciales — Presentación y Cita de Cierre, un mismo proceso." titleAdornment={<ModuleHelp description="Gestioná tus reuniones comerciales — Presentación y Cita de Cierre, un mismo proceso guiado." tourKey="asesorias-intro" />} />
       </div>
       <div className="px-4 sm:px-6 lg:px-8">
-        <AsesoriaStageOverview referidos={referidos} lastActivityAt={lastActivityAt} advisorName={advisorName} />
+        <AsesoriaStageOverview referidos={referidos} lastActivityAt={lastActivityAt} advisorName={advisorName} referralSystem={referralSystem} />
       </div>
     </div>
   );

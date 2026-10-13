@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, getActiveWorkspaceForUser, getCurrentMemberId } from "@/lib/auth/session";
+import { getReferralSystemGroup, REFERRAL_SESSION_KIND, saveReferralSystemTemplate } from "@/lib/asesorias/referralSystem";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -52,8 +53,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   // Confirma que la asesoría realmente pertenece al workspace activo antes
   // de tocar la plantilla maestra — defensa en profundidad además de la RLS.
-  const { data: existing } = await supabase.from("asesorias").select("id").eq("id", asesoriaId).eq("workspace_id", active.workspaceId).maybeSingle();
+  const { data: existing } = await supabase.from("asesorias").select("id, kind").eq("id", asesoriaId).eq("workspace_id", active.workspaceId).maybeSingle();
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  // Sistema de Referidos (0196): la plantilla es una sola para todo el grupo de cuentas.
+  if (existing.kind === REFERRAL_SESSION_KIND) {
+    const group = await getReferralSystemGroup(active.workspaceId);
+    if (!group) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    const saved = await saveReferralSystemTemplate(group.groupId, active.workspaceId, payload);
+    return saved ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "upsert_failed" }, { status: 500 });
+  }
 
   const { error } = await supabase
     .from("asesoria_templates")

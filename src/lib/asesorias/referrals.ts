@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getAsesoriaList } from "@/lib/asesorias/queries";
+import { propagateReferralStatus } from "@/lib/asesorias/referralSystem";
 
 export type ReferralStatus = "nuevo" | "contactado" | "interesado" | "no_interesado" | "convertido";
 
@@ -44,7 +45,7 @@ export async function getWorkspaceReferrals(workspaceId: string, advisorId?: str
     .order("created_at", { ascending: false });
   if (advisorId) referralsQuery = referralsQuery.eq("advisor_id", advisorId);
 
-  const [{ data: referrals }, asesorias] = await Promise.all([referralsQuery, getAsesoriaList(workspaceId)]);
+  const [{ data: referrals }, asesorias] = await Promise.all([referralsQuery, getAsesoriaList(workspaceId, "all")]);
 
   const asesoriaById = new Map(asesorias.map((a) => [a.id, a]));
 
@@ -83,4 +84,6 @@ export async function updateReferralStatus(referralId: string, workspaceId: stri
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", referralId)
     .eq("workspace_id", workspaceId);
+  // Sistema de Referidos: el mismo referido en la otra cuenta del grupo queda con el mismo estado.
+  await propagateReferralStatus(referralId);
 }

@@ -22,9 +22,13 @@ const LIST_SELECT =
 /** Mismo patrón que getAdvisorySessionList (advisorySessions/queries.ts,
  * módulo que este reemplaza): un select + un solo round-trip a la RPC
  * workspace_member_names para resolver los nombres de asesor. */
-export async function getAsesoriaList(workspaceId: string): Promise<AsesoriaListItem[]> {
+/** `kind`: "meeting_os" (por defecto, Presentación) o "referidos" (Sistema de Referidos, 0196); "all" para
+ * resolver nombres de cualquier sesión (ej. la pantalla de Referidos). */
+export async function getAsesoriaList(workspaceId: string, kind: "meeting_os" | "referidos" | "all" = "meeting_os"): Promise<AsesoriaListItem[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("asesorias").select(LIST_SELECT).eq("workspace_id", workspaceId).order("updated_at", { ascending: false });
+  let query = supabase.from("asesorias").select(LIST_SELECT).eq("workspace_id", workspaceId);
+  if (kind !== "all") query = query.eq("kind", kind);
+  const { data } = await query.order("updated_at", { ascending: false });
   const rows = data ?? [];
 
   const advisorIds = [...new Set(rows.map((r) => r.advisor_id).filter((id): id is string => Boolean(id)))];
@@ -97,13 +101,17 @@ export interface AsesoriaRow {
   templateName: string | null;
   state: Record<string, unknown>;
   contextSnapshot: Record<string, unknown>;
+  /** "meeting_os" o "referidos" (Sistema de Referidos, 0196). */
+  kind: "meeting_os" | "referidos";
+  /** Id de la sesión original si esta fila es la copia en otra cuenta del grupo. */
+  mirrorOf: string | null;
   startedAt: string;
   completedAt: string | null;
   updatedAt: string;
 }
 
 const DETAIL_SELECT =
-  "id, workspace_id, contact_id, advisor_id, opportunity_id, name, status, current_slide, template_name, state, context_snapshot, started_at, completed_at, updated_at";
+  "id, workspace_id, contact_id, advisor_id, opportunity_id, name, status, current_slide, template_name, state, context_snapshot, kind, mirror_of, started_at, completed_at, updated_at";
 
 export interface ReferralActivityPoint {
   updatedAt: string;
@@ -182,6 +190,8 @@ export async function getAsesoriaById(workspaceId: string, asesoriaId: string): 
     templateName: data.template_name as string | null,
     state: (data.state as Record<string, unknown> | null) ?? {},
     contextSnapshot: (data.context_snapshot as Record<string, unknown> | null) ?? {},
+    kind: data.kind === "referidos" ? "referidos" : "meeting_os",
+    mirrorOf: (data.mirror_of as string | null) ?? null,
     startedAt: data.started_at as string,
     completedAt: data.completed_at as string | null,
     updatedAt: data.updated_at as string,

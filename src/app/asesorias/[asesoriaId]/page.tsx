@@ -22,6 +22,9 @@ export default async function AsesoriaPage({ params }: { params: Promise<{ aseso
   const { workspaceId } = await requireActiveWorkspace();
   const asesoria = await getAsesoriaById(workspaceId, asesoriaId);
   if (!asesoria) notFound();
+  // Sistema de Referidos: vuelve a su listado, y el botón va abajo a la izquierda para no tapar el logo del
+  // HTML (arriba a la izquierda).
+  const isReferralSystem = asesoria.kind === "referidos";
 
   return (
     <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", background: "#050817" }}>
@@ -33,10 +36,10 @@ export default async function AsesoriaPage({ params }: { params: Promise<{ aseso
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
       />
       <Link
-        href="/asesorias"
+        href={isReferralSystem ? "/asesorias/sistema-referidos" : "/asesorias"}
         style={{
           position: "fixed",
-          top: 14,
+          ...(isReferralSystem ? { bottom: 16 } : { top: 14 }),
           left: 16,
           zIndex: 999,
           display: "flex",
@@ -54,7 +57,7 @@ export default async function AsesoriaPage({ params }: { params: Promise<{ aseso
         }}
       >
         <ArrowLeft size={13} aria-hidden="true" />
-        Volver a Asesorías
+        {isReferralSystem ? "Volver al Sistema de Referidos" : "Volver a Asesorías"}
       </Link>
     </div>
   );
