@@ -16,10 +16,11 @@ function formatResult(value: number, format: ResultFieldFormat): string {
 // pdfkit necesita APIs de Node (Buffer/streams).
 export const runtime = "nodejs";
 
-/** Descarga la ficha de un lead de Mini App en PDF (botón "PDF" del panel de vista rápida). Mismo patrón de
+/** Ficha de un lead de Mini App en PDF: botón "PDF" del panel de vista rápida y "Ver proyección" del tablero
+ * de ManyChat. Mismo patrón de
  * autenticación sin redirect que /api/mini-apps/[miniAppId]/leads/export; los datos se leen con la sesión del
  * usuario, así que RLS limita todo a su workspace. */
-export async function GET(_request: Request, { params }: { params: Promise<{ leadId: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ leadId: string }> }) {
   const { leadId } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -64,7 +65,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ lea
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="lead-${slug}-${lead.fecha.slice(0, 10)}.pdf"`,
+      // ?ver=1 lo abre en el navegador ("Ver proyección" desde ManyChat); sin eso, se descarga.
+      "Content-Disposition": `${new URL(request.url).searchParams.get("ver") === "1" ? "inline" : "attachment"}; filename="lead-${slug}-${lead.fecha.slice(0, 10)}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

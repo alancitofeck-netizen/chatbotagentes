@@ -81,3 +81,31 @@ export async function saveLeadEditAction(ref: string, changes: LeadEdit): Promis
   revalidatePath("/manychat");
   return { ok: true, error: null };
 }
+
+/** Devuelve el id de la fila del lead en manychat_lead_overrides (la crea vacía si no existe), para asociarle
+ * PDFs en Documentos: los leads de la hoja no tienen un uuid propio. Una fila vacía no marca el lead como
+ * editado. Mismos permisos que la edición. */
+export async function ensureLeadRecordAction(ref: string): Promise<{ ok: true; recordId: string; workspaceId: string } | { ok: false; error: string }> {
+  const { workspaceId, role, isSupervising } = await requireActiveWorkspace();
+  if (isSupervising) return { ok: false, error: "Modo supervisor: no podés modificar un workspace que no es el tuyo." };
+  if (role !== "owner" && role !== "admin" && role !== "agent") return { ok: false, error: "No tenés permiso para subir archivos." };
+  if (!ref || ref.length > 300) return { ok: false, error: "No se encontró el lead." };
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("manychat_lead_overrides")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("lead_ref", ref)
+    .maybeSingle();
+  if (existing) return { ok: true, recordId: existing.id as string, workspaceId };
+
+  const memberId = await getCurrentMemberId(workspaceId);
+  const { data, error } = await supabase
+    .from("manychat_lead_overrides")
+    .insert({ workspace_id: workspaceId, lead_ref: ref, updated_by: memberId })
+    .select("id")
+    .single();
+  if (error || !data) return { ok: false, error: "No se pudo preparar el lead para el archivo." };
+  return { ok: true, recordId: data.id as string, workspaceId };
+}

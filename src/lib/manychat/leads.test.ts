@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyLeadOverrides, channelBreakdown, computeKpis, contentRanking, detectChannel, detectStage, funnel, leadRef, leadsBetween, normalizeRows, parseDate, periodWindows, type LeadOverride } from "./leads";
+import { applyLeadOverrides, channelBreakdown, computeKpis, contentRanking, detectChannel, detectStage, funnel, leadRef, leadsBetween, normalizeRows, parseDate, periodWindows, phoneKey, type LeadOverride } from "./leads";
 
 const row = (overrides: Record<string, string>) => ({
   Fecha: "2026-10-01",
@@ -174,7 +174,7 @@ describe("leadRef", () => {
 });
 
 describe("applyLeadOverrides", () => {
-  const base = (): LeadOverride => ({ ref: "", nombre: null, telefono: null, email: null, usuario: null, nota: null, etapa: null, valor: null });
+  const base = (): LeadOverride => ({ id: "fila-1", ref: "", nombre: null, telefono: null, email: null, usuario: null, nota: null, etapa: null, valor: null });
 
   it("lo editado manda y lo no editado sigue viniendo de la hoja", () => {
     const sheet = normalizeRows([row({ Nombre: "Ana", Telefono: "5512345678" })]);
@@ -193,5 +193,20 @@ describe("applyLeadOverrides", () => {
     const sheet = normalizeRows([row({ Notas: "vieja" })]);
     const out = applyLeadOverrides(sheet, [{ ...base(), ref: sheet.leads[0].ref, nota: "" }]);
     expect(out.leads[0].nota).toBe("");
+  });
+});
+
+describe("phoneKey", () => {
+  it("cruza el mismo número con o sin código de país", () => {
+    expect(phoneKey("+52 1 458 129 2931")).toBe(phoneKey("4581292931"));
+    expect(phoneKey("123")).toBeNull();
+  });
+});
+
+describe("applyLeadOverrides: fila vacía", () => {
+  it("una fila sin ediciones (solo para asociar PDFs) no marca el lead como editado", () => {
+    const sheet = normalizeRows([row({ Nombre: "Ana" })]);
+    const out = applyLeadOverrides(sheet, [{ id: "fila-2", ref: sheet.leads[0].ref, nombre: null, telefono: null, email: null, usuario: null, nota: null, etapa: null, valor: null }]);
+    expect(out.leads[0].editado).toBe(false);
   });
 });

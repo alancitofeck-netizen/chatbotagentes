@@ -23,6 +23,7 @@ import {
 } from "@/lib/manychat/leads";
 import { ContentRanking } from "./ContentRanking";
 import { LeadEditForm } from "./LeadEditForm";
+import { LeadFiles } from "./LeadFiles";
 import { Panel } from "./Panel";
 import { SheetLinkForm } from "./SheetLinkForm";
 import { fmtInt, fmtPct } from "./format";
@@ -421,6 +422,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
                               </button>
                             )}
                           </div>
+                          <LeadFiles lead={lead} canEdit={canEdit} />
                         </>
                       )}
                     </div>
