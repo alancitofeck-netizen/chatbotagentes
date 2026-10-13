@@ -7,7 +7,8 @@ import { requireActiveWorkspace } from "@/lib/auth/session";
 import { getWorkspaceModuleStatus } from "@/lib/settings/queries";
 import { getManychatSheetLink } from "@/lib/manychat/sheetLink";
 import { fetchSheetRows, SheetError } from "@/lib/manychat/sheetSource";
-import { normalizeRows, type NormalizedSheet } from "@/lib/manychat/leads";
+import { applyLeadOverrides, normalizeRows, type NormalizedSheet } from "@/lib/manychat/leads";
+import { getManychatLeadOverrides } from "@/lib/manychat/leadOverrides";
 import { ManychatBoard } from "./ManychatBoard";
 import { Panel } from "./Panel";
 import { SheetLinkForm } from "./SheetLinkForm";
@@ -35,7 +36,9 @@ export default async function ManychatPage() {
   }
 
   const sheetUrl = await getManychatSheetLink(workspaceId);
-  const { sheet, error, readAt } = await loadSheet(sheetUrl);
+  const [{ sheet: sheetRaw, error, readAt }, overrides] = await Promise.all([loadSheet(sheetUrl), getManychatLeadOverrides(workspaceId)]);
+  // Las ediciones hechas desde el CRM se aplican encima de lo que trae la hoja.
+  const sheet = sheetRaw ? applyLeadOverrides(sheetRaw, overrides) : null;
   // El asesor (agent) administra su propio workspace; el modo supervisor es solo lectura.
   const canEdit = !isSupervising && (role === "owner" || role === "admin" || role === "agent");
   const showBoard = Boolean(sheet && sheet.leads.length > 0);

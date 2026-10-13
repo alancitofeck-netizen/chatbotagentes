@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { channelBreakdown, computeKpis, contentRanking, detectChannel, detectStage, funnel, leadsBetween, normalizeRows, parseDate, periodWindows } from "./leads";
+import { applyLeadOverrides, channelBreakdown, computeKpis, contentRanking, detectChannel, detectStage, funnel, leadRef, leadsBetween, normalizeRows, parseDate, periodWindows, type LeadOverride } from "./leads";
 
 const row = (overrides: Record<string, string>) => ({
   Fecha: "2026-10-01",
@@ -28,6 +28,13 @@ describe("detectStage", () => {
     expect(detectStage("Calificado")).toBe("calificado");
     expect(detectStage("Seguimiento")).toBe("contactado");
     expect(detectStage("")).toBe("nuevo");
+  });
+
+  it("reconoce los estados nuevos", () => {
+    expect(detectStage("Agenda")).toBe("agenda");
+    expect(detectStage("Esperando confirmación de cita")).toBe("confirmacion");
+    expect(detectStage("Calendario")).toBe("calendario");
+    expect(detectStage("Propuesta enviada")).toBe("propuesta");
   });
 });
 
@@ -70,7 +77,8 @@ describe("funnel", () => {
 
   it("cuenta acumulado: cada etapa incluye a las más avanzadas", () => {
     const steps = funnel(leads, true);
-    expect(steps.map((s) => s.count)).toEqual([4, 3, 2, 1, 0]);
+    // Nuevo, Contactado, Calificado, Agenda, Confirmación, Cita, Calendario, Propuesta, Cliente
+    expect(steps.map((s) => s.count)).toEqual([4, 3, 2, 1, 1, 1, 0, 0, 0]);
   });
 
   it("calcula el porcentaje que pasa de una etapa a la siguiente", () => {
@@ -81,7 +89,7 @@ describe("funnel", () => {
 
   it("sin datos de citas, la etapa Cita queda como no disponible", () => {
     const steps = funnel(leads, false);
-    expect(steps[3].na).toBe(true);
+    expect(steps.find((s) => s.id === "cita")?.na).toBe(true);
   });
 });
 
@@ -154,5 +162,36 @@ describe("período y KPIs", () => {
   it("sin datos de citas, el indicador de citas es nulo", () => {
     const sinCitas = normalizeRows([row({ Etapa: "Nuevo" })]);
     expect(computeKpis(sinCitas.leads, sinCitas.hasCitas).citas).toBeNull();
+  });
+});
+
+describe("leadRef", () => {
+  it("usa el id, si no el teléfono, si no la fila", () => {
+    expect(leadRef("123", "+52 55 1234 5678", 4)).toBe("id:123");
+    expect(leadRef("", "+52 55 1234 5678", 4)).toBe("tel:525512345678");
+    expect(leadRef("", "", 4)).toBe("row:4");
+  });
+});
+
+describe("applyLeadOverrides", () => {
+  const base = (): LeadOverride => ({ ref: "", nombre: null, telefono: null, email: null, usuario: null, nota: null, etapa: null, valor: null });
+
+  it("lo editado manda y lo no editado sigue viniendo de la hoja", () => {
+    const sheet = normalizeRows([row({ Nombre: "Ana", Telefono: "5512345678" })]);
+    const out = applyLeadOverrides(sheet, [{ ...base(), ref: sheet.leads[0].ref, etapa: "propuesta", nota: "Llamar el lunes" }]);
+    expect(out.leads[0]).toMatchObject({ nombre: "Ana", telefono: "5512345678", etapa: "propuesta", nota: "Llamar el lunes", editado: true });
+  });
+
+  it("un estado de agenda o posterior activa los datos de citas", () => {
+    const sheet = normalizeRows([row({})]);
+    expect(sheet.hasCitas).toBe(false);
+    const out = applyLeadOverrides(sheet, [{ ...base(), ref: sheet.leads[0].ref, etapa: "confirmacion" }]);
+    expect(out.hasCitas).toBe(true);
+  });
+
+  it("un texto vaciado a propósito borra el dato de la hoja", () => {
+    const sheet = normalizeRows([row({ Notas: "vieja" })]);
+    const out = applyLeadOverrides(sheet, [{ ...base(), ref: sheet.leads[0].ref, nota: "" }]);
+    expect(out.leads[0].nota).toBe("");
   });
 });
