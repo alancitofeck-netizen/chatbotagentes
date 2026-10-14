@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Copy, MessageCircle, Eye, ArrowUpRight, AlertTriangle, Users, UserCheck, PhoneCall, Handshake, Bot, Settings, UploadCloud } from "lucide-react";
+import { Search, Copy, MessageCircle, Eye, ArrowUpRight, AlertTriangle, Users, UserCheck, PhoneCall, Handshake, Bot, Settings, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Switch } from "@/components/ui/Switch";
@@ -205,9 +205,9 @@ export function ReferidosShell({
           <Settings className="size-3.5" aria-hidden="true" />
           Configurar exportación
         </Button>
-        <Button type="button" variant="secondary" size="sm" onClick={handleExportNow} loading={isExporting}>
-          <UploadCloud className="size-3.5" aria-hidden="true" />
-          Exportar a hoja
+        <Button type="button" variant="secondary" size="sm" onClick={handleExportNow} loading={isExporting} title="Exporta a la hoja solo los referidos que todavía no se exportaron">
+          <RefreshCw className="size-3.5" aria-hidden="true" />
+          Actualizar
         </Button>
       </div>
 
