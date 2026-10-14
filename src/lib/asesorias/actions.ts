@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
+import { requireManagerRole } from "@/lib/auth/roles";
 import { findOrCreateContact } from "@/lib/contacts/match";
 import { getAsesoriaList, getContactAsesorias, getAsesoriaById, getWorkspaceReferralActivity, type AsesoriaListItem, type ReferralActivityPoint } from "@/lib/asesorias/queries";
 import { buildAsesoriaSeed } from "@/lib/asesorias/seed";
 import { getAsesoriaMasterTemplate } from "@/lib/asesorias/masterTemplate";
-import { getWorkspaceReferrals, updateReferralStatus, type ReferralRow, type ReferralStatus } from "@/lib/asesorias/referrals";
+import { getWorkspaceReferrals, updateReferralStatus, deleteAllReferrals, type ReferralRow, type ReferralStatus } from "@/lib/asesorias/referrals";
 import { getDefaultOutboundBusinessNumber, getOrCreateOpenConversationForContact } from "@/lib/messaging/conversations";
 import { generateReferralOpener } from "@/lib/ai/agentRuntime";
 import { sendOutboundWhatsAppMessage } from "@/lib/messaging/send";
@@ -40,6 +41,17 @@ export async function updateReferralStatusAction(referralId: string, status: Ref
   const { workspaceId } = await requireActiveWorkspace();
   await updateReferralStatus(referralId, workspaceId, status);
   revalidatePath("/asesorias/referidos");
+}
+
+/** "Eliminar todo" — borra todos los referidos del workspace de una sola
+ * vez. Irreversible, por eso gateado a owner/admin (mismo criterio que
+ * deleteMiniAppLead). */
+export async function deleteAllReferralsAction(): Promise<number> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  const count = await deleteAllReferrals(workspaceId);
+  revalidatePath("/asesorias/referidos");
+  return count;
 }
 
 /** "🚀 Iniciar conversación" (Fase 4, Agentes IA de Referidos, punto 4) —

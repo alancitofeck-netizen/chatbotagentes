@@ -80,6 +80,21 @@ export async function getWorkspaceReferrals(workspaceId: string, advisorId?: str
   });
 }
 
+/** Borra TODOS los referidos del workspace — irreversible, gateado a
+ * owner/admin (misma policy RLS "asesoria_referrals_delete" ya existente
+ * desde 0120_asesoria_referrals.sql, ver también requireManagerRole en el
+ * caller). No borra los Contactos que esos referidos hayan generado —
+ * mismo criterio que deleteMiniAppLead (miniApps/actions.ts): son datos
+ * del CRM por derecho propio en ese punto. Cascada automática sobre
+ * referral_sheet_exports (FK on delete cascade, 0197), así que no deja
+ * basura en el registro de exportación. */
+export async function deleteAllReferrals(workspaceId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("asesoria_referrals").delete().eq("workspace_id", workspaceId).select("id");
+  if (error) throw new Error("No se pudieron eliminar los referidos.");
+  return data?.length ?? 0;
+}
+
 export async function updateReferralStatus(referralId: string, workspaceId: string, status: ReferralStatus): Promise<void> {
   const supabase = await createClient();
   await supabase

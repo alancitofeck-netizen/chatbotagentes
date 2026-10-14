@@ -3,16 +3,18 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Copy, MessageCircle, Eye, ArrowUpRight, AlertTriangle, Users, UserCheck, PhoneCall, Handshake, Bot, Settings, RefreshCw } from "lucide-react";
+import { Search, Copy, MessageCircle, Eye, ArrowUpRight, AlertTriangle, Users, UserCheck, PhoneCall, Handshake, Bot, Settings, RefreshCw, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "@/components/toast/toast";
 import type { ReferralRow, ReferralStatus } from "@/lib/asesorias/referrals";
 import type { ReferralAgentAutoStartSummary } from "@/lib/ai-agents/queries";
 import { updateReferralAgentAutoStartAction } from "@/lib/ai-agents/actions";
+import { deleteAllReferralsAction } from "@/lib/asesorias/actions";
 import { exportPendingReferralsAction } from "@/lib/asesorias/referralSheetActions";
 import { REFERRAL_STATUS_LABEL, REFERRAL_STATUS_VARIANT } from "./referralStatus";
 import { ReferralDetailSheet } from "./ReferralDetailSheet";
@@ -120,6 +122,8 @@ export function ReferidosShell({
   const [selected, setSelected] = useState<ReferralRow | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [isExporting, startExporting] = useTransition();
+  const [confirmingDeleteAll, setConfirmingDeleteAll] = useState(false);
+  const [isDeletingAll, startDeletingAll] = useTransition();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -146,6 +150,20 @@ export function ReferidosShell({
         else toast.success(`Se exportaron ${exported} referidos.`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "No se pudo exportar.");
+      }
+    });
+  }
+
+  function handleDeleteAll() {
+    startDeletingAll(async () => {
+      try {
+        const count = await deleteAllReferralsAction();
+        setReferrals([]);
+        setSelected(null);
+        setConfirmingDeleteAll(false);
+        toast.success(count === 1 ? "1 referido eliminado." : `${count} referidos eliminados.`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudieron eliminar los referidos.");
       }
     });
   }
@@ -208,6 +226,10 @@ export function ReferidosShell({
         <Button type="button" variant="secondary" size="sm" onClick={handleExportNow} loading={isExporting} title="Exporta a la hoja solo los referidos que todavía no se exportaron">
           <RefreshCw className="size-3.5" aria-hidden="true" />
           Actualizar
+        </Button>
+        <Button type="button" variant="destructive" size="sm" onClick={() => setConfirmingDeleteAll(true)} disabled={referrals.length === 0}>
+          <Trash2 className="size-3.5" aria-hidden="true" />
+          Eliminar todo
         </Button>
       </div>
 
@@ -367,6 +389,17 @@ export function ReferidosShell({
       {selected && <ReferralDetailSheet referral={selected} onClose={() => setSelected(null)} onStatusUpdated={handleStatusUpdated} />}
 
       <ReferralSheetExportModal open={showExportModal} onClose={() => setShowExportModal(false)} onSaved={() => {}} />
+
+      <ConfirmDialog
+        open={confirmingDeleteAll}
+        title={`¿Eliminar los ${referrals.length} referidos?`}
+        description="Se borran del CRM para siempre — esto no se puede deshacer. No afecta a los Contactos que ya se hayan creado a partir de ellos. Si tenés una hoja conectada, el registro de qué se exportó también se borra, así que si volvés a cargar referidos se van a exportar como nuevos."
+        confirmLabel="Eliminar todo"
+        danger
+        isLoading={isDeletingAll}
+        onConfirm={handleDeleteAll}
+        onCancel={() => setConfirmingDeleteAll(false)}
+      />
     </div>
   );
 }
