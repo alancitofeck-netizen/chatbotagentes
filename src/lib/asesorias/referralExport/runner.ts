@@ -112,10 +112,11 @@ async function markConnectionResult(supabase: ReturnType<typeof createServiceRol
 
 /** Exporta (o actualiza) UN referido a la hoja configurada del workspace.
  * Nunca lanza: cualquier error deja el referido "pendiente de exportar" en
- * referral_sheet_exports (last_export_status='pending') para que el cron o
- * el botón manual lo reintenten — el referido ya está guardado en el CRM
- * antes de llegar acá, así que un fallo nunca pierde el dato, solo demora
- * la copia en la hoja. */
+ * referral_sheet_exports (last_export_status='pending') para que el botón
+ * manual "Exportar a hoja" lo reintente más tarde — sin cron (a pedido del
+ * usuario, para no generar tráfico recurrente), así que un fallo queda
+ * pendiente hasta la próxima exportación manual, nunca se pierde el dato:
+ * el referido ya está guardado en el CRM antes de llegar acá. */
 export async function exportReferralToSheet(workspaceId: string, referralId: string): Promise<void> {
   const supabase = createServiceRoleClient();
 

@@ -15,10 +15,6 @@
     {
       "path": "/api/cron/recompute-health-scores",
       "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/sync-referral-exports",
-      "schedule": "0 13 * * *"
     }
   ]
 }
