@@ -10,6 +10,7 @@ import { logActivity } from "@/lib/activity/log";
 import { extractAsesoriaResponses } from "@/lib/asesorias/responseExtraction";
 import { autoStartReferralConversationIfEligible } from "@/lib/asesorias/autoStartConversation";
 import { REFERRAL_SESSION_KIND, syncReferralSessionGroup } from "@/lib/asesorias/referralSystem";
+import { triggerReferralExport } from "@/lib/asesorias/referralExport/runner";
 
 type AsesoriaStatus = "no_iniciada" | "en_progreso" | "finalizada";
 
@@ -206,6 +207,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // para un referido ya arrancado esto es un no-op inmediato.
       for (const row of upsertedReferrals ?? []) {
         await autoStartReferralConversationIfEligible(supabase, active.workspaceId, row.id as string);
+        // Exportar a hoja (si hay una conectada): best-effort, nunca bloquea el autoguardado.
+        // Re-exportar un referido ya exportado es un no-op (runner.ts chequea el estado), así
+        // que llamarlo en cada resync de este mismo autoguardado es seguro.
+        triggerReferralExport(active.workspaceId, row.id as string);
       }
     } else {
       await supabase.from("asesoria_referrals").delete().eq("asesoria_id", asesoriaId);

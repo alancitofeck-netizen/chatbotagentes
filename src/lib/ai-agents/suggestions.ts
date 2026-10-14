@@ -109,7 +109,7 @@ export async function getAgentReferralStats(workspaceId: string, advisorId: stri
   const supabase = createServiceRoleClient();
   const { data } = await supabase.from("asesoria_referrals").select("status").eq("workspace_id", workspaceId).eq("advisor_id", advisorId);
   const rows = (data ?? []) as { status: ReferralStatus }[];
-  const byStatus: Record<ReferralStatus, number> = { nuevo: 0, contactado: 0, interesado: 0, no_interesado: 0, convertido: 0 };
+  const byStatus: Record<ReferralStatus, number> = { nuevo: 0, contactado: 0, interesado: 0, no_interesado: 0, cita_agendada: 0, convertido: 0 };
   for (const r of rows) byStatus[r.status] += 1;
   return { total: rows.length, byStatus };
 }

@@ -2,8 +2,11 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getAsesoriaList } from "@/lib/asesorias/queries";
 import { propagateReferralStatus } from "@/lib/asesorias/referralSystem";
+import { triggerReferralExport } from "@/lib/asesorias/referralExport/runner";
 
-export type ReferralStatus = "nuevo" | "contactado" | "interesado" | "no_interesado" | "convertido";
+export type ReferralStatus = "nuevo" | "contactado" | "interesado" | "no_interesado" | "cita_agendada" | "convertido";
+
+export const REFERRAL_STATUSES: ReferralStatus[] = ["nuevo", "contactado", "interesado", "no_interesado", "cita_agendada", "convertido"];
 
 export interface ReferralRow {
   id: string;
@@ -86,4 +89,6 @@ export async function updateReferralStatus(referralId: string, workspaceId: stri
     .eq("workspace_id", workspaceId);
   // Sistema de Referidos: el mismo referido en la otra cuenta del grupo queda con el mismo estado.
   await propagateReferralStatus(referralId);
+  // Exportar a hoja (si hay una conectada): best-effort, nunca bloquea esta acción.
+  triggerReferralExport(workspaceId, referralId);
 }

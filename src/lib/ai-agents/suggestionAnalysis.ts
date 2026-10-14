@@ -7,6 +7,7 @@
  * opera sobre agregados ya traídos por el caller (src/lib/ai-agents/suggestions.ts). */
 
 import type { AgentMetrics } from "./queries";
+import type { ReferralStatus } from "@/lib/asesorias/referrals";
 
 export interface ToolCallStat {
   toolId: string;
@@ -17,7 +18,13 @@ export interface ToolCallStat {
   avgLatencyMs: number | null;
 }
 
-export type ReferralStatus = "nuevo" | "contactado" | "interesado" | "no_interesado" | "convertido";
+// Re-exportado para no romper los imports existentes de `./suggestionAnalysis`
+// (suggestions.ts) — antes este archivo declaraba su propia copia de este
+// tipo en vez de importar la real de asesorias/referrals.ts, lo que dejó
+// pasar silenciosamente un estado nuevo (cita_agendada) sin actualizar este
+// archivo hasta que tsc lo marcó como error en un lugar completamente
+// distinto (AgentStatsPanel.tsx).
+export type { ReferralStatus };
 
 export interface ReferralStats {
   total: number;

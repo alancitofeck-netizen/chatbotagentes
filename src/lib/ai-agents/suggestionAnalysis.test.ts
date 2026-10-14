@@ -18,7 +18,7 @@ function tool(overrides: Partial<ToolCallStat> = {}): ToolCallStat {
 }
 
 function referralStats(overrides: Partial<ReferralStats["byStatus"]> = {}): ReferralStats {
-  const byStatus = { nuevo: 0, contactado: 0, interesado: 0, no_interesado: 0, convertido: 0, ...overrides };
+  const byStatus = { nuevo: 0, contactado: 0, interesado: 0, no_interesado: 0, cita_agendada: 0, convertido: 0, ...overrides };
   return { total: Object.values(byStatus).reduce((a, b) => a + b, 0), byStatus };
 }
 

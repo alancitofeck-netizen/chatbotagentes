@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { findOrCreateContact } from "@/lib/contacts/match";
 import { extractAsesoriaResponses } from "@/lib/asesorias/responseExtraction";
 import { autoStartReferralConversationIfEligible } from "@/lib/asesorias/autoStartConversation";
+import { triggerReferralExport } from "@/lib/asesorias/referralExport/runner";
 
 /**
  * Asesorías → "Sistema de Referidos" (0196_referral_system.sql): privado para las cuentas de
@@ -201,6 +202,11 @@ export async function syncReferralSessionGroup(asesoriaId: string, project: Reco
           await autoStartReferralConversationIfEligible(service, row.workspaceId, referral.id as string);
         }
       }
+      // Exportar a hoja (si esta cuenta del grupo tiene una conectada): best-effort, igual
+      // criterio de no-op en re-sync que sync/route.ts.
+      for (const referral of upserted ?? []) {
+        triggerReferralExport(row.workspaceId, referral.id as string);
+      }
     } catch (err) {
       console.error("[referral-system] no se pudo sincronizar la sesión en", row.workspaceId, err);
     }
@@ -219,11 +225,16 @@ export async function propagateReferralStatus(referralId: string): Promise<void>
     const { rows } = await getSessionGroupRows(service, referral.asesoria_id as string);
     const siblingIds = rows.map((r) => r.id).filter((id) => id !== referral.asesoria_id);
     if (siblingIds.length === 0) return;
-    await service
+    const { data: updated } = await service
       .from("asesoria_referrals")
       .update({ status: referral.status, updated_at: new Date().toISOString() })
       .in("asesoria_id", siblingIds)
-      .eq("phone", referral.phone as string);
+      .eq("phone", referral.phone as string)
+      .select("id, workspace_id");
+    // Exportar a hoja en cada cuenta gemela que tenga una conectada — best-effort.
+    for (const sibling of updated ?? []) {
+      triggerReferralExport(sibling.workspace_id as string, sibling.id as string);
+    }
   } catch (err) {
     console.error("[referral-system] no se pudo copiar el estado del referido:", err);
   }

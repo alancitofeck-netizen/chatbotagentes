@@ -6,6 +6,7 @@ export const REFERRAL_STATUS_LABEL: Record<ReferralStatus, string> = {
   contactado: "Contactado",
   interesado: "Interesado",
   no_interesado: "No interesado",
+  cita_agendada: "Agendó cita",
   convertido: "Convertido",
 };
 
@@ -14,7 +15,8 @@ export const REFERRAL_STATUS_VARIANT: Record<ReferralStatus, BadgeVariant> = {
   contactado: "warning",
   interesado: "info",
   no_interesado: "error",
+  cita_agendada: "info",
   convertido: "success",
 };
 
-export const REFERRAL_STATUS_OPTIONS: ReferralStatus[] = ["nuevo", "contactado", "interesado", "no_interesado", "convertido"];
+export const REFERRAL_STATUS_OPTIONS: ReferralStatus[] = ["nuevo", "contactado", "interesado", "no_interesado", "cita_agendada", "convertido"];

@@ -1,18 +1,22 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Search, Copy, MessageCircle, Eye, ArrowUpRight, AlertTriangle, Users, UserCheck, PhoneCall, Handshake, Bot } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Search, Copy, MessageCircle, Eye, ArrowUpRight, AlertTriangle, Users, UserCheck, PhoneCall, Handshake, Bot, Settings, UploadCloud } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Switch } from "@/components/ui/Switch";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "@/components/toast/toast";
 import type { ReferralRow, ReferralStatus } from "@/lib/asesorias/referrals";
 import type { ReferralAgentAutoStartSummary } from "@/lib/ai-agents/queries";
 import { updateReferralAgentAutoStartAction } from "@/lib/ai-agents/actions";
+import { exportPendingReferralsAction } from "@/lib/asesorias/referralSheetActions";
 import { REFERRAL_STATUS_LABEL, REFERRAL_STATUS_VARIANT } from "./referralStatus";
 import { ReferralDetailSheet } from "./ReferralDetailSheet";
+import { ReferralSheetExportModal } from "./ReferralSheetExportModal";
 
 /** Clave de agrupación/filtro para referidos sin asesoria_id (Mini Apps,
  * ver referralFromLead.ts) — nunca choca con un uuid real de `asesorias`. */
@@ -114,6 +118,37 @@ export function ReferidosShell({
   const [dateRange, setDateRange] = useState<DateRangeFilter>("all");
   const [now] = useState(() => Date.now());
   const [selected, setSelected] = useState<ReferralRow | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isExporting, startExporting] = useTransition();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // El callback OAuth (google-sheets-export/callback/route.ts) vuelve acá con
+  // un flag en la query string — mismo criterio que IntegrationsSection.tsx.
+  useEffect(() => {
+    if (searchParams.get("sheet_export_connected")) {
+      toast.success("Cuenta de Google conectada.");
+      setShowExportModal(true); // eslint-disable-line react-hooks/set-state-in-effect -- reabre el modal tras volver del redirect OAuth, solo al montar.
+      router.replace("/asesorias/referidos", { scroll: false });
+    } else if (searchParams.get("sheet_export_error")) {
+      toast.error("No se pudo conectar la cuenta de Google.");
+      router.replace("/asesorias/referidos", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleExportNow() {
+    startExporting(async () => {
+      try {
+        const { exported, stillPending } = await exportPendingReferralsAction();
+        if (exported === 0 && stillPending === 0) toast.success("Ya estaban todos exportados.");
+        else if (stillPending > 0) toast.error(`Se exportaron ${exported}. ${stillPending} quedaron pendientes por un error — revisá la configuración.`);
+        else toast.success(`Se exportaron ${exported} referidos.`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudo exportar.");
+      }
+    });
+  }
 
   const advisors = useMemo(() => [...new Set(referrals.map((r) => r.advisorName).filter((n): n is string => Boolean(n)))].sort(), [referrals]);
   const asesorias = useMemo(() => {
@@ -165,6 +200,17 @@ export function ReferidosShell({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" variant="secondary" size="sm" onClick={() => setShowExportModal(true)}>
+          <Settings className="size-3.5" aria-hidden="true" />
+          Configurar exportación
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={handleExportNow} loading={isExporting}>
+          <UploadCloud className="size-3.5" aria-hidden="true" />
+          Exportar a hoja
+        </Button>
+      </div>
+
       <ReferralAgentModeCard agents={initialReferralAgents} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -319,6 +365,8 @@ export function ReferidosShell({
       )}
 
       {selected && <ReferralDetailSheet referral={selected} onClose={() => setSelected(null)} onStatusUpdated={handleStatusUpdated} />}
+
+      <ReferralSheetExportModal open={showExportModal} onClose={() => setShowExportModal(false)} onSaved={() => {}} />
     </div>
   );
 }

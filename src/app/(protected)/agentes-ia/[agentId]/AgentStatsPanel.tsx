@@ -6,7 +6,7 @@ import type { ReferralStats } from "@/lib/ai-agents/suggestionAnalysis";
 import { REFERRAL_STATUS_LABEL } from "@/app/(protected)/asesorias/referidos/referralStatus";
 import type { ReferralStatus } from "@/lib/asesorias/referrals";
 
-const PIPELINE_ORDER: ReferralStatus[] = ["nuevo", "contactado", "interesado", "no_interesado", "convertido"];
+const PIPELINE_ORDER: ReferralStatus[] = ["nuevo", "contactado", "interesado", "no_interesado", "cita_agendada", "convertido"];
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
@@ -20,7 +20,7 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
 /** Panel persistente del detalle de un agente de referidos con asesor
  * asignado (moduleKey==='referrals' && advisorId) — todos los números vienen
  * ya calculados server-side (page.tsx), acá solo se muestran. El pipeline
- * mapea a los 5 estados reales de asesoria_referrals — no hay más etapas
+ * mapea a los 6 estados reales de asesoria_referrals — no hay más etapas
  * que estas en el esquema. */
 export function AgentStatsPanel({
   advisorInfo,
