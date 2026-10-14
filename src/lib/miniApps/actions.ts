@@ -458,6 +458,25 @@ export async function deleteMiniAppLead(leadId: string): Promise<void> {
   revalidateMiniAppsPaths(data?.mini_app_id as string | undefined);
 }
 
+/** Borrado múltiple desde la selección con checkboxes de LeadsTab — un solo
+ * delete con `.in(...)` en vez de N llamadas a deleteMiniAppLead, mismo gate
+ * y misma policy RLS. Devuelve cuántos se borraron de verdad (la RLS/el
+ * filtro de workspace puede dejar afuera ids que no son de este workspace),
+ * para que la UI pueda avisar si algo no se borró. */
+export async function deleteMiniAppLeads(leadIds: string[], miniAppId: string): Promise<{ deletedCount: number }> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  requireManagerRole(role);
+  await assertModuleEnabled(workspaceId, "mini_apps");
+  if (leadIds.length === 0) return { deletedCount: 0 };
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.from("mini_app_leads").delete().in("id", leadIds).eq("workspace_id", workspaceId).select("id");
+  if (error) throw new Error("No se pudieron eliminar los leads.");
+
+  revalidateMiniAppsPaths(miniAppId);
+  return { deletedCount: data?.length ?? 0 };
+}
+
 /** Orden de las 6 etapas del kanban (Fase 2) — usado por las acciones de
  * abajo para AVANZAR la etapa de un lead sin nunca hacerla retroceder ni
  * sacarlo de "Descartado" (mismo rango que "Convertido", así que solo un

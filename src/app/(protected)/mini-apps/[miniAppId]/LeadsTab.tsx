@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Download, Search, Users, UserPlus, Wallet, Plus, MessageCircle } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { Download, Search, Users, UserPlus, Wallet, Plus, MessageCircle, Trash2 } from "lucide-react";
 import type { MiniAppDetail, MiniAppLeadRow } from "@/lib/miniApps/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { MetricCard } from "@/components/responseSummary/MetricCard";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { Avatar } from "@/components/ui/Avatar";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { toast } from "@/components/toast/toast";
 import { getLeadResultValue, getResultFieldSpec, formatResultValue } from "@/lib/miniApps/resultField";
 import { formatRelativeTime } from "@/lib/utils/format";
+import { deleteMiniAppLeads } from "@/lib/miniApps/actions";
 import { LeadDetailDrawer } from "./LeadDetailDrawer";
 import { LeadQuickView } from "./LeadQuickView";
 import { MiniAppLeadFormSheet } from "./MiniAppLeadFormSheet";
@@ -76,6 +79,9 @@ export function LeadsTab({
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [showFullDrawer, setShowFullDrawer] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+  const [isDeleting, startDeleting] = useTransition();
 
   const resultSpec = getResultFieldSpec(miniApp.templateKey);
   const origins = useMemo(() => [...new Set(leads.map((l) => l.origenApp))].sort(), [leads]);
@@ -126,6 +132,54 @@ export function LeadsTab({
   // sin un setState extra en un efecto.
   const validSelectedLeadId = selectedLeadId && leads.some((l) => l.id === selectedLeadId) ? selectedLeadId : null;
 
+  // Misma lógica derivada que validSelectedLeadId: si un lead tildado
+  // desaparece (se borró en otra pestaña, o un filtro lo saca), deja de
+  // contar solo, sin un efecto extra.
+  const leadIds = useMemo(() => new Set(leads.map((l) => l.id)), [leads]);
+  const checkedCount = useMemo(() => [...checkedIds].filter((id) => leadIds.has(id)).length, [checkedIds, leadIds]);
+
+  function toggleChecked(leadId: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) next.delete(leadId);
+      else next.add(leadId);
+      return next;
+    });
+  }
+
+  const allFilteredChecked = filtered.length > 0 && filtered.every(({ lead }) => checkedIds.has(lead.id));
+  function toggleSelectAllFiltered() {
+    setCheckedIds((prev) => {
+      if (allFilteredChecked) {
+        const next = new Set(prev);
+        for (const { lead } of filtered) next.delete(lead.id);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const { lead } of filtered) next.add(lead.id);
+      return next;
+    });
+  }
+
+  function handleBulkDelete() {
+    const idsToDelete = [...checkedIds].filter((id) => leadIds.has(id));
+    if (idsToDelete.length === 0) {
+      setConfirmingBulkDelete(false);
+      return;
+    }
+    startDeleting(async () => {
+      try {
+        const { deletedCount } = await deleteMiniAppLeads(idsToDelete, miniApp.id);
+        toast.success(deletedCount === 1 ? "1 lead eliminado." : `${deletedCount} leads eliminados.`);
+        setCheckedIds(new Set());
+        setConfirmingBulkDelete(false);
+        onChanged();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "No se pudieron eliminar los leads.");
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -149,6 +203,17 @@ export function LeadsTab({
             className="w-full rounded-full border border-border-default bg-surface-1 py-2 pr-3 pl-9 text-sm text-foreground placeholder:text-neutral-400 outline-none focus:border-accent-500"
           />
         </div>
+        {canManage && filtered.length > 0 && (
+          <label className="flex shrink-0 items-center gap-1.5 text-[13px] font-medium text-neutral-500">
+            <input
+              type="checkbox"
+              checked={allFilteredChecked}
+              onChange={toggleSelectAllFiltered}
+              className="size-4 rounded border-border-default accent-accent-600"
+            />
+            Seleccionar todos
+          </label>
+        )}
         {origins.length > 1 && (
           <select
             value={originFilter}
@@ -211,6 +276,23 @@ export function LeadsTab({
         </div>
       </div>
 
+      {canManage && checkedCount > 0 && (
+        <div className="flex items-center gap-3 rounded-full border border-accent-200 bg-accent-500/10 px-4 py-2 text-sm">
+          <span className="font-medium text-foreground">{checkedCount === 1 ? "1 lead seleccionado" : `${checkedCount} leads seleccionados`}</span>
+          <button type="button" onClick={() => setCheckedIds(new Set())} className="text-neutral-500 hover:text-foreground">
+            Cancelar selección
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmingBulkDelete(true)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-error-strong px-3.5 py-1.5 text-[13px] font-medium text-white hover:brightness-110"
+          >
+            <Trash2 size={14} aria-hidden="true" />
+            Eliminar seleccionados
+          </button>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-border-default bg-surface-2 p-10 text-center">
           <Users className="size-6 text-neutral-400" aria-hidden="true" />
@@ -230,43 +312,55 @@ export function LeadsTab({
                 {group.rows.map(({ lead, value }) => {
                   const digits = lead.whatsapp.replace(/\D/g, "");
                   return (
-                    <button
+                    <div
                       key={lead.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedLeadId(lead.id);
-                        if (window.matchMedia("(max-width: 767px)").matches) setShowFullDrawer(true);
-                      }}
-                      className={`flex items-center gap-3 border-b border-border-default/60 px-4 py-3 text-left last:border-0 hover:bg-surface-2 ${
+                      className={`flex items-center gap-3 border-b border-border-default/60 last:border-0 hover:bg-surface-2 ${
                         selectedLeadId === lead.id ? "bg-accent-500/10" : ""
                       }`}
                     >
-                      <span className="relative shrink-0">
-                        <Avatar name={lead.nombre} size={36} />
-                        {lead.status === "new" && <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-surface-1 bg-accent-500" />}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{lead.nombre}</p>
-                        <p className="truncate text-xs text-neutral-500">{lead.whatsapp}</p>
-                      </div>
-                      <span className="hidden shrink-0 text-xs text-neutral-500 sm:inline">{lead.origenApp}</span>
-                      {resultSpec && value !== null && (
-                        <span className="shrink-0 text-sm font-semibold text-success-strong">{formatResultValue(value, resultSpec.format)}</span>
+                      {canManage && (
+                        <input
+                          type="checkbox"
+                          checked={checkedIds.has(lead.id)}
+                          onChange={() => toggleChecked(lead.id)}
+                          aria-label={`Seleccionar a ${lead.nombre}`}
+                          className="ml-4 size-4 shrink-0 rounded border-border-default accent-accent-600"
+                        />
                       )}
-                      <span className="hidden w-14 shrink-0 text-right text-xs text-neutral-400 sm:inline">{formatRelativeTime(lead.fecha)}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedLeadId(lead.id);
+                          if (window.matchMedia("(max-width: 767px)").matches) setShowFullDrawer(true);
+                        }}
+                        className={`flex min-w-0 flex-1 items-center gap-3 py-3 text-left ${canManage ? "pr-4" : "px-4"}`}
+                      >
+                        <span className="relative shrink-0">
+                          <Avatar name={lead.nombre} size={36} />
+                          {lead.status === "new" && <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-surface-1 bg-accent-500" />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">{lead.nombre}</p>
+                          <p className="truncate text-xs text-neutral-500">{lead.whatsapp}</p>
+                        </div>
+                        <span className="hidden shrink-0 text-xs text-neutral-500 sm:inline">{lead.origenApp}</span>
+                        {resultSpec && value !== null && (
+                          <span className="shrink-0 text-sm font-semibold text-success-strong">{formatResultValue(value, resultSpec.format)}</span>
+                        )}
+                        <span className="hidden w-14 shrink-0 text-right text-xs text-neutral-400 sm:inline">{formatRelativeTime(lead.fecha)}</span>
+                      </button>
                       {digits.length >= 8 && (
                         <a
                           href={`https://wa.me/${digits}`}
                           target="_blank"
                           rel="noopener"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border-default text-neutral-500 hover:bg-surface-3"
+                          className="mr-4 inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border-default text-neutral-500 hover:bg-surface-3"
                           title="Contactar por WhatsApp"
                         >
                           <MessageCircle className="size-3.5" aria-hidden="true" />
                         </a>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -304,6 +398,17 @@ export function LeadsTab({
       )}
 
       {showAddLead && <MiniAppLeadFormSheet miniAppId={miniApp.id} members={members} onClose={() => setShowAddLead(false)} onSaved={onChanged} />}
+
+      <ConfirmDialog
+        open={confirmingBulkDelete}
+        title={checkedCount === 1 ? "¿Eliminar este lead?" : `¿Eliminar ${checkedCount} leads?`}
+        description="Se borran de la bandeja de la mini app y no se puede deshacer. Si ya convertiste alguno a Contacto u Oportunidad, esos registros del CRM no se ven afectados."
+        confirmLabel={checkedCount === 1 ? "Eliminar lead" : "Eliminar leads"}
+        danger
+        isLoading={isDeleting}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setConfirmingBulkDelete(false)}
+      />
     </div>
   );
 }
