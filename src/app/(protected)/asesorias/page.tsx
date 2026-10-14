@@ -6,6 +6,7 @@ import { isModuleEnabled } from "@/lib/settings/queries";
 import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getAsesoriaListAction, getAsesoriaReferralActivityAction } from "@/lib/asesorias/actions";
 import { AsesoriaStageOverview } from "./AsesoriaStageOverview";
+import { AsesoriaReferidosSummary } from "./AsesoriaReferidosSummary";
 import { RealtimeRefresh } from "./RealtimeRefresh";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 import { getReferralSessions, getReferralSystemGroup } from "@/lib/asesorias/referralSystem";
@@ -42,6 +43,9 @@ export default async function AsesoriasPage() {
       <RealtimeRefresh workspaceId={workspaceId} tables={["asesorias", "asesoria_referrals"]} />
       <div className="flex flex-col gap-1 px-4 sm:px-6 lg:px-8">
         <PageHeader icon={Handshake} title="Asesorías" description="Gestioná tus reuniones comerciales — Presentación y Cita de Cierre, un mismo proceso." titleAdornment={<ModuleHelp description="Gestioná tus reuniones comerciales — Presentación y Cita de Cierre, un mismo proceso guiado." tourKey="asesorias-intro" />} />
+      </div>
+      <div className="px-4 sm:px-6 lg:px-8">
+        <AsesoriaReferidosSummary referidos={referidos} />
       </div>
       <div className="px-4 sm:px-6 lg:px-8">
         <AsesoriaStageOverview referidos={referidos} lastActivityAt={lastActivityAt} advisorName={advisorName} referralSystem={referralSystem} />
