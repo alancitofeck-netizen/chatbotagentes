@@ -65,9 +65,9 @@ function productStyle(producto: string, fallbackIndex: number): { icon: LucideIc
 }
 
 const PERIODS: { id: PeriodId; label: string }[] = [
-  { id: "7", label: "7 días" },
-  { id: "30", label: "30 días" },
-  { id: "90", label: "90 días" },
+  { id: "7", label: "7d" },
+  { id: "30", label: "30d" },
+  { id: "90", label: "90d" },
   { id: "all", label: "Todo" },
 ];
 
@@ -261,23 +261,73 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
   return (
     <div className="flex flex-col gap-4">
       <section className="navy-card rounded-3xl p-4 sm:p-5">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <McMark />
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display text-[28px] leading-none font-extrabold tracking-[-0.03em] text-white">ManyChat</h1>
-            <p className="mt-1 text-sm text-white/70">Leads de Instagram y WhatsApp</p>
+          <div className="min-w-0">
+            <h1 className="font-display text-[20px] leading-none font-extrabold tracking-[-0.03em] text-white">ManyChat</h1>
+            <p className="mt-1 text-[13px] text-white/70">Leads de Instagram y WhatsApp</p>
           </div>
-          {canEdit && (
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="Período" className="flex items-center gap-0.5 rounded-2xl border border-white/10 bg-white/[0.06] p-1">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={period === p.id}
+                  onClick={() => {
+                    setPeriod(p.id);
+                    setVisible(PAGE_SIZE);
+                  }}
+                  className={cn(
+                    "h-8 shrink-0 rounded-xl px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors",
+                    period === p.id ? "bg-white text-navy" : "text-white/70 hover:text-white",
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
-              onClick={() => setShowSheetForm((v) => !v)}
-              aria-expanded={showSheetForm}
-              aria-label="Ajustes de la hoja de ManyChat"
-              className="flex size-11 shrink-0 items-center justify-center rounded-2xl text-white hover:bg-white/10"
+              onClick={() => startRefresh(() => router.refresh())}
+              disabled={refreshing}
+              aria-label="Actualizar"
+              title="Actualizar"
+              className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white hover:bg-white/10 disabled:opacity-70"
             >
-              <SlidersHorizontal className="size-5" aria-hidden="true" />
+              <RefreshCw className={cn("size-[18px]", refreshing && "animate-spin")} aria-hidden="true" />
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => downloadCsv(periodLeads)}
+              aria-label="Exportar"
+              title="Exportar"
+              className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
+            >
+              <Download className="size-[18px]" aria-hidden="true" />
+            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setShowSheetForm((v) => !v)}
+                aria-expanded={showSheetForm}
+                aria-label="Ajustes de la hoja de ManyChat"
+                title="Ajustes"
+                className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white hover:bg-white/10"
+              >
+                <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
+              </button>
+            )}
+            <Link
+              href="/crm?crear=1"
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border border-white bg-white px-4 text-[13.5px] font-semibold whitespace-nowrap text-navy"
+            >
+              <Plus className="size-[16px]" aria-hidden="true" />
+              Lead
+            </Link>
+          </div>
         </div>
 
         <p className="mt-4 inline-flex max-w-full items-center gap-2 rounded-full bg-emerald-400/15 px-3.5 py-1.5 text-[13.5px] font-semibold text-emerald-300">
@@ -292,53 +342,6 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
             </div>
           </div>
         )}
-
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <Link
-            href="/crm?crear=1"
-            className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-white bg-white text-[14px] font-semibold text-navy"
-          >
-            <Plus className="size-[18px]" aria-hidden="true" />
-            Lead
-          </Link>
-          <button
-            type="button"
-            onClick={() => startRefresh(() => router.refresh())}
-            disabled={refreshing}
-            className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-[14px] font-semibold text-white hover:bg-white/10 disabled:opacity-70"
-          >
-            <RefreshCw className={cn("size-[18px]", refreshing && "animate-spin")} aria-hidden="true" />
-            Actualizar
-          </button>
-          <button
-            type="button"
-            onClick={() => downloadCsv(periodLeads)}
-            className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-[14px] font-semibold text-white hover:bg-white/10"
-          >
-            <Download className="size-[18px]" aria-hidden="true" />
-            Exportar
-          </button>
-        </div>
-
-        <div role="group" aria-label="Período" className="mt-3 grid grid-cols-4 gap-0.5 rounded-2xl border border-white/10 bg-white/[0.06] p-1">
-          {PERIODS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              aria-pressed={period === p.id}
-              onClick={() => {
-                setPeriod(p.id);
-                setVisible(PAGE_SIZE);
-              }}
-              className={cn(
-                "h-10 rounded-xl text-[13.5px] font-semibold transition-colors",
-                period === p.id ? "bg-white text-navy" : "text-white/70 hover:text-white",
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
 
         <div className="mt-4 grid grid-cols-3 gap-x-3 gap-y-4 border-t border-white/10 pt-4 sm:grid-cols-5">
           <DarkKpi label="Leads" value={fmtInt(kpis.leads)} delta={<Delta current={kpis.leads} previous={prev?.leads ?? null} kind="count" dark />} />
