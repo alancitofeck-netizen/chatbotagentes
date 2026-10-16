@@ -59,6 +59,42 @@ export async function getMiniAppsListAction() {
   return getMiniAppsList(workspaceId);
 }
 
+/** Pausar/reactivar desde la lista (hoja "⋯" en mobile) — update puntual de
+ * una sola columna, sin pasar por updateMiniApp (que exige el input
+ * completo: name/description/config/etc., datos que la lista no tiene
+ * cargados). */
+export async function setMiniAppStatusAction(id: string, status: "active" | "inactive"): Promise<void> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "mini_apps");
+  await requireMiniAppEditAccess(workspaceId, id, role);
+  const supabase = await createClient();
+  const { error } = await supabase.from("mini_apps").update({ status, updated_at: new Date().toISOString() }).eq("id", id).eq("workspace_id", workspaceId);
+  if (error) throw new Error("No se pudo actualizar el estado.");
+  revalidateMiniAppsPaths(id);
+}
+
+/** Asignar/quitar asesor desde la lista — mismo criterio que
+ * setMiniAppStatusAction (update puntual), pero recachea
+ * config.assignedAgentName (resolveConfigWithAgentName) para que la página
+ * pública siga leyendo el nombre sin una consulta extra, igual que ya hace
+ * updateMiniApp. */
+export async function assignMiniAppAgentAction(id: string, assignedAgentId: string | null): Promise<void> {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "mini_apps");
+  await requireMiniAppEditAccess(workspaceId, id, role);
+  const supabase = await createClient();
+  const { data: current } = await supabase.from("mini_apps").select("config").eq("id", id).eq("workspace_id", workspaceId).maybeSingle();
+  if (!current) throw new Error("No se encontró la mini app.");
+  const config = await resolveConfigWithAgentName(workspaceId, assignedAgentId, ((current.config as Record<string, unknown>) ?? {}) as unknown as MiniAppFieldConfig);
+  const { error } = await supabase
+    .from("mini_apps")
+    .update({ assigned_agent_id: assignedAgentId, config, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("workspace_id", workspaceId);
+  if (error) throw new Error("No se pudo asignar el asesor.");
+  revalidateMiniAppsPaths(id);
+}
+
 export async function getMiniAppDetailAction(id: string) {
   const { workspaceId } = await requireActiveWorkspace();
   return getMiniAppDetail(workspaceId, id);

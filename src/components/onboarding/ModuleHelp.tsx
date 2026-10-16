@@ -10,7 +10,7 @@ import { attachFloatingPosition, type FloatingPosition } from "./floatingPositio
 /** "¿Qué hago acá?" + "Volver a ver tutorial" (§27/§31) — una línea para
  * agregar en el header de cualquier módulo, sin sacar al usuario de la
  * pantalla actual (popover, no navegación ni modal). */
-export function ModuleHelp({ description, tourKey }: { description: string; tourKey?: string }) {
+export function ModuleHelp({ description, tourKey, compact = false }: { description: string; tourKey?: string; compact?: boolean }) {
   const { startTour } = useOnboarding();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -38,15 +38,27 @@ export function ModuleHelp({ description, tourKey }: { description: string; tour
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded-full border border-border-default px-2.5 py-1 text-xs font-medium text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:min-h-11 max-md:px-4"
-      >
-        <HelpCircle size={13} aria-hidden="true" />
-        ¿Qué hago acá?
-      </button>
+      {compact ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="¿Qué hago acá?"
+          className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border-default text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+        >
+          <HelpCircle size={15} aria-hidden="true" />
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-1 rounded-full border border-border-default px-2.5 py-1 text-xs font-medium text-neutral-500 hover:bg-surface-2 hover:text-foreground max-md:min-h-11 max-md:px-4"
+        >
+          <HelpCircle size={13} aria-hidden="true" />
+          ¿Qué hago acá?
+        </button>
+      )}
       {open &&
         createPortal(
           <div
