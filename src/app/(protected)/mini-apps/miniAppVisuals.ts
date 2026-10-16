@@ -37,6 +37,7 @@ const TEMPLATE_VISUAL: Record<MiniAppTemplateKey, { icon: LucideIcon; hue: Hue }
   calculadora_ahorro_fiscal: { icon: Percent, hue: "violet" },
   control_financiero_base_cero: { icon: Wallet, hue: "emerald" },
   content_calendar: { icon: CalendarDays, hue: "orange" },
+  diagnostico_retiro_ia: { icon: Sparkles, hue: "cyan" },
 };
 
 /** Para "App Vinculada": el ícono real que el usuario eligió al vincularla

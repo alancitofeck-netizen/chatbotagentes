@@ -29,6 +29,7 @@ const RESULT_FIELD_BY_TEMPLATE: Partial<Record<MiniAppTemplateKey, ResultFieldSp
   test_preparacion_emergencia_financiera: { key: "emergency_score", label: "Preparación", format: "percent" },
   diagnostico_salud_financiera: { key: "financial_score", label: "Salud financiera", format: "percent" },
   calculadora_ahorro_fiscal: { key: "ahorro_fiscal_estimado", label: "Ahorro fiscal", format: "currency" },
+  diagnostico_retiro_ia: { key: "scoreRetiro", label: "Score de Retiro", format: "percent" },
 };
 
 export function getResultFieldSpec(templateKey: MiniAppTemplateKey): ResultFieldSpec | null {

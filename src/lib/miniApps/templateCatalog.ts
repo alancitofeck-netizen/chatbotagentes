@@ -45,6 +45,7 @@ export const TEMPLATE_KEY_META: Record<MiniAppTemplateKey, { label: string; cate
   calculadora_ahorro_fiscal: { label: "Calculadora de Ahorro Fiscal", category: "calculadoras" },
   control_financiero_base_cero: { label: "Top Apps, de ingresos y gastos", category: "calculadoras" },
   content_calendar: { label: "Cronograma de Contenido", category: "herramientas_internas" },
+  diagnostico_retiro_ia: { label: "Diagnóstico de Retiro con IA", category: "quizzes" },
 };
 
 export function templateKeysForCategory(category: MiniAppTemplateCategory): MiniAppTemplateKey[] {

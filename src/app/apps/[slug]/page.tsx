@@ -15,6 +15,7 @@ import { DiagnosticoSaludApp } from "./DiagnosticoSaludApp";
 import { ControlFinancieroApp } from "./ControlFinancieroApp";
 import { AhorroFiscalApp } from "./AhorroFiscalApp";
 import { ContentCalendarApp } from "./ContentCalendarApp";
+import { DiagnosticoRetiroIaApp } from "./DiagnosticoRetiroIaApp";
 
 const THEME_SELECTOR = '[data-mini-app-theme="true"]';
 
@@ -142,6 +143,14 @@ export default async function MiniAppPublicPage({ params }: { params: Promise<{ 
     // themeCss/--ma-*. A diferencia de las demás plantillas, solo lectura
     // — la edición vive en el panel interno protegido (/mini-apps/[id]).
     return <ContentCalendarApp app={app} />;
+  }
+
+  if (app.templateKey === "diagnostico_retiro_ia") {
+    // Mismo motivo que diagnostico_financiero_retiro: diseño navy/dorado
+    // autocontenido (ver DiagnosticoRetiroIaApp.tsx), sin themeCss/--ma-*.
+    // Plantilla separada (no reusa ese motor configurable) — ver
+    // diagnosticoRetiroIaDefaults.ts.
+    return <DiagnosticoRetiroIaApp app={app} />;
   }
 
   notFound();

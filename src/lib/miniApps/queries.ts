@@ -46,6 +46,7 @@ import { DEFAULT_KIT_EMERGENCIA_BRAND, type KitEmergenciaBrand } from "@/lib/min
 import { DEFAULT_TEST_EMERGENCIA_BRAND, type TestEmergenciaBrand } from "@/lib/miniApps/testEmergenciaDefaults";
 import { DEFAULT_DIAGNOSTICO_SALUD_BRAND, type DiagnosticoSaludBrand } from "@/lib/miniApps/diagnosticoSaludDefaults";
 import { DEFAULT_AHORRO_FISCAL_BRAND, type AhorroFiscalBrand } from "@/lib/miniApps/ahorroFiscalDefaults";
+import { DEFAULT_DIAGNOSTICO_RETIRO_IA_BRAND, type DiagnosticoRetiroIaBrand } from "@/lib/miniApps/diagnosticoRetiroIaDefaults";
 import { DEFAULT_CONTROL_FINANCIERO_BRAND, type ControlFinancieroBrand } from "@/lib/miniApps/controlFinancieroDefaults";
 import { getResultFieldSpec, averageResultValue, type ResultFieldFormat } from "@/lib/miniApps/resultField";
 
@@ -62,7 +63,8 @@ export type MiniAppTemplateKey =
   | "diagnostico_salud_financiera"
   | "calculadora_ahorro_fiscal"
   | "control_financiero_base_cero"
-  | "content_calendar";
+  | "content_calendar"
+  | "diagnostico_retiro_ia";
 export type MiniAppStatus = "active" | "inactive";
 export type MiniAppLeadStatus = "new" | "contacted" | "cita_agendada" | "propuesta_enviada" | "converted" | "discarded";
 
@@ -241,6 +243,15 @@ export interface ControlFinancieroConfig {
   assignedAgentName?: string;
 }
 
+/** "Diagnóstico de Retiro con IA" — plantilla separada y autocontenida (ver
+ * diagnosticoRetiroIaDefaults.ts), sin motor configurable de preguntas: el
+ * scoring vive hardcodeado en diagnosticoRetiroIaTemplate.ts, igual que
+ * Ahorro Fiscal. */
+export interface DiagnosticoRetiroIaConfig {
+  brand: DiagnosticoRetiroIaBrand;
+  assignedAgentName?: string;
+}
+
 export interface MiniAppConfigByTemplate {
   simulador_retiro: MiniAppFieldConfig;
   calculadora_brecha_retiro: CalculadoraBrechaConfig;
@@ -258,6 +269,7 @@ export interface MiniAppConfigByTemplate {
    * vive en tablas relacionales (mini_app_content_*, ver contentCalendar.ts),
    * a diferencia de las demás plantillas. */
   content_calendar: Record<string, never>;
+  diagnostico_retiro_ia: DiagnosticoRetiroIaConfig;
 }
 
 /** True discriminated union on `templateKey` (not two independent optional
@@ -489,6 +501,13 @@ function normalizeConfigForTemplate<T extends MiniAppTemplateKey>(
   }
   if (templateKey === "content_calendar") {
     return {} as MiniAppConfigByTemplate[T];
+  }
+  if (templateKey === "diagnostico_retiro_ia") {
+    const config: DiagnosticoRetiroIaConfig = {
+      brand: { ...DEFAULT_DIAGNOSTICO_RETIRO_IA_BRAND, ...((raw.brand as Partial<DiagnosticoRetiroIaBrand>) ?? {}) },
+      assignedAgentName: typeof raw.assignedAgentName === "string" ? raw.assignedAgentName : undefined,
+    };
+    return config as MiniAppConfigByTemplate[T];
   }
   const config: MiniAppFieldConfig = {
     annualReturnRatePct: typeof raw.annualReturnRatePct === "number" ? raw.annualReturnRatePct : DEFAULT_ANNUAL_RETURN_RATE_PCT,
