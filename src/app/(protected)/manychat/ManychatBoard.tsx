@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, FileText, Pencil, Plus, RefreshCw, Search, Send, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
+import { Download, FileText, GraduationCap, Landmark, Package, Pencil, Plus, RefreshCw, Search, Send, SlidersHorizontal, Stethoscope, TrendingDown, TrendingUp } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import {
   CHANNEL_BY_ID,
@@ -15,6 +16,7 @@ import {
   leadsBetween,
   periodWindows,
   ratio,
+  reached,
   type Kpis,
   type Lead,
   type NormalizedSheet,
@@ -40,6 +42,27 @@ const STAGE_COLOR: Record<StageId, string> = {
   propuesta: "#f472b6",
   cliente: "#3dd68c",
 };
+
+const SIN_PRODUCTO = "Sin producto";
+
+/** "Producto" = lead.contenido (la campaña/contenido que generó el lead —
+ * mismo campo que ya se muestra debajo del nombre en cada fila). Íconos y
+ * colores reconocidos para los productos reales de este workspace, con una
+ * paleta de reserva (cíclica por orden de aparición) para cualquier otro
+ * contenido que aparezca en la hoja — nunca se oculta un producto por no
+ * estar en esta lista. */
+const PRODUCT_STYLES: { match: RegExp; icon: LucideIcon; color: string }[] = [
+  { match: /gastos?\s*m[eé]dicos?/i, icon: Stethoscope, color: "#0d9488" },
+  { match: /\bppr\b/i, icon: Landmark, color: "#7c3aed" },
+  { match: /meta\s*universitaria|universidad/i, icon: GraduationCap, color: "#ea580c" },
+];
+const PRODUCT_FALLBACK_COLORS = ["#2563eb", "#db2777", "#65a30d", "#0891b2", "#9333ea"];
+
+function productStyle(producto: string, fallbackIndex: number): { icon: LucideIcon; color: string } {
+  const known = PRODUCT_STYLES.find((p) => p.match.test(producto));
+  if (known) return known;
+  return { icon: Package, color: PRODUCT_FALLBACK_COLORS[fallbackIndex % PRODUCT_FALLBACK_COLORS.length] };
+}
 
 const PERIODS: { id: PeriodId; label: string }[] = [
   { id: "7", label: "7 días" },
@@ -144,6 +167,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
   const [refreshing, startRefresh] = useTransition();
   const [period, setPeriod] = useState<PeriodId>("30");
   const [stage, setStage] = useState<StageId | "todos">("todos");
+  const [product, setProduct] = useState<string | "todos">("todos");
   const [proj, setProj] = useState<"todas" | "con" | "sin">("todas");
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -183,17 +207,43 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
     return { con, sin };
   }, [periodLeads]);
 
+  const productStats = useMemo(() => {
+    const total = periodLeads.length;
+    const prevByProduct = new Map<string, number>();
+    if (previousLeads) {
+      for (const l of previousLeads) {
+        const key = (l.contenido || SIN_PRODUCTO).trim() || SIN_PRODUCTO;
+        prevByProduct.set(key, (prevByProduct.get(key) ?? 0) + 1);
+      }
+    }
+    const agg = new Map<string, { producto: string; leads: number; calificados: number; citas: number; proyeccion: number; clientes: number }>();
+    for (const l of periodLeads) {
+      const key = (l.contenido || SIN_PRODUCTO).trim() || SIN_PRODUCTO;
+      const row = agg.get(key) ?? { producto: key, leads: 0, calificados: 0, citas: 0, proyeccion: 0, clientes: 0 };
+      row.leads += 1;
+      if (reached(l, "calificado")) row.calificados += 1;
+      if (sheet.hasCitas && reached(l, "cita")) row.citas += 1;
+      if ((l.proyecciones?.length ?? 0) > 0) row.proyeccion += 1;
+      if (l.etapa === "cliente") row.clientes += 1;
+      agg.set(key, row);
+    }
+    return [...agg.values()]
+      .sort((a, b) => b.leads - a.leads)
+      .map((r, i) => ({ ...r, share: ratio(r.leads, total), previous: previousLeads ? (prevByProduct.get(r.producto) ?? 0) : null, ...productStyle(r.producto, i) }));
+  }, [periodLeads, previousLeads, sheet.hasCitas]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return periodLeads.filter((l) => {
       if (stage !== "todos" && l.etapa !== stage) return false;
+      if (product !== "todos" && ((l.contenido || SIN_PRODUCTO).trim() || SIN_PRODUCTO) !== product) return false;
       const hasProyeccion = (l.proyecciones?.length ?? 0) > 0;
       if (proj === "con" && !hasProyeccion) return false;
       if (proj === "sin" && hasProyeccion) return false;
       if (!q) return true;
       return [l.nombre, l.telefono, l.email, l.usuario, l.nota, l.contenido].some((v) => v?.toLowerCase().includes(q));
     });
-  }, [periodLeads, stage, proj, search]);
+  }, [periodLeads, stage, product, proj, search]);
 
   const steps = useMemo(() => funnel(periodLeads, sheet.hasCitas), [periodLeads, sheet.hasCitas]);
   const channels = useMemo(() => channelBreakdown(periodLeads), [periodLeads]);
@@ -304,6 +354,67 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
         {days === null ? "Desde el primer lead de la hoja" : `Cambios contra los ${days} días anteriores`}
       </p>
 
+      {productStats.length > 0 && (
+        <Panel title="Leads por producto" subtitle="Tocá un producto para filtrar la lista">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {productStats.map((p) => {
+              const Icon = p.icon;
+              const selected = product === p.producto;
+              return (
+                <button
+                  key={p.producto}
+                  type="button"
+                  onClick={() => {
+                    setProduct(selected ? "todos" : p.producto);
+                    setVisible(PAGE_SIZE);
+                  }}
+                  aria-pressed={selected}
+                  className={cn("flex flex-col gap-3 rounded-2xl border-2 bg-surface-1 p-4 text-left", selected ? "" : "border-border-default")}
+                  style={selected ? { borderColor: p.color } : undefined}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${p.color}1a`, color: p.color }}>
+                        <Icon className="size-[18px]" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-bold text-foreground">{p.producto}</p>
+                        <p className="text-[12px] text-neutral-500">{fmtPct(p.share)} de los leads</p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <b className="block font-display text-[26px] leading-none font-extrabold tabular-nums text-foreground">{fmtInt(p.leads)}</b>
+                      <Delta current={p.leads} previous={p.previous} kind="count" />
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, p.share)}%`, backgroundColor: p.color }} />
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 text-center">
+                    <div>
+                      <p className="text-[11px] text-neutral-500">Calificados</p>
+                      <b className="text-[14px] font-bold text-foreground">{p.calificados}</b>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-neutral-500">Citas</p>
+                      <b className="text-[14px] font-bold text-foreground">{sheet.hasCitas ? p.citas : "—"}</b>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-neutral-500">Proyección</p>
+                      <b className="text-[14px] font-bold text-foreground">{p.proyeccion}</b>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-neutral-500">Clientes</p>
+                      <b className="text-[14px] font-bold text-foreground">{p.clientes}</b>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
+      )}
+
       <Panel
         title="Tus leads"
         action={
@@ -349,7 +460,49 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-border-default pt-3" role="group" aria-label="Filtrar por proyección">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-dashed border-border-default pt-3">
+        {productStats.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por producto">
+            <span className="text-[11px] font-bold tracking-wide text-neutral-500 uppercase">Producto:</span>
+            <button
+              type="button"
+              aria-pressed={product === "todos"}
+              onClick={() => {
+                setProduct("todos");
+                setVisible(PAGE_SIZE);
+              }}
+              className={cn(
+                "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13.5px] font-semibold",
+                product === "todos" ? "border-navy bg-navy text-white dark:border-[#1c2858] dark:bg-[#1c2858]" : "border-border-default bg-surface-1 text-neutral-600",
+              )}
+            >
+              Todos
+              <span className="text-[12px] font-bold tabular-nums opacity-75">{periodLeads.length}</span>
+            </button>
+            {productStats.map((p) => {
+              const selected = product === p.producto;
+              return (
+                <button
+                  key={p.producto}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => {
+                    setProduct(selected ? "todos" : p.producto);
+                    setVisible(PAGE_SIZE);
+                  }}
+                  className={cn("flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-surface-1 px-3.5 text-[13.5px] font-semibold", !selected && "border-border-default")}
+                  style={selected ? { borderColor: p.color, color: p.color } : undefined}
+                >
+                  <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} aria-hidden="true" />
+                  <span className={selected ? "" : "text-neutral-600"}>{p.producto}</span>
+                  <span className="text-[12px] font-bold tabular-nums opacity-75">{p.leads}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div className="hidden h-6 w-px bg-border-default sm:block" aria-hidden="true" />
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por proyección">
           <span className="text-[11px] font-bold tracking-wide text-neutral-500 uppercase">Proyección:</span>
           {(
             [
@@ -377,6 +530,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
               {count !== null && <span className="text-[12px] font-bold tabular-nums opacity-75">{count}</span>}
             </button>
           ))}
+        </div>
         </div>
 
         {filtered.length === 0 ? (
