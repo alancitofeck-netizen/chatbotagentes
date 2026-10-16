@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, Pencil, Plus, RefreshCw, Search, Send, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
+import { Download, FileText, Pencil, Plus, RefreshCw, Search, Send, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import {
   CHANNEL_BY_ID,
@@ -144,6 +144,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
   const [refreshing, startRefresh] = useTransition();
   const [period, setPeriod] = useState<PeriodId>("30");
   const [stage, setStage] = useState<StageId | "todos">("todos");
+  const [proj, setProj] = useState<"todas" | "con" | "sin">("todas");
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [openLead, setOpenLead] = useState<number | null>(null);
@@ -169,14 +170,30 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
     return counts;
   }, [periodLeads]);
 
+  // "Proyección" = el lead completó una simulación/diagnóstico en alguna Mini
+  // App del workspace (mismo teléfono) — lead.proyecciones ya viene armado
+  // desde el servidor (getMiniAppProjectionsByPhone, ver manychat/page.tsx).
+  const projCounts = useMemo(() => {
+    let con = 0;
+    let sin = 0;
+    for (const l of periodLeads) {
+      if ((l.proyecciones?.length ?? 0) > 0) con++;
+      else sin++;
+    }
+    return { con, sin };
+  }, [periodLeads]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return periodLeads.filter((l) => {
       if (stage !== "todos" && l.etapa !== stage) return false;
+      const hasProyeccion = (l.proyecciones?.length ?? 0) > 0;
+      if (proj === "con" && !hasProyeccion) return false;
+      if (proj === "sin" && hasProyeccion) return false;
       if (!q) return true;
       return [l.nombre, l.telefono, l.email, l.usuario, l.nota, l.contenido].some((v) => v?.toLowerCase().includes(q));
     });
-  }, [periodLeads, stage, search]);
+  }, [periodLeads, stage, proj, search]);
 
   const steps = useMemo(() => funnel(periodLeads, sheet.hasCitas), [periodLeads, sheet.hasCitas]);
   const channels = useMemo(() => channelBreakdown(periodLeads), [periodLeads]);
@@ -332,6 +349,36 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
           ))}
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-border-default pt-3" role="group" aria-label="Filtrar por proyección">
+          <span className="text-[11px] font-bold tracking-wide text-neutral-500 uppercase">Proyección:</span>
+          {(
+            [
+              ["todas", "Todas", null],
+              ["con", `✓ Con proyección`, projCounts.con],
+              ["sin", `○ Sin proyección`, projCounts.sin],
+            ] as [typeof proj, string, number | null][]
+          ).map(([id, label, count]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={proj === id}
+              onClick={() => {
+                setProj(id);
+                setVisible(PAGE_SIZE);
+              }}
+              className={cn(
+                "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13.5px] font-semibold",
+                id === "todas" && (proj === id ? "border-navy bg-navy text-white dark:border-[#1c2858] dark:bg-[#1c2858]" : "border-border-default bg-surface-1 text-neutral-600"),
+                id === "con" && (proj === id ? "border-emerald-500 bg-emerald-500 text-white" : "border-emerald-500 bg-surface-1 text-emerald-700"),
+                id === "sin" && (proj === id ? "border-amber-500 bg-amber-500 text-white" : "border-amber-500 bg-surface-1 text-amber-700"),
+              )}
+            >
+              {label}
+              {count !== null && <span className="text-[12px] font-bold tabular-nums opacity-75">{count}</span>}
+            </button>
+          ))}
+        </div>
+
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border-default bg-surface-2 p-6 text-center text-sm text-neutral-500">
             <b className="mb-1 block text-foreground">No hay leads con ese filtro</b>
@@ -355,7 +402,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
                       setEditingRef(null);
                     }}
                     aria-expanded={open}
-                    className="grid w-full grid-cols-[46px_minmax(0,1fr)] gap-3 rounded-2xl border border-border-default bg-surface-1 p-3 text-left"
+                    className="grid w-full grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border-default bg-surface-1 p-3 text-left"
                   >
                     <span
                       className="relative flex size-[46px] items-center justify-center rounded-full text-[15px] font-bold"
@@ -382,6 +429,17 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
                         )}
                       </span>
                     </span>
+                    {(lead.proyecciones?.length ?? 0) > 0 ? (
+                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500 bg-emerald-50 px-3 py-1.5 text-[12.5px] font-semibold text-emerald-700 dark:bg-emerald-500/10">
+                        <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+                        Proyección ✓
+                        <span className="opacity-75">· {lead.proyecciones!.length} PDF{lead.proyecciones!.length === 1 ? "" : "s"}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-500 bg-amber-50 px-3 py-1.5 text-[12.5px] font-semibold text-amber-700 dark:bg-amber-500/10">
+                        ○ Sin proyección
+                      </span>
+                    )}
                   </button>
                   {open && (
                     <div className="mx-1 -mt-1 flex flex-col gap-2 rounded-b-2xl border border-t-0 border-border-default bg-surface-2 p-3 text-[13.5px] text-neutral-600">
