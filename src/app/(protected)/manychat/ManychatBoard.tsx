@@ -134,14 +134,15 @@ function McMark() {
   );
 }
 
-function Delta({ current, previous, kind }: { current: number | null; previous: number | null; kind: "count" | "pct" | "money" }) {
-  if (current === null || previous === null) return <small className="text-[12px] font-semibold text-neutral-500">{previous === null ? "Histórico" : "Sin datos"}</small>;
+function Delta({ current, previous, kind, dark }: { current: number | null; previous: number | null; kind: "count" | "pct" | "money"; dark?: boolean }) {
+  const mutedClass = dark ? "text-white/40" : "text-neutral-500";
+  if (current === null || previous === null) return <small className={cn("text-[12px] font-semibold", mutedClass)}>{previous === null ? "Histórico" : "Sin datos"}</small>;
   const diff = current - previous;
-  if (Math.abs(diff) < 0.05) return <small className="text-[12px] font-semibold text-neutral-500">Igual</small>;
+  if (Math.abs(diff) < 0.05) return <small className={cn("text-[12px] font-semibold", mutedClass)}>Igual</small>;
   const up = diff > 0;
   const text = kind === "pct" ? `${fmtPct(Math.abs(diff)).replace("%", "")} pts` : fmtInt(Math.abs(diff));
   return (
-    <small className={cn("flex items-center gap-1 text-[12px] font-bold", up ? "text-success-strong" : "text-error-strong")}>
+    <small className={cn("flex items-center gap-1 text-[12px] font-bold", up ? (dark ? "text-emerald-400" : "text-success-strong") : dark ? "text-rose-400" : "text-error-strong")}>
       {up ? <TrendingUp className="size-3" aria-hidden="true" /> : <TrendingDown className="size-3" aria-hidden="true" />}
       {up ? "+" : "-"}
       {text}
@@ -149,12 +150,16 @@ function Delta({ current, previous, kind }: { current: number | null; previous: 
   );
 }
 
-function KpiTile({ label, value, delta }: { label: string; value: string; delta: React.ReactNode }) {
+/** Variante del KPI para vivir sobre el fondo navy de la cabecera (sin caja
+ * blanca propia), a pedido del usuario — "todo junto" en una sola tarjeta. */
+function DarkKpi({ label, value, delta }: { label: string; value: string; delta: React.ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1 rounded-2xl border border-border-default bg-surface-1 p-3 shadow-[var(--elevation-xs)]">
-      <span className="truncate text-[12px] text-neutral-500">{label}</span>
-      <b className="truncate font-display text-[22px] leading-tight font-extrabold tabular-nums text-foreground">{value}</b>
-      {delta}
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="truncate text-[12px] text-white/50">{label}</span>
+      <span className="flex flex-wrap items-baseline gap-1.5">
+        <b className="truncate font-display text-[20px] leading-tight font-extrabold tabular-nums text-white">{value}</b>
+        {delta}
+      </span>
     </div>
   );
 }
@@ -334,25 +339,25 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
             </button>
           ))}
         </div>
-      </section>
 
-      <div className="grid grid-cols-3 gap-2 lg:grid-cols-6">
-        <KpiTile label="Leads" value={fmtInt(kpis.leads)} delta={<Delta current={kpis.leads} previous={prev?.leads ?? null} kind="count" />} />
-        <KpiTile label="Calificados" value={fmtInt(kpis.calificados)} delta={<Delta current={kpis.calificados} previous={prev?.calificados ?? null} kind="count" />} />
-        <KpiTile
-          label="Citas"
-          value={kpis.citas === null ? "—" : fmtInt(kpis.citas)}
-          delta={<Delta current={kpis.citas} previous={prev ? prev.citas : null} kind="count" />}
-        />
-        <KpiTile label="Clientes" value={fmtInt(kpis.clientes)} delta={<Delta current={kpis.clientes} previous={prev?.clientes ?? null} kind="count" />} />
-        <KpiTile label="Conversión" value={fmtPct(kpis.conversion)} delta={<Delta current={kpis.conversion} previous={prev?.conversion ?? null} kind="pct" />} />
-        {hasMoney && (
-          <KpiTile label="Ingresos" value={fmtInt(kpis.ingresos)} delta={<Delta current={kpis.ingresos} previous={prev?.ingresos ?? null} kind="money" />} />
-        )}
-      </div>
-      <p className="-mt-2 px-1 text-[12.5px] text-neutral-500">
-        {days === null ? "Desde el primer lead de la hoja" : `Cambios contra los ${days} días anteriores`}
-      </p>
+        <div className="mt-4 grid grid-cols-3 gap-x-3 gap-y-4 border-t border-white/10 pt-4 sm:grid-cols-5">
+          <DarkKpi label="Leads" value={fmtInt(kpis.leads)} delta={<Delta current={kpis.leads} previous={prev?.leads ?? null} kind="count" dark />} />
+          <DarkKpi label="Calificados" value={fmtInt(kpis.calificados)} delta={<Delta current={kpis.calificados} previous={prev?.calificados ?? null} kind="count" dark />} />
+          <DarkKpi
+            label="Citas"
+            value={kpis.citas === null ? "—" : fmtInt(kpis.citas)}
+            delta={<Delta current={kpis.citas} previous={prev ? prev.citas : null} kind="count" dark />}
+          />
+          <DarkKpi label="Clientes" value={fmtInt(kpis.clientes)} delta={<Delta current={kpis.clientes} previous={prev?.clientes ?? null} kind="count" dark />} />
+          <DarkKpi label="Conversión" value={fmtPct(kpis.conversion)} delta={<Delta current={kpis.conversion} previous={prev?.conversion ?? null} kind="pct" dark />} />
+          {hasMoney && (
+            <DarkKpi label="Ingresos" value={fmtInt(kpis.ingresos)} delta={<Delta current={kpis.ingresos} previous={prev?.ingresos ?? null} kind="money" dark />} />
+          )}
+        </div>
+        <p className="mt-2 text-[11.5px] text-white/40">
+          {days === null ? "Desde el primer lead de la hoja" : `Cambios contra los ${days} días anteriores`}
+        </p>
+      </section>
 
       {productStats.length > 0 && (
         <Panel title="Leads por producto" subtitle="Tocá un producto para filtrar la lista">
