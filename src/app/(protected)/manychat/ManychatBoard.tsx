@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, FileText, GraduationCap, Landmark, Package, Pencil, Plus, RefreshCw, Search, Send, SlidersHorizontal, Stethoscope, TrendingDown, TrendingUp } from "lucide-react";
+import { Download, FileText, GraduationCap, Landmark, MessageCircle, Package, Pencil, Plus, RefreshCw, Search, Send, SlidersHorizontal, Stethoscope, TrendingDown, TrendingUp, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -123,9 +123,9 @@ function downloadCsv(leads: Lead[]) {
   URL.revokeObjectURL(url);
 }
 
-function McMark() {
+function McMark({ className = "size-12 shrink-0" }: { className?: string }) {
   return (
-    <svg className="size-12 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
       <rect width="24" height="24" rx="7" fill="#5E64D6" />
       <rect x=".5" y=".5" width="23" height="23" rx="6.5" fill="none" stroke="rgba(255,255,255,.18)" />
       <path d="M17.6 11.5a5.6 5.6 0 01-8.3 4.9l-3 .8.8-2.9a5.6 5.6 0 1110.5-2.8z" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinejoin="round" />
@@ -179,6 +179,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
   const [openLead, setOpenLead] = useState<number | null>(null);
   const [editingRef, setEditingRef] = useState<string | null>(null);
   const [showSheetForm, setShowSheetForm] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
   // Misma hora que el servidor al renderizar (sin desfase de hidratación); se actualiza al montar.
   const [now, setNow] = useState(generatedAt);
   useEffect(() => {
@@ -258,9 +259,120 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
   const statusText = minutes < 1 ? "Conectado, recién" : `Conectado, hace ${minutes} min`;
   const stagesShown = STAGES.filter((s) => s.id !== "cita" || sheet.hasCitas);
 
+  // Producto y proyección viven en la hoja de filtros en móvil (estado ya
+  // tiene su propia fila de chips, siempre visible, así que no cuenta acá).
+  const activeFilterCount = (product !== "todos" ? 1 : 0) + (proj !== "todas" ? 1 : 0);
+
+  function clearFilters() {
+    setProduct("todos");
+    setProj("todas");
+    setStage("todos");
+    setVisible(PAGE_SIZE);
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <section className="navy-card rounded-3xl p-4 sm:p-5">
+      {/* ===== Cabecera compacta — solo mobile (< 640px) ===== */}
+      <section className="navy-card rounded-3xl p-4 sm:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <McMark className="size-9 shrink-0" />
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-bold text-white">ManyChat</p>
+              <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-emerald-300" suppressHydrationWarning>
+                <span className="size-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" />
+                {statusText}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/crm?crear=1"
+            className="flex h-9 shrink-0 items-center gap-1 rounded-xl border border-white bg-white px-3 text-[13px] font-semibold whitespace-nowrap text-navy"
+          >
+            <Plus className="size-[14px]" aria-hidden="true" />
+            Lead
+          </Link>
+        </div>
+
+        <div className="mt-3 flex items-center gap-1.5">
+          <div role="group" aria-label="Período" className="flex flex-1 items-center gap-0.5 rounded-2xl border border-white/10 bg-white/[0.06] p-1">
+            {PERIODS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={period === p.id}
+                onClick={() => {
+                  setPeriod(p.id);
+                  setVisible(PAGE_SIZE);
+                }}
+                className={cn(
+                  "h-8 flex-1 rounded-xl text-[12px] font-semibold transition-colors",
+                  period === p.id ? "bg-white text-navy" : "text-white/70",
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => startRefresh(() => router.refresh())}
+            disabled={refreshing}
+            aria-label="Actualizar"
+            className="flex size-[34px] shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white disabled:opacity-70"
+          >
+            <RefreshCw className={cn("size-4", refreshing && "animate-spin")} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadCsv(periodLeads)}
+            aria-label="Exportar"
+            className="flex size-[34px] shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white"
+          >
+            <Download className="size-4" aria-hidden="true" />
+          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setShowSheetForm((v) => !v)}
+              aria-expanded={showSheetForm}
+              aria-label="Ajustes de la hoja de ManyChat"
+              className="flex size-[34px] shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white"
+            >
+              <SlidersHorizontal className="size-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
+        {showSheetForm && canEdit && (
+          <div className="mt-3 rounded-2xl border border-dashed border-white/20 bg-white/5 p-4 text-foreground">
+            <div className="rounded-xl bg-surface-1 p-4">
+              <SheetLinkForm currentUrl={sheetUrl} />
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex items-stretch divide-x divide-white/10 border-t border-white/10 pt-3">
+          {(
+            [
+              ["Leads", fmtInt(kpis.leads), kpis.leads, prev?.leads ?? null, "count"],
+              ["Calif.", fmtInt(kpis.calificados), kpis.calificados, prev?.calificados ?? null, "count"],
+              ["Citas", kpis.citas === null ? "—" : fmtInt(kpis.citas), kpis.citas, prev ? prev.citas : null, "count"],
+              ["Clientes", fmtInt(kpis.clientes), kpis.clientes, prev?.clientes ?? null, "count"],
+              ["Conv.", fmtPct(kpis.conversion), kpis.conversion, prev?.conversion ?? null, "pct"],
+            ] as [string, string, number | null, number | null, "count" | "pct"][]
+          ).map(([label, value, current, previous, kind]) => (
+            <div key={label} className="flex flex-1 flex-col items-center gap-0.5 px-1 text-center">
+              <b className="font-display text-[17px] leading-none font-extrabold tabular-nums text-white">{value}</b>
+              <span className="text-[10.5px] text-white/50">{label}</span>
+              <Delta current={current} previous={previous} kind={kind} dark />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== Cabecera completa — solo desktop (>= 640px) ===== */}
+      <section className="navy-card hidden rounded-3xl p-4 sm:block sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
           <McMark />
           <div className="min-w-0">
@@ -362,7 +474,50 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
         </p>
       </section>
 
+      {/* ===== Por producto — mobile ===== */}
       {productStats.length > 0 && (
+        <div className="sm:hidden">
+          <div className="flex items-baseline justify-between gap-2 px-1">
+            <h2 className="font-display text-[17px] font-semibold text-foreground">Por producto</h2>
+            <span className="shrink-0 text-[12px] text-neutral-500">Tocá para filtrar</span>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {productStats.map((p) => {
+              const Icon = p.icon;
+              const selected = product === p.producto;
+              return (
+                <button
+                  key={p.producto}
+                  type="button"
+                  onClick={() => {
+                    setProduct(selected ? "todos" : p.producto);
+                    setVisible(PAGE_SIZE);
+                  }}
+                  aria-pressed={selected}
+                  className={cn("flex flex-col gap-1.5 rounded-xl border-2 bg-surface-1 p-2.5 text-left", !selected && "border-border-default")}
+                  style={selected ? { borderColor: p.color } : undefined}
+                >
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${p.color}1a`, color: p.color }}>
+                      <Icon className="size-[13px]" aria-hidden="true" />
+                    </span>
+                    <span className="shrink-0 text-[11px] font-semibold text-neutral-500">{fmtPct(p.share)}</span>
+                  </div>
+                  <b className="font-display text-[19px] leading-none font-extrabold text-foreground">{fmtInt(p.leads)}</b>
+                  <p className="truncate text-[11.5px] font-medium text-neutral-600">{p.producto}</p>
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-surface-2">
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, p.share)}%`, backgroundColor: p.color }} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Leads por producto — desktop ===== */}
+      {productStats.length > 0 && (
+        <div className="hidden sm:block">
         <Panel title="Leads por producto" subtitle="Tocá un producto para filtrar la lista">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {productStats.map((p) => {
@@ -421,6 +576,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
             })}
           </div>
         </Panel>
+        </div>
       )}
 
       <Panel
@@ -431,21 +587,65 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
           </span>
         }
       >
-        <label className="relative block">
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-neutral-400" aria-hidden="true" />
-          <span className="sr-only">Buscar leads</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setVisible(PAGE_SIZE);
-            }}
-            placeholder="Nombre, teléfono o nota"
-            autoComplete="off"
-            className="h-12 w-full rounded-2xl border border-border-default bg-surface-1 pr-3 pl-11 text-base text-foreground outline-none placeholder:text-neutral-400 focus:border-accent-500"
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <label className="relative block flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-neutral-400" aria-hidden="true" />
+            <span className="sr-only">Buscar leads</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setVisible(PAGE_SIZE);
+              }}
+              placeholder="Nombre, teléfono o nota"
+              autoComplete="off"
+              className="h-12 w-full rounded-2xl border border-border-default bg-surface-1 pr-3 pl-11 text-base text-foreground outline-none placeholder:text-neutral-400 focus:border-accent-500"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowFilterSheet(true)}
+            className="flex h-12 shrink-0 items-center gap-1.5 rounded-2xl border border-border-default bg-surface-1 px-3.5 text-[13.5px] font-semibold text-foreground sm:hidden"
+          >
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="flex size-5 items-center justify-center rounded-full bg-accent-600 text-[11px] font-bold text-[var(--on-accent)]">{activeFilterCount}</span>
+            )}
+          </button>
+        </div>
+
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap gap-1.5 sm:hidden">
+            {product !== "todos" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setProduct("todos");
+                  setVisible(PAGE_SIZE);
+                }}
+                className="flex h-7 items-center gap-1 rounded-full bg-surface-2 pr-2 pl-3 text-[12.5px] font-semibold text-neutral-700"
+              >
+                {product}
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            )}
+            {proj !== "todas" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setProj("todas");
+                  setVisible(PAGE_SIZE);
+                }}
+                className="flex h-7 items-center gap-1 rounded-full bg-surface-2 pr-2 pl-3 text-[12.5px] font-semibold text-neutral-700"
+              >
+                {proj === "con" ? "Con proyección" : "Sin proyección"}
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtrar por etapa">
           {([["todos", "Todos", periodLeads.length], ...stagesShown.map((s) => [s.id, s.label, stageCounts[s.id]])] as [StageId | "todos", string, number][]).map(([id, label, count]) => (
@@ -468,7 +668,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-dashed border-border-default pt-3">
+        <div className="hidden flex-wrap items-center gap-x-4 gap-y-2 border-t border-dashed border-border-default pt-3 sm:flex">
         {productStats.length > 0 && (
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por producto">
             <span className="text-[11px] font-bold tracking-wide text-neutral-500 uppercase">Producto:</span>
@@ -555,6 +755,9 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
               const editing = open && editingRef === lead.ref;
               const digits = (lead.telefono ?? "").replace(/\D/g, "");
               const hasDetail = Boolean(lead.telefono || lead.email || lead.usuario || lead.nota);
+              const prodKey = (lead.contenido || SIN_PRODUCTO).trim() || SIN_PRODUCTO;
+              const prodColor = productStats.find((p) => p.producto === prodKey)?.color ?? "#6b7280";
+              const hasProyeccion = (lead.proyecciones?.length ?? 0) > 0;
               return (
                 <li key={`${lead.id}-${i}`}>
                   <button
@@ -564,7 +767,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
                       setEditingRef(null);
                     }}
                     aria-expanded={open}
-                    className="grid w-full grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border-default bg-surface-1 p-3 text-left"
+                    className="hidden w-full grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border-default bg-surface-1 p-3 text-left sm:grid"
                   >
                     <span
                       className="relative flex size-[46px] items-center justify-center rounded-full text-[15px] font-bold"
@@ -591,7 +794,7 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
                         )}
                       </span>
                     </span>
-                    {(lead.proyecciones?.length ?? 0) > 0 ? (
+                    {hasProyeccion ? (
                       <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500 bg-emerald-50 px-3 py-1.5 text-[12.5px] font-semibold text-emerald-700 dark:bg-emerald-500/10">
                         <FileText className="size-3.5 shrink-0" aria-hidden="true" />
                         Proyección ✓
@@ -602,6 +805,50 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
                         ○ Sin proyección
                       </span>
                     )}
+                  </button>
+
+                  {/* ===== Fila compacta — solo mobile ===== */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenLead(open ? null : i);
+                      setEditingRef(null);
+                    }}
+                    aria-expanded={open}
+                    className="flex w-full items-start gap-3 border-b border-border-default py-3 text-left sm:hidden"
+                  >
+                    <span
+                      className="relative flex size-10 shrink-0 items-center justify-center rounded-full text-[13px] font-bold"
+                      style={{ backgroundColor: `${channel.color}22`, color: channel.color }}
+                    >
+                      {initials(name) || "?"}
+                      <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-surface-1" style={{ backgroundColor: channel.color }} aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="truncate text-[15px] font-semibold text-foreground">{name}</span>
+                        <span className="shrink-0 text-[12px] text-neutral-500" suppressHydrationWarning>
+                          {timeAgo(lead.creado, now)}
+                        </span>
+                      </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="flex min-w-0 items-center gap-1 text-[12px] font-semibold" style={{ color: prodColor }}>
+                          <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: prodColor }} aria-hidden="true" />
+                          <span className="truncate">{prodKey}</span>
+                        </span>
+                        <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-accent-500/15 px-2 text-[11px] font-semibold text-accent-700">
+                          {STAGES.find((s) => s.id === lead.etapa)?.label}
+                        </span>
+                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: channel.color }} title={channel.nombre}>
+                          <MessageCircle className="size-2.5 text-white" aria-hidden="true" />
+                        </span>
+                        {hasProyeccion ? (
+                          <span className="ml-auto inline-flex h-5 shrink-0 items-center rounded-full bg-emerald-50 px-2 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10">✓ Proy.</span>
+                        ) : (
+                          <span className="ml-auto inline-flex h-5 shrink-0 items-center rounded-full bg-amber-50 px-2 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/10">Sin proy.</span>
+                        )}
+                      </span>
+                    </span>
                   </button>
                   {open && (
                     <div className="mx-1 -mt-1 flex flex-col gap-2 rounded-b-2xl border border-t-0 border-border-default bg-surface-2 p-3 text-[13.5px] text-neutral-600">
@@ -663,6 +910,133 @@ export function ManychatBoard({ sheet, sheetUrl, canEdit, generatedAt }: { sheet
           </button>
         )}
       </Panel>
+
+      {/* ===== Hoja de filtros — solo mobile ===== */}
+      {showFilterSheet && (
+        <div className="fixed inset-0 z-50 flex items-end sm:hidden" role="dialog" aria-modal="true" aria-label="Filtros">
+          <button type="button" aria-label="Cerrar filtros" onClick={() => setShowFilterSheet(false)} className="absolute inset-0 bg-neutral-950/40" />
+          <div className="relative flex max-h-[85dvh] w-full flex-col overflow-y-auto rounded-t-2xl bg-surface-1 pb-[env(safe-area-inset-bottom)] shadow-[var(--elevation-lg)]">
+            <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-neutral-300" aria-hidden="true" />
+            <div className="flex items-center justify-between border-b border-border-default px-5 py-4">
+              <h2 className="text-[17px] font-semibold text-foreground">Filtros</h2>
+              <button type="button" onClick={clearFilters} className="text-[13.5px] font-semibold text-accent-600 hover:underline">
+                Limpiar
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-5 p-5">
+              {productStats.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[11px] font-bold tracking-wide text-neutral-500 uppercase">Producto</span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={product === "todos"}
+                      onClick={() => {
+                        setProduct("todos");
+                        setVisible(PAGE_SIZE);
+                      }}
+                      className={cn(
+                        "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13.5px] font-semibold",
+                        product === "todos" ? "border-navy bg-navy text-white dark:border-[#1c2858] dark:bg-[#1c2858]" : "border-border-default bg-surface-1 text-neutral-600",
+                      )}
+                    >
+                      Todos
+                      <span className="text-[12px] font-bold tabular-nums opacity-75">{periodLeads.length}</span>
+                    </button>
+                    {productStats.map((p) => {
+                      const selected = product === p.producto;
+                      return (
+                        <button
+                          key={p.producto}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => {
+                            setProduct(selected ? "todos" : p.producto);
+                            setVisible(PAGE_SIZE);
+                          }}
+                          className={cn("flex h-9 items-center gap-1.5 rounded-full border bg-surface-1 px-3.5 text-[13.5px] font-semibold", !selected && "border-border-default")}
+                          style={selected ? { borderColor: p.color, color: p.color } : undefined}
+                        >
+                          <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} aria-hidden="true" />
+                          <span className={selected ? "" : "text-neutral-600"}>{p.producto}</span>
+                          <span className="text-[12px] font-bold tabular-nums opacity-75">{p.leads}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[11px] font-bold tracking-wide text-neutral-500 uppercase">Proyección</span>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      ["todas", "Todas", null],
+                      ["con", `✓ Con proyección`, projCounts.con],
+                      ["sin", `○ Sin proyección`, projCounts.sin],
+                    ] as [typeof proj, string, number | null][]
+                  ).map(([id, label, count]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={proj === id}
+                      onClick={() => {
+                        setProj(id);
+                        setVisible(PAGE_SIZE);
+                      }}
+                      className={cn(
+                        "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13.5px] font-semibold",
+                        id === "todas" && (proj === id ? "border-navy bg-navy text-white dark:border-[#1c2858] dark:bg-[#1c2858]" : "border-border-default bg-surface-1 text-neutral-600"),
+                        id === "con" && (proj === id ? "border-emerald-500 bg-emerald-500 text-white" : "border-emerald-500 bg-surface-1 text-emerald-700"),
+                        id === "sin" && (proj === id ? "border-amber-500 bg-amber-500 text-white" : "border-amber-500 bg-surface-1 text-amber-700"),
+                      )}
+                    >
+                      {label}
+                      {count !== null && <span className="text-[12px] font-bold tabular-nums opacity-75">{count}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[11px] font-bold tracking-wide text-neutral-500 uppercase">Estado</span>
+                <div className="flex flex-wrap gap-2">
+                  {([["todos", "Todos", periodLeads.length], ...stagesShown.map((s) => [s.id, s.label, stageCounts[s.id]])] as [StageId | "todos", string, number][]).map(([id, label, count]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={stage === id}
+                      onClick={() => {
+                        setStage(id);
+                        setVisible(PAGE_SIZE);
+                      }}
+                      className={cn(
+                        "flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13.5px] font-semibold",
+                        stage === id ? "border-navy bg-navy text-white dark:border-[#1c2858] dark:bg-[#1c2858]" : "border-border-default bg-surface-1 text-neutral-600",
+                      )}
+                    >
+                      {label}
+                      <span className="text-[12px] font-bold tabular-nums opacity-75">{count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-border-default p-5">
+              <button
+                type="button"
+                onClick={() => setShowFilterSheet(false)}
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-accent-600 text-[15px] font-bold text-[var(--on-accent)] hover:bg-accent-700"
+              >
+                Ver {fmtInt(filtered.length)} leads
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Panel title="Embudo" subtitle="Hasta qué etapa llegaron los leads del período.">
         <ol className="flex flex-col gap-4">
