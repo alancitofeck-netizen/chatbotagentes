@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AppWindow, Link2, Plus, Search, LayoutGrid, List as ListIcon, Users2, Sparkles, Copy, Trophy, AlertTriangle, ChevronRight } from "lucide-react";
+import { AppWindow, Link2, Plus, Search, LayoutGrid, List as ListIcon, Users2, Sparkles, Copy, Trophy, AlertTriangle, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { KpiTile } from "@/components/ui/KpiTile";
-import type { MiniAppListItem } from "@/lib/miniApps/queries";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
+import { cn } from "@/lib/utils/cn";
+import type { MiniAppListItem, MiniAppsListResumen } from "@/lib/miniApps/queries";
 import type { WorkspaceMemberOption } from "@/lib/inbox/queries";
 import { getMiniAppsListAction } from "@/lib/miniApps/actions";
 import { NewMiniAppWizard } from "./NewMiniAppWizard";
@@ -18,16 +19,40 @@ import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 /** Filtros del prototipo: un solo grupo de chips con conteo. */
 type ChipFilter = "all" | "con" | "sin" | "active" | "inactive" | "sinAsesor";
 
+function pct1(part: number, whole: number): string {
+  if (whole <= 0) return "0%";
+  const value = Math.round((part / whole) * 1000) / 10;
+  return `${value}`.replace(".", ",") + "%";
+}
+
+/** Variación contra el período anterior — "Histórico" cuando no hay ventana
+ * anterior (workspace nuevo), nunca un delta inventado. */
+function NavyDelta({ current, previous }: { current: number; previous: number }) {
+  const diff = current - previous;
+  if (previous === 0 && current === 0) return <span className="text-[11px] text-white/40">Sin datos</span>;
+  if (diff === 0) return <span className="text-[11px] text-white/40">Igual</span>;
+  const up = diff > 0;
+  return (
+    <span className={cn("flex items-center gap-0.5 text-[11px] font-bold", up ? "text-emerald-400" : "text-rose-400")}>
+      {up ? <TrendingUp className="size-3" aria-hidden="true" /> : <TrendingDown className="size-3" aria-hidden="true" />}
+      {up ? "+" : "-"}
+      {Math.abs(diff)}
+    </span>
+  );
+}
+
 export function MiniAppsListShell({
   initialMiniApps,
   members,
   moduleEnabled,
   canManage,
+  initialResumen,
 }: {
   initialMiniApps: MiniAppListItem[];
   members: WorkspaceMemberOption[];
   moduleEnabled: boolean;
   canManage: boolean;
+  initialResumen: MiniAppsListResumen | null;
 }) {
   useAutoStartTour("mini-apps-intro");
   const [miniApps, setMiniApps] = useState(initialMiniApps);
@@ -45,17 +70,14 @@ export function MiniAppsListShell({
   const metrics = useMemo(() => {
     const total = miniApps.length;
     const activas = miniApps.filter((a) => a.status === "active").length;
-    const leadsTotales = miniApps.reduce((sum, a) => sum + a.leadsCount, 0);
-    const convertidos = miniApps.reduce((sum, a) => sum + a.convertedLeadsCount, 0);
-    const conversion = leadsTotales > 0 ? Math.round((convertidos / leadsTotales) * 100) : null;
-    const usos = miniApps.reduce((sum, a) => sum + a.visitsCount, 0);
     const conLeads = miniApps.filter((a) => a.leadsCount > 0).length;
     const sinLeads = total - conLeads;
     const sinAsesor = miniApps.filter((a) => !a.assignedAgentName).length;
     const inactivas = total - activas;
-    const top = [...miniApps].sort((a, b) => b.leadsCount - a.leadsCount)[0];
-    return { total, activas, leadsTotales, convertidos, conversion, usos, conLeads, sinLeads, sinAsesor, inactivas, top: top && top.leadsCount > 0 ? top : null };
+    return { total, activas, conLeads, sinLeads, sinAsesor, inactivas };
   }, [miniApps]);
+
+  const topApp = useMemo(() => (initialResumen?.top ? miniApps.find((a) => a.id === initialResumen.top!.id) : undefined), [initialResumen, miniApps]);
 
   const chips: { key: ChipFilter; label: string; count: number }[] = [
     { key: "all", label: "Todas", count: metrics.total },
@@ -102,16 +124,28 @@ export function MiniAppsListShell({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="secondary" onClick={() => setShowLinkApp(true)}>
-          <Link2 size={16} aria-hidden="true" />
-          Vincular App
-        </Button>
-        <Button onClick={() => setShowCreate(true)} data-tour="mini-apps.new-button">
-          <Plus size={16} aria-hidden="true" />
-          Nueva Mini App
-        </Button>
-      </div>
+      <section className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-1 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex items-center gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-navy text-white">
+            <AppWindow className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h1 className="font-display text-[20px] leading-tight font-semibold tracking-[-0.02em] text-foreground">Mini Apps</h1>
+            <p className="text-[13px] text-neutral-500">Simuladores y formularios públicos que capturan leads para el CRM.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ModuleHelp description="Creá simuladores y formularios públicos que capturan leads directo para tu CRM." tourKey="mini-apps-intro" />
+          <Button variant="secondary" onClick={() => setShowLinkApp(true)}>
+            <Link2 size={16} aria-hidden="true" />
+            Vincular App
+          </Button>
+          <Button onClick={() => setShowCreate(true)} data-tour="mini-apps.new-button">
+            <Plus size={16} aria-hidden="true" />
+            Nueva Mini App
+          </Button>
+        </div>
+      </section>
 
       {miniApps.length === 0 ? (
         <EmptyState
@@ -122,50 +156,83 @@ export function MiniAppsListShell({
         />
       ) : (
         <>
-          {metrics.top && (
-            <section className="navy-card flex flex-col gap-4 rounded-xl p-5" aria-label="La mini app que más leads trae">
-              <p className="flex items-center gap-2 text-[13px] text-white/70">
-                <Trophy className="size-4" aria-hidden="true" />
-                La que más leads trae
-              </p>
-              <div className="flex items-center gap-3">
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                  <AppWindow className="size-6" aria-hidden="true" />
-                </span>
-                <h2 className="font-display text-[22px] leading-tight font-semibold tracking-[-0.02em]">{metrics.top.name}</h2>
+          {initialResumen && (
+            <section className="navy-card grid grid-cols-1 gap-5 rounded-xl p-5 sm:grid-cols-2" aria-label="Rendimiento de los últimos 30 días">
+              <div className="flex flex-col gap-4">
+                <p className="text-[11px] font-bold tracking-wide text-white/60 uppercase">Rendimiento · últimos 30 días</p>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div className="flex flex-col gap-1">
+                    <b className="font-display text-[22px] leading-none font-extrabold tabular-nums text-white">{metrics.activas}</b>
+                    <span className="text-[11.5px] text-white/50">Mini apps activas</span>
+                    <span className="text-[11px] text-white/40">{metrics.sinLeads} sin leads</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="flex items-baseline gap-1.5">
+                      <b className="font-display text-[22px] leading-none font-extrabold tabular-nums text-white">{initialResumen.visits.current}</b>
+                      <NavyDelta current={initialResumen.visits.current} previous={initialResumen.visits.previous} />
+                    </span>
+                    <span className="text-[11.5px] text-white/50">Visitas</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <b className="font-display text-[22px] leading-none font-extrabold tabular-nums text-white">{initialResumen.leads.current}</b>
+                    <span className="text-[11.5px] text-white/50">Leads</span>
+                    <span className="text-[11px] text-white/40">{pct1(initialResumen.leads.current, initialResumen.visits.current)} de visitas</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <b className="font-display text-[22px] leading-none font-extrabold tabular-nums text-white">{initialResumen.clients.current}</b>
+                    <span className="text-[11.5px] text-white/50">Clientes</span>
+                    <span className="text-[11px] text-white/40">{pct1(initialResumen.clients.current, initialResumen.leads.current)} de leads</span>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-accent-400" style={{ width: `${metrics.total > 0 ? (metrics.activas / metrics.total) * 100 : 0}%` }} />
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-md bg-white/5 p-3">
-                  <p className="font-display text-2xl font-semibold tabular-nums">{metrics.top.leadsCount}</p>
-                  <p className="text-xs text-white/60">leads</p>
-                </div>
-                <div className="rounded-md bg-white/5 p-3">
-                  <p className="font-display text-2xl font-semibold tabular-nums">{metrics.top.convertedLeadsCount}</p>
-                  <p className="text-xs text-white/60">a cliente</p>
-                </div>
-                <div className="rounded-md bg-white/5 p-3">
-                  <p className="font-display text-2xl font-semibold tabular-nums">
-                    {metrics.top.leadsCount > 0 ? Math.round((metrics.top.convertedLeadsCount / metrics.top.leadsCount) * 100) : 0}%
-                  </p>
-                  <p className="text-xs text-white/60">conversión</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => copyLink(metrics.top!)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/20 text-sm font-medium text-white hover:bg-white/10"
-                >
-                  <Copy className="size-4" aria-hidden="true" />
-                  {copiedId === metrics.top.id ? "Link copiado" : "Copiar link"}
-                </button>
-                <Link
-                  href={`/mini-apps/${metrics.top.id}`}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-md border border-white/20 text-sm font-medium text-white hover:bg-white/10"
-                >
-                  Ver detalle
-                  <ChevronRight className="size-4" aria-hidden="true" />
-                </Link>
+
+              <div className="flex flex-col gap-3 border-t border-white/10 pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5">
+                <p className="flex items-center gap-2 text-[13px] text-white/70">
+                  <Trophy className="size-4" aria-hidden="true" />
+                  La que más leads trae
+                </p>
+                {initialResumen.top ? (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                        <AppWindow className="size-5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <h2 className="truncate font-display text-[17px] leading-tight font-semibold tracking-[-0.02em] text-white">{initialResumen.top.name}</h2>
+                        <p className="text-[12px] text-white/50">
+                          {initialResumen.top.visitsInPeriod} visitas · {initialResumen.top.conversionInPeriod}% conversión
+                        </p>
+                      </div>
+                      <div className="ml-auto shrink-0 text-right">
+                        <b className="font-display text-2xl font-semibold tabular-nums text-white">{initialResumen.top.leadsInPeriod}</b>
+                        <p className="text-[11px] text-white/50">leads</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => topApp && copyLink(topApp)}
+                        disabled={!topApp}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/20 text-sm font-medium text-white hover:bg-white/10 disabled:opacity-50"
+                      >
+                        <Copy className="size-4" aria-hidden="true" />
+                        {copiedId === initialResumen.top.id ? "Link copiado" : "Copiar link"}
+                      </button>
+                      <Link
+                        href={`/mini-apps/${initialResumen.top.id}`}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-md border border-white/20 text-sm font-medium text-white hover:bg-white/10"
+                      >
+                        Ver detalle
+                        <ChevronRight className="size-4" aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[13px] text-white/50">Todavía no hay leads en los últimos 30 días.</p>
+                )}
               </div>
             </section>
           )}
@@ -186,13 +253,6 @@ export function MiniAppsListShell({
               <ChevronRight className="size-4 text-neutral-700" aria-hidden="true" />
             </button>
           )}
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <KpiTile label="Mini Apps" value={metrics.total} hint={`${metrics.activas} activas`} />
-            <KpiTile label="Leads" value={metrics.leadsTotales} hint={`${metrics.conLeads} con leads`} />
-            <KpiTile label="Usos" value={metrics.usos} hint="visitas a las apps" />
-            <KpiTile label="A cliente" value={metrics.convertidos} hint={metrics.conversion !== null ? `${metrics.conversion}% de los leads` : undefined} />
-          </div>
 
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">

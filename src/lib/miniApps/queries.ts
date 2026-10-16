@@ -685,7 +685,7 @@ interface PeriodBounds {
  * rolling — coherente con cómo se lee "Hoy" en el resto de la app. Para el
  * resto, ventana rolling de `days` días terminando ahora, comparada contra
  * la ventana de igual longitud inmediatamente anterior. */
-function getPeriodBounds(days: MiniAppResumenPeriod): PeriodBounds {
+export function getPeriodBounds(days: MiniAppResumenPeriod): PeriodBounds {
   const now = new Date();
   if (days === 1) {
     const currentStart = new Date(now);
@@ -856,6 +856,86 @@ export async function getMiniAppResumen(workspaceId: string, miniAppId: string, 
     })),
     leadsByDay,
     leadsByOrigin: [...originMap.entries()].map(([origin, v]) => ({ origin, ...v })).sort((a, b) => b.count - a.count),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Resumen del LISTADO (no de una Mini App puntual) — "Rendimiento · últimos
+// 30 días" en MiniAppsListShell. Mismo patrón de ventana actual/anterior que
+// getMiniAppResumen (getPeriodBounds), pero agregado sobre todo el workspace
+// en vez de un mini_app_id — nunca inventa el delta de Visitas ni el
+// "top" del período: si no hay datos, visits/leads/clients quedan en 0 y
+// `top` en null.
+// ---------------------------------------------------------------------------
+
+export interface MiniAppsListResumen {
+  days: 30;
+  visits: { current: number; previous: number };
+  leads: { current: number; previous: number };
+  clients: { current: number; previous: number };
+  /** La Mini App con más leads EN EL PERÍODO (no lifetime) — null si
+   * ninguna recibió leads en los últimos 30 días. */
+  top: { id: string; name: string; leadsInPeriod: number; visitsInPeriod: number; conversionInPeriod: number } | null;
+}
+
+export async function getMiniAppsListResumen(workspaceId: string): Promise<MiniAppsListResumen> {
+  const supabase = await createClient();
+  const { currentStart, end, previousStart } = getPeriodBounds(30);
+
+  const [
+    { count: visitsCurrent },
+    { count: visitsPrevious },
+    { data: leadsCurrentRows },
+    { count: leadsPrevious },
+    { count: clientsCurrent },
+    { count: clientsPrevious },
+  ] = await Promise.all([
+    supabase.from("mini_app_visits").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).gte("created_at", currentStart).lte("created_at", end),
+    supabase.from("mini_app_visits").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).gte("created_at", previousStart).lt("created_at", currentStart),
+    supabase.from("mini_app_leads").select("id, mini_app_id").eq("workspace_id", workspaceId).gte("fecha", currentStart).lte("fecha", end),
+    supabase.from("mini_app_leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).gte("fecha", previousStart).lt("fecha", currentStart),
+    supabase.from("mini_app_leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "converted").gte("fecha", currentStart).lte("fecha", end),
+    supabase.from("mini_app_leads").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("status", "converted").gte("fecha", previousStart).lt("fecha", currentStart),
+  ]);
+
+  const leadsByApp = new Map<string, number>();
+  for (const row of leadsCurrentRows ?? []) {
+    const appId = row.mini_app_id as string;
+    leadsByApp.set(appId, (leadsByApp.get(appId) ?? 0) + 1);
+  }
+  let topAppId: string | null = null;
+  let topLeads = 0;
+  for (const [appId, count] of leadsByApp) {
+    if (count > topLeads) {
+      topAppId = appId;
+      topLeads = count;
+    }
+  }
+
+  let top: MiniAppsListResumen["top"] = null;
+  if (topAppId) {
+    const [{ data: appRow }, { count: topVisits }] = await Promise.all([
+      supabase.from("mini_apps").select("id, name").eq("id", topAppId).maybeSingle(),
+      supabase.from("mini_app_visits").select("id", { count: "exact", head: true }).eq("mini_app_id", topAppId).gte("created_at", currentStart).lte("created_at", end),
+    ]);
+    if (appRow) {
+      const visits = topVisits ?? 0;
+      top = {
+        id: appRow.id as string,
+        name: appRow.name as string,
+        leadsInPeriod: topLeads,
+        visitsInPeriod: visits,
+        conversionInPeriod: visits > 0 ? Math.round((topLeads / visits) * 100) : 0,
+      };
+    }
+  }
+
+  return {
+    days: 30,
+    visits: { current: visitsCurrent ?? 0, previous: visitsPrevious ?? 0 },
+    leads: { current: (leadsCurrentRows ?? []).length, previous: leadsPrevious ?? 0 },
+    clients: { current: clientsCurrent ?? 0, previous: clientsPrevious ?? 0 },
+    top,
   };
 }
 
