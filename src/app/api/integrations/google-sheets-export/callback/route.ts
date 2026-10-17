@@ -1,13 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUser, getActiveWorkspaceForUser } from "@/lib/auth/session";
 import { connectGoogleSheetsExport } from "@/lib/integrations/googleSheetsExport";
+import { googleSheetsExportReturnPath } from "../returnTarget";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const state = request.nextUrl.searchParams.get("state");
+  const rawState = request.nextUrl.searchParams.get("state");
   const oauthError = request.nextUrl.searchParams.get("error");
+  // state = "<workspaceId>:<referidos|agenda>" (ver connect/route.ts); sin sufijo = referidos.
+  const [state, returnTo] = (rawState ?? "").split(":");
 
-  const target = new URL("/asesorias/referidos", request.url);
+  const target = new URL(googleSheetsExportReturnPath(returnTo === "agenda" ? "agenda" : "referidos"), request.url);
 
   if (oauthError || !code || !state) {
     target.searchParams.set("sheet_export_error", "1");

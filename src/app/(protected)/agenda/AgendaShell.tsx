@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, useRef } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState, useTransition, useRef } from "react";
 import { CalendarDays, Users2, UserRound, Loader2, SlidersHorizontal, CalendarSearch, X, Plus, FileSpreadsheet } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getMonday, addDays } from "@/lib/calendar/week";
 import { getAgendaAppointmentsAction } from "@/lib/agenda/actions";
-import type { AgendaAppointment } from "@/lib/agenda/queries";
+import type { AgendaAppointment, EstadoCita } from "@/lib/agenda/queries";
+import { getAgendaSheetStatusAction, syncAgendaSheetNowAction } from "@/lib/agenda/sheetPanelActions";
+import type { AgendaSheetStatus } from "@/lib/agenda/sheetPanelTypes";
+import { toast } from "@/components/toast/toast";
 import { AgendaTimeline } from "./AgendaTimeline";
-import { AgendaAppointmentsTable } from "@/components/agenda/AgendaAppointmentsTable";
+import { AgendaCitasTable } from "./AgendaCitasTable";
+import { AgendaSheetStatusBar } from "./AgendaSheetStatusBar";
+import { AgendaSheetKpis } from "./AgendaSheetKpis";
+import { AgendaSheetConnectPanel } from "./AgendaSheetConnectPanel";
+import { AgendaLeadsSection } from "./AgendaLeadsSection";
 import { AgendaMiniCalendar } from "./AgendaMiniCalendar";
 import { AgendaKpiTiles } from "./AgendaKpiTiles";
 import { AgendaEstadoDonut } from "./AgendaEstadoDonut";
@@ -92,6 +98,61 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
   const [advisorFilter, setAdvisorFilter] = useState("");
   const dateInputRef = useRef<HTMLInputElement>(null);
 
+  // Hoja de agendas conectada (0199): franja de estado, panel "Conectar hoja", "Sincronizar ahora".
+  const [view, setView] = useState<"citas" | "leads">("citas");
+  const [sheetStatus, setSheetStatus] = useState<AgendaSheetStatus | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelKey, setPanelKey] = useState(0);
+  const openPanel = useCallback(() => {
+    setPanelKey((k) => k + 1);
+    setPanelOpen(true);
+  }, []);
+  const [syncing, setSyncing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const loadSheetStatus = useCallback(() => {
+    getAgendaSheetStatusAction()
+      .then(setSheetStatus)
+      .catch(() => setSheetStatus({ account: { connected: false, email: null }, connection: null }));
+  }, []);
+
+  useEffect(() => {
+    loadSheetStatus();
+    // Vuelta del OAuth de Google ("Conectar cuenta de Google" en el panel): reabre el panel.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("sheet_export_connected") || params.has("sheet_export_error")) {
+      if (params.has("sheet_export_error")) toast.error("No se pudo conectar la cuenta de Google.");
+      window.history.replaceState(null, "", window.location.pathname);
+      Promise.resolve().then(openPanel);
+    }
+  }, [loadSheetStatus, openPanel]);
+
+  const afterSync = useCallback(() => {
+    loadSheetStatus();
+    setRefreshKey((k) => k + 1);
+  }, [loadSheetStatus]);
+
+  async function handleSyncNow() {
+    setSyncing(true);
+    try {
+      const result = await syncAgendaSheetNowAction();
+      if (!result.ok) toast.error("No se pudo sincronizar", result.message);
+      else {
+        const extra = (result.deletedInSheet ? `, ${result.deletedInSheet} eliminadas en la hoja` : "") + (result.errors ? ` · ${result.errors} filas con problemas` : "");
+        toast.success("Agenda sincronizada", `${result.created} citas nuevas, ${result.updated} actualizadas, ${result.newLeads} leads nuevos${extra}.`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo sincronizar.");
+    } finally {
+      setSyncing(false);
+      afterSync();
+    }
+  }
+
+  function handleEstadoChanged(id: string, estado: EstadoCita) {
+    setCitas((prev) => (prev ? prev.map((c) => (c.id === id ? { ...c, estadoCita: estado } : c)) : prev));
+  }
+
   const range = useMemo(() => rangeFor(granularity, selectedDate), [granularity, selectedDate]);
 
   useEffect(() => {
@@ -104,7 +165,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.start, range.end]);
+  }, [range.start, range.end, refreshKey]);
 
 
   useEffect(() => {
@@ -117,7 +178,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [calendarMonth]);
+  }, [calendarMonth, refreshKey]);
 
   const setterOptions = useMemo(() => [...new Set((citas ?? []).map((c) => c.setterName).filter((n): n is string => !!n))].sort(), [citas]);
   const advisorOptions = useMemo(() => [...new Set((citas ?? []).map((c) => c.advisorName))].sort(), [citas]);
@@ -144,6 +205,28 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <AgendaSheetStatusBar status={sheetStatus} syncing={syncing} onSync={handleSyncNow} onConfigure={openPanel} />
+      <AgendaSheetConnectPanel key={panelKey} open={panelOpen} onClose={() => setPanelOpen(false)} status={sheetStatus} onSynced={afterSync} />
+
+      <div className="flex gap-1 self-start rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Vista de la agenda">
+        {(["citas", "leads"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => setView(v)}
+            className={`rounded-md px-4 py-1.5 text-[13px] font-medium ${view === v ? "bg-surface-1 text-foreground shadow-[var(--elevation-xs)]" : "text-neutral-500 hover:text-foreground"}`}
+          >
+            {v === "citas" ? "Citas" : "Leads"}
+          </button>
+        ))}
+      </div>
+
+      {view === "leads" ? (
+        <AgendaLeadsSection refreshKey={refreshKey} lastSyncStartedAt={sheetStatus?.connection?.lastSyncStartedAt ?? null} />
+      ) : (
+      <>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1 rounded-full bg-surface-2 p-1" data-tour="agenda.range-switcher">
           {[
@@ -212,11 +295,19 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
                 </button>
               </div>
               <p className="mb-3 text-[12.5px] text-neutral-500">
-                Para no duplicar la carga, Agenda no crea citas manualmente — cargá o actualizá la cita en tu hoja de Google Sheets conectada y se sincroniza sola en minutos.
+                Para no duplicar la carga, Agenda no crea citas manualmente — cargá la cita en tu hoja de Google Sheets conectada y tocá Sincronizar ahora.
               </p>
-              <Link href="/profile?tab=integrations" data-tour="agenda.sheet-connect-link" className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
-                Gestionar mi hoja conectada →
-              </Link>
+              <button
+                type="button"
+                data-tour="agenda.sheet-connect-link"
+                onClick={() => {
+                  setNewCitaOpen(false);
+                  openPanel();
+                }}
+                className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700"
+              >
+                {sheetStatus?.connection ? "Configurar mi hoja de agendas →" : "Conectar hoja de agendas →"}
+              </button>
             </div>
           )}
         </div>
@@ -244,6 +335,8 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
           />
         </div>
       </div>
+
+      <AgendaSheetKpis citas={citas ?? []} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-4">
@@ -359,10 +452,8 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
           ) : !citas ? (
             <EmptyState icon={CalendarDays} title="Sin citas en este rango" description="No hay citas agendadas para el período seleccionado." />
           ) : (
-            <AgendaTimeline citas={filteredCitas} granularity={granularity} canEditEstado />
+            <AgendaTimeline citas={filteredCitas.filter((c) => !c.deletedInSheet)} granularity={granularity} canEditEstado />
           )}
-
-          <AgendaAppointmentsTable citas={filteredCitas} canEditEstado exportHref={exportHref} />
 
           {isManager && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -383,10 +474,15 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
               setGranularity("dia");
               setSelectedDate(day);
             }}
-            appointments={monthCitas}
+            appointments={monthCitas.filter((c) => !c.deletedInSheet)}
           />
         </div>
       </div>
+
+      {/* Ancho completo: 8 columnas no entran al lado del calendario. */}
+      <AgendaCitasTable citas={filteredCitas} lastSyncStartedAt={sheetStatus?.connection?.lastSyncStartedAt ?? null} exportHref={exportHref} onEstadoChanged={handleEstadoChanged} />
+      </>
+      )}
     </div>
   );
 }

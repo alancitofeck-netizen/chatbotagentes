@@ -19,6 +19,8 @@ export type AdvisorSyncFieldKey =
   | "appointmentType"
   | "estado"
   | "notes"
+  | "producto"
+  | "contactado"
   | "externalId";
 
 export interface AdvisorSyncFieldDescriptor {
@@ -55,8 +57,10 @@ export const ADVISOR_SYNC_FIELD_DICTIONARY: AdvisorSyncFieldDescriptor[] = [
     label: "Estado",
     required: false,
     hint: "Agendada/Confirmada/Realizada/No Show/Cancelada/Venta — si no matchea ninguno, queda 'Agendada'.",
-    synonyms: ["estado", "status"],
+    synonyms: ["estado", "status", "estado de cita", "estado cita"],
   },
+  { key: "producto", label: "Producto", required: false, hint: "GMM, PPR, Vida… — se traduce con las equivalencias.", synonyms: ["producto", "product", "ramo", "plan"] },
+  { key: "contactado", label: "Contactado (Sí/No)", required: false, hint: "Si ya se habló con el lead.", synonyms: ["contacte", "contactado", "contacto", "contactada", "se contacto"] },
   { key: "notes", label: "Notas", required: false, hint: "Se guarda como nota del lead en el CRM.", synonyms: ["observaciones", "notas", "comentarios", "notes", "comments"] },
   { key: "externalId", label: "ID externo", required: false, hint: "Recomendado — identifica la fila de forma estable aunque se reordene la hoja.", synonyms: ["id", "id externo", "external id", "codigo"] },
 ];

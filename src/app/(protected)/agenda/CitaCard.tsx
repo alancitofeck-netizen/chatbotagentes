@@ -17,6 +17,7 @@ const ESTADO_BORDER_COLOR: Record<EstadoCita, string> = {
   realizada: "var(--color-success)",
   no_show: "var(--color-error)",
   cancelada: "var(--color-neutral-400)",
+  propuesta: "var(--color-info)",
   venta: "var(--color-accent-500)",
 };
 
@@ -50,7 +51,11 @@ export function CitaCard({ cita, canEditEstado }: { cita: AgendaAppointment; can
       className="flex flex-wrap items-center gap-3 rounded-r-xl rounded-l-sm border border-border-default bg-surface-1 py-3 pr-4 pl-3.5 sm:flex-nowrap"
       style={{ borderLeft: `4px solid ${ESTADO_BORDER_COLOR[estado]}` }}
     >
-      <span className="w-14 shrink-0 text-[14px] font-semibold text-foreground">{formatTime(cita.startTime)}</span>
+      {cita.sinHora ? (
+        <span className="w-14 shrink-0 text-[13px] font-semibold text-warning-strong">sin hora</span>
+      ) : (
+        <span className="w-14 shrink-0 text-[14px] font-semibold text-foreground">{formatTime(cita.startTime)}</span>
+      )}
 
       <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-500/10 text-accent-600">
         <UserRound className="size-4" aria-hidden="true" />

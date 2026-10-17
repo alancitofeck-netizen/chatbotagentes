@@ -55,6 +55,7 @@ export async function updateEstadoCitaAction(appointmentId: string, appointmentW
   const { workspaceId, role } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "agenda");
   const memberId = await getCurrentMemberId(workspaceId);
-  await updateEstadoCita(workspaceId, appointmentId, appointmentWorkspaceId, estadoCita, { memberId, role });
+  const sheet = await updateEstadoCita(workspaceId, appointmentId, appointmentWorkspaceId, estadoCita, { memberId, role });
   revalidatePath("/agenda");
+  return { sheet };
 }

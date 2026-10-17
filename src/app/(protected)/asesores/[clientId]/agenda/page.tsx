@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CalendarDays, CalendarClock, CheckCircle2, XCircle, Ban, RotateCcw, BadgeCheck, DollarSign } from "lucide-react";
+import { CalendarDays, CalendarClock, CheckCircle2, XCircle, Ban, RotateCcw, BadgeCheck, DollarSign, FileText } from "lucide-react";
 import { requireActiveWorkspace } from "@/lib/auth/session";
 import { requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { getClientAppointments, getClientProfile } from "@/lib/clients/queries";
@@ -22,6 +22,7 @@ const AGENDA_ESTADO_ICONS: Record<EstadoCita, typeof CalendarDays> = {
   realizada: CheckCircle2,
   no_show: XCircle,
   cancelada: Ban,
+  propuesta: FileText,
   venta: DollarSign,
 };
 
@@ -31,6 +32,7 @@ const AGENDA_ESTADO_LABELS: Record<EstadoCita, string> = {
   realizada: "Realizadas",
   no_show: "No Show",
   cancelada: "Canceladas",
+  propuesta: "Propuestas",
   venta: "Ventas",
 };
 
@@ -63,7 +65,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ c
   const cancelledDates = cancelled.map((a) => a.startTime);
   const rescheduledDates = rescheduled.map((a) => a.startTime);
 
-  const agendaEstadoCounts: Record<EstadoCita, number> = { agendada: 0, confirmada: 0, realizada: 0, no_show: 0, cancelada: 0, venta: 0 };
+  const agendaEstadoCounts: Record<EstadoCita, number> = { agendada: 0, confirmada: 0, realizada: 0, no_show: 0, cancelada: 0, propuesta: 0, venta: 0 };
   for (const cita of syncedCitas) agendaEstadoCounts[cita.estadoCita] += 1;
 
   return (

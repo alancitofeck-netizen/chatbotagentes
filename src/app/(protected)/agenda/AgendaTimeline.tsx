@@ -27,6 +27,8 @@ function DayTimeline({ citas, canEditEstado }: { citas: AgendaAppointment[]; can
     let minHour = DEFAULT_START_HOUR;
     let maxHour = DEFAULT_END_HOUR;
     for (const cita of citas) {
+      // "Sin hora" (la hoja no traía HORA) va en su propio bloque arriba, nunca a las 00:00.
+      if (cita.sinHora) continue;
       const hour = new Date(cita.startTime).getHours();
       const list = byHourMap.get(hour) ?? [];
       list.push(cita);
@@ -42,9 +44,20 @@ function DayTimeline({ citas, canEditEstado }: { citas: AgendaAppointment[]; can
   }
 
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
+  const sinHora = citas.filter((c) => c.sinHora);
 
   return (
     <div className="flex flex-col">
+      {sinHora.length > 0 && (
+        <div className="flex gap-4 py-3">
+          <span className="w-12 shrink-0 pt-1 text-[12px] font-medium text-warning-strong">Sin hora</span>
+          <div className="flex flex-1 flex-col gap-2.5">
+            {sinHora.map((cita) => (
+              <CitaCard key={cita.id} cita={cita} canEditEstado={canEditEstado} />
+            ))}
+          </div>
+        </div>
+      )}
       {hours.map((hour) => {
         const hourCitas = byHour.get(hour) ?? [];
         return (

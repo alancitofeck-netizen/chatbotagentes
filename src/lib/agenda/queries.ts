@@ -2,8 +2,12 @@ import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { createClient } from "@/lib/supabase/server";
 import type { WorkspaceRole } from "@/lib/auth/session";
+import { writeEstadoBackToSheet, type SheetWriteBackStatus } from "@/lib/advisorSync/writeBack";
 
-export type EstadoCita = "agendada" | "confirmada" | "realizada" | "no_show" | "cancelada" | "venta";
+const APPOINTMENT_SELECT =
+  "id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, producto, contactado, sin_hora, deleted_in_sheet, sheet_connection_id, sheet_row_number, contacts(name, phone, email, source, created_at)";
+
+export type EstadoCita = "agendada" | "confirmada" | "realizada" | "no_show" | "cancelada" | "propuesta" | "venta";
 
 export interface AgendaViewer {
   memberId: string | null;
@@ -28,6 +32,18 @@ export interface AgendaAppointment {
   setterId: string | null;
   setterName: string | null;
   setterAvatarUrl: string | null;
+  /** 0199 — columnas PRODUCTO / CONTACTÉ de la hoja de agendas. */
+  producto: string | null;
+  contactado: boolean | null;
+  /** La hoja no traía HORA: startTime es 00:00 de ese día y se muestra "sin hora". */
+  sinHora: boolean;
+  /** La fila ya no está en la hoja (la cita no se borra del CRM). */
+  deletedInSheet: boolean;
+  /** Vino de la hoja de agendas (origen "Hoja") — si no, "CRM". */
+  fromSheet: boolean;
+  sheetRowNumber: number | null;
+  contactSource: string | null;
+  contactCreatedAt: string | null;
 }
 
 interface SetterInfo {
@@ -97,6 +113,13 @@ async function getOwnWorkspaceDisplayName(workspaceId: string): Promise<string> 
 
 export type AgendaScope = { kind: "agency"; advisors: AdvisorLookup[] } | { kind: "advisor"; workspaceId: string };
 
+/** En scope agencia, además de los workspaces de los asesores gestionados, la propia agencia:
+ * su hoja de agendas propia ("Conectar hoja de agendas" en Agenda, 0199) guarda las citas en
+ * su propio workspace_id. */
+function agencyAgendaWorkspaceIds(scope: { advisors: AdvisorLookup[] }, workspaceId: string): string[] {
+  return [...new Set([...scope.advisors.map((a) => a.linkedWorkspaceId), workspaceId])];
+}
+
 /** Único punto que decide "vista agregada de agencia" vs "workspace propio
  * de un asesor" — getAdvisorLookup(workspaceId) es no-vacío únicamente
  * para el workspace de la agencia (tiene `clients` con
@@ -125,7 +148,7 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
     const client = await createClient();
     const { data } = await client
       .from("agenda_appointments")
-      .select("id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone, email)")
+      .select(APPOINTMENT_SELECT)
       .eq("workspace_id", scope.workspaceId)
       .gte("start_time", range.start)
       .lt("start_time", range.end)
@@ -140,12 +163,12 @@ export async function getAgendaAppointments(workspaceId: string, range: { start:
   }
 
   const advisorByWorkspace = new Map(scope.advisors.map((a) => [a.linkedWorkspaceId, a]));
-  const linkedWorkspaceIds = scope.advisors.map((a) => a.linkedWorkspaceId);
+  const linkedWorkspaceIds = agencyAgendaWorkspaceIds(scope, workspaceId);
 
   const supabase = createServiceRoleClient();
   let query = supabase
     .from("agenda_appointments")
-    .select("id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone, email)")
+    .select(APPOINTMENT_SELECT)
     .in("workspace_id", linkedWorkspaceIds)
     .gte("start_time", range.start)
     .lt("start_time", range.end)
@@ -181,7 +204,13 @@ function mapAppointmentRow(
     subject: string | null;
     appointment_type: string | null;
     estado_cita: string;
-    contacts: { name: string; phone: string | null; email: string | null } | { name: string; phone: string | null; email: string | null }[] | null;
+    producto?: string | null;
+    contactado?: boolean | null;
+    sin_hora?: boolean | null;
+    deleted_in_sheet?: boolean | null;
+    sheet_connection_id?: string | null;
+    sheet_row_number?: number | null;
+    contacts: AppointmentContactJoin | AppointmentContactJoin[] | null;
   },
   advisorClientId: string,
   advisorName: string,
@@ -211,7 +240,23 @@ function mapAppointmentRow(
     // 0147_agenda_appointments_setter_name.sql / advisorSync/runner.ts.
     setterName: setterId ? (setterInfo?.name ?? "—") : (r.setter_name ?? null),
     setterAvatarUrl: setterInfo?.avatarUrl ?? null,
+    producto: r.producto ?? null,
+    contactado: r.contactado ?? null,
+    sinHora: Boolean(r.sin_hora),
+    deletedInSheet: Boolean(r.deleted_in_sheet),
+    fromSheet: Boolean(r.sheet_connection_id),
+    sheetRowNumber: r.sheet_row_number ?? null,
+    contactSource: contact?.source ?? null,
+    contactCreatedAt: contact?.created_at ?? null,
   };
+}
+
+interface AppointmentContactJoin {
+  name: string;
+  phone: string | null;
+  email: string | null;
+  source?: string | null;
+  created_at?: string | null;
 }
 
 /** Citas sincronizadas (agenda_appointments) de UN asesor puntual — para
@@ -227,7 +272,7 @@ export async function getAdvisorAgendaAppointments(agencyWorkspaceId: string, cl
   const supabase = createServiceRoleClient();
   const { data } = await supabase
     .from("agenda_appointments")
-    .select("id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, contacts(name, phone, email)")
+    .select(APPOINTMENT_SELECT)
     .eq("advisor_client_id", clientId)
     .order("start_time", { ascending: false })
     .limit(limit);
@@ -313,7 +358,7 @@ export interface AgendaPerformance {
 }
 
 function emptyTotals(): Record<EstadoCita | "total", number> {
-  return { total: 0, agendada: 0, confirmada: 0, realizada: 0, no_show: 0, cancelada: 0, venta: 0 };
+  return { total: 0, agendada: 0, confirmada: 0, realizada: 0, no_show: 0, cancelada: 0, propuesta: 0, venta: 0 };
 }
 
 /** Solo el conteo por estado (sin desglose por setter/asesor/tipo) — usado
@@ -323,7 +368,7 @@ async function fetchEstadoTotals(scope: AgendaScope, workspaceId: string, range:
   const totals = emptyTotals();
   if (scope.kind === "advisor") {
     const client = await createClient();
-    const { data } = await client.from("agenda_appointments").select("estado_cita").eq("workspace_id", scope.workspaceId).gte("start_time", range.start).lt("start_time", range.end);
+    const { data } = await client.from("agenda_appointments").select("estado_cita").eq("workspace_id", scope.workspaceId).eq("deleted_in_sheet", false).gte("start_time", range.start).lt("start_time", range.end);
     for (const r of (data ?? []) as { estado_cita: EstadoCita }[]) {
       totals.total += 1;
       totals[r.estado_cita] += 1;
@@ -332,8 +377,8 @@ async function fetchEstadoTotals(scope: AgendaScope, workspaceId: string, range:
   }
   if (scope.advisors.length === 0) return totals;
   const supabase = createServiceRoleClient();
-  const linkedWorkspaceIds = scope.advisors.map((a) => a.linkedWorkspaceId);
-  const { data } = await supabase.from("agenda_appointments").select("estado_cita").in("workspace_id", linkedWorkspaceIds).gte("start_time", range.start).lt("start_time", range.end);
+  const linkedWorkspaceIds = agencyAgendaWorkspaceIds(scope, workspaceId);
+  const { data } = await supabase.from("agenda_appointments").select("estado_cita").in("workspace_id", linkedWorkspaceIds).eq("deleted_in_sheet", false).gte("start_time", range.start).lt("start_time", range.end);
   for (const r of (data ?? []) as { estado_cita: EstadoCita }[]) {
     totals.total += 1;
     totals[r.estado_cita] += 1;
@@ -378,6 +423,7 @@ export async function getAgendaPerformance(workspaceId: string, range: { start: 
       .from("agenda_appointments")
       .select("setter_id, estado_cita, appointment_type")
       .eq("workspace_id", scope.workspaceId)
+      .eq("deleted_in_sheet", false)
       .gte("start_time", range.start)
       .lt("start_time", range.end);
     const rows = (data ?? []) as { setter_id: string | null; estado_cita: EstadoCita; appointment_type: string | null }[];
@@ -402,13 +448,14 @@ export async function getAgendaPerformance(workspaceId: string, range: { start: 
 
   if (scope.advisors.length === 0) return { scope: "agency", bySetter: [], byAdvisor: [], byType: [], totals, previousTotals };
   const advisorByWorkspace = new Map(scope.advisors.map((a) => [a.linkedWorkspaceId, a]));
-  const linkedWorkspaceIds = scope.advisors.map((a) => a.linkedWorkspaceId);
+  const linkedWorkspaceIds = agencyAgendaWorkspaceIds(scope, workspaceId);
 
   const supabase = createServiceRoleClient();
   const { data } = await supabase
     .from("agenda_appointments")
     .select("workspace_id, setter_id, estado_cita, appointment_type")
     .in("workspace_id", linkedWorkspaceIds)
+    .eq("deleted_in_sheet", false)
     .gte("start_time", range.start)
     .lt("start_time", range.end);
   const rows = (data ?? []) as { workspace_id: string; setter_id: string | null; estado_cita: EstadoCita; appointment_type: string | null }[];
@@ -478,9 +525,9 @@ export async function updateEstadoCita(
   appointmentWorkspaceId: string,
   estadoCita: EstadoCita,
   viewer: AgendaViewer,
-): Promise<void> {
+): Promise<SheetWriteBackStatus> {
   const scope = await resolveAgendaScope(workspaceId);
-  const authorized = scope.kind === "advisor" ? appointmentWorkspaceId === scope.workspaceId : scope.advisors.some((a) => a.linkedWorkspaceId === appointmentWorkspaceId);
+  const authorized = scope.kind === "advisor" ? appointmentWorkspaceId === scope.workspaceId : agencyAgendaWorkspaceIds(scope, workspaceId).includes(appointmentWorkspaceId);
   if (!authorized) throw new Error("Esa cita no pertenece a un asesor gestionado por este workspace.");
 
   const supabase = createServiceRoleClient();
@@ -492,4 +539,73 @@ export async function updateEstadoCita(
   }
 
   await supabase.from("agenda_appointments").update({ estado_cita: estadoCita, updated_at: new Date().toISOString() }).eq("id", appointmentId).eq("workspace_id", appointmentWorkspaceId);
+  // "Si cambiás el estado acá, también se actualiza en la hoja" (si la cita vino de la hoja y la
+  // opción está activa) — nunca lanza; el estado en el CRM ya quedó guardado igual.
+  return writeEstadoBackToSheet(appointmentId, estadoCita);
+}
+
+/** Sección "Leads" de la Agenda: una fila por persona (contacto) con citas en la agenda — cada
+ * lead que entra por la hoja de agendas queda guardado acá (pedido explícito). Mismo alcance y
+ * mismo filtro por setter que getAgendaAppointments. Producto/notas: los de su última cita, o los
+ * que la sync guardó en contacts.custom_fields.agenda. */
+export async function getAgendaLeads(workspaceId: string, viewer: AgendaViewer): Promise<import("./sheetPanelTypes").AgendaLead[]> {
+  const scope = await resolveAgendaScope(workspaceId);
+  const workspaceIds = scope.kind === "advisor" ? [scope.workspaceId] : agencyAgendaWorkspaceIds(scope, workspaceId);
+  const supabase = createServiceRoleClient();
+  let query = supabase
+    .from("agenda_appointments")
+    .select("contact_id, start_time, estado_cita, producto, contactado, notes, deleted_in_sheet, contacts(name, phone, email, source, created_at, custom_fields)")
+    .in("workspace_id", workspaceIds)
+    .not("contact_id", "is", null)
+    .order("start_time", { ascending: true })
+    .limit(5000);
+  if (scope.kind === "agency" && viewer.role === "agent") {
+    if (!viewer.memberId) return [];
+    query = query.eq("setter_id", viewer.memberId);
+  }
+  const { data } = await query;
+
+  const now = Date.now();
+  const byContact = new Map<string, import("./sheetPanelTypes").AgendaLead>();
+  for (const r of data ?? []) {
+    const contact = (Array.isArray(r.contacts) ? r.contacts[0] : r.contacts) as
+      | { name: string; phone: string | null; email: string | null; source: string | null; created_at: string | null; custom_fields: Record<string, unknown> | null }
+      | null;
+    if (!contact) continue;
+    const id = r.contact_id as string;
+    const agendaFields = (contact.custom_fields?.agenda as { producto?: string; notas?: string } | undefined) ?? {};
+    const lead = byContact.get(id) ?? {
+      contactId: id,
+      name: contact.name,
+      phone: contact.phone,
+      email: contact.email,
+      producto: agendaFields.producto ?? null,
+      notas: agendaFields.notas ?? null,
+      source: contact.source,
+      createdAt: contact.created_at,
+      citas: 0,
+      lastCitaAt: null,
+      lastEstado: null,
+      nextCitaAt: null,
+      contactado: null,
+    };
+    if (!r.deleted_in_sheet) {
+      lead.citas += 1;
+      const t = new Date(r.start_time as string).getTime();
+      // Citas ordenadas por fecha: la última ya pasada y la primera que viene. El estado que se
+      // muestra es el de la próxima cita si la hay, si no el de la última.
+      if (t <= now) {
+        lead.lastCitaAt = r.start_time as string;
+        if (!lead.nextCitaAt) lead.lastEstado = r.estado_cita as EstadoCita;
+      } else if (!lead.nextCitaAt) {
+        lead.nextCitaAt = r.start_time as string;
+        lead.lastEstado = r.estado_cita as EstadoCita;
+      }
+      if (r.producto) lead.producto = r.producto as string;
+      if (r.notes) lead.notas = r.notes as string;
+      if (r.contactado !== null && r.contactado !== undefined) lead.contactado = r.contactado as boolean;
+    }
+    byContact.set(id, lead);
+  }
+  return [...byContact.values()].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }

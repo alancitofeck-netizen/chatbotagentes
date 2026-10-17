@@ -13,6 +13,7 @@ const ESTADO_DONUT_COLOR: Record<(typeof ESTADO_CITA_OPTIONS)[number], string> =
   realizada: "var(--color-success)",
   no_show: "var(--color-error)",
   cancelada: "var(--color-neutral-400)",
+  propuesta: "var(--color-info-strong)",
   venta: "var(--color-accent-500)",
 };
 
