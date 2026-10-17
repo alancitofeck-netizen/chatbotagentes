@@ -61,7 +61,7 @@ export function AgendaMobileHome() {
 
   const today = new Date(todayMs);
   const days = Array.from({ length: DAYS_SHOWN }, (_, i) => addDays(today, i));
-  const active = (citas ?? []).filter((c) => c.estadoCita !== "cancelada");
+  const active = (citas ?? []).filter((c) => c.estadoCita !== "cancelada" && !c.deletedInSheet);
   const citasOn = (day: Date) => active.filter((c) => sameDay(new Date(c.startTime), day));
   const selectedDay = days[selectedIndex];
   const selectedCitas = citasOn(selectedDay).sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -146,7 +146,11 @@ function CitaRow({ cita, showDay = false }: { cita: AgendaAppointment; showDay?:
     <article className="relative flex items-center gap-4 overflow-hidden rounded-xl border border-border-default bg-surface-1 py-3.5 pr-4 pl-5">
       <span className="absolute inset-y-0 left-0 w-1 bg-accent-500" aria-hidden="true" />
       <div className="flex w-14 shrink-0 flex-col">
-        <span className="font-display text-[18px] leading-tight font-semibold tabular-nums text-foreground">{formatTime(cita.startTime)}</span>
+        {cita.sinHora ? (
+          <span className="text-[13px] leading-tight font-semibold text-warning-strong">sin hora</span>
+        ) : (
+          <span className="font-display text-[18px] leading-tight font-semibold tabular-nums text-foreground">{formatTime(cita.startTime)}</span>
+        )}
         {showDay && <span className="text-xs text-neutral-500">{dayLabel}</span>}
       </div>
       <div className="min-w-0 flex-1">

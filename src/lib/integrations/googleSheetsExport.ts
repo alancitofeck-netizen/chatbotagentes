@@ -284,3 +284,44 @@ export async function insertBlankRow(accessToken: string, spreadsheetId: string,
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error?.message ?? "No se pudo insertar la fila en la hoja.");
 }
+
+/** Nombre de pestaña en notación A1, entre comillas simples (obligatorio si tiene espacios o
+ * caracteres especiales, ej. 'Agendas Octubre'!G5) — una comilla dentro del nombre se duplica. */
+export function quoteSheetName(sheetName: string): string {
+  return `'${sheetName.replace(/'/g, "''")}'`;
+}
+
+/** Índice de columna 0-based → letra(s) de Sheets (0 → A, 25 → Z, 26 → AA). */
+export function columnLetter(index: number): string {
+  let n = index + 1;
+  let letters = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    letters = String.fromCharCode(65 + rem) + letters;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letters;
+}
+
+/** GET de un rango A1 arbitrario (ej. 'Agendas'!A4:Z4) — usado por la escritura de vuelta del
+ * estado de una cita (agenda), que necesita la fila de títulos y la fila de la cita. */
+export async function fetchRangeValues(accessToken: string, spreadsheetId: string, a1Range: string): Promise<string[][]> {
+  const res = await fetch(`${SHEETS_API_URL}/${spreadsheetId}/values/${encodeURIComponent(a1Range)}?valueRenderOption=UNFORMATTED_VALUE`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message ?? "No se pudo leer la hoja.");
+  return ((data.values ?? []) as unknown[][]).map((row) => row.map((c) => (c === undefined || c === null ? "" : String(c))));
+}
+
+/** PUT de una sola celda en notación A1 ya armada (con la pestaña entre comillas). RAW: el texto
+ * se guarda literal, sin que Sheets lo reinterprete. */
+export async function writeCellA1(accessToken: string, spreadsheetId: string, a1Cell: string, value: string): Promise<void> {
+  const res = await fetch(`${SHEETS_API_URL}/${spreadsheetId}/values/${encodeURIComponent(a1Cell)}?valueInputOption=RAW`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ range: a1Cell, values: [[value]] }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message ?? "No se pudo actualizar la celda.");
+}

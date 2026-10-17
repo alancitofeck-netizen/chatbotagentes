@@ -6,7 +6,7 @@ import { requireActiveWorkspace } from "@/lib/auth/session";
 import { requireAgencyWorkspaceAccessForAgent } from "@/lib/auth/roles";
 import { getValidGoogleSheetsAccessToken, fetchSpreadsheetMetadata, fetchSheetValues, parseSpreadsheetId } from "@/lib/integrations/googleSheets";
 import { detectAdvisorSyncColumnMapping } from "./fieldDictionary";
-import { runAdvisorSheetSync } from "./runner";
+import { runAdvisorSheetSync, toAdvisorSheetConnection } from "./runner";
 import { getAdvisorSheetConnections, findAdvisorClientByName, getAdvisorSheetRowErrors, getOwnAdvisorSheetConnection } from "./queries";
 import type { AdvisorSyncFieldKey } from "./fieldDictionary";
 
@@ -155,16 +155,7 @@ export async function triggerManualAdvisorSheetSyncAction(connectionId: string) 
   const { data } = await supabase.from("advisor_sheet_connections").select("*").eq("id", connectionId).eq("workspace_id", workspaceId).maybeSingle();
   if (!data) throw new Error("Conexión no encontrada.");
 
-  const result = await runAdvisorSheetSync({
-    id: data.id as string,
-    workspace_id: data.workspace_id as string,
-    advisor_client_id: data.advisor_client_id as string | null,
-    spreadsheet_id: data.spreadsheet_id as string,
-    sheet_name: data.sheet_name as string,
-    column_map: (data.column_map as Record<string, AdvisorSyncFieldKey>) ?? {},
-    header_row: (data.header_row as number) ?? 1,
-    last_sheet_hash: (data.last_sheet_hash as string | null) ?? null,
-  }, "manual");
+  const result = await runAdvisorSheetSync(toAdvisorSheetConnection(data), "manual");
   revalidatePath("/profile");
   revalidatePath("/agenda");
   revalidatePath("/crm");
@@ -247,16 +238,7 @@ export async function triggerManualOwnAgendaSheetSyncAction() {
   const { data } = await supabase.from("advisor_sheet_connections").select("*").eq("workspace_id", workspaceId).is("advisor_client_id", null).maybeSingle();
   if (!data) throw new Error("Todavía no conectaste tu hoja de Agenda.");
 
-  const result = await runAdvisorSheetSync({
-    id: data.id as string,
-    workspace_id: data.workspace_id as string,
-    advisor_client_id: null,
-    spreadsheet_id: data.spreadsheet_id as string,
-    sheet_name: data.sheet_name as string,
-    column_map: (data.column_map as Record<string, AdvisorSyncFieldKey>) ?? {},
-    header_row: (data.header_row as number) ?? 1,
-    last_sheet_hash: (data.last_sheet_hash as string | null) ?? null,
-  }, "manual");
+  const result = await runAdvisorSheetSync(toAdvisorSheetConnection(data), "manual");
   revalidatePath("/profile");
   revalidatePath("/agenda");
   return result;

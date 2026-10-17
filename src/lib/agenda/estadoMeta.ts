@@ -8,7 +8,8 @@ export const ESTADO_CITA_META: Record<EstadoCita, { label: string; variant: Badg
   realizada: { label: "Realizada", variant: "success" },
   no_show: { label: "No Show", variant: "error" },
   cancelada: { label: "Cancelada", variant: "neutral" },
+  propuesta: { label: "Propuesta", variant: "info" },
   venta: { label: "Venta", variant: "accent" },
 };
 
-export const ESTADO_CITA_OPTIONS: EstadoCita[] = ["agendada", "confirmada", "realizada", "no_show", "cancelada", "venta"];
+export const ESTADO_CITA_OPTIONS: EstadoCita[] = ["agendada", "confirmada", "realizada", "no_show", "cancelada", "propuesta", "venta"];
