@@ -178,14 +178,16 @@ export function AgendaMobileHome() {
             </button>
           )}
         </div>
-        <button
-          type="button"
-          onClick={openPanel}
-          aria-label="Nueva cita"
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white shadow-[var(--elevation-sm)] hover:bg-accent-600"
-        >
-          <Plus size={20} aria-hidden="true" />
-        </button>
+        {view === "citas" && (
+          <button
+            type="button"
+            onClick={openPanel}
+            aria-label="Nueva cita"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white shadow-[var(--elevation-sm)] hover:bg-accent-600"
+          >
+            <Plus size={20} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <div className="flex gap-1 self-start rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Vista de la agenda">
@@ -204,7 +206,7 @@ export function AgendaMobileHome() {
       </div>
 
       {view === "leads" ? (
-        <AgendaLeadsSection refreshKey={refreshKey} lastSyncStartedAt={sheetStatus?.connection?.lastSyncStartedAt ?? null} />
+        <AgendaLeadsSection refreshKey={refreshKey} compact />
       ) : (
         <>
           <AgendaFunnelStrip citas={citas ?? []} />

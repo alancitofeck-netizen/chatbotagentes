@@ -257,41 +257,43 @@ export function AgendaShell() {
               </button>
             ))}
           </div>
-          <div className="relative">
-            <button
-              type="button"
-              data-tour="agenda.new-cita-button"
-              onClick={() => setNewCitaOpen((v) => !v)}
-              className="flex h-11 items-center gap-1.5 rounded-md bg-accent-500 px-4 text-[13px] font-medium text-white hover:bg-accent-600"
-            >
-              <Plus size={15} aria-hidden="true" />
-              Nueva cita
-            </button>
-            {newCitaOpen && (
-              <div className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-border-default bg-surface-1 p-3.5 shadow-[var(--elevation-md)]">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
-                    <FileSpreadsheet size={14} className="text-accent-600" aria-hidden="true" />
-                    Las citas vienen de tu hoja
+          {view === "citas" && (
+            <div className="relative">
+              <button
+                type="button"
+                data-tour="agenda.new-cita-button"
+                onClick={() => setNewCitaOpen((v) => !v)}
+                className="flex h-11 items-center gap-1.5 rounded-md bg-accent-500 px-4 text-[13px] font-medium text-white hover:bg-accent-600"
+              >
+                <Plus size={15} aria-hidden="true" />
+                Nueva cita
+              </button>
+              {newCitaOpen && (
+                <div className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-border-default bg-surface-1 p-3.5 shadow-[var(--elevation-md)]">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
+                      <FileSpreadsheet size={14} className="text-accent-600" aria-hidden="true" />
+                      Las citas vienen de tu hoja
+                    </p>
+                    <button type="button" onClick={() => setNewCitaOpen(false)} className="text-neutral-400 hover:text-foreground">
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <p className="mb-3 text-[12.5px] text-neutral-500">
+                    Para no duplicar la carga, Agenda no crea citas manualmente — cargá la cita en tu hoja de Google Sheets conectada y tocá Sincronizar ahora.
                   </p>
-                  <button type="button" onClick={() => setNewCitaOpen(false)} className="text-neutral-400 hover:text-foreground">
-                    <X size={14} aria-hidden="true" />
+                  <button type="button" data-tour="agenda.sheet-connect-link" onClick={openPanel} className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
+                    {sheetStatus?.connection ? "Configurar mi hoja de agendas →" : "Conectar hoja de agendas →"}
                   </button>
                 </div>
-                <p className="mb-3 text-[12.5px] text-neutral-500">
-                  Para no duplicar la carga, Agenda no crea citas manualmente — cargá la cita en tu hoja de Google Sheets conectada y tocá Sincronizar ahora.
-                </p>
-                <button type="button" data-tour="agenda.sheet-connect-link" onClick={openPanel} className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
-                  {sheetStatus?.connection ? "Configurar mi hoja de agendas →" : "Conectar hoja de agendas →"}
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {view === "leads" ? (
-        <AgendaLeadsSection refreshKey={refreshKey} lastSyncStartedAt={sheetStatus?.connection?.lastSyncStartedAt ?? null} />
+        <AgendaLeadsSection refreshKey={refreshKey} />
       ) : (
         <>
           <AgendaFunnelStrip citas={citas ?? []} />

@@ -582,7 +582,9 @@ export async function getAgendaLeads(workspaceId: string, viewer: AgendaViewer):
   const supabase = createServiceRoleClient();
   let query = supabase
     .from("agenda_appointments")
-    .select("contact_id, start_time, estado_cita, producto, contactado, notes, deleted_in_sheet, contacts(name, phone, email, source, created_at, custom_fields)")
+    .select(
+      "id, workspace_id, contact_id, start_time, estado_cita, producto, contactado, notes, setter_name, appointment_type, deleted_in_sheet, contacts(name, phone, email, source, created_at, custom_fields)",
+    )
     .in("workspace_id", workspaceIds)
     .not("contact_id", "is", null)
     .order("start_time", { ascending: true })
@@ -616,18 +618,33 @@ export async function getAgendaLeads(workspaceId: string, viewer: AgendaViewer):
       lastEstado: null,
       nextCitaAt: null,
       contactado: null,
+      appointmentId: null,
+      appointmentWorkspaceId: null,
+      setterName: null,
+      appointmentType: null,
     };
     if (!r.deleted_in_sheet) {
       lead.citas += 1;
       const t = new Date(r.start_time as string).getTime();
-      // Citas ordenadas por fecha: la última ya pasada y la primera que viene. El estado que se
-      // muestra es el de la próxima cita si la hay, si no el de la última.
+      // Citas ordenadas por fecha: la última ya pasada y la primera que viene. El estado/cita
+      // "relevante" que se muestra y se edita es el de la próxima cita si la hay, si no el de la
+      // última — mismo criterio para appointmentId/appointmentWorkspaceId/setterName/appointmentType.
       if (t <= now) {
         lead.lastCitaAt = r.start_time as string;
-        if (!lead.nextCitaAt) lead.lastEstado = r.estado_cita as EstadoCita;
+        if (!lead.nextCitaAt) {
+          lead.lastEstado = r.estado_cita as EstadoCita;
+          lead.appointmentId = r.id as string;
+          lead.appointmentWorkspaceId = r.workspace_id as string;
+          lead.setterName = (r.setter_name as string | null) ?? null;
+          lead.appointmentType = (r.appointment_type as string | null) ?? null;
+        }
       } else if (!lead.nextCitaAt) {
         lead.nextCitaAt = r.start_time as string;
         lead.lastEstado = r.estado_cita as EstadoCita;
+        lead.appointmentId = r.id as string;
+        lead.appointmentWorkspaceId = r.workspace_id as string;
+        lead.setterName = (r.setter_name as string | null) ?? null;
+        lead.appointmentType = (r.appointment_type as string | null) ?? null;
       }
       if (r.producto) lead.producto = r.producto as string;
       if (r.notes) lead.notas = r.notes as string;

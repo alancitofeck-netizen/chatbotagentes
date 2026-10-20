@@ -76,4 +76,11 @@ export interface AgendaLead {
   lastEstado: EstadoCita | null;
   nextCitaAt: string | null;
   contactado: boolean | null;
+  /** La cita "relevante" (próxima si hay, si no la última) — id + workspace de ESA cita puntual,
+   * necesarios para updateEstadoCitaAction/updateCitaNotasAction (piden appointmentId +
+   * appointmentWorkspaceId, no contactId). null si el lead no tiene ninguna cita visible. */
+  appointmentId: string | null;
+  appointmentWorkspaceId: string | null;
+  setterName: string | null;
+  appointmentType: string | null;
 }
