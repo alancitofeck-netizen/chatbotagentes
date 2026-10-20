@@ -4,7 +4,19 @@ import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole, requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
-import { getAgendaAppointments, getAgendaPerformance, updateEstadoCita, updateCitaNotas, type EstadoCita, type AgendaAppointment, type AgendaPerformance } from "./queries";
+import {
+  getAgendaAppointments,
+  getAgendaPerformance,
+  updateEstadoCita,
+  updateCitaNotas,
+  createAgendaLead,
+  updateManualAgendaLead,
+  deleteManualAgendaLead,
+  type EstadoCita,
+  type AgendaAppointment,
+  type AgendaPerformance,
+} from "./queries";
+import type { AgendaRecordInput } from "./sheetPanelTypes";
 
 /** Cualquier miembro del workspace puede pedir su agenda — el filtro
  * "solo mis citas si sos setter" vive dentro de getAgendaAppointments
@@ -68,4 +80,33 @@ export async function updateCitaNotasAction(appointmentId: string, appointmentWo
   const sheet = await updateCitaNotas(workspaceId, appointmentId, appointmentWorkspaceId, notas, { memberId, role });
   revalidatePath("/agenda");
   return { sheet };
+}
+
+/** "+ Nuevo lead" / "Nueva cita" — carga a mano, disponible para los 3 roles (mismo criterio que el
+ * resto de las escrituras de Agenda). Siempre en el propio workspace activo, nunca en el de un
+ * asesor gestionado. */
+export async function createAgendaLeadAction(input: AgendaRecordInput) {
+  const { workspaceId } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "agenda");
+  const result = await createAgendaLead(workspaceId, input);
+  revalidatePath("/agenda");
+  return result;
+}
+
+/** Editar un lead/cita cargados a mano (nunca uno que vino de una hoja — ver
+ * updateManualAgendaLead, que rechaza esos). */
+export async function updateManualAgendaLeadAction(appointmentId: string, appointmentWorkspaceId: string, input: AgendaRecordInput) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "agenda");
+  const memberId = await getCurrentMemberId(workspaceId);
+  await updateManualAgendaLead(workspaceId, appointmentId, appointmentWorkspaceId, input, { memberId, role });
+  revalidatePath("/agenda");
+}
+
+export async function deleteManualAgendaLeadAction(appointmentId: string, appointmentWorkspaceId: string) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "agenda");
+  const memberId = await getCurrentMemberId(workspaceId);
+  await deleteManualAgendaLead(workspaceId, appointmentId, appointmentWorkspaceId, { memberId, role });
+  revalidatePath("/agenda");
 }

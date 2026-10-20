@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Loader2, RefreshCw, Settings2, AlertTriangle, ExternalLink, Plus, FileSpreadsheet, Search, SlidersHorizontal, CalendarClock } from "lucide-react";
+import { Loader2, RefreshCw, Settings2, AlertTriangle, ExternalLink, Plus, FileSpreadsheet, Search, SlidersHorizontal, CalendarDays } from "lucide-react";
 import { getAgendaAppointmentsAction } from "@/lib/agenda/actions";
 import type { AgendaAppointment, EstadoCita } from "@/lib/agenda/queries";
 import { ESTADO_CITA_META, ESTADO_CITA_OPTIONS } from "@/lib/agenda/estadoMeta";
@@ -9,12 +9,14 @@ import { getAgendaSheetStatusAction, syncAgendaSheetNowAction } from "@/lib/agen
 import type { AgendaSheetStatus } from "@/lib/agenda/sheetPanelTypes";
 import { toast } from "@/components/toast/toast";
 import { Sheet } from "@/components/ui/Sheet";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 import { AgendaSheetConnectPanel } from "./AgendaSheetConnectPanel";
 import { AgendaLeadsSection } from "./AgendaLeadsSection";
-import { AgendaFunnelStrip } from "./AgendaFunnelStrip";
-import { AgendaCitasList } from "./AgendaCitasList";
-import { AgendaCitaDetailPanel } from "./AgendaCitaDetailPanel";
+import { AgendaWeekStrip } from "./AgendaWeekStrip";
+import { AgendaStatsRow } from "./AgendaStatsRow";
+import { AgendaCitaAccordionCard } from "./AgendaCitaAccordionCard";
+import { AgendaRecordForm, type AgendaRecordFormRecord } from "./AgendaRecordForm";
 
 const noopSubscribe = () => () => {};
 const LISTA_DAYS_BACK = 90;
@@ -26,6 +28,9 @@ function startOfDay(d: Date): Date {
 function addDays(d: Date, n: number): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 }
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
 function formatMinutesAgo(iso: string): string {
   const diffMin = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (diffMin < 1) return "un momento";
@@ -34,11 +39,29 @@ function formatMinutesAgo(iso: string): string {
   if (diffH < 24) return `${diffH} h`;
   return `${Math.round(diffH / 24)} d`;
 }
+function citaToRecord(cita: AgendaAppointment): AgendaRecordFormRecord {
+  return {
+    appointmentId: cita.id,
+    appointmentWorkspaceId: cita.workspaceId,
+    name: cita.contactName ?? "",
+    phone: cita.contactPhone,
+    email: cita.contactEmail,
+    producto: cita.producto,
+    appointmentType: cita.appointmentType,
+    setterName: cita.setterName,
+    notas: cita.notes,
+    estadoCita: cita.estadoCita,
+    startTime: cita.startTime,
+    sinHora: cita.sinHora,
+    fromSheet: cita.fromSheet,
+  };
+}
 
-/** Agenda mobile — mismo rediseño que escritorio (AgendaShell), adaptado a una sola columna:
- * encabezado compacto, franja de embudo (wrap 2-3 columnas), lista Necesitan resultado/Hoy/
- * Próximas, y el detalle de la cita como hoja inferior (Sheet) al tocar una fila, en vez de panel
- * persistente. Misma fuente de datos y misma sincronización que la vista de escritorio. */
+/** Agenda mobile — rediseño (pedido explícito: que se vea y funcione como agenda-movil.html):
+ * franja de días de la semana + 3 stats (citas del día/asistencia/sin resultado) + tarjetas de
+ * cita expandibles en el lugar (en vez de abrir una hoja aparte), más el formulario compartido
+ * para crear/editar leads y citas a mano (AgendaRecordForm). Misma fuente de datos y misma
+ * sincronización con Google Sheets que antes. */
 export function AgendaMobileHome() {
   // La fecha de hoy se lee sólo en el cliente: el servidor corre en UTC y el
   // usuario en hora de Buenos Aires, así que no se renderiza en el HTML inicial.
@@ -49,8 +72,10 @@ export function AgendaMobileHome() {
   );
 
   const [citas, setCitas] = useState<AgendaAppointment[] | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [weekAnchor, setWeekAnchor] = useState<Date | null>(null);
+  const [showPending, setShowPending] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [view, setView] = useState<"citas" | "leads">("citas");
   const [sheetStatus, setSheetStatus] = useState<AgendaSheetStatus | null>(null);
@@ -62,6 +87,17 @@ export function AgendaMobileHome() {
   }, []);
   const [syncing, setSyncing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const [recordSheetOpen, setRecordSheetOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<AgendaRecordFormRecord | null>(null);
+  function openCreate() {
+    setEditingRecord(null);
+    setRecordSheetOpen(true);
+  }
+  function openEdit(cita: AgendaAppointment) {
+    setEditingRecord(citaToRecord(cita));
+    setRecordSheetOpen(true);
+  }
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -101,6 +137,12 @@ export function AgendaMobileHome() {
     setCitas((prev) => (prev ? prev.map((c) => (c.id === id ? { ...c, estadoCita: estado } : c)) : prev));
   }
 
+  // Semilla de selectedDay/weekAnchor en cuanto se conoce "hoy" (cliente) — ajuste de estado
+  // durante el render, no un efecto (mismo criterio que ya usa Sheet.tsx para esto), porque es una
+  // respuesta directa a que todayMs pasó de null a un valor real.
+  if (todayMs !== null && selectedDay === null) setSelectedDay(new Date(todayMs));
+  if (todayMs !== null && weekAnchor === null) setWeekAnchor(new Date(todayMs));
+
   useEffect(() => {
     if (todayMs === null) return;
     const start = addDays(new Date(todayMs), -LISTA_DAYS_BACK);
@@ -130,10 +172,22 @@ export function AgendaMobileHome() {
     return rows;
   }, [citas, setterFilter, estadoFilter, search]);
 
-  const selectedCita = filteredCitas.find((c) => c.id === selectedId) ?? null;
+  const dayCitas = useMemo(() => {
+    if (!selectedDay) return [];
+    return filteredCitas.filter((c) => !c.deletedInSheet && isSameDay(new Date(c.startTime), selectedDay)).sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [filteredCitas, selectedDay]);
+
+  const pendingCitas = useMemo(() => {
+    const today = startOfDay(new Date());
+    return filteredCitas
+      .filter((c) => !c.deletedInSheet && new Date(c.startTime) < today && (c.estadoCita === "agendada" || c.estadoCita === "propuesta"))
+      .sort((a, b) => b.startTime.localeCompare(a.startTime));
+  }, [filteredCitas]);
+
+  const listToShow = showPending ? pendingCitas : dayCitas;
   const sheetUrl = sheetStatus?.connection ? `https://docs.google.com/spreadsheets/d/${sheetStatus.connection.spreadsheetId}/edit${sheetStatus.connection.sheetGid ? `#gid=${sheetStatus.connection.sheetGid}` : ""}` : null;
 
-  if (todayMs === null) return null;
+  if (todayMs === null || selectedDay === null || weekAnchor === null) return null;
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 md:hidden">
@@ -145,7 +199,7 @@ export function AgendaMobileHome() {
             <h1 className="font-display text-[26px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground">Agenda</h1>
             <ModuleHelp
               compact
-              description="La Agenda te permite organizar tus próximas citas y seguimientos — llegan solas desde tu hoja conectada, nunca se cargan a mano acá."
+              description="La Agenda te permite organizar tus próximas citas y seguimientos — llegan solas desde tu hoja conectada, o las cargás a mano con +."
               tourKey="agenda-intro"
             />
           </div>
@@ -181,7 +235,7 @@ export function AgendaMobileHome() {
         {view === "citas" && (
           <button
             type="button"
-            onClick={openPanel}
+            onClick={openCreate}
             aria-label="Nueva cita"
             className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white shadow-[var(--elevation-sm)] hover:bg-accent-600"
           >
@@ -209,7 +263,28 @@ export function AgendaMobileHome() {
         <AgendaLeadsSection refreshKey={refreshKey} compact />
       ) : (
         <>
-          <AgendaFunnelStrip citas={citas ?? []} />
+          <AgendaWeekStrip
+            weekAnchor={weekAnchor}
+            selectedDay={selectedDay}
+            onSelectDay={(d) => {
+              setSelectedDay(d);
+              setShowPending(false);
+              setExpandedId(null);
+            }}
+            onPrevWeek={() => setWeekAnchor((d) => addDays(d!, -7))}
+            onNextWeek={() => setWeekAnchor((d) => addDays(d!, 7))}
+            citas={filteredCitas}
+          />
+
+          <AgendaStatsRow
+            citas={filteredCitas}
+            selectedDay={selectedDay}
+            pendingActive={showPending}
+            onTogglePending={() => {
+              setShowPending((v) => !v);
+              setExpandedId(null);
+            }}
+          />
 
           <div className="flex items-center gap-2">
             <label className="relative flex-1">
@@ -233,21 +308,43 @@ export function AgendaMobileHome() {
             </button>
           </div>
 
+          <div className="flex items-baseline justify-between px-0.5">
+            <h2 className="text-[14px] font-semibold text-foreground">
+              {showPending
+                ? "Sin resultado"
+                : isSameDay(selectedDay, new Date(todayMs))
+                  ? "Hoy"
+                  : selectedDay.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" })}
+            </h2>
+            <span className="text-[12.5px] text-neutral-500">
+              {listToShow.length} {listToShow.length === 1 ? "cita" : "citas"}
+            </span>
+          </div>
+
           {citas === null ? (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-neutral-500">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               Cargando agenda…
             </div>
-          ) : (
-            <AgendaCitasList
-              citas={filteredCitas}
-              selectedId={null}
-              onSelect={(c) => {
-                setSelectedId(c.id);
-                setDetailOpen(true);
-              }}
-              onAgendarClick={openPanel}
+          ) : listToShow.length === 0 ? (
+            <EmptyState
+              icon={CalendarDays}
+              title={showPending ? "Todo al día" : "No hay citas"}
+              description={showPending ? "No te quedan citas sin resultado." : "No hay citas para este día — tocá + para cargar una a mano."}
             />
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {listToShow.map((c) => (
+                <AgendaCitaAccordionCard
+                  key={c.id}
+                  cita={c}
+                  expanded={expandedId === c.id}
+                  onToggle={() => setExpandedId((id) => (id === c.id ? null : c.id))}
+                  onEstadoChanged={handleEstadoChanged}
+                  onEditar={() => openEdit(c)}
+                />
+              ))}
+            </div>
           )}
 
           <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filtrar citas">
@@ -292,17 +389,14 @@ export function AgendaMobileHome() {
             </div>
           </Sheet>
 
-          <Sheet open={detailOpen} onClose={() => setDetailOpen(false)} title="Detalle de la cita">
-            <div className="p-4">
-              {selectedCita ? (
-                <AgendaCitaDetailPanel cita={selectedCita} canEdit onEstadoChanged={handleEstadoChanged} sheetUrl={sheetUrl} />
-              ) : (
-                <div className="py-10 text-center text-sm text-neutral-500">
-                  <CalendarClock className="mx-auto mb-2 size-6" aria-hidden="true" />
-                  Esta cita ya no está en el filtro actual.
-                </div>
-              )}
-            </div>
+          <Sheet open={recordSheetOpen} onClose={() => setRecordSheetOpen(false)} title={editingRecord ? (editingRecord.fromSheet ? "Editar cita" : "Editar lead") : "Nueva cita"}>
+            <AgendaRecordForm
+              key={editingRecord?.appointmentId ?? "new"}
+              record={editingRecord}
+              defaultDate={selectedDay}
+              onClose={() => setRecordSheetOpen(false)}
+              onSaved={() => setRefreshKey((k) => k + 1)}
+            />
           </Sheet>
         </>
       )}

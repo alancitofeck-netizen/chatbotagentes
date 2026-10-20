@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search, Users, ChevronRight, MessageCircle, CalendarClock, Download, MoreHorizontal } from "lucide-react";
+import { Loader2, Search, Users, ChevronRight, MessageCircle, CalendarClock, Download, Pencil } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Fab } from "@/components/ui/Fab";
+import { Sheet } from "@/components/ui/Sheet";
 import { toast } from "@/components/toast/toast";
 import { getAgendaLeadsAction } from "@/lib/agenda/sheetPanelActions";
 import type { AgendaLead } from "@/lib/agenda/sheetPanelTypes";
@@ -13,6 +14,7 @@ import type { EstadoCita } from "@/lib/agenda/queries";
 import { ETAPA_META, ETAPA_TAB_OPTIONS, computeEtapa, type Etapa } from "@/lib/agenda/etapa";
 import { titleCaseName, formatPhoneDisplay, extractEmailFromText } from "@/lib/utils/format";
 import { AgendaLeadDetailPanel } from "./AgendaLeadDetailPanel";
+import { AgendaRecordForm, type AgendaRecordFormRecord } from "./AgendaRecordForm";
 
 const SOURCE_LABELS: Record<string, string> = {
   agenda_sheet: "Agenda de setters",
@@ -87,8 +89,23 @@ function exportCsv(leads: AgendaLead[]) {
   URL.revokeObjectURL(url);
 }
 
-function notifyNuevoLead() {
-  toast.info("Los leads vienen de tu hoja", "Cargá la persona en tu hoja de Google Sheets conectada y tocá Sincronizar ahora.");
+function leadToRecord(lead: AgendaLead): AgendaRecordFormRecord | null {
+  if (!lead.appointmentId || !lead.appointmentWorkspaceId) return null;
+  return {
+    appointmentId: lead.appointmentId,
+    appointmentWorkspaceId: lead.appointmentWorkspaceId,
+    name: lead.name,
+    phone: lead.phone,
+    email: lead.email,
+    producto: lead.producto,
+    appointmentType: lead.appointmentType,
+    setterName: lead.setterName,
+    notas: lead.notas,
+    estadoCita: lead.lastEstado ?? "agendada",
+    startTime: lead.nextCitaAt ?? lead.lastCitaAt ?? new Date().toISOString(),
+    sinHora: lead.sinHora,
+    fromSheet: lead.fromSheet,
+  };
 }
 
 /** Agenda → Leads: cada persona con citas en la agenda, agrupada por etapa (calculada —
@@ -108,6 +125,23 @@ export function AgendaLeadsSection({ refreshKey, compact = false }: { refreshKey
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [screenOpen, setScreenOpen] = useState(false);
   const [screenVisible, setScreenVisible] = useState(false);
+  const [localRefreshKey, setLocalRefreshKey] = useState(0);
+  const [recordSheetOpen, setRecordSheetOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<AgendaRecordFormRecord | null>(null);
+
+  function openCreate() {
+    setEditingRecord(null);
+    setRecordSheetOpen(true);
+  }
+  function openEdit(lead: AgendaLead) {
+    const record = leadToRecord(lead);
+    if (!record) {
+      toast.info("Este lead no tiene una cita cargada", "No se puede editar todavía.");
+      return;
+    }
+    setEditingRecord(record);
+    setRecordSheetOpen(true);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +155,7 @@ export function AgendaLeadsSection({ refreshKey, compact = false }: { refreshKey
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, [refreshKey, localRefreshKey]);
 
   useEffect(() => {
     if (screenOpen) {
@@ -324,7 +358,7 @@ export function AgendaLeadsSection({ refreshKey, compact = false }: { refreshKey
           )}
         </div>
 
-        <Fab onClick={notifyNuevoLead} aria-label="Nuevo lead" />
+        <Fab onClick={openCreate} aria-label="Nuevo lead" />
 
         {/* Pantalla completa de la ficha, con deslizamiento tipo iOS */}
         {screenOpen && selectedLead && (
@@ -335,13 +369,8 @@ export function AgendaLeadsSection({ refreshKey, compact = false }: { refreshKey
               <button type="button" onClick={closeScreen} className="flex h-11 items-center gap-1 text-[14px] font-medium text-accent-600">
                 <ChevronRight size={18} className="rotate-180" aria-hidden="true" /> Leads
               </button>
-              <button
-                type="button"
-                onClick={() => toast.info("Próximamente", "Editar, mover de etapa y eliminar todavía no están disponibles.")}
-                aria-label="Más opciones"
-                className="flex size-11 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2"
-              >
-                <MoreHorizontal size={18} aria-hidden="true" />
+              <button type="button" onClick={() => openEdit(selectedLead)} aria-label="Editar lead" className="flex size-11 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2">
+                <Pencil size={18} aria-hidden="true" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 pb-10" style={{ paddingBottom: "max(2.5rem, env(safe-area-inset-bottom))" }}>
@@ -351,6 +380,15 @@ export function AgendaLeadsSection({ refreshKey, compact = false }: { refreshKey
             </div>
           </div>
         )}
+
+        <Sheet open={recordSheetOpen} onClose={() => setRecordSheetOpen(false)} title={editingRecord ? (editingRecord.fromSheet ? "Editar cita" : "Editar lead") : "Nuevo lead"}>
+          <AgendaRecordForm
+            key={editingRecord?.appointmentId ?? "new"}
+            record={editingRecord}
+            onClose={() => setRecordSheetOpen(false)}
+            onSaved={() => setLocalRefreshKey((k) => k + 1)}
+          />
+        </Sheet>
       </div>
     );
   }
@@ -422,7 +460,7 @@ export function AgendaLeadsSection({ refreshKey, compact = false }: { refreshKey
               <button type="button" onClick={() => exportCsv(filtered)} className="flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-2">
                 <Download size={14} aria-hidden="true" /> Exportar
               </button>
-              <button type="button" onClick={notifyNuevoLead} className="flex h-9 items-center gap-1.5 rounded-md bg-accent-500 px-3.5 text-[13px] font-medium text-white hover:bg-accent-600">
+              <button type="button" onClick={openCreate} className="flex h-9 items-center gap-1.5 rounded-md bg-accent-500 px-3.5 text-[13px] font-medium text-white hover:bg-accent-600">
                 + Nuevo lead
               </button>
             </div>
@@ -525,7 +563,14 @@ export function AgendaLeadsSection({ refreshKey, compact = false }: { refreshKey
 
         <div className="lg:sticky lg:top-4 lg:self-start">
           <div className="rounded-xl border border-border-default bg-surface-1 p-4">
-            <p className="mb-3 text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">Ficha del lead</p>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">Ficha del lead</p>
+              {selectedLead && (
+                <button type="button" onClick={() => openEdit(selectedLead)} className="flex items-center gap-1 text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
+                  <Pencil size={13} aria-hidden="true" /> Editar
+                </button>
+              )}
+            </div>
             {selectedLead ? (
               <AgendaLeadDetailPanel key={selectedLead.contactId} lead={selectedLead} onEstadoChanged={handleEstadoChanged} onNotasChanged={handleNotasChanged} />
             ) : (
@@ -534,6 +579,10 @@ export function AgendaLeadsSection({ refreshKey, compact = false }: { refreshKey
           </div>
         </div>
       </div>
+
+      <Sheet open={recordSheetOpen} onClose={() => setRecordSheetOpen(false)} title={editingRecord ? (editingRecord.fromSheet ? "Editar cita" : "Editar lead") : "Nuevo lead"}>
+        <AgendaRecordForm key={editingRecord?.appointmentId ?? "new"} record={editingRecord} onClose={() => setRecordSheetOpen(false)} onSaved={() => setLocalRefreshKey((k) => k + 1)} />
+      </Sheet>
     </div>
   );
 }

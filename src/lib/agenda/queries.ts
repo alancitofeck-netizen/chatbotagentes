@@ -583,7 +583,7 @@ export async function getAgendaLeads(workspaceId: string, viewer: AgendaViewer):
   let query = supabase
     .from("agenda_appointments")
     .select(
-      "id, workspace_id, contact_id, start_time, estado_cita, producto, contactado, notes, setter_name, appointment_type, deleted_in_sheet, contacts(name, phone, email, source, created_at, custom_fields)",
+      "id, workspace_id, contact_id, start_time, estado_cita, producto, contactado, notes, setter_name, appointment_type, deleted_in_sheet, sheet_connection_id, sin_hora, contacts(name, phone, email, source, created_at, custom_fields)",
     )
     .in("workspace_id", workspaceIds)
     .not("contact_id", "is", null)
@@ -622,6 +622,8 @@ export async function getAgendaLeads(workspaceId: string, viewer: AgendaViewer):
       appointmentWorkspaceId: null,
       setterName: null,
       appointmentType: null,
+      fromSheet: false,
+      sinHora: false,
     };
     if (!r.deleted_in_sheet) {
       lead.citas += 1;
@@ -637,6 +639,8 @@ export async function getAgendaLeads(workspaceId: string, viewer: AgendaViewer):
           lead.appointmentWorkspaceId = r.workspace_id as string;
           lead.setterName = (r.setter_name as string | null) ?? null;
           lead.appointmentType = (r.appointment_type as string | null) ?? null;
+          lead.fromSheet = Boolean(r.sheet_connection_id);
+          lead.sinHora = Boolean(r.sin_hora);
         }
       } else if (!lead.nextCitaAt) {
         lead.nextCitaAt = r.start_time as string;
@@ -645,6 +649,8 @@ export async function getAgendaLeads(workspaceId: string, viewer: AgendaViewer):
         lead.appointmentWorkspaceId = r.workspace_id as string;
         lead.setterName = (r.setter_name as string | null) ?? null;
         lead.appointmentType = (r.appointment_type as string | null) ?? null;
+        lead.fromSheet = Boolean(r.sheet_connection_id);
+        lead.sinHora = Boolean(r.sin_hora);
       }
       if (r.producto) lead.producto = r.producto as string;
       if (r.notes) lead.notas = r.notes as string;
@@ -653,4 +659,134 @@ export async function getAgendaLeads(workspaceId: string, viewer: AgendaViewer):
     byContact.set(id, lead);
   }
   return [...byContact.values()].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
+function startOfTodayForManualEntry(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Carga a mano ("+ Nuevo lead" / "Nueva cita") — a diferencia de todo lo demás en este archivo,
+ * NO viene de ninguna hoja: crea el contacto (o reusa uno existente con el mismo teléfono, por el
+ * unique(workspace_id, phone) de contacts) y una cita en agenda_appointments con
+ * sheet_connection_id null, que es exactamente lo que "fromSheet" usa para decidir que el registro
+ * se puede editar/borrar entero después (ver updateManualAgendaLead/deleteManualAgendaLead). Vive
+ * siempre en el propio workspace del que lo carga — nunca en el de un asesor gestionado. */
+export async function createAgendaLead(workspaceId: string, input: import("./sheetPanelTypes").AgendaRecordInput): Promise<{ contactId: string; appointmentId: string }> {
+  const name = input.name.trim();
+  if (!name) throw new Error("Falta el nombre del lead.");
+  const supabase = createServiceRoleClient();
+  const digits = input.phone ? input.phone.replace(/\D/g, "") : null;
+
+  let contactId: string | null = null;
+  if (digits) {
+    const { data: existing } = await supabase.from("contacts").select("id").eq("workspace_id", workspaceId).eq("phone", digits).maybeSingle();
+    if (existing) contactId = existing.id as string;
+  }
+  if (contactId) {
+    await supabase.from("contacts").update({ name, email: input.email, updated_at: new Date().toISOString() }).eq("id", contactId);
+  } else {
+    const { data: created, error } = await supabase
+      .from("contacts")
+      .insert({ workspace_id: workspaceId, name, phone: digits, email: input.email, source: "manual" })
+      .select("id")
+      .single();
+    if (error) throw new Error(`No se pudo crear el lead: ${error.message}`);
+    contactId = created.id as string;
+  }
+
+  const start = input.startTime ? new Date(input.startTime) : startOfTodayForManualEntry();
+  const end = new Date(start.getTime() + 30 * 60000);
+
+  const { data: appt, error: apptError } = await supabase
+    .from("agenda_appointments")
+    .insert({
+      workspace_id: workspaceId,
+      contact_id: contactId,
+      advisor_client_id: null,
+      setter_name: input.setterName || null,
+      notes: input.notas || null,
+      subject: input.appointmentType ? `${input.appointmentType}: ${name}` : `Cita: ${name}`,
+      appointment_type: input.appointmentType || null,
+      estado_cita: input.estadoCita,
+      producto: input.producto || null,
+      sin_hora: input.sinHora,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      source: "google_sheets_kpi",
+      deleted_in_sheet: false,
+      sheet_connection_id: null,
+    })
+    .select("id")
+    .single();
+  if (apptError) throw new Error(`No se pudo crear la cita: ${apptError.message}`);
+  return { contactId, appointmentId: appt.id as string };
+}
+
+/** Compartido por updateManualAgendaLead/deleteManualAgendaLead: la cita tiene que ser "manual"
+ * (sheet_connection_id null) — las que vienen de la hoja solo se tocan vía
+ * updateEstadoCita/updateCitaNotas (estado + notas), todo lo demás se resincroniza solo y editarlo
+ * acá rompería la próxima sincronización. */
+async function requireManualAppointment(workspaceId: string, appointmentId: string, appointmentWorkspaceId: string, viewer: AgendaViewer) {
+  const supabase = await authorizeAgendaWrite(workspaceId, appointmentId, appointmentWorkspaceId, viewer);
+  const { data: appointment } = await supabase
+    .from("agenda_appointments")
+    .select("id, contact_id, sheet_connection_id")
+    .eq("id", appointmentId)
+    .eq("workspace_id", appointmentWorkspaceId)
+    .maybeSingle();
+  if (!appointment) throw new Error("Esa cita ya no existe.");
+  if (appointment.sheet_connection_id) {
+    throw new Error("Esta cita viene de tu hoja conectada: acá solo se puede cambiar el estado y las notas. Para lo demás, editá tu hoja y tocá Sincronizar ahora.");
+  }
+  return { supabase, contactId: appointment.contact_id as string | null };
+}
+
+export async function updateManualAgendaLead(
+  workspaceId: string,
+  appointmentId: string,
+  appointmentWorkspaceId: string,
+  input: import("./sheetPanelTypes").AgendaRecordInput,
+  viewer: AgendaViewer,
+): Promise<void> {
+  const name = input.name.trim();
+  if (!name) throw new Error("Falta el nombre del lead.");
+  const { supabase, contactId } = await requireManualAppointment(workspaceId, appointmentId, appointmentWorkspaceId, viewer);
+  const digits = input.phone ? input.phone.replace(/\D/g, "") : null;
+  if (contactId) {
+    await supabase.from("contacts").update({ name, phone: digits, email: input.email, updated_at: new Date().toISOString() }).eq("id", contactId);
+  }
+  const start = input.startTime ? new Date(input.startTime) : startOfTodayForManualEntry();
+  const end = new Date(start.getTime() + 30 * 60000);
+  await supabase
+    .from("agenda_appointments")
+    .update({
+      setter_name: input.setterName || null,
+      notes: input.notas || null,
+      subject: input.appointmentType ? `${input.appointmentType}: ${name}` : `Cita: ${name}`,
+      appointment_type: input.appointmentType || null,
+      estado_cita: input.estadoCita,
+      producto: input.producto || null,
+      sin_hora: input.sinHora,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", appointmentId)
+    .eq("workspace_id", appointmentWorkspaceId);
+}
+
+/** Borra la cita manual y, si era la única que le quedaba a ese contacto (y el contacto también es
+ * manual — nunca uno que llegó por una hoja), borra el contacto también: así "Eliminar lead" sobre
+ * un registro a mano no deja un contacto huérfano dando vueltas. */
+export async function deleteManualAgendaLead(workspaceId: string, appointmentId: string, appointmentWorkspaceId: string, viewer: AgendaViewer): Promise<void> {
+  const { supabase, contactId } = await requireManualAppointment(workspaceId, appointmentId, appointmentWorkspaceId, viewer);
+  await supabase.from("agenda_appointments").delete().eq("id", appointmentId).eq("workspace_id", appointmentWorkspaceId);
+  if (!contactId) return;
+  const { count } = await supabase.from("agenda_appointments").select("id", { count: "exact", head: true }).eq("contact_id", contactId);
+  if (!count) {
+    const { data: contact } = await supabase.from("contacts").select("source").eq("id", contactId).maybeSingle();
+    if (contact?.source === "manual") await supabase.from("contacts").delete().eq("id", contactId);
+  }
 }

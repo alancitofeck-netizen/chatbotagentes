@@ -83,4 +83,28 @@ export interface AgendaLead {
   appointmentWorkspaceId: string | null;
   setterName: string | null;
   appointmentType: string | null;
+  /** true si la cita "relevante" (appointmentId) vino de una hoja conectada — en ese caso, editar
+   * el lead solo puede tocar estado + notas (el resto se resincroniza solo); false para un lead
+   * cargado a mano desde el botón "+ Nuevo lead", donde sí se puede editar todo. */
+  fromSheet: boolean;
+  /** "Sin hora" de la cita relevante — para que el formulario de edición no invente una hora real
+   * (00:00) cuando la hoja/carga a mano nunca puso una. */
+  sinHora: boolean;
+}
+
+/** Datos de un lead/cita cargados o editados A MANO (no vienen de ninguna hoja) — usados por
+ * createAgendaLeadAction/updateManualAgendaLeadAction. Compartido entre el formulario (cliente) y
+ * los Server Actions, igual criterio que el resto de este archivo. */
+export interface AgendaRecordInput {
+  name: string;
+  phone: string | null;
+  email: string | null;
+  producto: string | null;
+  appointmentType: string | null;
+  setterName: string | null;
+  notas: string | null;
+  estadoCita: EstadoCita;
+  /** ISO. `null` = hoy a las 00:00 (sinHora siempre true en ese caso). */
+  startTime: string | null;
+  sinHora: boolean;
 }

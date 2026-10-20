@@ -1,97 +1,83 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition, useRef } from "react";
-import { Loader2, CalendarSearch, X, Plus, FileSpreadsheet, RefreshCw, Settings2, AlertTriangle, ExternalLink } from "lucide-react";
-import { getMonday, addDays } from "@/lib/calendar/week";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Loader2, Plus, FileSpreadsheet, RefreshCw, Settings2, AlertTriangle, ExternalLink, CalendarDays } from "lucide-react";
 import { getAgendaAppointmentsAction } from "@/lib/agenda/actions";
 import type { AgendaAppointment, EstadoCita } from "@/lib/agenda/queries";
 import { ESTADO_CITA_META, ESTADO_CITA_OPTIONS } from "@/lib/agenda/estadoMeta";
 import { getAgendaSheetStatusAction, syncAgendaSheetNowAction } from "@/lib/agenda/sheetPanelActions";
 import type { AgendaSheetStatus } from "@/lib/agenda/sheetPanelTypes";
 import { toast } from "@/components/toast/toast";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Sheet } from "@/components/ui/Sheet";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 import { AgendaSheetConnectPanel } from "./AgendaSheetConnectPanel";
 import { AgendaLeadsSection } from "./AgendaLeadsSection";
-import { AgendaFunnelStrip } from "./AgendaFunnelStrip";
-import { AgendaCitasList } from "./AgendaCitasList";
-import { AgendaCitaDetailPanel } from "./AgendaCitaDetailPanel";
+import { AgendaWeekStrip } from "./AgendaWeekStrip";
+import { AgendaStatsRow } from "./AgendaStatsRow";
+import { AgendaCitaAccordionCard } from "./AgendaCitaAccordionCard";
+import { AgendaRecordForm, type AgendaRecordFormRecord } from "./AgendaRecordForm";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
-type Granularity = "dia" | "semana" | "mes" | "lista";
-const GRANULARITY_OPTIONS: { key: Granularity; label: string }[] = [
-  { key: "dia", label: "Día" },
-  { key: "semana", label: "Semana" },
-  { key: "mes", label: "Mes" },
-  { key: "lista", label: "Lista" },
-];
-/** "Lista" no navega por selectedDate — siempre una ventana rodante centrada en hoy, para que
- * "Necesitan resultado"/"Próximas" muestren lo que realmente importa sin tener que ir clickeando
- * meses. 90 días atrás alcanza para pescar citas vencidas sin sincronizar hace rato; 60 adelante
- * cubre cualquier horizonte de agendamiento real. */
 const LISTA_DAYS_BACK = 90;
 const LISTA_DAYS_FORWARD = 60;
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
+function addDays(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+}
 function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
-function firstOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+function formatMinutesAgo(iso: string): string {
+  const diffMin = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (diffMin < 1) return "un momento";
+  if (diffMin < 60) return `${diffMin} min`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `${diffH} h`;
+  return `${Math.round(diffH / 24)} d`;
+}
+function citaToRecord(cita: AgendaAppointment): AgendaRecordFormRecord {
+  return {
+    appointmentId: cita.id,
+    appointmentWorkspaceId: cita.workspaceId,
+    name: cita.contactName ?? "",
+    phone: cita.contactPhone,
+    email: cita.contactEmail,
+    producto: cita.producto,
+    appointmentType: cita.appointmentType,
+    setterName: cita.setterName,
+    notas: cita.notes,
+    estadoCita: cita.estadoCita,
+    startTime: cita.startTime,
+    sinHora: cita.sinHora,
+    fromSheet: cita.fromSheet,
+  };
 }
 
-function rangeFor(granularity: Granularity, selectedDate: Date): { start: string; end: string } {
-  const day = startOfDay(selectedDate);
-  if (granularity === "dia") return { start: day.toISOString(), end: addDays(day, 1).toISOString() };
-  if (granularity === "semana") {
-    const monday = getMonday(day);
-    return { start: monday.toISOString(), end: addDays(monday, 7).toISOString() };
-  }
-  if (granularity === "lista") return { start: addDays(day, -LISTA_DAYS_BACK).toISOString(), end: addDays(day, LISTA_DAYS_FORWARD).toISOString() };
-  const monthStart = firstOfMonth(day);
-  return { start: monthStart.toISOString(), end: new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1).toISOString() };
-}
-
-function periodLabel(granularity: Granularity, selectedDate: Date): string {
-  const today = new Date();
-  const tomorrow = addDays(startOfDay(today), 1);
-  if (granularity === "dia") {
-    const prefix = isSameDay(selectedDate, today) ? "Hoy, " : isSameDay(selectedDate, tomorrow) ? "Mañana, " : "";
-    return prefix + selectedDate.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
-  }
-  if (granularity === "semana") {
-    const monday = getMonday(startOfDay(selectedDate));
-    const sunday = addDays(monday, 6);
-    return `Semana del ${monday.getDate()} al ${sunday.getDate()} de ${sunday.toLocaleDateString("es-MX", { month: "long" })}`;
-  }
-  const label = selectedDate.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-/** Vista operativa de Agenda ("Citas") — rediseño: franja de embudo (5 celdas), lista agrupada
- * Necesitan resultado/Hoy/Próximas + panel de detalle persistente en escritorio, todo sobre
- * agenda_appointments real (espejo de la hoja conectada, ver src/lib/agenda/queries.ts), nunca
- * datos de ejemplo. Sincronización con Google Sheets intacta: misma hoja, mismo "Sincronizar
- * ahora", mismo panel "Conectar hoja de agendas" (AgendaSheetConnectPanel, sin tocar). Un 'agent'
+/** Vista operativa de Agenda ("Citas") — rediseño (pedido explícito: que se vea y funcione como
+ * agenda-movil.html, también en escritorio): franja de días de la semana + 3 stats + tarjetas de
+ * cita expandibles en el lugar, más el formulario compartido para crear/editar a mano
+ * (AgendaRecordForm). Todo sobre agenda_appointments real (espejo de la hoja conectada, ver
+ * src/lib/agenda/queries.ts), nunca datos de ejemplo. Sincronización con Google Sheets intacta:
+ * misma hoja, mismo "Sincronizar ahora", mismo panel "Conectar hoja de agendas". Un 'agent'
  * (setter) recibe del server solo sus propias citas; la edición de estado/notas está disponible
  * para los 3 roles (ver agenda/queries.ts). */
 export function AgendaShell() {
   useAutoStartTour("agenda-intro");
-  const [granularity, setGranularity] = useState<Granularity>("lista");
-  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+
+  const [selectedDay, setSelectedDay] = useState(() => startOfDay(new Date()));
+  const [weekAnchor, setWeekAnchor] = useState(() => startOfDay(new Date()));
+  const [showPending, setShowPending] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [citas, setCitas] = useState<AgendaAppointment[] | null>(null);
-  const [loading, startTransition] = useTransition();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const [newCitaOpen, setNewCitaOpen] = useState(false);
   const [setterFilter, setSetterFilter] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<EstadoCita | "">("");
   const [search, setSearch] = useState("");
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
-  // Hoja de agendas conectada (0199): franja de estado, panel "Conectar hoja", "Sincronizar ahora".
   const [view, setView] = useState<"citas" | "leads">("citas");
   const [sheetStatus, setSheetStatus] = useState<AgendaSheetStatus | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -99,10 +85,20 @@ export function AgendaShell() {
   const openPanel = useCallback(() => {
     setPanelKey((k) => k + 1);
     setPanelOpen(true);
-    setNewCitaOpen(false);
   }, []);
   const [syncing, setSyncing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const [recordSheetOpen, setRecordSheetOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<AgendaRecordFormRecord | null>(null);
+  function openCreate() {
+    setEditingRecord(null);
+    setRecordSheetOpen(true);
+  }
+  function openEdit(cita: AgendaAppointment) {
+    setEditingRecord(citaToRecord(cita));
+    setRecordSheetOpen(true);
+  }
 
   const loadSheetStatus = useCallback(() => {
     getAgendaSheetStatusAction()
@@ -147,19 +143,17 @@ export function AgendaShell() {
     setCitas((prev) => (prev ? prev.map((c) => (c.id === id ? { ...c, estadoCita: estado } : c)) : prev));
   }
 
-  const range = useMemo(() => rangeFor(granularity, selectedDate), [granularity, selectedDate]);
-
   useEffect(() => {
     let cancelled = false;
-    startTransition(async () => {
-      const data = await getAgendaAppointmentsAction(range);
+    const start = addDays(startOfDay(new Date()), -LISTA_DAYS_BACK);
+    const end = addDays(startOfDay(new Date()), LISTA_DAYS_FORWARD);
+    getAgendaAppointmentsAction({ start: start.toISOString(), end: end.toISOString() }).then((data) => {
       if (!cancelled) setCitas(data);
     });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.start, range.end, refreshKey]);
+  }, [refreshKey]);
 
   const setterOptions = useMemo(() => [...new Set((citas ?? []).map((c) => c.setterName).filter((n): n is string => !!n))].sort(), [citas]);
 
@@ -172,18 +166,17 @@ export function AgendaShell() {
     return rows;
   }, [citas, setterFilter, estadoFilter, search]);
 
-  const selectedCita = useMemo(() => {
-    const fromFiltered = filteredCitas.find((c) => c.id === selectedId);
-    if (fromFiltered) return fromFiltered;
-    if (selectedId) return null;
-    // Por defecto: la primera cita que "necesita resultado", si no la próxima — mismo criterio
-    // que la franja "Necesitan resultado" de la lista.
+  const dayCitas = useMemo(
+    () => filteredCitas.filter((c) => !c.deletedInSheet && isSameDay(new Date(c.startTime), selectedDay)).sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [filteredCitas, selectedDay],
+  );
+  const pendingCitas = useMemo(() => {
     const today = startOfDay(new Date());
-    const overdue = filteredCitas.filter((c) => !c.deletedInSheet && new Date(c.startTime) < today && (c.estadoCita === "agendada" || c.estadoCita === "propuesta"));
-    if (overdue.length > 0) return [...overdue].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
-    const upcoming = filteredCitas.filter((c) => !c.deletedInSheet && new Date(c.startTime) >= today).sort((a, b) => a.startTime.localeCompare(b.startTime));
-    return upcoming[0] ?? null;
-  }, [filteredCitas, selectedId]);
+    return filteredCitas
+      .filter((c) => !c.deletedInSheet && new Date(c.startTime) < today && (c.estadoCita === "agendada" || c.estadoCita === "propuesta"))
+      .sort((a, b) => b.startTime.localeCompare(a.startTime));
+  }, [filteredCitas]);
+  const listToShow = showPending ? pendingCitas : dayCitas;
 
   const sheetUrl = sheetStatus?.connection ? `https://docs.google.com/spreadsheets/d/${sheetStatus.connection.spreadsheetId}/edit${sheetStatus.connection.sheetGid ? `#gid=${sheetStatus.connection.sheetGid}` : ""}` : null;
 
@@ -194,12 +187,12 @@ export function AgendaShell() {
       {/* Encabezado compacto — título + estado de sync a la izquierda, selector Citas/Leads +
           Nueva cita a la derecha, todo en una línea (desktop). */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div data-tour="agenda.sheet-status">
           <div className="flex items-center gap-2">
             <h1 className="text-[22px] font-semibold text-foreground">Agenda</h1>
             <ModuleHelp
               compact
-              description="La Agenda te permite organizar tus próximas citas y seguimientos — llegan solas desde tu hoja conectada, nunca se cargan a mano acá."
+              description="La Agenda te permite organizar tus próximas citas y seguimientos — llegan solas desde tu hoja conectada, o las cargás a mano con Nueva cita."
               tourKey="agenda-intro"
             />
           </div>
@@ -258,36 +251,15 @@ export function AgendaShell() {
             ))}
           </div>
           {view === "citas" && (
-            <div className="relative">
-              <button
-                type="button"
-                data-tour="agenda.new-cita-button"
-                onClick={() => setNewCitaOpen((v) => !v)}
-                className="flex h-11 items-center gap-1.5 rounded-md bg-accent-500 px-4 text-[13px] font-medium text-white hover:bg-accent-600"
-              >
-                <Plus size={15} aria-hidden="true" />
-                Nueva cita
-              </button>
-              {newCitaOpen && (
-                <div className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-border-default bg-surface-1 p-3.5 shadow-[var(--elevation-md)]">
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
-                      <FileSpreadsheet size={14} className="text-accent-600" aria-hidden="true" />
-                      Las citas vienen de tu hoja
-                    </p>
-                    <button type="button" onClick={() => setNewCitaOpen(false)} className="text-neutral-400 hover:text-foreground">
-                      <X size={14} aria-hidden="true" />
-                    </button>
-                  </div>
-                  <p className="mb-3 text-[12.5px] text-neutral-500">
-                    Para no duplicar la carga, Agenda no crea citas manualmente — cargá la cita en tu hoja de Google Sheets conectada y tocá Sincronizar ahora.
-                  </p>
-                  <button type="button" data-tour="agenda.sheet-connect-link" onClick={openPanel} className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
-                    {sheetStatus?.connection ? "Configurar mi hoja de agendas →" : "Conectar hoja de agendas →"}
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              data-tour="agenda.new-cita-button"
+              onClick={openCreate}
+              className="flex h-11 items-center gap-1.5 rounded-md bg-accent-500 px-4 text-[13px] font-medium text-white hover:bg-accent-600"
+            >
+              <Plus size={15} aria-hidden="true" />
+              Nueva cita
+            </button>
           )}
         </div>
       </div>
@@ -296,49 +268,33 @@ export function AgendaShell() {
         <AgendaLeadsSection refreshKey={refreshKey} />
       ) : (
         <>
-          <AgendaFunnelStrip citas={citas ?? []} />
+          <div data-tour="agenda.range-switcher">
+            <AgendaWeekStrip
+              weekAnchor={weekAnchor}
+              selectedDay={selectedDay}
+              onSelectDay={(d) => {
+                setSelectedDay(d);
+                setShowPending(false);
+                setExpandedId(null);
+              }}
+              onPrevWeek={() => setWeekAnchor((d) => addDays(d, -7))}
+              onNextWeek={() => setWeekAnchor((d) => addDays(d, 7))}
+              citas={filteredCitas}
+            />
+          </div>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex gap-1 rounded-full bg-surface-2 p-1" data-tour="agenda.range-switcher">
-                {GRANULARITY_OPTIONS.map((g) => (
-                  <button
-                    key={g.key}
-                    type="button"
-                    onClick={() => setGranularity(g.key)}
-                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
-                      granularity === g.key ? "bg-surface-1 text-foreground shadow-[var(--elevation-xs)]" : "text-neutral-500 hover:text-foreground"
-                    }`}
-                  >
-                    {g.label}
-                  </button>
-                ))}
-              </div>
-              <span className="text-[13.5px] font-medium text-foreground">{periodLabel(granularity, selectedDate)}</span>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-                  title="Ir a una fecha"
-                  className="flex size-8 items-center justify-center rounded-md border border-border-default text-neutral-500 hover:bg-surface-2 hover:text-foreground"
-                >
-                  <CalendarSearch size={14} aria-hidden="true" />
-                </button>
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  className="pointer-events-none absolute inset-0 opacity-0"
-                  onChange={(e) => {
-                    if (!e.target.value) return;
-                    const [y, m, d] = e.target.value.split("-").map(Number);
-                    setGranularity("dia");
-                    setSelectedDate(new Date(y, m - 1, d));
-                  }}
-                />
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,260px)_1fr]">
+            <AgendaStatsRow
+              citas={filteredCitas}
+              selectedDay={selectedDay}
+              pendingActive={showPending}
+              onTogglePending={() => {
+                setShowPending((v) => !v);
+                setExpandedId(null);
+              }}
+            />
 
-            <div className="flex flex-wrap items-center gap-2" data-tour="agenda.filters-button">
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end" data-tour="agenda.filters-button">
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -375,32 +331,52 @@ export function AgendaShell() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <div>
-              {loading && !citas ? (
-                <div className="flex items-center justify-center gap-2 py-16 text-sm text-neutral-500">
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  Cargando agenda…
-                </div>
-              ) : (
-                <AgendaCitasList citas={filteredCitas} selectedId={selectedCita?.id ?? null} onSelect={(c) => setSelectedId(c.id)} onAgendarClick={openPanel} />
-              )}
-            </div>
-            <div className="lg:sticky lg:top-4 lg:self-start">
-              <AgendaCitaDetailPanel cita={selectedCita} canEdit onEstadoChanged={handleEstadoChanged} sheetUrl={sheetUrl} />
-            </div>
+          <div className="flex items-baseline justify-between px-0.5">
+            <h2 className="text-[15px] font-semibold text-foreground">
+              {showPending ? "Sin resultado" : isSameDay(selectedDay, startOfDay(new Date())) ? "Hoy" : selectedDay.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
+            </h2>
+            <span className="text-[12.5px] text-neutral-500">
+              {listToShow.length} {listToShow.length === 1 ? "cita" : "citas"}
+            </span>
           </div>
+
+          {citas === null ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-neutral-500">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Cargando agenda…
+            </div>
+          ) : listToShow.length === 0 ? (
+            <EmptyState
+              icon={CalendarDays}
+              title={showPending ? "Todo al día" : "No hay citas"}
+              description={showPending ? "No quedan citas sin resultado." : "No hay citas para este día — tocá Nueva cita para cargar una a mano."}
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {listToShow.map((c) => (
+                <AgendaCitaAccordionCard
+                  key={c.id}
+                  cita={c}
+                  expanded={expandedId === c.id}
+                  onToggle={() => setExpandedId((id) => (id === c.id ? null : c.id))}
+                  onEstadoChanged={handleEstadoChanged}
+                  onEditar={() => openEdit(c)}
+                />
+              ))}
+            </div>
+          )}
+
+          <Sheet open={recordSheetOpen} onClose={() => setRecordSheetOpen(false)} title={editingRecord ? (editingRecord.fromSheet ? "Editar cita" : "Editar lead") : "Nueva cita"}>
+            <AgendaRecordForm
+              key={editingRecord?.appointmentId ?? "new"}
+              record={editingRecord}
+              defaultDate={selectedDay}
+              onClose={() => setRecordSheetOpen(false)}
+              onSaved={() => setRefreshKey((k) => k + 1)}
+            />
+          </Sheet>
         </>
       )}
     </div>
   );
-}
-
-function formatMinutesAgo(iso: string): string {
-  const diffMin = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (diffMin < 1) return "un momento";
-  if (diffMin < 60) return `${diffMin} min`;
-  const diffH = Math.round(diffMin / 60);
-  if (diffH < 24) return `${diffH} h`;
-  return `${Math.round(diffH / 24)} d`;
 }

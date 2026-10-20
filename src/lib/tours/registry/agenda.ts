@@ -1,12 +1,9 @@
 import type { TourConfig } from "../types";
 
-/** Explicativo — verificado contra AgendaShell.tsx. A diferencia de
- * Calendario, acá no existe un flujo de "crear cita": las citas llegan
- * solas desde una hoja de Google Sheets conectada (comentario real del
- * código, ver src/lib/appointmentSync/runner.ts) — el botón "Nueva cita" en
- * realidad abre un explicador de por qué no hay formulario, no un
- * formulario. El tour respeta eso: hace click ahí para revelar el
- * explicador real, en vez de fingir que crea algo. */
+/** Explicativo — verificado contra AgendaShell.tsx. Las citas llegan solas desde una hoja de
+ * Google Sheets conectada, pero también se pueden cargar a mano con "Nueva cita"/"Editar" (ver
+ * AgendaRecordForm.tsx) — a diferencia de la versión anterior de este tour, acá el botón sí abre
+ * un formulario real. */
 export const agendaIntroTour: TourConfig = {
   key: "agenda-intro",
   moduleKey: "agenda",
@@ -14,8 +11,8 @@ export const agendaIntroTour: TourConfig = {
   steps: [
     {
       target: '[data-tour="agenda.range-switcher"]',
-      title: "📆 La Agenda te permite organizar tus próximas actividades",
-      description: "Día, Semana, Mes o Lista (el embudo completo: vencidas, de hoy y próximas) para ver tus citas y seguimientos.",
+      title: "📆 Elegí el día",
+      description: "Tocá un día de la semana para ver sus citas — el puntito marca los días que ya tienen alguna cargada.",
       placement: "bottom",
     },
     {
@@ -26,16 +23,15 @@ export const agendaIntroTour: TourConfig = {
     },
     {
       target: '[data-tour="agenda.new-cita-button"]',
-      title: "¿De dónde salen las citas?",
-      description: "Tocá acá para ver cómo funciona.",
-      action: "click",
+      title: "Cargá una cita a mano",
+      description: "Además de las que llegan solas desde tu hoja, acá podés agendar un lead manualmente.",
       placement: "left",
     },
     {
-      target: '[data-tour="agenda.sheet-connect-link"]',
-      title: "🔗 Las citas se sincronizan solas",
-      description: "Cargá o actualizá la cita en tu hoja de Google Sheets conectada — en minutos aparece acá. Nunca se cargan manualmente en Growth Link.",
-      placement: "left",
+      target: '[data-tour="agenda.sheet-status"]',
+      title: "🔗 Las citas también se sincronizan solas",
+      description: "Cargá o actualizá la cita en tu hoja de Google Sheets conectada y tocá Sincronizar ahora — en segundos aparece acá.",
+      placement: "bottom",
     },
   ],
 };
