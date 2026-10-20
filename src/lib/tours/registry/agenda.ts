@@ -15,12 +15,12 @@ export const agendaIntroTour: TourConfig = {
     {
       target: '[data-tour="agenda.range-switcher"]',
       title: "📆 La Agenda te permite organizar tus próximas actividades",
-      description: "Cambiá entre Hoy, Mañana, Semana o Mes para ver tus citas y seguimientos.",
+      description: "Día, Semana, Mes o Lista (el embudo completo: vencidas, de hoy y próximas) para ver tus citas y seguimientos.",
       placement: "bottom",
     },
     {
       target: '[data-tour="agenda.filters-button"]',
-      title: "Filtrá por setter o asesor",
+      title: "Buscá y filtrá por setter o estado",
       description: "Útil cuando gestionás la agenda de todo tu equipo.",
       placement: "bottom",
     },

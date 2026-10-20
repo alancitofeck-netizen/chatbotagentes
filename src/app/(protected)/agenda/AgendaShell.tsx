@@ -1,35 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition, useRef } from "react";
-import { CalendarDays, Users2, UserRound, Loader2, SlidersHorizontal, CalendarSearch, X, Plus, FileSpreadsheet } from "lucide-react";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { Loader2, CalendarSearch, X, Plus, FileSpreadsheet, RefreshCw, Settings2, AlertTriangle, ExternalLink } from "lucide-react";
 import { getMonday, addDays } from "@/lib/calendar/week";
 import { getAgendaAppointmentsAction } from "@/lib/agenda/actions";
 import type { AgendaAppointment, EstadoCita } from "@/lib/agenda/queries";
+import { ESTADO_CITA_META, ESTADO_CITA_OPTIONS } from "@/lib/agenda/estadoMeta";
 import { getAgendaSheetStatusAction, syncAgendaSheetNowAction } from "@/lib/agenda/sheetPanelActions";
 import type { AgendaSheetStatus } from "@/lib/agenda/sheetPanelTypes";
 import { toast } from "@/components/toast/toast";
-import { AgendaTimeline } from "./AgendaTimeline";
-import { AgendaCitasTable } from "./AgendaCitasTable";
-import { AgendaSheetStatusBar } from "./AgendaSheetStatusBar";
-import { AgendaSheetKpis } from "./AgendaSheetKpis";
+import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 import { AgendaSheetConnectPanel } from "./AgendaSheetConnectPanel";
 import { AgendaLeadsSection } from "./AgendaLeadsSection";
-import { AgendaMiniCalendar } from "./AgendaMiniCalendar";
-import { AgendaKpiTiles } from "./AgendaKpiTiles";
-import { AgendaEstadoDonut } from "./AgendaEstadoDonut";
-import { AgendaTipoBars } from "./AgendaTipoBars";
-import { AgendaAttendanceRate } from "./AgendaAttendanceRate";
-import { useAgendaPerformance } from "./useAgendaPerformance";
+import { AgendaFunnelStrip } from "./AgendaFunnelStrip";
+import { AgendaCitasList } from "./AgendaCitasList";
+import { AgendaCitaDetailPanel } from "./AgendaCitaDetailPanel";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
 
+type Granularity = "dia" | "semana" | "mes" | "lista";
 const GRANULARITY_OPTIONS: { key: Granularity; label: string }[] = [
   { key: "dia", label: "Día" },
   { key: "semana", label: "Semana" },
   { key: "mes", label: "Mes" },
+  { key: "lista", label: "Lista" },
 ];
-
-type Granularity = "dia" | "semana" | "mes";
+/** "Lista" no navega por selectedDate — siempre una ventana rodante centrada en hoy, para que
+ * "Necesitan resultado"/"Próximas" muestren lo que realmente importa sin tener que ir clickeando
+ * meses. 90 días atrás alcanza para pescar citas vencidas sin sincronizar hace rato; 60 adelante
+ * cubre cualquier horizonte de agendamiento real. */
+const LISTA_DAYS_BACK = 90;
+const LISTA_DAYS_FORWARD = 60;
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -48,11 +48,12 @@ function rangeFor(granularity: Granularity, selectedDate: Date): { start: string
     const monday = getMonday(day);
     return { start: monday.toISOString(), end: addDays(monday, 7).toISOString() };
   }
+  if (granularity === "lista") return { start: addDays(day, -LISTA_DAYS_BACK).toISOString(), end: addDays(day, LISTA_DAYS_FORWARD).toISOString() };
   const monthStart = firstOfMonth(day);
   return { start: monthStart.toISOString(), end: new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1).toISOString() };
 }
 
-function dateHeaderLabel(granularity: Granularity, selectedDate: Date): string {
+function periodLabel(granularity: Granularity, selectedDate: Date): string {
   const today = new Date();
   const tomorrow = addDays(startOfDay(today), 1);
   if (granularity === "dia") {
@@ -64,38 +65,30 @@ function dateHeaderLabel(granularity: Granularity, selectedDate: Date): string {
     const sunday = addDays(monday, 6);
     return `Semana del ${monday.getDate()} al ${sunday.getDate()} de ${sunday.toLocaleDateString("es-MX", { month: "long" })}`;
   }
-  return selectedDate.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
-}
-
-function weekdayLabel(selectedDate: Date): string {
-  const label = selectedDate.toLocaleDateString("es-MX", { weekday: "long" });
+  const label = selectedDate.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-/** Vista operativa de Agenda — línea de tiempo del día / lista agrupada
- * semana-mes, calendario mini interactivo, próximas citas, KPIs
- * automáticos y tabla completa con filtros/búsqueda/export — todo sobre
- * agenda_appointments real (espejo de la hoja KPI, ver
- * src/lib/agenda/queries.ts), nunca datos de ejemplo. Un 'agent' (setter)
- * recibe del server solo sus propias citas (isManager=false esconde el
- * toggle de scope porque no hay nada que alternar; la edición de estado sí
- * está disponible para los 3 roles, ver CitaCard/AgendaAppointmentsTable). */
-export function AgendaShell({ isManager }: { isManager: boolean }) {
+/** Vista operativa de Agenda ("Citas") — rediseño: franja de embudo (5 celdas), lista agrupada
+ * Necesitan resultado/Hoy/Próximas + panel de detalle persistente en escritorio, todo sobre
+ * agenda_appointments real (espejo de la hoja conectada, ver src/lib/agenda/queries.ts), nunca
+ * datos de ejemplo. Sincronización con Google Sheets intacta: misma hoja, mismo "Sincronizar
+ * ahora", mismo panel "Conectar hoja de agendas" (AgendaSheetConnectPanel, sin tocar). Un 'agent'
+ * (setter) recibe del server solo sus propias citas; la edición de estado/notas está disponible
+ * para los 3 roles (ver agenda/queries.ts). */
+export function AgendaShell() {
   useAutoStartTour("agenda-intro");
-  const [granularity, setGranularity] = useState<Granularity>("dia");
+  const [granularity, setGranularity] = useState<Granularity>("lista");
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
-  const [calendarMonth, setCalendarMonth] = useState(() => firstOfMonth(new Date()));
 
   const [citas, setCitas] = useState<AgendaAppointment[] | null>(null);
-  const [monthCitas, setMonthCitas] = useState<AgendaAppointment[]>([]);
   const [loading, startTransition] = useTransition();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const analytics = useAgendaPerformance(isManager);
-
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [newCitaOpen, setNewCitaOpen] = useState(false);
   const [setterFilter, setSetterFilter] = useState("");
-  const [advisorFilter, setAdvisorFilter] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState<EstadoCita | "">("");
+  const [search, setSearch] = useState("");
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Hoja de agendas conectada (0199): franja de estado, panel "Conectar hoja", "Sincronizar ahora".
@@ -106,6 +99,7 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
   const openPanel = useCallback(() => {
     setPanelKey((k) => k + 1);
     setPanelOpen(true);
+    setNewCitaOpen(false);
   }, []);
   const [syncing, setSyncing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -167,322 +161,244 @@ export function AgendaShell({ isManager }: { isManager: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range.start, range.end, refreshKey]);
 
-
-  useEffect(() => {
-    let cancelled = false;
-    const start = firstOfMonth(calendarMonth);
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
-    getAgendaAppointmentsAction({ start: start.toISOString(), end: end.toISOString() }).then((data) => {
-      if (!cancelled) setMonthCitas(data);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [calendarMonth, refreshKey]);
-
   const setterOptions = useMemo(() => [...new Set((citas ?? []).map((c) => c.setterName).filter((n): n is string => !!n))].sort(), [citas]);
-  const advisorOptions = useMemo(() => [...new Set((citas ?? []).map((c) => c.advisorName))].sort(), [citas]);
 
   const filteredCitas = useMemo(() => {
     let rows = citas ?? [];
     if (setterFilter) rows = rows.filter((c) => c.setterName === setterFilter);
-    if (advisorFilter) rows = rows.filter((c) => c.advisorName === advisorFilter);
+    if (estadoFilter) rows = rows.filter((c) => c.estadoCita === estadoFilter);
+    const q = search.trim().toLowerCase();
+    if (q) rows = rows.filter((c) => (c.contactName ?? "").toLowerCase().includes(q) || (c.contactPhone ?? "").includes(q));
     return rows;
-  }, [citas, setterFilter, advisorFilter]);
+  }, [citas, setterFilter, estadoFilter, search]);
 
-  const activeTab = useMemo(() => {
+  const selectedCita = useMemo(() => {
+    const fromFiltered = filteredCitas.find((c) => c.id === selectedId);
+    if (fromFiltered) return fromFiltered;
+    if (selectedId) return null;
+    // Por defecto: la primera cita que "necesita resultado", si no la próxima — mismo criterio
+    // que la franja "Necesitan resultado" de la lista.
     const today = startOfDay(new Date());
-    const tomorrow = addDays(today, 1);
-    if (granularity === "dia" && isSameDay(selectedDate, today)) return "hoy";
-    if (granularity === "dia" && isSameDay(selectedDate, tomorrow)) return "manana";
-    if (granularity === "semana") return "semana";
-    if (granularity === "mes") return "mes";
-    return null;
-  }, [granularity, selectedDate]);
+    const overdue = filteredCitas.filter((c) => !c.deletedInSheet && new Date(c.startTime) < today && (c.estadoCita === "agendada" || c.estadoCita === "propuesta"));
+    if (overdue.length > 0) return [...overdue].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+    const upcoming = filteredCitas.filter((c) => !c.deletedInSheet && new Date(c.startTime) >= today).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return upcoming[0] ?? null;
+  }, [filteredCitas, selectedId]);
 
-  const exportHref = `/api/agenda/export?start=${encodeURIComponent(range.start)}&end=${encodeURIComponent(range.end)}`;
-  const activeFilterCount = (setterFilter ? 1 : 0) + (advisorFilter ? 1 : 0);
+  const sheetUrl = sheetStatus?.connection ? `https://docs.google.com/spreadsheets/d/${sheetStatus.connection.spreadsheetId}/edit${sheetStatus.connection.sheetGid ? `#gid=${sheetStatus.connection.sheetGid}` : ""}` : null;
 
   return (
     <div className="flex flex-col gap-4">
-      <AgendaSheetStatusBar status={sheetStatus} syncing={syncing} onSync={handleSyncNow} onConfigure={openPanel} />
       <AgendaSheetConnectPanel key={panelKey} open={panelOpen} onClose={() => setPanelOpen(false)} status={sheetStatus} onSynced={afterSync} />
 
-      <div className="flex gap-1 self-start rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Vista de la agenda">
-        {(["citas", "leads"] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            role="tab"
-            aria-selected={view === v}
-            onClick={() => setView(v)}
-            className={`rounded-md px-4 py-1.5 text-[13px] font-medium ${view === v ? "bg-surface-1 text-foreground shadow-[var(--elevation-xs)]" : "text-neutral-500 hover:text-foreground"}`}
-          >
-            {v === "citas" ? "Citas" : "Leads"}
-          </button>
-        ))}
+      {/* Encabezado compacto — título + estado de sync a la izquierda, selector Citas/Leads +
+          Nueva cita a la derecha, todo en una línea (desktop). */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[22px] font-semibold text-foreground">Agenda</h1>
+            <ModuleHelp
+              compact
+              description="La Agenda te permite organizar tus próximas citas y seguimientos — llegan solas desde tu hoja conectada, nunca se cargan a mano acá."
+              tourKey="agenda-intro"
+            />
+          </div>
+          {sheetStatus === null ? (
+            <div className="mt-1 h-4 w-48 animate-pulse rounded bg-surface-2" />
+          ) : sheetStatus.connection ? (
+            <div className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-neutral-500">
+              {sheetStatus.connection.lastSyncStatus === "error" ? (
+                <AlertTriangle className="size-3.5 text-error-strong" aria-hidden="true" />
+              ) : (
+                <span className="size-1.5 rounded-full bg-success-strong" aria-hidden="true" />
+              )}
+              <span>{sheetStatus.connection.lastSyncStatus === "error" ? "Error al sincronizar" : "Sincronizado con Google Sheets"}</span>
+              <span className="text-neutral-300">·</span>
+              <span>{sheetStatus.connection.lastSyncedAt ? `hace ${formatMinutesAgo(sheetStatus.connection.lastSyncedAt)}` : "todavía no"}</span>
+              <button
+                type="button"
+                onClick={handleSyncNow}
+                disabled={syncing}
+                title="Sincronizar ahora"
+                aria-label="Sincronizar ahora"
+                className="ml-0.5 flex size-6 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground disabled:opacity-60"
+              >
+                {syncing ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
+              </button>
+              {sheetUrl && (
+                <a href={sheetUrl} target="_blank" rel="noreferrer" title="Abrir hoja" aria-label="Abrir hoja" className="flex size-6 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground">
+                  <ExternalLink className="size-3.5" aria-hidden="true" />
+                </a>
+              )}
+              <button type="button" onClick={openPanel} title="Configurar" aria-label="Configurar" className="flex size-6 items-center justify-center rounded-full text-neutral-500 hover:bg-surface-2 hover:text-foreground">
+                <Settings2 className="size-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={openPanel} className="mt-0.5 flex items-center gap-1.5 text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
+              <FileSpreadsheet className="size-3.5" aria-hidden="true" />
+              Conectá tu hoja de agendas para empezar
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Vista de la agenda">
+            {(["citas", "leads"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={view === v}
+                onClick={() => setView(v)}
+                className={`rounded-md px-4 py-1.5 text-[13px] font-medium ${view === v ? "bg-surface-1 text-foreground shadow-[var(--elevation-xs)]" : "text-neutral-500 hover:text-foreground"}`}
+              >
+                {v === "citas" ? "Citas" : "Leads"}
+              </button>
+            ))}
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              data-tour="agenda.new-cita-button"
+              onClick={() => setNewCitaOpen((v) => !v)}
+              className="flex h-11 items-center gap-1.5 rounded-md bg-accent-500 px-4 text-[13px] font-medium text-white hover:bg-accent-600"
+            >
+              <Plus size={15} aria-hidden="true" />
+              Nueva cita
+            </button>
+            {newCitaOpen && (
+              <div className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-border-default bg-surface-1 p-3.5 shadow-[var(--elevation-md)]">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
+                    <FileSpreadsheet size={14} className="text-accent-600" aria-hidden="true" />
+                    Las citas vienen de tu hoja
+                  </p>
+                  <button type="button" onClick={() => setNewCitaOpen(false)} className="text-neutral-400 hover:text-foreground">
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                </div>
+                <p className="mb-3 text-[12.5px] text-neutral-500">
+                  Para no duplicar la carga, Agenda no crea citas manualmente — cargá la cita en tu hoja de Google Sheets conectada y tocá Sincronizar ahora.
+                </p>
+                <button type="button" data-tour="agenda.sheet-connect-link" onClick={openPanel} className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700">
+                  {sheetStatus?.connection ? "Configurar mi hoja de agendas →" : "Conectar hoja de agendas →"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {view === "leads" ? (
         <AgendaLeadsSection refreshKey={refreshKey} lastSyncStartedAt={sheetStatus?.connection?.lastSyncStartedAt ?? null} />
       ) : (
-      <>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 rounded-full bg-surface-2 p-1" data-tour="agenda.range-switcher">
-          {[
-            {
-              key: "hoy",
-              label: "Hoy",
-              onClick: () => {
-                setGranularity("dia");
-                setSelectedDate(startOfDay(new Date()));
-              },
-            },
-            {
-              key: "manana",
-              label: "Mañana",
-              onClick: () => {
-                setGranularity("dia");
-                setSelectedDate(addDays(startOfDay(new Date()), 1));
-              },
-            },
-            { key: "semana", label: "Semana", onClick: () => setGranularity("semana") },
-            { key: "mes", label: "Mes", onClick: () => setGranularity("mes") },
-          ].map((v) => (
-            <button
-              key={v.key}
-              type="button"
-              onClick={v.onClick}
-              className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
-                activeTab === v.key ? "bg-surface-1 text-foreground shadow-[var(--elevation-xs)]" : "text-neutral-500 hover:text-foreground"
-              }`}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
-        {isManager ? (
-          <span className="flex items-center gap-1.5 text-[12.5px] text-neutral-500">
-            <Users2 className="size-3.5" aria-hidden="true" />
-            Vista de equipo — todas las citas gestionadas
-          </span>
-        ) : (
-          <span className="flex items-center gap-1.5 text-[12.5px] text-neutral-500">
-            <UserRound className="size-3.5" aria-hidden="true" />
-            Mis citas
-          </span>
-        )}
+        <>
+          <AgendaFunnelStrip citas={citas ?? []} />
 
-        <div className="relative ml-auto">
-          <button
-            type="button"
-            data-tour="agenda.new-cita-button"
-            onClick={() => setNewCitaOpen((v) => !v)}
-            className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-accent-600"
-          >
-            <Plus size={15} aria-hidden="true" />
-            Nueva cita
-          </button>
-          {newCitaOpen && (
-            <div className="absolute right-0 z-10 mt-2 w-72 rounded-lg border border-border-default bg-surface-1 p-3.5 shadow-[var(--elevation-md)]">
-              <div className="mb-1.5 flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-foreground">
-                  <FileSpreadsheet size={14} className="text-accent-600" aria-hidden="true" />
-                  Las citas vienen de tu hoja
-                </p>
-                <button type="button" onClick={() => setNewCitaOpen(false)} className="text-neutral-400 hover:text-foreground">
-                  <X size={14} aria-hidden="true" />
-                </button>
-              </div>
-              <p className="mb-3 text-[12.5px] text-neutral-500">
-                Para no duplicar la carga, Agenda no crea citas manualmente — cargá la cita en tu hoja de Google Sheets conectada y tocá Sincronizar ahora.
-              </p>
-              <button
-                type="button"
-                data-tour="agenda.sheet-connect-link"
-                onClick={() => {
-                  setNewCitaOpen(false);
-                  openPanel();
-                }}
-                className="text-[12.5px] font-medium text-accent-600 hover:text-accent-700"
-              >
-                {sheetStatus?.connection ? "Configurar mi hoja de agendas →" : "Conectar hoja de agendas →"}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-            title="Ir a una fecha"
-            className="flex size-8 items-center justify-center rounded-md border border-border-default text-neutral-500 hover:bg-surface-2 hover:text-foreground"
-          >
-            <CalendarSearch size={15} aria-hidden="true" />
-          </button>
-          <input
-            ref={dateInputRef}
-            type="date"
-            className="pointer-events-none absolute inset-0 opacity-0"
-            onChange={(e) => {
-              if (!e.target.value) return;
-              const [y, m, d] = e.target.value.split("-").map(Number);
-              setGranularity("dia");
-              setSelectedDate(new Date(y, m - 1, d));
-              setCalendarMonth(new Date(y, m - 1, 1));
-            }}
-          />
-        </div>
-      </div>
-
-      <AgendaSheetKpis citas={citas ?? []} />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex flex-col gap-4">
-          {granularity === "dia" && (
-            <div role="group" aria-label="Elegir día" className="grid grid-cols-7 gap-1.5 md:hidden">
-              {Array.from({ length: 7 }, (_, i) => addDays(selectedDate, i - 3)).map((day) => {
-                const active = isSameDay(day, selectedDate);
-                return (
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex gap-1 rounded-full bg-surface-2 p-1" data-tour="agenda.range-switcher">
+                {GRANULARITY_OPTIONS.map((g) => (
                   <button
-                    key={day.toISOString()}
+                    key={g.key}
                     type="button"
-                    onClick={() => setSelectedDate(day)}
-                    aria-pressed={active}
-                    className={`flex min-h-14 flex-col items-center justify-center rounded-xl border text-xs ${
-                      active ? "border-accent-500 bg-accent-500 text-white" : "border-border-default bg-surface-1 text-neutral-500"
+                    onClick={() => setGranularity(g.key)}
+                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
+                      granularity === g.key ? "bg-surface-1 text-foreground shadow-[var(--elevation-xs)]" : "text-neutral-500 hover:text-foreground"
                     }`}
                   >
-                    <span className="text-[11px] capitalize">{day.toLocaleDateString("es-MX", { weekday: "short" }).replace(".", "")}</span>
-                    <span className="text-base font-semibold">{day.getDate()}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-[17px] font-semibold text-foreground">{dateHeaderLabel(granularity, selectedDate)}</h2>
-              {granularity === "dia" && (
-                <span className="rounded-full bg-accent-500/10 px-2.5 py-0.5 text-[12px] font-medium text-accent-600">{weekdayLabel(selectedDate)}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={granularity}
-                onChange={(e) => setGranularity(e.target.value as Granularity)}
-                title="Agrupar la vista por día, semana o mes"
-                className="rounded-md border border-border-default bg-surface-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-2"
-              >
-                {GRANULARITY_OPTIONS.map((g) => (
-                  <option key={g.key} value={g.key}>
                     {g.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
+              <span className="text-[13.5px] font-medium text-foreground">{periodLabel(granularity, selectedDate)}</span>
               <div className="relative">
                 <button
                   type="button"
-                  data-tour="agenda.filters-button"
-                  onClick={() => setFiltersOpen((v) => !v)}
-                className="flex items-center gap-1.5 rounded-md border border-border-default px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-surface-2"
-              >
-                <SlidersHorizontal size={14} aria-hidden="true" />
-                Filtros
-                {activeFilterCount > 0 && <span className="flex size-4 items-center justify-center rounded-full bg-accent-500 text-[10px] text-white">{activeFilterCount}</span>}
-              </button>
-              {filtersOpen && (
-                <div className="absolute right-0 z-10 mt-2 w-64 rounded-lg border border-border-default bg-surface-1 p-3 shadow-[var(--elevation-md)]">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[12px] font-semibold text-foreground">Filtrar citas</p>
-                    <button type="button" onClick={() => setFiltersOpen(false)} className="text-neutral-400 hover:text-foreground">
-                      <X size={14} aria-hidden="true" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col gap-2.5">
-                    <label className="flex flex-col gap-1 text-[12px] text-neutral-500">
-                      Setter
-                      <select value={setterFilter} onChange={(e) => setSetterFilter(e.target.value)} className="rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-[13px] text-foreground">
-                        <option value="">Todos</option>
-                        {setterOptions.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {isManager && advisorOptions.length > 1 && (
-                      <label className="flex flex-col gap-1 text-[12px] text-neutral-500">
-                        Asesor
-                        <select value={advisorFilter} onChange={(e) => setAdvisorFilter(e.target.value)} className="rounded-md border border-border-strong bg-surface-1 px-2 py-1.5 text-[13px] text-foreground">
-                          <option value="">Todos</option>
-                          {advisorOptions.map((a) => (
-                            <option key={a} value={a}>
-                              {a}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                    {activeFilterCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSetterFilter("");
-                          setAdvisorFilter("");
-                        }}
-                        className="self-start text-[12px] font-medium text-accent-600 hover:text-accent-700"
-                      >
-                        Limpiar filtros
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+                  onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+                  title="Ir a una fecha"
+                  className="flex size-8 items-center justify-center rounded-md border border-border-default text-neutral-500 hover:bg-surface-2 hover:text-foreground"
+                >
+                  <CalendarSearch size={14} aria-hidden="true" />
+                </button>
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  className="pointer-events-none absolute inset-0 opacity-0"
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    const [y, m, d] = e.target.value.split("-").map(Number);
+                    setGranularity("dia");
+                    setSelectedDate(new Date(y, m - 1, d));
+                  }}
+                />
               </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2" data-tour="agenda.filters-button">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por nombre o teléfono"
+                aria-label="Buscar por nombre o teléfono"
+                className="w-full max-w-[220px] rounded-md border border-border-strong bg-surface-1 px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-accent-500 focus:ring-[3px] focus:ring-accent-100"
+              />
+              <select
+                value={setterFilter}
+                onChange={(e) => setSetterFilter(e.target.value)}
+                aria-label="Filtrar por setter"
+                className="rounded-md border border-border-strong bg-surface-1 px-2.5 py-1.5 text-[13px] text-foreground"
+              >
+                <option value="">Setter: Todos</option>
+                {setterOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={estadoFilter}
+                onChange={(e) => setEstadoFilter(e.target.value as EstadoCita | "")}
+                aria-label="Filtrar por estado"
+                className="rounded-md border border-border-strong bg-surface-1 px-2.5 py-1.5 text-[13px] text-foreground"
+              >
+                <option value="">Estado: Todos</option>
+                {ESTADO_CITA_OPTIONS.map((e) => (
+                  <option key={e} value={e}>
+                    {ESTADO_CITA_META[e].label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {loading && !citas ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-neutral-500">
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Cargando agenda…
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div>
+              {loading && !citas ? (
+                <div className="flex items-center justify-center gap-2 py-16 text-sm text-neutral-500">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Cargando agenda…
+                </div>
+              ) : (
+                <AgendaCitasList citas={filteredCitas} selectedId={selectedCita?.id ?? null} onSelect={(c) => setSelectedId(c.id)} onAgendarClick={openPanel} />
+              )}
             </div>
-          ) : !citas ? (
-            <EmptyState icon={CalendarDays} title="Sin citas en este rango" description="No hay citas agendadas para el período seleccionado." />
-          ) : (
-            <AgendaTimeline citas={filteredCitas.filter((c) => !c.deletedInSheet)} granularity={granularity} canEditEstado />
-          )}
-
-          {isManager && (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <AgendaEstadoDonut data={analytics.data} />
-              <AgendaTipoBars data={analytics.data} />
-              <AgendaAttendanceRate data={analytics.data} />
+            <div className="lg:sticky lg:top-4 lg:self-start">
+              <AgendaCitaDetailPanel cita={selectedCita} canEdit onEstadoChanged={handleEstadoChanged} sheetUrl={sheetUrl} />
             </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-4">
-          {isManager && <AgendaKpiTiles data={analytics.data} preset={analytics.preset} onPresetChange={analytics.setPreset} loading={analytics.loading} />}
-          <AgendaMiniCalendar
-            month={calendarMonth}
-            onMonthChange={setCalendarMonth}
-            selectedDate={selectedDate}
-            onSelectDate={(day) => {
-              setGranularity("dia");
-              setSelectedDate(day);
-            }}
-            appointments={monthCitas.filter((c) => !c.deletedInSheet)}
-          />
-        </div>
-      </div>
-
-      {/* Ancho completo: 8 columnas no entran al lado del calendario. */}
-      <AgendaCitasTable citas={filteredCitas} lastSyncStartedAt={sheetStatus?.connection?.lastSyncStartedAt ?? null} exportHref={exportHref} onEstadoChanged={handleEstadoChanged} />
-      </>
+          </div>
+        </>
       )}
     </div>
   );
+}
+
+function formatMinutesAgo(iso: string): string {
+  const diffMin = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (diffMin < 1) return "un momento";
+  if (diffMin < 60) return `${diffMin} min`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `${diffH} h`;
+  return `${Math.round(diffH / 24)} d`;
 }

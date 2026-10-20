@@ -2,10 +2,10 @@ import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { createClient } from "@/lib/supabase/server";
 import type { WorkspaceRole } from "@/lib/auth/session";
-import { writeEstadoBackToSheet, type SheetWriteBackStatus } from "@/lib/advisorSync/writeBack";
+import { writeEstadoBackToSheet, writeNotesBackToSheet, type SheetWriteBackStatus } from "@/lib/advisorSync/writeBack";
 
 const APPOINTMENT_SELECT =
-  "id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, producto, contactado, sin_hora, deleted_in_sheet, sheet_connection_id, sheet_row_number, contacts(name, phone, email, source, created_at)";
+  "id, workspace_id, contact_id, setter_id, setter_name, notes, start_time, end_time, subject, appointment_type, estado_cita, producto, contactado, sin_hora, deleted_in_sheet, sheet_connection_id, sheet_row_number, created_at, contacts(name, phone, email, source, created_at)";
 
 export type EstadoCita = "agendada" | "confirmada" | "realizada" | "no_show" | "cancelada" | "propuesta" | "venta";
 
@@ -44,6 +44,9 @@ export interface AgendaAppointment {
   sheetRowNumber: number | null;
   contactSource: string | null;
   contactCreatedAt: string | null;
+  /** Cuándo se cargó esta cita en el CRM (columna created_at de agenda_appointments) — usado para
+   * el historial del panel de detalle. */
+  createdAt: string;
 }
 
 interface SetterInfo {
@@ -210,6 +213,7 @@ function mapAppointmentRow(
     deleted_in_sheet?: boolean | null;
     sheet_connection_id?: string | null;
     sheet_row_number?: number | null;
+    created_at: string;
     contacts: AppointmentContactJoin | AppointmentContactJoin[] | null;
   },
   advisorClientId: string,
@@ -248,6 +252,7 @@ function mapAppointmentRow(
     sheetRowNumber: r.sheet_row_number ?? null,
     contactSource: contact?.source ?? null,
     contactCreatedAt: contact?.created_at ?? null,
+    createdAt: r.created_at,
   };
 }
 
@@ -519,13 +524,10 @@ function applyEstado(entry: { citas: number; confirmadas: number; realizadas: nu
  * hay ese filtro adicional: getAgendaAppointments tampoco filtra por rol
  * ahí (un solo asesor, todos sus compañeros de workspace ven y pueden
  * actualizar las mismas citas). */
-export async function updateEstadoCita(
-  workspaceId: string,
-  appointmentId: string,
-  appointmentWorkspaceId: string,
-  estadoCita: EstadoCita,
-  viewer: AgendaViewer,
-): Promise<SheetWriteBackStatus> {
+/** Compartido por updateEstadoCita/updateCitaNotas — misma validación de "esta cita pertenece a un
+ * asesor gestionado por este workspace" + "un agent (setter) solo toca sus propias citas",
+ * devuelve el cliente service-role ya autorizado para escribir. */
+async function authorizeAgendaWrite(workspaceId: string, appointmentId: string, appointmentWorkspaceId: string, viewer: AgendaViewer) {
   const scope = await resolveAgendaScope(workspaceId);
   const authorized = scope.kind === "advisor" ? appointmentWorkspaceId === scope.workspaceId : agencyAgendaWorkspaceIds(scope, workspaceId).includes(appointmentWorkspaceId);
   if (!authorized) throw new Error("Esa cita no pertenece a un asesor gestionado por este workspace.");
@@ -535,13 +537,39 @@ export async function updateEstadoCita(
   if (scope.kind === "agency" && viewer.role === "agent") {
     if (!viewer.memberId) throw new Error("No se pudo identificar tu usuario.");
     const { data: appointment } = await supabase.from("agenda_appointments").select("setter_id").eq("id", appointmentId).eq("workspace_id", appointmentWorkspaceId).maybeSingle();
-    if (!appointment || appointment.setter_id !== viewer.memberId) throw new Error("Solo podés actualizar el estado de tus propias citas.");
+    if (!appointment || appointment.setter_id !== viewer.memberId) throw new Error("Solo podés actualizar tus propias citas.");
   }
 
+  return supabase;
+}
+
+export async function updateEstadoCita(
+  workspaceId: string,
+  appointmentId: string,
+  appointmentWorkspaceId: string,
+  estadoCita: EstadoCita,
+  viewer: AgendaViewer,
+): Promise<SheetWriteBackStatus> {
+  const supabase = await authorizeAgendaWrite(workspaceId, appointmentId, appointmentWorkspaceId, viewer);
   await supabase.from("agenda_appointments").update({ estado_cita: estadoCita, updated_at: new Date().toISOString() }).eq("id", appointmentId).eq("workspace_id", appointmentWorkspaceId);
   // "Si cambiás el estado acá, también se actualiza en la hoja" (si la cita vino de la hoja y la
   // opción está activa) — nunca lanza; el estado en el CRM ya quedó guardado igual.
   return writeEstadoBackToSheet(appointmentId, estadoCita);
+}
+
+/** "Notas del setter" en el panel de detalle — mismo criterio de autorización y de escritura de
+ * vuelta en la hoja que updateEstadoCita (columna NOTAS en vez de ESTADO). */
+export async function updateCitaNotas(
+  workspaceId: string,
+  appointmentId: string,
+  appointmentWorkspaceId: string,
+  notas: string,
+  viewer: AgendaViewer,
+): Promise<SheetWriteBackStatus> {
+  const supabase = await authorizeAgendaWrite(workspaceId, appointmentId, appointmentWorkspaceId, viewer);
+  const trimmed = notas.trim();
+  await supabase.from("agenda_appointments").update({ notes: trimmed || null, updated_at: new Date().toISOString() }).eq("id", appointmentId).eq("workspace_id", appointmentWorkspaceId);
+  return writeNotesBackToSheet(appointmentId, trimmed);
 }
 
 /** Sección "Leads" de la Agenda: una fila por persona (contacto) con citas en la agenda — cada

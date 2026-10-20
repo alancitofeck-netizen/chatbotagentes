@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace, getCurrentMemberId } from "@/lib/auth/session";
 import { requireManagerRole, requireAgencyWorkspaceAccess } from "@/lib/auth/roles";
 import { assertModuleEnabled } from "@/lib/settings/queries";
-import { getAgendaAppointments, getAgendaPerformance, updateEstadoCita, type EstadoCita, type AgendaAppointment, type AgendaPerformance } from "./queries";
+import { getAgendaAppointments, getAgendaPerformance, updateEstadoCita, updateCitaNotas, type EstadoCita, type AgendaAppointment, type AgendaPerformance } from "./queries";
 
 /** Cualquier miembro del workspace puede pedir su agenda — el filtro
  * "solo mis citas si sos setter" vive dentro de getAgendaAppointments
@@ -56,6 +56,16 @@ export async function updateEstadoCitaAction(appointmentId: string, appointmentW
   await assertModuleEnabled(workspaceId, "agenda");
   const memberId = await getCurrentMemberId(workspaceId);
   const sheet = await updateEstadoCita(workspaceId, appointmentId, appointmentWorkspaceId, estadoCita, { memberId, role });
+  revalidatePath("/agenda");
+  return { sheet };
+}
+
+/** "Notas del setter" en el panel de detalle — mismo gate que updateEstadoCitaAction. */
+export async function updateCitaNotasAction(appointmentId: string, appointmentWorkspaceId: string, notas: string) {
+  const { workspaceId, role } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "agenda");
+  const memberId = await getCurrentMemberId(workspaceId);
+  const sheet = await updateCitaNotas(workspaceId, appointmentId, appointmentWorkspaceId, notas, { memberId, role });
   revalidatePath("/agenda");
   return { sheet };
 }
