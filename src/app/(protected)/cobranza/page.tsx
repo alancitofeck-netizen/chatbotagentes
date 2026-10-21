@@ -7,6 +7,7 @@ import { ModuleDisabledState } from "@/components/layout/ModuleDisabledState";
 import { getGastosTabData } from "@/lib/finanzas/queries";
 import { ModuleHelp } from "@/components/onboarding/ModuleHelp";
 import { FinanzasShell } from "./FinanzasShell";
+import { FinanzasMobileHome } from "./FinanzasMobileHome";
 
 export const metadata: Metadata = {
   title: "Finanzas — Growth Link",
@@ -26,16 +27,19 @@ export default async function FinanzasPage() {
 
   return (
     <div className="flex flex-col gap-4 py-4 sm:py-6 lg:py-8">
-      <div className="px-4 sm:px-6 lg:px-8">
-        <PageHeader
-          icon={CircleDollarSign}
-          title="Finanzas"
-          description="Tus gastos, lo que te deben y lo que tenés que pagar — todo en un solo lugar"
-          actions={<ModuleHelp description="Registrá lo que te deben (pólizas, asesorías, ventas) y lo que gastás (herramientas, cursos, otros gastos). Todo queda guardado en el CRM, con calendario y vencimientos." tourKey="collections-intro" />}
-        />
-      </div>
-      <div className="px-4 sm:px-6 lg:px-8">
-        <FinanzasShell initialMonth={month} initialGastos={initialGastos} />
+      <FinanzasMobileHome />
+      <div className="hidden md:block">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <PageHeader
+            icon={CircleDollarSign}
+            title="Finanzas"
+            description="Tus gastos, lo que te deben y lo que tenés que pagar — todo en un solo lugar"
+            actions={<ModuleHelp description="Registrá lo que te deben (pólizas, asesorías, ventas) y lo que gastás (herramientas, cursos, otros gastos). Todo queda guardado en el CRM, con calendario y vencimientos." tourKey="collections-intro" />}
+          />
+        </div>
+        <div className="px-4 pt-4 sm:px-6 lg:px-8">
+          <FinanzasShell initialMonth={month} initialGastos={initialGastos} />
+        </div>
       </div>
     </div>
   );

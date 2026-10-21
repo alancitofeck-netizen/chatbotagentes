@@ -12,10 +12,18 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "@/components/toast/toast";
 import { formatCurrency } from "@/lib/utils/format";
-import { toUsd } from "@/lib/finanzas/exchangeRates";
+import { toUsd, convertCurrency } from "@/lib/finanzas/exchangeRates";
 import { getGastosTabDataAction, deleteMovimientoAction, markMovimientoPaidAction } from "@/lib/finanzas/actions";
 import type { GastosTabData, FinanzasMovimiento } from "@/lib/finanzas/queries";
-import { FINANZAS_CATEGORIES, FINANZAS_PAYMENT_METHODS, FINANZAS_BUCKET_LABEL, FINANZAS_BUCKET_VARIANT, deriveFinanzasBucket, categoriasFor } from "@/lib/finanzas/constants";
+import {
+  FINANZAS_CATEGORIES,
+  FINANZAS_PAYMENT_METHODS,
+  FINANZAS_CURRENCIES,
+  FINANZAS_BUCKET_LABEL,
+  FINANZAS_BUCKET_VARIANT,
+  deriveFinanzasBucket,
+  categoriasFor,
+} from "@/lib/finanzas/constants";
 
 function monthLabel(month: string) {
   const [y, m] = month.split("-").map(Number);
@@ -55,21 +63,22 @@ function exportCsv(month: string, items: FinanzasMovimiento[]) {
   URL.revokeObjectURL(url);
 }
 
-function BarCard({ title, data }: { title: string; data: { label: string; totalUsd: number }[] }) {
+function BarCard({ title, data, currency }: { title: string; data: { label: string; totalUsd: number }[]; currency: string }) {
+  const converted = data.map((d) => ({ ...d, totalUsd: convertCurrency(d.totalUsd, "USD", currency) }));
   return (
     <Card>
       <CardHeader title={title} />
-      {data.length === 0 ? (
+      {converted.length === 0 ? (
         <p className="text-sm text-neutral-500">Sin gastos este mes.</p>
       ) : (
-        <div style={{ height: Math.max(120, data.length * 34) }}>
+        <div style={{ height: Math.max(120, converted.length * 34) }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 0 }}>
+            <BarChart data={converted} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 0 }}>
               <CartesianGrid horizontal={false} stroke="var(--border-default)" />
               <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--color-neutral-500)" }} />
               <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={110} tick={{ fontSize: 11, fill: "var(--color-neutral-500)" }} />
               <Tooltip
-                formatter={(value) => formatCurrency(Number(value), "USD")}
+                formatter={(value) => formatCurrency(Number(value), currency)}
                 contentStyle={{ background: "var(--surface-1)", border: "1px solid var(--border-default)", borderRadius: 12, fontSize: 12, boxShadow: "var(--elevation-md)" }}
               />
               <Bar dataKey="totalUsd" fill="var(--color-out-500, #c2410c)" radius={[0, 4, 4, 0]} />
@@ -100,6 +109,7 @@ export function FinanzasGastosTab({
   const [search, setSearch] = useState("");
   const [medioPago, setMedioPago] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [displayCurrency, setDisplayCurrency] = useState<string>("USD");
   const [data, setData] = useState<GastosTabData>(initialData);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<FinanzasMovimiento | null>(null);
@@ -146,6 +156,7 @@ export function FinanzasGastosTab({
   }
 
   const categoriasOut = categoriasFor("out");
+  const dc = (usdAmount: number) => convertCurrency(usdAmount, "USD", displayCurrency);
 
   return (
     <div className="flex flex-col gap-4">
@@ -202,16 +213,32 @@ export function FinanzasGastosTab({
         </div>
       </div>
 
+      <div className="flex items-center justify-end gap-1.5">
+        <span className="text-[12px] text-neutral-500">Mostrar en</span>
+        <div className="flex gap-1 rounded-md bg-surface-2 p-0.5">
+          {FINANZAS_CURRENCIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setDisplayCurrency(c)}
+              className={`rounded px-2 py-1 text-[12px] font-medium ${displayCurrency === c ? "bg-surface-1 text-foreground shadow-[var(--elevation-xs)]" : "text-neutral-500"}`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div data-tour="finanzas.kpis" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiTile label="Total del mes" value={formatCurrency(data.kpis.totalMesUsd, "USD")} hint={`${data.kpis.itemsCount} gastos`} />
-        <KpiTile label="Ya pagado" value={formatCurrency(data.kpis.yaPagadoUsd, "USD")} />
-        <KpiTile label="Pendiente de pago" value={formatCurrency(data.kpis.pendienteUsd, "USD")} hint={`${data.kpis.pendienteVencidosCount} vencidos`} />
-        <KpiTile label="Gastos fijos" value={formatCurrency(data.kpis.gastosFijosUsd, "USD")} hint={`${data.kpis.gastosFijosCount} recurrentes`} />
+        <KpiTile label="Total del mes" value={formatCurrency(dc(data.kpis.totalMesUsd), displayCurrency)} hint={`${data.kpis.itemsCount} gastos`} />
+        <KpiTile label="Ya pagado" value={formatCurrency(dc(data.kpis.yaPagadoUsd), displayCurrency)} />
+        <KpiTile label="Pendiente de pago" value={formatCurrency(dc(data.kpis.pendienteUsd), displayCurrency)} hint={`${data.kpis.pendienteVencidosCount} vencidos`} />
+        <KpiTile label="Gastos fijos" value={formatCurrency(dc(data.kpis.gastosFijosUsd), displayCurrency)} hint={`${data.kpis.gastosFijosCount} recurrentes`} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <BarCard title="Por categoría" data={data.porCategoria} />
-        <BarCard title="Por medio de pago" data={data.porMedioPago} />
+        <BarCard title="Por categoría" data={data.porCategoria} currency={displayCurrency} />
+        <BarCard title="Por medio de pago" data={data.porMedioPago} currency={displayCurrency} />
       </div>
 
       <Card className="p-0">
@@ -261,7 +288,9 @@ export function FinanzasGastosTab({
                       </td>
                       <td className="px-4 py-2.5 text-right whitespace-nowrap">
                         <div className="font-medium text-error-strong">−{fmtOriginal(i)}</div>
-                        {i.moneda !== "USD" && <div className="text-[11.5px] text-neutral-500">≈ {formatCurrency(toUsd(i.monto, i.moneda), "USD")}</div>}
+                        {i.moneda !== displayCurrency && (
+                          <div className="text-[11.5px] text-neutral-500">≈ {formatCurrency(convertCurrency(i.monto, i.moneda, displayCurrency), displayCurrency)}</div>
+                        )}
                       </td>
                       <td className="px-2 py-2.5 text-right">
                         <DropdownMenu
@@ -283,7 +312,7 @@ export function FinanzasGastosTab({
                   <td colSpan={6} className="px-4 py-2.5 text-right text-[12px] font-semibold text-neutral-500">
                     Total
                   </td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-foreground">{formatCurrency(data.kpis.totalMesUsd, "USD")}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-foreground">{formatCurrency(dc(data.kpis.totalMesUsd), displayCurrency)}</td>
                 </tr>
               </tfoot>
             </table>

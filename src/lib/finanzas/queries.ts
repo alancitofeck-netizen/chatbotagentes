@@ -89,6 +89,17 @@ function applyFilters(items: FinanzasMovimiento[], f: MovimientoFilters): Finanz
   return rows;
 }
 
+/** Todos los movimientos del workspace, sin acotar por fecha — la vista
+ * mobile (FinanzasMobileHome.tsx) carga esto una sola vez y recalcula sus 4
+ * pestañas (Gastos/Calendario/Cobros/Resumen) en el cliente, igual criterio
+ * que el prototipo de referencia (un solo array en memoria). Tope de 3000
+ * filas: de sobra para una cuenta real, evita una lectura sin límite. */
+export async function getAllMovimientos(workspaceId: string): Promise<FinanzasMovimiento[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("finanzas_movimientos").select(SELECT).eq("workspace_id", workspaceId).order("fecha_vencimiento", { ascending: false }).limit(3000);
+  return (data ?? []).map(mapRow);
+}
+
 async function getMovimientosInRange(workspaceId: string, from: string, to: string): Promise<FinanzasMovimiento[]> {
   const supabase = await createClient();
   const { data } = await supabase

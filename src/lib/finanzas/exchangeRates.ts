@@ -12,3 +12,14 @@ export const EXCHANGE_RATES_TO_USD: Record<string, number> = {
 export function toUsd(amount: number, currency: string): number {
   return amount * (EXCHANGE_RATES_TO_USD[currency] ?? 1);
 }
+
+/** Convierte entre dos monedas cualquiera, pasando por USD como base común
+ * (mismos tipos de cambio de arriba) — para la moneda de visualización
+ * elegible en los KPIs de Gastos (USD/ARS/MXN), sin tener que recalcular
+ * nada del lado del servidor: los agregados ya vienen en USD, esto solo
+ * los reexpresa en la moneda elegida al mostrarlos. */
+export function convertCurrency(amount: number, from: string, to: string): number {
+  const usd = toUsd(amount, from);
+  const toRate = EXCHANGE_RATES_TO_USD[to] ?? 1;
+  return usd / toRate;
+}

@@ -6,6 +6,7 @@ import { assertModuleEnabled } from "@/lib/settings/queries";
 import {
   getGastosTabData,
   getCalendarioTabData,
+  getAllMovimientos,
   createMovimiento,
   updateMovimiento,
   deleteMovimiento,
@@ -14,6 +15,7 @@ import {
   type FinanzasMovimientoInput,
   type GastosTabData,
   type CalendarioTabData,
+  type FinanzasMovimiento,
 } from "./queries";
 
 function revalidateFinanzas() {
@@ -36,6 +38,14 @@ export async function getCalendarioTabDataAction(params: {
   const { workspaceId } = await requireActiveWorkspace();
   await assertModuleEnabled(workspaceId, "collections");
   return getCalendarioTabData(workspaceId, params);
+}
+
+/** Vista mobile (FinanzasMobileHome.tsx): todos los movimientos de una, para
+ * recalcular sus 4 pestañas en el cliente — ver getAllMovimientos. */
+export async function getFinanzasMovimientosAction(): Promise<FinanzasMovimiento[]> {
+  const { workspaceId } = await requireActiveWorkspace();
+  await assertModuleEnabled(workspaceId, "collections");
+  return getAllMovimientos(workspaceId);
 }
 
 export async function createMovimientoAction(input: FinanzasMovimientoInput): Promise<void> {
