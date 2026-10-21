@@ -1,45 +1,31 @@
 import type { TourConfig } from "../types";
 
-/** Verificado contra CollectionsActionBar.tsx/CollectionsTable.tsx. La
- * vista por defecto es "calendar" (CollectionsShell.tsx) — por eso el tour
- * primero cambia a la vista de tabla antes de abrir un cobro, en vez de
- * asumir que la tabla ya está visible. */
+/** Verificado contra FinanzasShell.tsx/FinanzasGastosTab.tsx — reescrito al
+ * reemplazar Cobranza (Kanban + prioridad por IA) por Finanzas (Gastos +
+ * Calendario). La `key` se mantiene ("collections-intro") para no perder el
+ * progreso ya guardado de quien ya vio el tutorial viejo. */
 export const collectionsIntroTour: TourConfig = {
   key: "collections-intro",
   moduleKey: "collections",
-  title: "Cobranza",
+  title: "Finanzas",
   steps: [
     {
-      target: '[data-tour="collections.search"]',
-      title: "💰 Desde acá controlás tus cobros",
-      description: "Buscá por cliente, aseguradora, póliza o ejecutivo.",
+      target: '[data-tour="finanzas.tabs"]',
+      title: "💰 Dos vistas de tu plata",
+      description: "Gastos: lo que pagás. Calendario: lo que te deben y lo que tenés que pagar, día por día.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="collections.new-button"]',
-      title: "Cargar un cobro",
-      description: "Registrá un nuevo cobro manualmente cuando lo necesites.",
+      target: '[data-tour="finanzas.new-button"]',
+      title: "Cargar un movimiento",
+      description: "Registrá un gasto o un cobro — queda guardado acá, nunca en una planilla aparte.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="collections.priority-view"]',
-      title: "✨ Prioridad (IA)",
-      description: "Esta vista ordena tus cobros por urgencia real, para saber a quién contactar primero.",
+      target: '[data-tour="finanzas.kpis"]',
+      title: "De un vistazo",
+      description: "Cuánto gastaste, cuánto ya pagaste y qué te queda pendiente este mes.",
       placement: "bottom",
-    },
-    {
-      target: '[data-tour="collections.table-view"]',
-      title: "Vista de tabla",
-      description: "Para ver todos tus cobros en una lista.",
-      action: "click",
-      placement: "bottom",
-    },
-    {
-      target: '[data-tour="collections.open-row"]',
-      title: "Abrí un cobro",
-      description: "Desde acá vas a ver el estado, vencimiento, y las acciones disponibles.",
-      action: "click",
-      placement: "top",
     },
   ],
 };
