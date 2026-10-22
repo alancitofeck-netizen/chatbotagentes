@@ -162,6 +162,56 @@ export async function deleteFinanceItemAction(key: string): Promise<void> {
   revalidatePath("/finanzas");
 }
 
+/** Eliminar varios de una vez ("Eliminar todos" en Cobros, o el tacho de cada fila).
+ * - Manuales: se borran de finance_entries.
+ * - Cobros de póliza: se cancelan (status "cancelado"), no se borran — si se borraran,
+ *   getCollectionsList volvería a generar el cronograma de esa póliza la próxima vez que se
+ *   lista (backfill de pólizas sin pagos), y reaparecerían. Cancelados dejan de verse en Finanzas
+ *   y en los recordatorios, y quedan en el historial de la póliza. */
+export async function deleteFinanceItemsAction(keys: string[]): Promise<{ deleted: number }> {
+  const workspaceId = await requireFinanceWorkspace();
+  if (!Array.isArray(keys) || keys.length === 0) return { deleted: 0 };
+  if (keys.length > 5000) throw new Error("Demasiados movimientos de una vez.");
+
+  const manualIds: string[] = [];
+  const policyIds: string[] = [];
+  for (const key of keys) {
+    const { source, id } = parseKey(key);
+    (source === "manual" ? manualIds : policyIds).push(id);
+  }
+
+  const supabase = await createClient();
+  let deleted = 0;
+  const CHUNK = 200;
+
+  for (let i = 0; i < manualIds.length; i += CHUNK) {
+    const { data, error } = await supabase.from("finance_entries").delete().eq("workspace_id", workspaceId).in("id", manualIds.slice(i, i + CHUNK)).select("id");
+    if (error) throw new Error("No se pudieron eliminar algunos movimientos.");
+    deleted += data?.length ?? 0;
+  }
+
+  for (let i = 0; i < policyIds.length; i += CHUNK) {
+    // Solo cobros de pólizas de esta cuenta (mismo chequeo que assertPaymentInWorkspace).
+    const { data: owned } = await supabase
+      .from("policy_payments")
+      .select("id, policies!inner(workspace_id)")
+      .eq("policies.workspace_id", workspaceId)
+      .in("id", policyIds.slice(i, i + CHUNK));
+    const ownedIds = (owned ?? []).map((r) => r.id as string);
+    if (ownedIds.length === 0) continue;
+    const { data, error } = await supabase
+      .from("policy_payments")
+      .update({ status: "cancelado", updated_at: new Date().toISOString() })
+      .in("id", ownedIds)
+      .select("id");
+    if (error) throw new Error("No se pudieron eliminar algunos cobros de pólizas.");
+    deleted += data?.length ?? 0;
+  }
+
+  revalidatePath("/finanzas");
+  return { deleted };
+}
+
 export async function saveFinanceSettingsAction(settings: FinanceSettings): Promise<void> {
   const workspaceId = await requireFinanceWorkspace();
   if (!/^[A-Z]{3}$/.test(settings.baseCurrency)) throw new Error("Moneda inválida.");

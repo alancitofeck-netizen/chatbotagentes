@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, Repeat, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import {
   FINANCE_CATEGORIES,
@@ -88,7 +88,21 @@ export function EmptyRows({ children = "No hay movimientos acá" }: { children?:
   return <div className="py-7 text-center text-sm text-neutral-500">{children}</div>;
 }
 
-export function FinanceItemRow({ item, today, settings, onOpen, soft }: { item: FinanceItem; today: string; settings: FinanceSettings; onOpen: (item: FinanceItem) => void; soft?: boolean }) {
+export function FinanceItemRow({
+  item,
+  today,
+  settings,
+  onOpen,
+  onDelete,
+  soft,
+}: {
+  item: FinanceItem;
+  today: string;
+  settings: FinanceSettings;
+  onOpen: (item: FinanceItem) => void;
+  onDelete?: (item: FinanceItem) => void;
+  soft?: boolean;
+}) {
   const c = FINANCE_CATEGORIES[item.cat];
   const s = financeStatus(item, today);
   const dateLabel = parseIsoDate(item.date).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
@@ -98,12 +112,13 @@ export function FinanceItemRow({ item, today, settings, onOpen, soft }: { item: 
       : `${item.party || "—"} · ${dateLabel}`;
 
   return (
+    <div className="group mb-2 flex items-stretch gap-1">
     <button
       type="button"
       data-key={item.key}
       onClick={() => onOpen(item)}
       className={cn(
-        "mb-2 flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors hover:border-accent-500",
+        "flex min-w-0 flex-1 items-center gap-3 rounded-2xl border p-3 text-left transition-colors hover:border-accent-500",
         soft ? "border-transparent bg-surface-2 hover:bg-surface-1" : "border-border-default bg-surface-1",
       )}
     >
@@ -137,10 +152,22 @@ export function FinanceItemRow({ item, today, settings, onOpen, soft }: { item: 
         <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold", TAG_CLASS[s])}>{statusLabel(item, s)}</span>
       </div>
     </button>
+    {onDelete && (
+      <button
+        type="button"
+        aria-label={`Eliminar ${item.title}`}
+        title="Eliminar"
+        onClick={() => onDelete(item)}
+        className="grid w-9 shrink-0 place-items-center rounded-2xl text-neutral-400 transition-opacity hover:bg-error-bg hover:text-error focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+      >
+        <Trash2 className="size-4" aria-hidden="true" />
+      </button>
+    )}
+    </div>
   );
 }
 
-export function ItemList({ items, ...rest }: { items: FinanceItem[]; today: string; settings: FinanceSettings; onOpen: (item: FinanceItem) => void; soft?: boolean }) {
+export function ItemList({ items, ...rest }: { items: FinanceItem[]; today: string; settings: FinanceSettings; onOpen: (item: FinanceItem) => void; onDelete?: (item: FinanceItem) => void; soft?: boolean }) {
   if (items.length === 0) return <EmptyRows />;
   return (
     <>

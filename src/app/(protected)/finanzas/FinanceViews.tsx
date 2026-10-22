@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BellRing, Search } from "lucide-react";
+import { BellRing, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import {
   FINANCE_CATEGORIES,
@@ -25,6 +25,8 @@ interface ViewProps {
   today: string;
   settings: FinanceSettings;
   onOpen: (item: FinanceItem) => void;
+  /** Uno o varios — la confirmación la muestra el contenedor (FinanzasShell). */
+  onDelete: (items: FinanceItem[], scopeLabel?: string) => void;
 }
 
 const shiftMonth = (m: Date, n: number) => new Date(m.getFullYear(), m.getMonth() + n, 1);
@@ -35,7 +37,7 @@ const startOfMonth = (iso: string) => {
 
 /* ───────────────────────── Gastos ───────────────────────── */
 
-export function GastosView({ items, today, settings, onOpen }: ViewProps) {
+export function GastosView({ items, today, settings, onOpen, onDelete }: ViewProps) {
   const [month, setMonth] = useState(() => startOfMonth(today));
   const [method, setMethod] = useState("");
   const [query, setQuery] = useState("");
@@ -167,7 +169,7 @@ export function GastosView({ items, today, settings, onOpen }: ViewProps) {
                     {i.date === today ? "Hoy" : parseIsoDate(i.date).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" })}
                   </div>
                 )}
-                <FinanceItemRow item={i} today={today} settings={settings} onOpen={onOpen} soft />
+                <FinanceItemRow item={i} today={today} settings={settings} onOpen={onOpen} onDelete={(x) => onDelete([x])} soft />
               </div>
             ))
           )}
@@ -179,7 +181,7 @@ export function GastosView({ items, today, settings, onOpen }: ViewProps) {
 
 /* ───────────────────────── Calendario ───────────────────────── */
 
-export function CalendarioView({ items, today, settings, onOpen, selected, onSelect }: ViewProps & { selected: string; onSelect: (iso: string) => void }) {
+export function CalendarioView({ items, today, settings, onOpen, onDelete, selected, onSelect }: ViewProps & { selected: string; onSelect: (iso: string) => void }) {
   const [month, setMonth] = useState(() => startOfMonth(today));
   const fmt = (n: number) => formatMoney(n, settings.baseCurrency);
 
@@ -278,7 +280,7 @@ export function CalendarioView({ items, today, settings, onOpen, selected, onSel
             <h3 className="mb-1.5 text-base font-semibold first-letter:uppercase">
               {selected === today ? "Hoy" : selDate.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
             </h3>
-            <ItemList items={byDate.get(selected) ?? []} today={today} settings={settings} onOpen={onOpen} soft />
+            <ItemList items={byDate.get(selected) ?? []} today={today} settings={settings} onOpen={onOpen} onDelete={(x) => onDelete([x])} soft />
           </div>
         </div>
       </div>
@@ -290,7 +292,7 @@ export function CalendarioView({ items, today, settings, onOpen, selected, onSel
 
 type CobrosSeg = "pend" | "late" | "done";
 
-export function CobrosView({ items, today, settings, onOpen, onOpenAutomations }: ViewProps & { onOpenAutomations: () => void }) {
+export function CobrosView({ items, today, settings, onOpen, onDelete, onOpenAutomations }: ViewProps & { onOpenAutomations: () => void }) {
   const [seg, setSeg] = useState<CobrosSeg>("pend");
   const fmt = (n: number) => formatMoney(n, settings.baseCurrency);
   const ins = items.filter((i) => i.type === "in");
@@ -337,12 +339,22 @@ export function CobrosView({ items, today, settings, onOpen, onOpenAutomations }
           </button>
         ))}
       </div>
+      {list.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onDelete(list, segs.find((s) => s.v === seg)!.label.toLowerCase())}
+          className="mb-3 ml-0 inline-flex items-center gap-1.5 rounded-xl border border-border-default bg-surface-1 px-3 py-2 text-[13px] font-semibold text-error hover:border-error hover:bg-error-bg sm:ml-2"
+        >
+          <Trash2 className="size-4" aria-hidden="true" />
+          Eliminar todos ({list.length})
+        </button>
+      )}
       {list.length === 0 ? (
         <EmptyRows />
       ) : (
         <div className="grid gap-x-2.5 lg:grid-cols-2">
           {list.map((i) => (
-            <FinanceItemRow key={i.key} item={i} today={today} settings={settings} onOpen={onOpen} />
+            <FinanceItemRow key={i.key} item={i} today={today} settings={settings} onOpen={onOpen} onDelete={(x) => onDelete([x])} />
           ))}
         </div>
       )}
@@ -352,7 +364,7 @@ export function CobrosView({ items, today, settings, onOpen, onOpenAutomations }
 
 /* ───────────────────────── Resumen ───────────────────────── */
 
-export function ResumenView({ items, today, settings, onOpen }: ViewProps) {
+export function ResumenView({ items, today, settings, onOpen, onDelete }: ViewProps) {
   const [month, setMonth] = useState(() => startOfMonth(today));
   const fmt = (n: number) => formatMoney(n, settings.baseCurrency);
   const paidIn = (i: FinanceItem) => i.paid && i.paidDate !== null && sameMonth(i.paidDate, month);
@@ -387,7 +399,7 @@ export function ResumenView({ items, today, settings, onOpen }: ViewProps) {
         </div>
         <div className="min-w-0 rounded-[20px] border border-border-default bg-surface-1 p-3 sm:p-[18px]">
           <h3 className="mb-1.5 text-base font-semibold">Próximos 15 días</h3>
-          <ItemList items={upcoming} today={today} settings={settings} onOpen={onOpen} soft />
+          <ItemList items={upcoming} today={today} settings={settings} onOpen={onOpen} onDelete={(x) => onDelete([x])} soft />
         </div>
       </div>
     </>

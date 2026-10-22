@@ -7,8 +7,9 @@ import { Fab } from "@/components/ui/Fab";
 import { Spinner } from "@/components/ui/Spinner";
 import { toast } from "@/components/toast/toast";
 import { useAutoStartTour } from "@/components/onboarding/useAutoStartTour";
-import { getFinanceDataAction } from "@/lib/finance/actions";
-import { financeStatus, isoDate, type FinanceItem, type FinanceSettings, type FinanceType } from "@/lib/finance/model";
+import { getFinanceDataAction, deleteFinanceItemsAction } from "@/lib/finance/actions";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { financeStatus, formatMoney, isoDate, sumBase, type FinanceItem, type FinanceSettings, type FinanceType } from "@/lib/finance/model";
 import { CalendarioView, CobrosView, GastosView, ResumenView } from "./FinanceViews";
 import { FinanceEntrySheet } from "./FinanceEntrySheet";
 import { FinanceActionsSheet } from "./FinanceActionsSheet";
@@ -58,6 +59,23 @@ function FinanzasApp({ initialItems, initialSettings, initialPaymentId, today }:
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [policyDetailId, setPolicyDetailId] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<{ items: FinanceItem[]; scope?: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function confirmDelete() {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      const { deleted } = await deleteFinanceItemsAction(toDelete.items.map((i) => i.key));
+      toast.success(deleted === 1 ? "Eliminado" : `${deleted} movimientos eliminados`);
+      setToDelete(null);
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo eliminar.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const actionItem = actionKey ? (items.find((i) => i.key === actionKey) ?? null) : null;
   const lateCount = items.filter((i) => i.type === "in" && financeStatus(i, today) === "late").length;
@@ -77,7 +95,14 @@ function FinanzasApp({ initialItems, initialSettings, initialPaymentId, today }:
     setForm((f) => ({ item, type, n: (f?.n ?? 0) + 1 }));
   }
 
-  const viewProps = { items, today, settings, onOpen: (i: FinanceItem) => setActionKey(i.key) };
+  const viewProps = {
+    items,
+    today,
+    settings,
+    onOpen: (i: FinanceItem) => setActionKey(i.key),
+    onDelete: (list: FinanceItem[], scope?: string) => setToDelete({ items: list, scope }),
+  };
+  const deletePolicyCount = toDelete?.items.filter((i) => i.source === "policy").length ?? 0;
   const newType: FinanceType = tab === "cobros" ? "in" : "out";
 
   return (
@@ -173,6 +198,29 @@ function FinanzasApp({ initialItems, initialSettings, initialPaymentId, today }:
       )}
       <CollectionDetailDrawer paymentId={policyDetailId} onClose={() => setPolicyDetailId(null)} onChanged={refresh} />
       <CollectionAutomationsSheet open={automationsOpen} onClose={() => setAutomationsOpen(false)} />
+      <ConfirmDialog
+        open={toDelete !== null}
+        danger
+        isLoading={deleting}
+        title={
+          toDelete && toDelete.items.length > 1
+            ? `¿Eliminar los ${toDelete.items.length} cobros ${toDelete.scope ?? ""}?`
+            : `¿Eliminar "${toDelete?.items[0]?.title ?? ""}"?`
+        }
+        description={
+          toDelete ? (
+            <>
+              {toDelete.items.length > 1 && <>Total: {formatMoney(sumBase(toDelete.items, settings), settings.baseCurrency)}. </>}
+              {deletePolicyCount > 0
+                ? `${deletePolicyCount === 1 ? "El cobro de póliza" : `Los ${deletePolicyCount} cobros de pólizas`} se cancela${deletePolicyCount === 1 ? "" : "n"}: deja${deletePolicyCount === 1 ? "" : "n"} de verse acá y en los recordatorios, y queda${deletePolicyCount === 1 ? "" : "n"} en el historial de la póliza.`
+                : "No se puede deshacer."}
+            </>
+          ) : undefined
+        }
+        confirmLabel={toDelete && toDelete.items.length > 1 ? `Eliminar ${toDelete.items.length}` : "Eliminar"}
+        onCancel={() => setToDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
