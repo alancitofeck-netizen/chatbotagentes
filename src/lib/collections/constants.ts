@@ -42,3 +42,14 @@ export const COLLECTION_BUCKET_VARIANT: Record<CollectionBucket, "success" | "er
   pendiente: "info",
 };
 
+/** Columnas del Kanban, en orden — "vencido"/"proximo" están pero no son
+ * destino válido de un drag (se llega ahí solo por fecha, nunca a mano). */
+export const COLLECTION_KANBAN_COLUMNS: { key: CollectionBucket; label: string; droppable: boolean }[] = [
+  { key: "pendiente", label: "Pendiente", droppable: true },
+  { key: "en_seguimiento", label: "En seguimiento", droppable: true },
+  { key: "proximo", label: "Próximo", droppable: false },
+  { key: "vencido", label: "Vencido", droppable: false },
+  { key: "pagado", label: "Pagado", droppable: true },
+];
+
+export const PAYMENT_METHODS = ["Transferencia", "Tarjeta", "Efectivo", "Domiciliación", "Cheque", "Otro"];

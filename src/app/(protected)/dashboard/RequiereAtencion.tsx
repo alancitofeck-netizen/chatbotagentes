@@ -29,7 +29,7 @@ export function RequiereAtencion({ overduePolicies, closedWindowChats, inactiveA
       icon: <AlertTriangle className="size-5" aria-hidden="true" />,
       title: `${overduePolicies} ${overduePolicies === 1 ? "póliza con pago atrasado" : "pólizas con pago atrasado"}`,
       sub: "Revisá la cobranza antes de que caigan",
-      href: "/cobranza",
+      href: "/finanzas",
     });
   }
   if (closedWindowChats > 0) {

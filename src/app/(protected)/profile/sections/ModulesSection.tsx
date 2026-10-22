@@ -17,7 +17,7 @@ const MODULE_LABELS: Record<string, { name: string; description: string }> = {
   policies: { name: "Pólizas", description: "Gestión completa de pólizas activas: prima, comisión, coberturas, vencimientos y renovaciones." },
   asesorias: { name: "Asesorías", description: "Reuniones guiadas con el prospecto (Meeting OS) — se guardan solas y quedan en el historial del contacto." },
   asesores: { name: "Asesores", description: "Panel administrativo del Owner global sobre las cuentas reales de asesores de Growth Link: contrato, salud, KPIs y accesos. Solo el Owner." },
-  collections: { name: "Finanzas", description: "Gastos, cobros y pagos — vencimientos, calendario financiero y flujo de caja del workspace." },
+  collections: { name: "Finanzas", description: "Gastos con su medio de pago, cobros de pólizas, asesorías y ventas, calendario y resumen del mes." },
   policy_extraction: { name: "Extracción IA", description: "Subí el PDF de una póliza y la IA completa los datos clave listos para guardar en Pólizas." },
   goals: { name: "Metas y Bonificaciones", description: "Objetivos de producción, ranking entre asesores, logros y proyecciones de cumplimiento." },
   ai_assistant: { name: "Asistente IA", description: "Copiloto in-app: consultá y ejecutá acciones en el CRM por chat, con tarjetas proactivas de prioridades y alertas." },

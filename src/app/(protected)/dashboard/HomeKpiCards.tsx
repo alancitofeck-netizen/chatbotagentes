@@ -72,7 +72,7 @@ export function HomeKpiCards({ kpis }: { kpis: DashboardHomeKpis }) {
         footerTone="error"
         footer={
           kpis.carteraEnRiesgo.count > 0 ? (
-            <Link href="/cobranza" className="underline hover:no-underline">
+            <Link href="/finanzas" className="underline hover:no-underline">
               Revisar cobranza
             </Link>
           ) : (
