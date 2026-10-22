@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
             eventType: "collection_payment_reminder",
             title: isOverdue ? "Cobro vencido" : "Recordatorio de cobro",
             message: `El pago de ${amountLabel} de ${policyLabel} ${verb} el ${payment.due_date}.`,
-            actionUrl: `/cobranza?payment=${payment.id}`,
+            actionUrl: `/finanzas?payment=${payment.id}`,
           });
         }
 

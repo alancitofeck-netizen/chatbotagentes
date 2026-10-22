@@ -33,7 +33,7 @@ export async function updateCollectionAutomationRuleAction(ruleId: string, patch
 }
 
 function revalidateCollections() {
-  revalidatePath("/cobranza");
+  revalidatePath("/finanzas");
   // policy_payments también se muestra en el tab Pagos de Pólizas — mismo
   // criterio "una sola tabla, dos vistas" documentado en collections/queries.ts.
   revalidatePath("/polizas");

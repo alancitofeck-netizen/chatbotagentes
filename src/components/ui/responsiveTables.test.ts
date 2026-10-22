@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PolicyTable } from "@/app/(protected)/polizas/PolicyTable";
-import { CollectionsTable } from "@/app/(protected)/cobranza/CollectionsTable";
 import { OpportunityTable } from "@/app/(protected)/crm/OpportunityTable";
 import { TaskTableView } from "@/app/(protected)/tasks/views/TaskTableView";
 import { AgendaSetterPerformanceTable } from "@/app/(protected)/asesores/agendas/AgendaSetterPerformanceTable";
@@ -47,30 +46,6 @@ describe("PolicyTable (mobile + desktop)", () => {
     const html = renderToStaticMarkup(createElement(PolicyTable, { policies: [], ...props }));
     expect(html).not.toContain("<table");
     expect(html).toContain("Sin resultados");
-  });
-});
-
-describe("CollectionsTable (mobile + desktop)", () => {
-  const item = {
-    id: "c1",
-    contactName: "Beto",
-    contactPhone: "+5215500000002",
-    company: "Aseguradora Y",
-    policyNumber: "POL-9",
-    amount: 500,
-    currency: "MXN",
-    dueDate: "2026-03-01",
-    status: "pendiente",
-    ownerName: null,
-  };
-
-  it("usa acciones compartidas en ambas vistas", () => {
-    const html = renderToStaticMarkup(
-      createElement(CollectionsTable, { items: [item as never], onOpen: noop, onRegisterPayment: noop, onReschedule: noop, onCancel: noop }),
-    );
-    expect(html).toContain("md:hidden");
-    expect(html).toContain("<table");
-    expect(html).toContain("Sin asignar");
   });
 });
 

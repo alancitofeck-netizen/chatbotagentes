@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
       // Configuración quedó dentro de Perfil. La redirección vive acá (y no en una
       // página con redirect()) para que no haya un render intermedio en el cliente.
       { source: "/settings", destination: "/profile?tab=workspace", permanent: false },
+      // Cobranza pasó a ser Finanzas. Los links viejos (/cobranza?payment=<id> de notificaciones y
+      // automatizaciones) conservan el query string.
+      { source: "/cobranza", destination: "/finanzas", permanent: false },
     ];
   },
 };

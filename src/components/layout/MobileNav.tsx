@@ -86,7 +86,7 @@ export function MobileNav({
   const quick = [
     { href: "/inbox", label: "Inbox", icon: Inbox, count: counts.inbox, module: null },
     { href: "/crm", label: "CRM", icon: Kanban, count: 0, module: "crm" },
-    { href: "/cobranza", label: "Cobranza", icon: CircleDollarSign, count: counts.overdue, module: "collections" },
+    { href: "/finanzas", label: "Finanzas", icon: CircleDollarSign, count: counts.overdue, module: "collections" },
     { href: "/tasks", label: "Tareas", icon: ListTodo, count: 0, module: "tasks" },
   ].filter((t) => !t.module || enabledModules.includes(t.module));
   const shownGroups = q

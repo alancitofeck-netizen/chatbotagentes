@@ -1,45 +1,24 @@
 import type { TourConfig } from "../types";
 
-/** Verificado contra CollectionsActionBar.tsx/CollectionsTable.tsx. La
- * vista por defecto es "calendar" (CollectionsShell.tsx) — por eso el tour
- * primero cambia a la vista de tabla antes de abrir un cobro, en vez de
- * asumir que la tabla ya está visible. */
+/** Verificado contra finanzas/FinanzasShell.tsx (data-tour="finance.*"). Solo pasos visibles en
+ * cualquier tamaño de pantalla (los botones "Nuevo gasto/cobro" de escritorio son un FAB en
+ * celular). */
 export const collectionsIntroTour: TourConfig = {
   key: "collections-intro",
   moduleKey: "collections",
-  title: "Cobranza",
+  title: "Finanzas",
   steps: [
     {
-      target: '[data-tour="collections.search"]',
-      title: "💰 Desde acá controlás tus cobros",
-      description: "Buscá por cliente, aseguradora, póliza o ejecutivo.",
+      target: '[data-tour="finance.tabs"]',
+      title: "💰 Tus finanzas en un solo lugar",
+      description: "Gastos con su medio de pago, el calendario de lo que cobrás y pagás, tus cobros (pólizas, asesorías y ventas) y el resumen del mes.",
       placement: "bottom",
     },
     {
-      target: '[data-tour="collections.new-button"]',
-      title: "Cargar un cobro",
-      description: "Registrá un nuevo cobro manualmente cuando lo necesites.",
+      target: '[data-tour="finance.currency"]',
+      title: "Moneda de los totales",
+      description: "Elegí en qué moneda ver los totales y ajustá el tipo de cambio. Cada movimiento conserva su moneda original.",
       placement: "bottom",
-    },
-    {
-      target: '[data-tour="collections.priority-view"]',
-      title: "✨ Prioridad (IA)",
-      description: "Esta vista ordena tus cobros por urgencia real, para saber a quién contactar primero.",
-      placement: "bottom",
-    },
-    {
-      target: '[data-tour="collections.table-view"]',
-      title: "Vista de tabla",
-      description: "Para ver todos tus cobros en una lista.",
-      action: "click",
-      placement: "bottom",
-    },
-    {
-      target: '[data-tour="collections.open-row"]',
-      title: "Abrí un cobro",
-      description: "Desde acá vas a ver el estado, vencimiento, y las acciones disponibles.",
-      action: "click",
-      placement: "top",
     },
   ],
 };

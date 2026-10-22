@@ -264,7 +264,7 @@ export async function GET(request: NextRequest) {
             eventType: "automation_executed",
             title: isOverdue ? "Pago vencido" : "Recordatorio de cobranza",
             message: `El pago de ${contact?.name ?? "un cliente"} ${isOverdue ? "venció" : "vence"} el ${payment.due_date}.`,
-            actionUrl: `/cobranza?payment=${payment.id}`,
+            actionUrl: `/finanzas?payment=${payment.id}`,
           });
         } catch (err) {
           console.error(`[cron/run-automations] ${type} failed for payment ${payment.id}:`, err);

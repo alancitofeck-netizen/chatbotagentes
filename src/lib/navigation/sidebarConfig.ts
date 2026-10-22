@@ -87,7 +87,7 @@ export const SIDEBAR_MODULES: SidebarModuleConfig[] = [
   // src/lib/appointmentSync/runner.ts). Ícono deliberadamente distinto de
   // Calendario para no confundir los dos conceptos en el sidebar colapsado.
   { id: "agenda", name: "Agenda", icon: CalendarClock, route: "/agenda", section: "Operación", moduleKey: "agenda", order: 1, shortcut: "a" },
-  { id: "collections", name: "Cobranza", icon: CircleDollarSign, route: "/cobranza", section: "Operación", moduleKey: "collections", order: 2, shortcut: "b" },
+  { id: "collections", name: "Finanzas", icon: CircleDollarSign, route: "/finanzas", section: "Operación", moduleKey: "collections", order: 2, shortcut: "b" },
   // "e" y no "g" — la letra "g" está reservada como gatillo del combo
   // "G luego <letra>" (Sidebar.tsx) y nunca puede ser además el destino.
   { id: "goals", name: "Metas y Bonos", icon: Trophy, route: "/metas", section: "Operación", moduleKey: "goals", order: 3, shortcut: "e" },
