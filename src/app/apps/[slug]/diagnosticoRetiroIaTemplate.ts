@@ -548,7 +548,7 @@ const AREA_TEXT = {
   retiro:{
     low:"Hoy tu plan de retiro depende casi completamente de tu AFORE obligatoria. Empezar hoy con un Plan Personal de Retiro, aunque sea con una aportación modesta, le da a tu dinero años extra para crecer.",
     mid:"Ya diste el primer paso, pero conviene confirmar si tu plan actual realmente alcanza para el estilo de vida que quieres al retirarte. Vale la pena hacer una proyección con números reales.",
-    high:"Tu plan de retiro está bien encaminado. En esta etapa, el foco pasa de \"empezar\" a \"optimizar\": revisar rendimiento, comisiones y que sigas aprovechando el tiempo que te queda."
+    high:"Tu plan de retiro está bien encaminado. En esta etapa, el foco pasa de “empezar” a “optimizar”: revisar rendimiento, comisiones y que sigas aprovechando el tiempo que te queda."
   },
   ahorro:{
     low:"Hoy es difícil destinar dinero al retiro porque el ingreso se va en el día a día. Antes de pensar en el monto ideal, conviene encontrar un margen —aunque sea pequeño— y volverlo constante.",
@@ -722,7 +722,7 @@ function submitLeadToGrowthLink(lead){
 
 function revealResult(skip){
   if(!skip){
-    var nombre=$("leadName").value.trim(), wa=$("leadWa").value.replace(/\D/g,''), email=$("leadEmail").value.trim();
+    var nombre=$("leadName").value.trim(), wa=$("leadWa").value.replace(/\\D/g,''), email=$("leadEmail").value.trim();
     if(nombre.length<2||wa.length<10||!$("leadConsent").checked){
       if(nombre.length<2)$("leadName").style.borderColor="var(--danger)";
       if(wa.length<10)$("leadWa").style.borderColor="var(--danger)";
@@ -793,7 +793,7 @@ function paintResult(){
 
   // WhatsApp (sin cifras)
   var primer=(state.lead&&state.lead.nombre?state.lead.nombre.split(" ")[0]:"[tu nombre]");
-  var msg="Hola "+CONFIG.agente.split(" ")[0]+", soy "+primer+".\n\nAcabo de completar el Diagnóstico de Retiro con IA.\nMi Score de Retiro fue "+state.overall+"/100 y me gustaría revisar contigo mi plan y la brecha que me mostró.\n\n¿Podemos verlo?";
+  var msg="Hola "+CONFIG.agente.split(" ")[0]+", soy "+primer+".\\n\\nAcabo de completar el Diagnóstico de Retiro con IA.\\nMi Score de Retiro fue "+state.overall+"/100 y me gustaría revisar contigo mi plan y la brecha que me mostró.\\n\\n¿Podemos verlo?";
   $("waBtn").href="https://wa.me/"+CONFIG.whatsapp+"?text="+encodeURIComponent(msg);
   if(CONFIG.calendlyURL)$("calendlyBtn").style.display="flex";
 }
