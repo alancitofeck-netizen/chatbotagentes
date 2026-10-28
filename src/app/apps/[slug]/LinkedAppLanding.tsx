@@ -26,7 +26,7 @@
  *   pestaña nueva queda igual de sandboxeada y WhatsApp la rechaza
  *   (confirmado en vivo: ERR_BLOCKED_BY_RESPONSE en api.whatsapp.com). */
 
-import { useEffect } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { ArrowUpRight, Calculator, FileText, Layout, Link2, Presentation, Sparkles, type LucideIcon } from "lucide-react";
 import type { PublicMiniAppView } from "@/lib/miniApps/queries";
 import type { LinkedAppIconKey } from "@/lib/miniApps/linkedAppOptions";
@@ -56,14 +56,55 @@ export function LinkedAppLanding({ app }: { app: PublicMiniAppView<"app_vinculad
  * padding/border/shadow: this must be pixel-for-pixel what the visitor
  * would see opening the original HTML file, from the very top. */
 function HostedAppView({ app }: { app: PublicMiniAppView<"app_vinculada"> }) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  useHostedStorageBridge(frameRef, app.slug);
   return (
     <iframe
+      ref={frameRef}
       src={app.bundlePublicUrl as string}
       sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
       className="block h-dvh w-full border-0"
       title={app.name}
     />
   );
+}
+
+/** Guardado local para apps subidas. El iframe corre con origen opaco (sin allow-same-origin, ver
+ * arriba), así que su localStorage tira SecurityError y todo lo que el visitante carga se pierde al
+ * recargar. Esta página (origen de GrowthLink) le presta el suyo por postMessage:
+ *   iframe → { glStorage: "load", id }           ← { glStorage: "loaded", id, data: {clave: valor} }
+ *   iframe → { glStorage: "set", key, value }    (value null = borrar)
+ * Todo queda en el navegador del visitante, bajo un prefijo por slug (una app no ve los datos de
+ * otra) y solo se aceptan mensajes del propio iframe. Es opt-in: el HTML tiene que pedirlo. */
+const STORAGE_MAX_VALUE = 2_000_000;
+
+function useHostedStorageBridge(frameRef: RefObject<HTMLIFrameElement | null>, slug: string) {
+  useEffect(() => {
+    const prefix = `gl-mini-app:${slug}:`;
+    function onMessage(event: MessageEvent) {
+      const frame = frameRef.current?.contentWindow;
+      if (!frame || event.source !== frame) return;
+      const msg = event.data as { glStorage?: string; id?: unknown; key?: unknown; value?: unknown } | null;
+      if (!msg || typeof msg !== "object") return;
+      try {
+        if (msg.glStorage === "load") {
+          const data: Record<string, string> = {};
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k?.startsWith(prefix)) data[k.slice(prefix.length)] = localStorage.getItem(k) ?? "";
+          }
+          frame.postMessage({ glStorage: "loaded", id: msg.id, data }, "*");
+        } else if (msg.glStorage === "set" && typeof msg.key === "string" && msg.key.length <= 200) {
+          if (msg.value === null) localStorage.removeItem(prefix + msg.key);
+          else if (typeof msg.value === "string" && msg.value.length <= STORAGE_MAX_VALUE) localStorage.setItem(prefix + msg.key, msg.value);
+        }
+      } catch {
+        // Sin localStorage (modo privado estricto, cuota llena): la app sigue andando en memoria.
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [frameRef, slug]);
 }
 
 /** hostingMode "url" (Fase 1, sin cambios) — GrowthLink no aloja esta app,
