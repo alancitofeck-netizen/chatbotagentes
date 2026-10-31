@@ -218,6 +218,27 @@ window.__ASESORIA_ID__ = ${serializedId};
 
 ${IMAGE_OFFLOAD_JS}
 
+  // Autoguardado de la plantilla: cada cambio de diseño (diapositivas, tema, marca) pasa a ser la plantilla
+  // del grupo sin tener que apretar "Guardar". Solo cuando el diseño cambió respecto de lo que se abrió:
+  // abrir una sesión vieja y cargar respuestas nunca pisa la plantilla con la versión vieja de esa sesión.
+  // Se compara con las claves ordenadas y sin advisorName (lo completa afterBoot con quien abre la sesión).
+  function canon(v) {
+    if (Array.isArray(v)) return "[" + v.map(canon).join(",") + "]";
+    if (v && typeof v === "object") {
+      return "{" + Object.keys(v).sort().filter(function (k) { return v[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ":" + canon(v[k]); }).join(",") + "}";
+    }
+    return JSON.stringify(v === undefined ? null : v);
+  }
+  function designOf(p) {
+    if (!p || typeof p !== "object" || !p.template) return null;
+    var brand = {}, b = p.brand && typeof p.brand === "object" ? p.brand : {};
+    Object.keys(b).forEach(function (k) { if (k !== "advisorName") brand[k] = b[k]; });
+    return { template: p.template, theme: p.theme || {}, brand: brand };
+  }
+  var seedDesign = designOf(SEED);
+  var lastDesign = seedDesign ? canon(seedDesign) : "";
+  var designTimer = null, pendingDesign = null;
+
   var timer = null;
   proto.getItem = function (key) { return origGet.call(this, mapKey(key)); };
   proto.removeItem = function (key) { return origRemove.call(this, mapKey(key)); };
@@ -226,6 +247,17 @@ ${IMAGE_OFFLOAD_JS}
     if (key === "gl-project-current" && ID) {
       clearTimeout(timer);
       timer = setTimeout(function () { sendPayload("/api/asesorias/" + ID + "/sync", value); }, 400);
+      var design = null;
+      try { design = designOf(JSON.parse(value)); } catch (e) {}
+      var designKey = design ? canon(design) : "";
+      if (design && designKey !== lastDesign) {
+        lastDesign = designKey;
+        pendingDesign = design;
+        clearTimeout(designTimer);
+        designTimer = setTimeout(function () {
+          sendPayload("/api/asesorias/" + ID + "/save-master-template", JSON.stringify(pendingDesign));
+        }, 1200);
+      }
     }
     // "Guardar" en el editor: la plantilla pasa a ser la del grupo (save-master-template/route.ts).
     if (typeof key === "string" && key.indexOf("gl-template-") === 0 && key !== "gl-template-index" && ID) {
